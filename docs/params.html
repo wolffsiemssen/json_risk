@@ -1,0 +1,97 @@
+<h1>JSON Risk parameters guide</h1>
+
+<p>JSON Risk supports the parameter types below:</p>
+
+<ul>
+<li>Scalars
+<ul>
+<li>Equity or index prices (equity)</li>
+<li>FX spot prices (fx)</li>
+</ul></li>
+<li>Curves
+<ul>
+<li>Yield term structures (yield)</li>
+<li>Spread curves (spread)</li>
+<li>FX term structures (fxterm)</li>
+</ul></li>
+<li>Surfaces
+<ul>
+<li>Black-Scholes volatility (bs)</li>
+<li>Black-76 interest rate volatility (black)</li>
+<li>Bachelier interest rate volatility (bachelier)</li>
+</ul></li>
+</ul>
+
+<h2>Parameter Field definitions</h2>
+
+<h3>Scalars</h3>
+
+<p>Fields:</p>
+
+<ul>
+<li>type (string (equity or fx))</li>
+<li>value (number)</li>
+</ul>
+
+<p>Optional (for automatic parameter assignment):</p>
+
+<ul>
+<li>currency (string)</li>
+<li>tag (string)</li>
+</ul>
+
+<h3>Curves</h3>
+
+<p>Fields:</p>
+
+<ul>
+<li>type (string (yield, spread or fxterm))</li>
+<li>times (array of number) Note: If times are not provided, but optional days, dates or labels are provided, times are reconstructed from days (preferrably), dates (if days are not given) or labels (if neither times, days ot dates are given)</li>
+<li>values (array of number)</li>
+</ul>
+
+<p>Optional: </p>
+
+<ul>
+<li>days (array of integer)</li>
+<li>dates (array of date string (e.g., 2010-01-15, 2010/01/15, 15.01.2010))</li>
+<li>labels (array of period string (e.g., 1D, 3M, 1Y, 10Y))</li>
+</ul>
+
+<p>Optional (for automatic parameter assignment):</p>
+
+<ul>
+<li>currency (string)</li>
+<li>tag (string)</li>
+<li>tenor (period string (typically 1D, 3M, 6M))</li>
+</ul>
+
+<p><em>All arrays must be sorted by times in ascending order</em></p>
+
+<h3>Surfaces</h3>
+
+<p>Fields:</p>
+
+<ul>
+<li>type (string (bs, black, bachelier))</li>
+<li>expiries (array of number) Note: If expiries are not provided, but optional labels_expiry are provided, expiries are reconstructed from labels_expiry</li>
+<li>terms (array of number) Note: If terms are not provided, but optional labels_expiry are provided, terms are reconstructed from labels_expiry</li>
+<li>values (array of array of number)</li>
+</ul>
+
+<p>Optional: </p>
+
+<ul>
+<li>labels_expiry (array of period string (e.g., 1D, 3M, 1Y, 10Y))</li>
+<li>labels_term (array of period string (e.g., 1D, 3M, 1Y, 10Y))</li>
+</ul>
+
+<p>Optional (for automatic parameter assignment):</p>
+
+<ul>
+<li>tenor (black only)</li>
+<li>currency (string)</li>
+<li>tag (string used for parameter assignment)</li>
+</ul>
+
+<p><em>All arrays must be sorted by times (expiry, term) in ascending order</em></p>

@@ -1,0 +1,27 @@
+{
+  "name": "json_risk",
+  "version": "0.0.0",
+  "description": "JSON / JavaScript financial risk and pricing library",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node test/test_main.js"
+  },
+  "keywords": [
+    "finance",
+    "risk",
+    "pricing"
+  ],
+  "author": "Dr. Tilman Wolff-Siemssen",
+  "license": "MIT",
+  "devDependencies": {
+    "grunt": "^1.0.1",
+    "grunt-contrib-concat": "^1.0.1",
+    "grunt-contrib-jshint": "^1.1.0",
+    "grunt-contrib-uglify": "^3.3.0",
+    "grunt-contrib-watch": "^1.0.0"
+  }
+}
