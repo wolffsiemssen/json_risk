@@ -26,7 +26,7 @@ var JsonRisk=require('path/to/json_risk.js');
 var bond= {
         maturity: new Date(2028,0,1),
         notional: 100.0,
-        fixed_rate: Kupon[i]/100,
+        fixed_rate: 0.05,
         freq: 12,
         bdc: "following",
         dcc: "act/act",
