@@ -35,7 +35,7 @@
         return JsonRisk;
 
 }));
-;
+;        
 (function(library){
 
         library.validate_bond=function(bond){
@@ -110,64 +110,93 @@
 ;(function(library){
 
         library.get_const_curve=function(value){
-                return {type: "yield", labels: ["1Y"], times: [1], values: [value]};
+                return {type: "yield", labels: ["1Y"], times: [1], zcs: [value]};
         };
 
         function init_curve(curve){
-                curve._cache={};
-                if (undefined!==curve.times){
-                        curve._cache.times=curve.times;
+                var i;
+                if (undefined==curve.times){
+                        //construct times from other parameters in order of preference
+                        if (undefined!==curve.days){
+                                i=curve.days.length;
+                                curve.times=new Array(i);
+                                while (i>0){
+                                       i--;
+                                       curve.times[i]=curve.days[i]/365;
+                                }                      
+                        }else if (undefined!==curve.dates){
+                                i=curve.dates.length;
+                                curve.times=new Array(i);
+                                yf=library.year_fraction_factory("act/365");
+                                ref_date=library.date_str_to_date(curve.dates[0]);
+                                while (i>0){
+                                       i--;
+                                       curve.times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
+                                }                      
+                        }else if (undefined!==curve.labels){
+                                i=curve.labels.length;
+                                curve.times=new Array(i);    
+                                while (i>0){
+                                       i--;
+                                       curve.times[i]=library.period_str_to_time(curve.labels[i]);
+                                }                      
+                        }else{
+                                throw new Error("init_curve: invalid curve, cannot derive times");
+                        }
                 }
-                else if (undefined!==curve.days){
-                        i=curve.days.length;
-                        curve._cache.times=new Array(i);
-                        while (i>0){
-                               i--;
-                               curve._cache.times[i]=curve.days[i]/365;
-                        }                      
-                }else if (undefined!==curve.dates){
-                        i=curve.dates.length;
-                        curve._cache.times=new Array(i);
-                        yf=library.year_fraction_factory("act/365");
-                        ref_date=library.date_str_to_date(curve.dates[0]);
-                        while (i>0){
-                               i--;
-                               curve._cache.times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
-                        }                      
-                }else if (undefined!==curve.labels){
-                        i=curve.labels.length;
-                        curve._cache.times=new Array(i);    
-                        while (i>0){
-                               i--;
-                               curve._cache.times[i]=library.period_str_to_time(curve.labels[i]);
-                        }                      
-                }else{
-                        throw new Error("init_curve: invalid curve, cannot derive times");
+                if(undefined==curve.dfs){
+                        //construct discount factors from zero coupons
+                        if (undefined!==curve.zcs){
+                                i=curve.zcs.length;
+                                if(i!==curve.times.length){
+                                        throw new Error("init_curve: invalid curve, length of zcs does not match length of times");
+                                }
+                                curve.dfs=new Array(i);
+                                while (i>0){
+                                       i--;
+                                       curve.dfs[i]=Math.exp(-curve.zcs[i]*curve.times[i]);
+                                }                      
+                        }else{
+                                throw new Error("init_curve: invalid curve, dfs and zcs both undefined");
+                        }
                 }
-                if(curve._cache.times.length!==curve.values.length) throw new Error("init_curve: invalid curve, length of values does not match length of times");
+                if(curve.times.length!==curve.dfs.length){
+                        throw new Error("init_curve: invalid curve, length of dfs does not match length of times");
+                }
         }
 
-        get_rate_internal_=function(curve,t,imin,imax){
-                //found exact time
-                if (imin==imax) return curve.values[imin];
-                //linear interpolation
-                if (imin+1==imax) return curve.values[imin]*(curve._cache.times[imax]-t)/(curve._cache.times[imax]-curve._cache.times[imin])+curve.values[imax]*(t-curve._cache.times[imin])/(curve._cache.times[imax]-curve._cache.times[imin]);
-                //constant extrapolation
-                if (t<curve._cache.times[imin]) return curve.values[imin];
-                if (t>curve._cache.times[imax]) return curve.values[imax];
+        get_df_internal=function(curve,t,imin,imax){
+                //discount factor is one for infinitesimal time (less than a day makes no sense, anyway
+                if (t<1/365/2) return 1.0;
+                //found exact time, or curve only has one support point
+                if (imin==imax) return (t===curve.times[imin]) ? curve.dfs[imin] : Math.pow(curve.dfs[imin], t/curve.times[imin]);
+                //interpolation (linear on discount factors)
+                if (imin+1==imax){
+                        if(curve.times[imax]-curve.times[imin]<1/365/2) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+                        return curve.dfs[imin]*(curve.times[imax]-t)/(curve.times[imax]-curve.times[imin])+
+                               curve.dfs[imax]*(t-curve.times[imin])/(curve.times[imax]-curve.times[imin]);
+                }
+                //extrapolation (constant on zero coupon rates)
+                if (t<curve.times[imin]) return Math.pow(curve.dfs[imin], t/curve.times[imin]);
+                if (t>curve.times[imax]) return Math.pow(curve.dfs[imax], t/curve.times[imax]);
                 //binary search and recursion
-                imed=Math.ceil((imin+imax)/2);
-                if (t>curve._cache.times[imed]) return get_rate_internal_(curve,t,imed,imax);
-                return get_rate_internal_(curve,t,imin,imed);
+                imed=Math.ceil((imin+imax)/2.0);
+                if (t>curve.times[imed]) return get_df_internal(curve,t,imed,imax);
+                return get_df_internal(curve,t,imin,imed);
+        };
+
+        library.get_df=function(curve,t){
+                init_curve(curve);
+                return get_df_internal(curve,t,0,curve.times.length-1);
         };
         
         library.get_rate=function(curve,t){
-                if (undefined===curve._cache || undefined===curve._cache.times) init_curve(curve);
-                return get_rate_internal_(curve,t,0,curve._cache.times.length-1);
+                if (t<1/365/2) return 0.0;
+                return -Math.log(library.get_df(curve,t))/t;
         };
 
         library.get_fwd_amount=function(curve,tstart,tend){
-                return Math.pow((1+get_rate(curve,tstart)),-tstart) / Math.pow((1+get_rate(curve,tend)),-tend) -1;
+                return library.get_df(curve,tstart) / library.get_df(curve,tend) -1.0;
         };
 
 }(this.JsonRisk || module.exports));
@@ -458,6 +487,7 @@
         library.add_days=function(from, ndays){
                 return new Date(from.valueOf()+(1000*60*60*24*ndays));
         };
+        
         
         library.add_months=function(from, nmonths, roll_day){
                 y=from.getFullYear();

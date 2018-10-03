@@ -1,4 +1,4 @@
-
+        
 (function(library){
 
         library.validate_bond=function(bond){
