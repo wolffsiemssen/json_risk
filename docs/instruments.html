@@ -3,7 +3,8 @@
 <p>JSON Risk supports the instrument types below:</p>
 
 <ul>
-<li>Bonds (bond)</li>
+<li>Fixed rate bonds (bond)</li>
+<li>Floating rate bonds (floater)</li>
 <li>Equity (equity)</li>
 <li>FX Spot/Forward (fxterm)</li>
 </ul>
@@ -12,14 +13,45 @@
 
 <h3>Bond</h3>
 
-<p>Fixed and Floating rate plain vanilla bond positions. Fields:</p>
+<p>Fixed rate plain vanilla bond positions. Fields:</p>
 
 <ul>
 <li>maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))</li>
 <li>notional (number)</li>
 <li>fixed_rate (number, coupon rate for fixed rate bonds)</li>
+<li>tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
+</ul>
+
+<p>Optional (improving pricing accuracy or adding features):</p>
+
+<ul>
+<li>effective_date (date string)</li>
+<li>first_date (date string)</li>
+<li>next_to_last_date (date string)</li>
+<li>calendar (string)</li>
+<li>bdc (string)</li>
+<li>dcc (string)</li>
+<li>settlement_days (number)</li>
+<li>residual_spread (number, discounting spread over yield and spread curves)</li>
+<li>currency</li>
+</ul>
+
+<p>Optional (for automatic parameter assignment):</p>
+
+<ul>
+<li>tag_disc_curve (string, hint for discount curve assignment)</li>
+<li>tag_spread_curve (string, hint for spread curve assignment)</li>
+</ul>
+
+<h3>Floater</h3>
+
+<p>Floating rate plain vanilla bond positions. Fields:</p>
+
+<ul>
+<li>maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))</li>
+<li>notional (number)</li>
 <li>float_spread (number, coupon spread for floater)</li>
-<li>freq (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
+<li>tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
 </ul>
 
 <p>Optional (improving pricing accuracy):</p>
@@ -34,7 +66,7 @@
 <li>settlement_days (number)</li>
 <li>current_rate (number, current rate for floater)</li>
 <li>residual_spread (number, discounting spread over yield and spread curves)</li>
-<li>mvalue (number, market value (dirty))</li>
+<li>currency</li>
 </ul>
 
 <p>Optional (for automatic parameter assignment):</p>
@@ -43,7 +75,6 @@
 <li>tag_disc_curve (string, hint for discount curve assignment)</li>
 <li>tag_spread_curve (string, hint for spread curve assignment)</li>
 <li>tag_fwd_curve (string, hint for forward curve assignment)</li>
-<li>currency</li>
 </ul>
 
 <h3>Equity</h3>
@@ -52,13 +83,13 @@
 
 <ul>
 <li>quantity (number, number of pieces)</li>
+<li>currency</li>
 </ul>
 
 <p>Optional</p>
 
 <ul>
 <li>tag (string, hint for risk factor assignment)</li>
-<li>mvalue (number, market value (dirty))</li>
 </ul>
 
 <h3>FX Spot / Forward</h3>
@@ -71,12 +102,6 @@
 <li>notional_2 (number)</li>
 <li>currency_1 (string)</li>
 <li>currency_2 (string)</li>
-</ul>
-
-<p>Optional:</p>
-
-<ul>
-<li>mvalue (number, market value (dirty))</li>
 </ul>
 
 <p>Optional (for automatic parameter assignment):</p>

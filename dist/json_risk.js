@@ -38,147 +38,118 @@
 ;        
 (function(library){
 
-        library.validate_bond=function(bond){
-                if(typeof bond.notional != 'number') return false;
-                if(!(bond.maturity instanceof Date)) return false;
+        library.pricer_bond=function(bond, disc_curve, spread_curve){
+                var bond_internal=new library.fixed_income(bond);
+                return bond_internal.get_present_value(disc_curve, spread_curve, null);
         };
         
-        library.pricer_bond=function(bond,params){
-                return null;
-        };
-        
-        library.bond_dirty_value=function(bond,disc_curve, spread_curve, fwd_curve){
-                //sanity checks
-                if (null===library.valuation_date)
-                        throw new Error("dcf: valuation_date must be set");
-                        
-                if(!(bond.maturity instanceof String) && typeof bond.maturity !== 'string')
-                        throw new Error("bond_dirty_value: must provide maturity date.");
-                        
-                if(typeof bond.notional !== 'number')
-                        throw new Error("bond_dirty_value: must provide notional.");
-                
-                var is_holiday_func=library.is_holiday_factory(bond.calendar || "");
-                var year_fraction_func=library.year_fraction_factory(bond.dcc || "");
-                var maturity=library.date_str_to_date(bond.maturity);
-                var eff_dt= ('undefined'===typeof bond.effective_date) ? null : library.date_str_to_date(bond.effective_date);
-                var first_dt= ('undefined'===typeof bond.first_date) ? null : library.date_str_to_date(bond.first_date);
-                var next_to_last_dt= ('undefined'===typeof bond.next_to_last_date) ? null : library.date_str_to_date(bond.next_to_last_date);
-                
-                var schedule=library.backward_schedule(eff_dt, 
-                                                       maturity,
-                                                       bond.freq,
-                                                       is_holiday_func,
-                                                       bond.bdc || "",
-                                                       first_dt,
-                                                       next_to_last_dt);
-                var cf;
-                if (typeof bond.fixed_rate === 'number'){
-                        cf=library.fix_cash_flows(schedule,
-                                                  bond.bdc,
-                                                  is_holiday_func,
-                                                  year_fraction_func,
-                                                  bond.notional,
-                                                  bond.fixed_rate);
-                }else{
-                        cf=library.float_cash_flows(schedule,
-                                                    bond.bdc,
-                                                    is_holiday_func,
-                                                    year_fraction_func,
-                                                    bond.notional,
-                                                    bond.current_rate,
-                                                    bond.float_spread,
-                                                    fwd_curve );
-                }
-                
-                var settlement_date=library.adjust(library.add_days(library.valuation_date, 
-                                                                   (typeof bond.settlement_days==='number') ? bond.settlement_days: 0),
-                                                   "following",
-                                                   is_holiday_func);
-                return library.dcf(cf, 
-                                   disc_curve,
-                                   spread_curve,
-                                   bond.residual_spread,
-                                   settlement_date);
-        };
-        
-
-        
-
 
 }(this.JsonRisk || module.exports));
 ;(function(library){
 
         library.get_const_curve=function(value){
-                return {type: "yield", labels: ["1Y"], times: [1], zcs: [value]};
+                if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
+                if(value <= -1) throw new Error("get_const_curve: invalid input."); 
+                return {
+                                type: "yield", 
+                                times: [1], 
+                                dfs: [1/(1+value)]
+                       };
+        };
+        
+        library.get_initialised_curve=function(curve){
+                //if valid curve is given, returns curve in initialised form {type, times, dfs}, if null, returns constant zero curve
+                if (!curve) return library.get_const_curve(0.0);
+                var times=get_curve_times(curve);
+                var dfs;
+                if(undefined!==curve.dfs){
+                        dfs=curve.dfs;
+                }else{
+                        if(undefined===curve.zcs) throw new Error("get_initialised_curve: invalid curve, both dfs and zcs undefined");
+                        dfs=get_dfs(curve.zcs, times);
+                }
+                return {
+                                type: "yield", 
+                                times: times,
+                                dfs: dfs
+                        };
         };
 
-        function init_curve(curve){
-                var i;
-                if (undefined==curve.times){
+        function get_curve_times(curve){
+                var i,times;
+                if (undefined===curve.times){
                         //construct times from other parameters in order of preference
                         if (undefined!==curve.days){
                                 i=curve.days.length;
-                                curve.times=new Array(i);
+                                times=new Array(i);
                                 while (i>0){
                                        i--;
-                                       curve.times[i]=curve.days[i]/365;
+                                       //curve times are always assumed to be act/365
+                                       times[i]=curve.days[i]/365;
                                 }                      
                         }else if (undefined!==curve.dates){
                                 i=curve.dates.length;
-                                curve.times=new Array(i);
+                                times=new Array(i);
+                                //curve times are always assumed to be act/365
                                 yf=library.year_fraction_factory("act/365");
                                 ref_date=library.date_str_to_date(curve.dates[0]);
                                 while (i>0){
                                        i--;
-                                       curve.times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
+                                       times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
                                 }                      
                         }else if (undefined!==curve.labels){
                                 i=curve.labels.length;
-                                curve.times=new Array(i);    
+                                times=new Array(i);    
                                 while (i>0){
                                        i--;
-                                       curve.times[i]=library.period_str_to_time(curve.labels[i]);
+                                       times[i]=library.period_str_to_time(curve.labels[i]);
                                 }                      
                         }else{
                                 throw new Error("init_curve: invalid curve, cannot derive times");
                         }
-                }
-                if(undefined==curve.dfs){
-                        //construct discount factors from zero coupons
-                        if (undefined!==curve.zcs){
-                                i=curve.zcs.length;
-                                if(i!==curve.times.length){
-                                        throw new Error("init_curve: invalid curve, length of zcs does not match length of times");
-                                }
-                                curve.dfs=new Array(i);
-                                while (i>0){
-                                       i--;
-                                       curve.dfs[i]=Math.exp(-curve.zcs[i]*curve.times[i]);
-                                }                      
-                        }else{
-                                throw new Error("init_curve: invalid curve, dfs and zcs both undefined");
+                        return times;
+                }else{
+                        i=curve.times.length;
+                        while (i>0){
+                                i--;
+                                if (typeof curve.times[i] != 'number') 
+                                        throw new Error("get_curve_times: invalid vector of times, must be numeric");
                         }
+                        return curve.times;
                 }
-                if(curve.times.length!==curve.dfs.length){
-                        throw new Error("init_curve: invalid curve, length of dfs does not match length of times");
+        }
+        
+        function get_dfs(zcs, times){
+                var i, dfs;
+                i=zcs.length;
+                if(times.length!==i) throw new Error("get_dfs: invalid input, length of zcs does not match length of times");
+
+                //construct discount factors from zero coupons
+                dfs=new Array(i);
+                while (i>0){
+                       //zero coupon curves are always assumed to be annual compounding act/365
+                        i--;
+                        if (typeof zcs[i] != 'number')
+                                throw new Error("get_curve_times: invalid vector of times, must be numeric");
+                        dfs[i]=Math.pow(1+zcs[i],-times[i]);
                 }
+                return dfs;         
         }
 
         get_df_internal=function(curve,t,imin,imax){
-                //discount factor is one for infinitesimal time (less than a day makes no sense, anyway
-                if (t<1/365/2) return 1.0;
-                //found exact time, or curve only has one support point
+                //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
+                if (t<1/512) return 1.0;
+                //curve only has one support point
                 if (imin==imax) return (t===curve.times[imin]) ? curve.dfs[imin] : Math.pow(curve.dfs[imin], t/curve.times[imin]);
-                //interpolation (linear on discount factors)
-                if (imin+1==imax){
-                        if(curve.times[imax]-curve.times[imin]<1/365/2) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-                        return curve.dfs[imin]*(curve.times[imax]-t)/(curve.times[imax]-curve.times[imin])+
-                               curve.dfs[imax]*(t-curve.times[imin])/(curve.times[imax]-curve.times[imin]);
-                }
                 //extrapolation (constant on zero coupon rates)
                 if (t<curve.times[imin]) return Math.pow(curve.dfs[imin], t/curve.times[imin]);
                 if (t>curve.times[imax]) return Math.pow(curve.dfs[imax], t/curve.times[imax]);
+                //interpolation (linear on discount factors)
+                if (imin+1==imax){
+                        if(curve.times[imax]-curve.times[imin]<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+                        return curve.dfs[imin]*(curve.times[imax]-t)/(curve.times[imax]-curve.times[imin])+
+                               curve.dfs[imax]*(t-curve.times[imin])/(curve.times[imax]-curve.times[imin]);
+                }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
                 if (t>curve.times[imed]) return get_df_internal(curve,t,imed,imax);
@@ -186,17 +157,19 @@
         };
 
         library.get_df=function(curve,t){
-                init_curve(curve);
-                return get_df_internal(curve,t,0,curve.times.length-1);
+                c=library.get_initialised_curve(curve);
+                return get_df_internal(c,t,0,c.times.length-1);
         };
         
         library.get_rate=function(curve,t){
-                if (t<1/365/2) return 0.0;
-                return -Math.log(library.get_df(curve,t))/t;
+                if (t<1/512) return 0.0;
+                //zero rates are act/365 annual compounding
+                return Math.pow(library.get_df(curve,t),-1/t)-1;
         };
 
         library.get_fwd_amount=function(curve,tstart,tend){
-                return library.get_df(curve,tstart) / library.get_df(curve,tend) -1.0;
+                c=library.get_initialised_curve(curve);
+                return library.get_df(c,tstart) / library.get_df(c,tend) -1.0;
         };
 
 }(this.JsonRisk || module.exports));
@@ -254,11 +227,12 @@
         
         library.dcf=function(cf_obj, disc_curve, spread_curve, residual_spread, settlement_date){
                 if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
-                //fallbacks
-                if(null==disc_curve) disc_curve=library.get_const_curve(0);
-                if(null==spread_curve) spread_curve=library.get_const_curve(0);
+                //cuve initialisation and fallbacks
+                var dc=library.get_initialised_curve(disc_curve);
+                var sc=library.get_initialised_curve(spread_curve);
                 if(typeof residual_spread !== "number") residual_spread=0;
-                var sd=(settlement_date instanceof Date)? settlement_date : library.valuation_date;
+                var sd=library.get_initialised_date(settlement_date);
+                if (!sd) sd=library.valuation_date;
 
                 //sanity checks
                 if (undefined===cf_obj.times || undefined===cf_obj.amounts) throw new Error("dcf: invalid cashflow object");
@@ -266,26 +240,120 @@
                 
                 var res=0;
                 var i=0;
-                var dr;
-                var sr;
-                var df;
+                var df_d;
+                var df_s;
+                var df_res;
                 while(cf_obj.dates[i]<=sd) i++;
                 while (i<cf_obj.times.length){
-                        dr=library.get_rate(disc_curve,cf_obj.times[i]);
-                        sr=library.get_rate(spread_curve,cf_obj.times[i]);
-                        df=Math.pow(1+dr+sr+residual_spread,-cf_obj.times[i]); 
-                        res+=cf_obj.amounts[i]*df;
+                        df_d=library.get_df(dc,cf_obj.times[i]);
+                        df_s=library.get_df(sc,cf_obj.times[i]);
+                        df_res=Math.exp(-cf_obj.times[i]*residual_spread);
+                        res+=cf_obj.amounts[i]*df_d*df_s*df_res;
                         i++;
                 }
                 return res;
         };
 
+        library.fixed_income=function(instrument){
+                var maturity=library.get_initialised_date(instrument.maturity);       
+                if(!maturity)
+                        throw new Error("fixed_income: must provide maturity date.");
+                        
+                if(typeof instrument.notional !== 'number')
+                        throw new Error("fixed_income: must provide valid notional.");
+                this.notional=instrument.notional;
+                
+                if(typeof instrument.tenor !== 'number')
+                        throw new Error("fixed_income: must provide valid tenor.");
+                
+                if(instrument.tenor < 0 || instrument.tenor!==Math.floor(instrument.tenor))
+                        throw new Error("fixed_income: must provide valid tenor.");
+                var tenor=instrument.tenor;
+                
+                this.type=(typeof instrument.type==='string') ? instrument.type : 'unknown';
+                
+                this.is_holiday_func=library.is_holiday_factory(instrument.calendar || "");
+                this.year_fraction_func=library.year_fraction_factory(instrument.dcc || "");
+                this.bdc=instrument.bdc || "";
+                var effective_date=library.get_initialised_date(instrument.effective_date); //null allowed
+                var first_date=library.get_initialised_date(instrument.first_date); //null allowed
+                var next_to_last_date=library.get_initialised_date(instrument.next_to_last_date); //null allowed
+                var settlement_days=(typeof instrument.settlement_days==='number') ? instrument.settlement_days: 0;
+                this.settlement_date=library.adjust(library.add_days(library.valuation_date,
+                                                                    settlement_days),
+                                                                    "following",
+                                                                    this.is_holiday_func);
+                var residual_spread=(typeof instrument.residual_spread=='number') ? instrument.residual_spread : 0;
+                var currency=instrument.currency || "";
+
+
+                if(typeof instrument.fixed_rate === 'number'){
+                        //fixed rate instrument
+                        this.is_float=false;
+                        this.fixed_rate=instrument.fixed_rate;
+                }else{
+                        //floating rate instrument
+                        this.is_float=true;
+                        this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0;
+                }
+                
+                this.schedule=library.backward_schedule(effective_date, 
+                                                 maturity,
+                                                 tenor,
+                                                 this.is_holiday_func,
+                                                 this.bdc,
+                                                 first_date,
+                                                 next_to_last_date);
+
+                this.cash_flows=null;
+                if(!this.is_float) this.cash_flows=library.fix_cash_flows(this.schedule,
+                                                                    this.bdc,
+                                                                    this.is_holiday_func,
+                                                                    this.year_fraction_func,
+                                                                    this.notional,
+                                                                    this.fixed_rate);
+        };
+
+        
+        library.fixed_income.prototype.get_cash_flows=function(fwd_curve){
+                if (this.is_float) return library.float_cash_flows(this.schedule,
+                                                              this.bdc,
+                                                              this.is_holiday_func,
+                                                              this.year_fraction_func,
+                                                              this.notional,
+                                                              this.current_rate,
+                                                              this.float_spread,
+                                                              fwd_curve );
+                return this.cash_flows;
+        };
+        
+        library.fixed_income.prototype.get_present_value=function(disc_curve, spread_curve, fwd_curve){
+                return library.dcf(this.get_cash_flows(),
+                                   disc_curve,
+                                   spread_curve,
+                                   this.residual_spread,
+                                   this.settlement_date);
+        };
+
+}(this.JsonRisk || module.exports));
+;        
+(function(library){
+
+        library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
+                var floater_internal=new library.fixed_income(floater);
+                return floater_internal.get_present_value(disc_curve, spread_curve, fwd_curve);
+        };
+        
 
 }(this.JsonRisk || module.exports));
 ;
 (function(library){
-
-        library.backward_schedule=function(eff_dt, maturity, freq, is_holiday_func, bdc, first_dt, next_to_last_dt){
+        /*
+        
+        Schedule functions used by regular and irregular fixed income instruments.
+        
+        */
+        library.backward_schedule=function(eff_dt, maturity, tenor, is_holiday_func, bdc, first_dt, next_to_last_dt){
                 if(!(maturity instanceof Date)) throw new Error ("backward_schedule: maturity must be provided");
                 if(!(eff_dt instanceof Date)){
                         //effective date is strictly needed if valuation date is not set
@@ -295,11 +363,11 @@
                 }
                 if ((eff_dt instanceof Date && maturity<eff_dt) || (library.valuation_date instanceof Date && maturity < library.valuation_date)) 
                         throw new Error("backward_schedule: maturity is before valution or effective date.");
-                if(typeof freq !== "number")
-                        throw new Error("backward_schedule: freq must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
-                if(freq<0 || Math.floor(freq) !== freq)
-                        throw new Error("backward_schedule: freq must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
-                if (0===freq) return [eff_dt, maturity];
+                if(typeof tenor !== "number")
+                        throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
+                if(tenor<0 || Math.floor(tenor) !== tenor)
+                        throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
+                if (0===tenor) return [eff_dt, maturity];
                 
                 var adj=function(d){
                         return library.adjust(d,bdc,is_holiday_func);
@@ -318,7 +386,7 @@
                 var dt,n=0;
                 while (true){
                         n++;
-                        dt=library.add_months(ref_dt, -freq*n);
+                        dt=library.add_months(ref_dt, -tenor*n);
                         if(first_dt instanceof Date && dt<first_dt){
                                 //stub period to be considered
                                 //insert first_dt if not already included
@@ -348,7 +416,7 @@
                                         //the schedule date before is either first_dt,
                                         //eff_dt or just the date obtained by rolling back one period more.
                                         n++;
-                                        dt=library.add_months(ref_dt, -freq*n);
+                                        dt=library.add_months(ref_dt, -tenor*n);
                                         if(first_dt instanceof Date && dt<first_dt){
                                                 res.unshift(first_dt);
                                         }
@@ -372,10 +440,12 @@
 
         /*
         
-                JsonRisk format period and date strings
+                JsonRisk date and time functions
                 
                 
         */
+        dl=1000*60*60*24;
+        one_over_dl=1.0/dl;
         
         function is_leap_year(y){
                 if(y%4!==0) return false;
@@ -419,13 +489,21 @@
                 return new Date(y,m,d);
         };
         
+        library.get_initialised_date=function(d){
+                //takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
+                if(!d) return null;
+                if(d instanceof Date) return d;
+                if((d instanceof String) || typeof d === 'string') return library.date_str_to_date(d);
+                throw new Error("get_initialised_date: invalid input.");
+        };
+        
         /*!
         
                 Year Fractions
         
         */
         function days_between(from, to){
-                return (to-from)  / (1000*60*60*24);
+                return (to-from)  * one_over_dl;
         }
 
         function yf_act365(from,to){
@@ -485,11 +563,11 @@
         */
         
         library.add_days=function(from, ndays){
-                return new Date(from.valueOf()+(1000*60*60*24*ndays));
+                return new Date(from.valueOf()+(dl*ndays));
         };
         
         
-        library.add_months=function(from, nmonths, roll_day){
+        library.add_months=function(from, nmonths, roll_day){ 
                 y=from.getFullYear();
                 m=from.getMonth()+nmonths;
                 while (m>=12){
@@ -500,7 +578,7 @@
                         m=m+12;
                         y=y-1;
                 }
-                if(null==roll_day){
+                if(undefined===roll_day){
                         d=from.getDate();
                 }else{
                         d=roll_day;
@@ -516,27 +594,19 @@
         */
         
         function easter_sunday(y) {
-                es_d_m = [
-                        [15, 3], [ 7, 3], [30, 2], [12, 3], [ 3, 3], [23, 3], [15, 3], [31, 2], [19, 3], [11, 3], [27, 2], [16, 3], [ 7, 3], [23, 2], [12, 3], [ 4, 3], [23, 3], [ 8, 3], [31, 2], [20, 3], //1900-1919
-                        [ 4, 3], [27, 2], [16, 3], [ 1, 3], [20, 3], [12, 3], [ 4, 3], [17, 3], [ 8, 3], [31, 2], [20, 3], [ 5, 3], [27, 2], [16, 3], [ 1, 3], [21, 3], [12, 3], [28, 2], [17, 3], [ 9, 3], //1920-1939
-                        [24, 2], [13, 3], [ 5, 3], [25, 3], [ 9, 3], [ 1, 3], [21, 3], [ 6, 3], [28, 2], [17, 3], [ 9, 3], [25, 2], [13, 3], [ 5, 3], [18, 3], [10, 3], [ 1, 3], [21, 3], [ 6, 3], [29, 2], //1940-1959
-                        [17, 3], [ 2, 3], [22, 3], [14, 3], [29, 2], [18, 3], [10, 3], [26, 2], [14, 3], [ 6, 3], [29, 2], [11, 3], [ 2, 3], [22, 3], [14, 3], [30, 2], [18, 3], [10, 3], [26, 2], [15, 3], //1960-1979 
-                        [ 6, 3], [19, 3], [11, 3], [ 3, 3], [22, 3], [ 7, 3], [30, 2], [19, 3], [ 3, 3], [26, 2], [15, 3], [31, 2], [19, 3], [11, 3], [ 3, 3], [16, 3], [ 7, 3], [30, 2], [12, 3], [ 4, 3], //1980-1999
-                        [23, 3], [15, 3], [31, 2], [20, 3], [11, 3], [27, 2], [16, 3], [ 8, 3], [23, 2], [12, 3], [ 4, 3], [24, 3], [ 8, 3], [31, 2], [20, 3], [ 5, 3], [27, 2], [16, 3], [ 1, 3], [21, 3], //2000-2 19
-                        [12, 3], [ 4, 3], [17, 3], [ 9, 3], [31, 2], [20, 3], [ 5, 3], [28, 2], [16, 3], [ 1, 3], [21, 3], [13, 3], [28, 2], [17, 3], [ 9, 3], [25, 2], [13, 3], [ 5, 3], [25, 3], [10, 3], //2 20-2 39
-                        [ 1, 3], [21, 3], [ 6, 3], [29, 2], [17, 3], [ 9, 3], [25, 2], [14, 3], [ 5, 3], [18, 3], [10, 3], [ 2, 3], [21, 3], [ 6, 3], [29, 2], [18, 3], [ 2, 3], [22, 3], [14, 3], [30, 2], //2 40-2 59
-                        [18, 3], [10, 3], [26, 2], [15, 3], [ 6, 3], [29, 2], [11, 3], [ 3, 3], [22, 3], [14, 3], [30, 2], [19, 3], [10, 3], [26, 2], [15, 3], [ 7, 3], [19, 3], [11, 3], [ 3, 3], [23, 3], //2 60-2 79
-                        [ 7, 3], [30, 2], [19, 3], [ 4, 3], [26, 2], [15, 3], [31, 2], [20, 3], [11, 3], [ 3, 3], [16, 3], [ 8, 3], [30, 2], [12, 3], [ 4, 3], [24, 3], [15, 3], [31, 2], [20, 3], [12, 3], //2 80-2 99
-                        [28, 2], [17, 3], [ 9, 3], [25, 2], [13, 3], [ 5, 3], [18, 3], [10, 3], [ 1, 3], [21, 3], [ 6, 3], [29, 2], [17, 3], [ 2, 3], [22, 3], [14, 3], [29, 2], [18, 3], [10, 3], [26, 2], //2100-2119
-                        [14, 3], [ 6, 3], [29, 2], [11, 3], [ 2, 3], [22, 3], [14, 3], [30, 2], [18, 3], [10, 3], [26, 2], [15, 3], [ 6, 3], [19, 3], [11, 3], [ 3, 3], [22, 3], [ 7, 3], [30, 2], [19, 3], //2120-2139
-                        [ 3, 3], [26, 2], [15, 3], [31, 2], [19, 3], [11, 3], [ 3, 3], [16, 3], [ 7, 3], [30, 2], [12, 3], [ 4, 3], [23, 3], [15, 3], [31, 2], [20, 3], [11, 3], [27, 2], [16, 3], [ 8, 3], //2140-2159
-                        [23, 2], [12, 3], [ 4, 3], [24, 3], [ 8, 3], [31, 2], [20, 3], [ 5, 3], [27, 2], [16, 3], [ 1, 3], [21, 3], [12, 3], [ 4, 3], [17, 3], [ 9, 3], [31, 2], [20, 3], [ 5, 3], [28, 2], //2160-2179
-                        [16, 3], [ 1, 3], [21, 3], [13, 3], [28, 2], [17, 3], [ 9, 3], [25, 2], [13, 3], [ 5, 3], [25, 3], [10, 3], [ 1, 3], [21, 3], [ 6, 3], [29, 2], [17, 3], [ 9, 3], [25, 2], [14, 3], //2180-2199
-                        [ 6, 3]]; //2200
-                index=y-1900;
-                if(index<0) index=0;
-                if(index>es_d_m.length) index=es_d_m.length;
-                return new Date(y,es_d_m[index][1],es_d_m[index][0]);
+                var f=Math.floor,
+                        c = f(y/100),
+                        n = y - 19*f(y/19),
+                        k = f((c - 17)/25);
+                var i = c - f(c/4) - f((c - k)/3) + 19*n + 15;
+                i = i - 30*f((i/30));
+                i = i - f(i/28)*(1 - f(i/28)*f(29/(i + 1))*f((21 - n)/11));
+                var j = y + f(y/4) + i + 2 - c + f(c/4);
+                j = j - 7*f(j/7);
+                var l = i - j,
+                        m = 3 + f((l + 40)/44),
+                        d = l + 28 - 31*f(m/4);
+                return new Date(y,m-1,d);
         }
         
         function is_holiday_default(dt){

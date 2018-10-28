@@ -1,7 +1,11 @@
 
 (function(library){
-
-        library.backward_schedule=function(eff_dt, maturity, freq, is_holiday_func, bdc, first_dt, next_to_last_dt){
+        /*
+        
+        Schedule functions used by regular and irregular fixed income instruments.
+        
+        */
+        library.backward_schedule=function(eff_dt, maturity, tenor, is_holiday_func, bdc, first_dt, next_to_last_dt){
                 if(!(maturity instanceof Date)) throw new Error ("backward_schedule: maturity must be provided");
                 if(!(eff_dt instanceof Date)){
                         //effective date is strictly needed if valuation date is not set
@@ -11,11 +15,11 @@
                 }
                 if ((eff_dt instanceof Date && maturity<eff_dt) || (library.valuation_date instanceof Date && maturity < library.valuation_date)) 
                         throw new Error("backward_schedule: maturity is before valution or effective date.");
-                if(typeof freq !== "number")
-                        throw new Error("backward_schedule: freq must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
-                if(freq<0 || Math.floor(freq) !== freq)
-                        throw new Error("backward_schedule: freq must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
-                if (0===freq) return [eff_dt, maturity];
+                if(typeof tenor !== "number")
+                        throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
+                if(tenor<0 || Math.floor(tenor) !== tenor)
+                        throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
+                if (0===tenor) return [eff_dt, maturity];
                 
                 var adj=function(d){
                         return library.adjust(d,bdc,is_holiday_func);
@@ -34,7 +38,7 @@
                 var dt,n=0;
                 while (true){
                         n++;
-                        dt=library.add_months(ref_dt, -freq*n);
+                        dt=library.add_months(ref_dt, -tenor*n);
                         if(first_dt instanceof Date && dt<first_dt){
                                 //stub period to be considered
                                 //insert first_dt if not already included
@@ -64,7 +68,7 @@
                                         //the schedule date before is either first_dt,
                                         //eff_dt or just the date obtained by rolling back one period more.
                                         n++;
-                                        dt=library.add_months(ref_dt, -freq*n);
+                                        dt=library.add_months(ref_dt, -tenor*n);
                                         if(first_dt instanceof Date && dt<first_dt){
                                                 res.unshift(first_dt);
                                         }

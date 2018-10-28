@@ -17,11 +17,13 @@ var am=function(expr,msg){
 am (typeof JsonRisk.pricer == 'function', "pricer function defined");
 am (typeof JsonRisk.pricer_bond == 'function', "pricer_bond function defined");
 am (typeof JsonRisk.period_str_to_time == 'function', "period_str_to_time function defined");
-am (typeof JsonRisk.date_str_to_date == 'function', "date_str_to_date function defined");
+am (typeof JsonRisk.get_initialised_date == 'function', "get_initialised_date function defined");
+am (typeof JsonRisk.date_str_to_date == 'function', "date_string_to_date function defined");
 am (typeof JsonRisk.get_rate == 'function', "get_rate function defined");
 am (typeof JsonRisk.get_df == 'function', "get_df function defined");
 am (typeof JsonRisk.get_fwd_amount == 'function', "get_fwd_amount function defined");
 am (typeof JsonRisk.get_const_curve == 'function', "get_const_curve function defined");
+am (typeof JsonRisk.get_initialised_curve == 'function', "get_initialised_curve function defined");
 
 
 /*!
@@ -231,54 +233,63 @@ am(foo==="do not overwrite", "Period string (invalid period string)");
 	
 */
 
-//Curve with given times
-var c={type: "yield", labels: ["1Y", "2Y", "3Y", "13Y"], times: [1,2,3,13], zcs: [0.01, 0.02, 0, 0.1]};
-am ((0.01).toFixed(6) == JsonRisk.get_rate(c, 0.01).toFixed(6), "Yield Curve Extrapolation short (1)");
-am ((0.01).toFixed(6) == JsonRisk.get_rate(c, 1/365).toFixed(6), "Yield Curve Extrapolation short (2)");
-am ((0.1).toFixed(6) == JsonRisk.get_rate(c, 15).toFixed(6), "Yield Curve Extrapolation long (1)");
-am ((0.1).toFixed(6) == JsonRisk.get_rate(c, 20).toFixed(6), "Yield Curve Extrapolation long (2)");
-am ((0.0145).toFixed(4) == JsonRisk.get_rate(c, 1.3).toFixed(4), "Yield Curve Interpolation (1)");
-am ((0.0166).toFixed(4) == JsonRisk.get_rate(c, 1.5).toFixed(4), "Yield Curve Interpolation (2)");
-am ((0.0182).toFixed(4) == JsonRisk.get_rate(c, 1.7).toFixed(4), "Yield Curve Interpolation (3)");
-am ((0.0189).toFixed(4) == JsonRisk.get_rate(c, 4).toFixed(4), "Yield Curve Interpolation (4)");
-am ((0.0410).toFixed(4) == JsonRisk.get_rate(c, 6).toFixed(4), "Yield Curve Interpolation (5)");
-am ((0.0565).toFixed(4) == JsonRisk.get_rate(c, 8).toFixed(4), "Yield Curve Interpolation (6)");
-am ((0.0712).toFixed(4) == JsonRisk.get_rate(c, 10).toFixed(4), "Yield Curve Interpolation (7)");
-am ((0.0886).toFixed(4) == JsonRisk.get_rate(c, 12).toFixed(4), "Yield Curve Interpolation (8)");
+//Constant zero curve - extrapolation only
+var c=JsonRisk.get_const_curve(0.03);
+am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 0.1).toFixed(10), "Const Yield Curve Extrapolation short (1)");
+am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 1/365).toFixed(10), "Const Yield Curve Extrapolation short (2)");
+am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 10).toFixed(10), "Const Yield Curve Extrapolation long (1)");
+am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 20).toFixed(10), "Const Yield Curve Extrapolation long (2)");
+
+//
+
+//linear interpolation on discounts
+c={type: "yield", labels: ["1Y", "20Y"], times: [1,20], dfs: [1, 0.5]};
+for (i=1;i<21;i++){
+        am ((1*(20-i)/19 + 0.5*(i-1)/19).toFixed(10) === JsonRisk.get_df(c, i).toFixed(10), "Yield Curve interpolation " + i );
+}
+
+//linear interpolation stability with more support points
+c={type: "yield", 
+   times: [1,7,12,15.5,20],
+   dfs: [1, JsonRisk.get_df(c, 7), JsonRisk.get_df(c, 12), JsonRisk.get_df(c, 15.5), 0.5]
+  };
+   
+for (i=1;i<21;i++){
+        am ((1*(20-i)/19 + 0.5*(i-1)/19).toFixed(10) === JsonRisk.get_df(c, i).toFixed(10), "Yield Curve interpolation stability " + i );
+}
 
 //Curve without times - fallback based on days
-c={type: "yield", labels: ["1Y", "2Y", "3Y", "13Y"], days: [365, 2*365, 3*365, 13*365], zcs: [0.01, 0.02, 0, 0.1]};
-am ((0.0145).toFixed(4) == JsonRisk.get_rate(c, 1.3).toFixed(4), "Yield Curve Interpolation days only (1)");
-am ((0.0166).toFixed(4) == JsonRisk.get_rate(c, 1.5).toFixed(4), "Yield Curve Interpolation days only (2)");
-am ((0.0182).toFixed(4) == JsonRisk.get_rate(c, 1.7).toFixed(4), "Yield Curve Interpolation days only (3)");
-am ((0.0189).toFixed(4) == JsonRisk.get_rate(c, 4).toFixed(4), "Yield Curve Interpolation days only (4)");
-am ((0.0410).toFixed(4) == JsonRisk.get_rate(c, 6).toFixed(4), "Yield Curve Interpolation days only (5)");
-am ((0.0565).toFixed(4) == JsonRisk.get_rate(c, 8).toFixed(4), "Yield Curve Interpolation days only (6)");
-am ((0.0712).toFixed(4) == JsonRisk.get_rate(c, 10).toFixed(4), "Yield Curve Interpolation days only (7)");
-am ((0.0886).toFixed(4) == JsonRisk.get_rate(c, 12).toFixed(4), "Yield Curve Interpolation days only (8)");
-
-//Curve without times - fallback based on dates
-c={type: "yield", labels: ["0Y", "1Y", "2Y", "3Y", "13Y"], dates: ["01.01.2000", "31.12.2000", "31.12.2001", "31.12.2002", "28.12.2012"], zcs: [0, 0.01, 0.02, 0, 0.1]};
-am ((0.0145).toFixed(4) == JsonRisk.get_rate(c, 1.3).toFixed(4), "Yield Curve Interpolation dates only (1)");
-am ((0.0166).toFixed(4) == JsonRisk.get_rate(c, 1.5).toFixed(4), "Yield Curve Interpolation dates only (2)");
-am ((0.0182).toFixed(4) == JsonRisk.get_rate(c, 1.7).toFixed(4), "Yield Curve Interpolation dates only (3)");
-am ((0.0189).toFixed(4) == JsonRisk.get_rate(c, 4).toFixed(4), "Yield Curve Interpolation dates only (4)");
-am ((0.0410).toFixed(4) == JsonRisk.get_rate(c, 6).toFixed(4), "Yield Curve Interpolation dates only (5)");
-am ((0.0565).toFixed(4) == JsonRisk.get_rate(c, 8).toFixed(4), "Yield Curve Interpolation dates only (6)");
-am ((0.0712).toFixed(4) == JsonRisk.get_rate(c, 10).toFixed(4), "Yield Curve Interpolation dates only (7)");
-am ((0.0886).toFixed(4) == JsonRisk.get_rate(c, 12).toFixed(4), "Yield Curve Interpolation dates only (8)");
-
+c={type: "yield", 
+   days: [365, 7*365, 12*365, 15.5*365, 20*365] , 
+   dfs: c.dfs
+  };
+   
+for (i=1;i<21;i++){
+        am ((1*(20-i)/19 + 0.5*(i-1)/19).toFixed(10) === JsonRisk.get_df(c, i).toFixed(10), "Yield Curve interpolation fallback on days " + i );
+}
 
 //Curve without times - fallback based on labels
-c={type: "yield", labels: ["1Y", "2Y", "3Y", "13Y"],zcs: [0.01, 0.02, 0, 0.1]};
-am ((0.0145).toFixed(4) == JsonRisk.get_rate(c, 1.3).toFixed(4), "Yield Curve Interpolation labels only (1)");
-am ((0.0166).toFixed(4) == JsonRisk.get_rate(c, 1.5).toFixed(4), "Yield Curve Interpolation labels only (2)");
-am ((0.0182).toFixed(4) == JsonRisk.get_rate(c, 1.7).toFixed(4), "Yield Curve Interpolation labels only (3)");
-am ((0.0189).toFixed(4) == JsonRisk.get_rate(c, 4).toFixed(4), "Yield Curve Interpolation labels only (4)");
-am ((0.0410).toFixed(4) == JsonRisk.get_rate(c, 6).toFixed(4), "Yield Curve Interpolation labels only (5)");
-am ((0.0565).toFixed(4) == JsonRisk.get_rate(c, 8).toFixed(4), "Yield Curve Interpolation labels only (6)");
-am ((0.0712).toFixed(4) == JsonRisk.get_rate(c, 10).toFixed(4), "Yield Curve Interpolation labels only (7)");
-am ((0.0886).toFixed(4) == JsonRisk.get_rate(c, 12).toFixed(4), "Yield Curve Interpolation labels only (8)");
+c={type: "yield", 
+   labels: ["1Y", "7Y", "12Y", "186M", "20Y"],
+   dfs: c.dfs
+  };
+  
+for (i=1;i<21;i++){
+        am ((1*(20-i)/19 + 0.5*(i-1)/19).toFixed(10) === JsonRisk.get_df(c, i).toFixed(10), "Yield Curve interpolation fallback on labels " + i );
+}
+
+//Curve without times - fallback based on dates
+c={type: "yield",
+   labels: ["0Y", "1Y", "2Y", "3Y", "13Y"], 
+   dates: ["01.01.2000", "31.12.2000", "31.12.2001", "31.12.2002", "28.12.2012"],
+   dfs: [1, 0.9, 0.8, 0.7, 0.5]
+  };
+   
+am ((0.95).toFixed(10) === JsonRisk.get_df(c, 0.5).toFixed(10), "Yield Curve interpolation fallback on dates 1");
+am ((0.85).toFixed(10) === JsonRisk.get_df(c, 1.5).toFixed(10), "Yield Curve interpolation fallback on dates 2");
+am ((0.75).toFixed(10) === JsonRisk.get_df(c, 2.5).toFixed(10), "Yield Curve interpolation fallback on dates 3");
+am ((0.6).toFixed(10) === JsonRisk.get_df(c, 8).toFixed(10), "Yield Curve interpolation fallback on dates 4");
+
 /*!
 	
 	Test Schedule
@@ -392,22 +403,22 @@ var bond={
         maturity: "2010-01-18",
         notional: 100,
         fixed_rate: 0.05,
-        freq: 12,
+        tenor: 12,
         bdc: "unadjusted"
 };
+console.log(JsonRisk.pricer_bond(bond,curve, null, null));
 
-
-//am("105.0"==JsonRisk.bond_dirty_value(bond,curve, null, null).toFixed(1), "bond valuation (1)");
+am("105.0"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (1)");
 
 bond.settlement_days=1;
 
-//am("100.0"==JsonRisk.bond_dirty_value(bond,curve, null, null).toFixed(1), "bond valuation (2)");
+am("100.0"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (2)");
 
-bond.freq=6;
-//am("100.5"==JsonRisk.bond_dirty_value(bond,curve, null, null).toFixed(1), "bond valuation (3)");
+bond.tenor=6;
+am("100.5"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (3)");
 
-bond.freq=3;
-//am("100.7"==JsonRisk.bond_dirty_value(bond,curve, null, null).toFixed(1), "bond valuation (4)");
+bond.tenor=3;
+am("100.7"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (4)");
 
 //reale bundesanleihen, kurse und renditen vom 23.02.2018
 /*
@@ -443,7 +454,7 @@ for (i=0; i<Kupon.length; i++){
         maturity: Maturity[i],
         notional: 100.0,
         fixed_rate: Kupon[i]/100,
-        freq: 12,
+        tenor: 12,
         bdc: "following",
         dcc: "act/act",
         calendar: "TARGET",
@@ -451,14 +462,15 @@ for (i=0; i<Kupon.length; i++){
         });
 }
 
-var pu,pd,i;
+
+var pu,pd,i,r;
 //evaluate with yield curve
 for (i=0; i<Kupon.length; i++){
-        curve=JsonRisk.get_const_curve(Rendite[i]/100);
-        curve_down=JsonRisk.get_const_curve(Rendite[i]/100-0.0001);
-        curve_up=JsonRisk.get_const_curve(Rendite[i]/100+0.0001);
-        pu=JsonRisk.bond_dirty_value(bonds[i],curve_up, null, null);
-        pd=JsonRisk.bond_dirty_value(bonds[i],curve_down, null, null);
+        r=Rendite[i]/100;
+        curve_down=JsonRisk.get_const_curve(r-0.0001);
+        curve_up=JsonRisk.get_const_curve(r+0.0001);
+        pu=JsonRisk.pricer_bond(bonds[i],curve_up, null, null);
+        pd=JsonRisk.pricer_bond(bonds[i],curve_down, null, null);
         console.log("JSON Risk Price one basis point cheaper:        " + pu.toFixed(3));    
         console.log("Quote from www.bundesbank.de:                   " + Kurs_Dirty[i].toFixed(3));
         console.log("JSON Risk Price one basis point more expensive: " + pd.toFixed(3));    
@@ -467,11 +479,11 @@ for (i=0; i<Kupon.length; i++){
 }
 //evaluate with spread curve
 for (i=0; i<Kupon.length; i++){
-        curve=JsonRisk.get_const_curve(Rendite[i]/100);
-        curve_down=JsonRisk.get_const_curve(Rendite[i]/100-0.0001);
-        curve_up=JsonRisk.get_const_curve(Rendite[i]/100+0.0001);
-        pu=JsonRisk.bond_dirty_value(bonds[i],null, curve_up, null);
-        pd=JsonRisk.bond_dirty_value(bonds[i],null, curve_down, null);
+        r=Rendite[i]/100;
+        curve_down=JsonRisk.get_const_curve(r-0.0001);
+        curve_up=JsonRisk.get_const_curve(r+0.0001);
+        pu=JsonRisk.pricer_bond(bonds[i],null, curve_up, null);
+        pd=JsonRisk.pricer_bond(bonds[i],null, curve_down, null);
         am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Bond Valuation (Real BUND Bonds using spread curve, " + (i+1) +")");
 }
 
@@ -489,7 +501,7 @@ for (i=0; i<Kupon.length; i++){
         maturity: Maturity[i],
         notional: 100.0,
         fixed_rate: Kupon[i]/100,
-        freq: 12,
+        tenor: 12,
         bdc: "following",
         dcc: "act/act",
         calendar: "TARGET",
@@ -499,11 +511,11 @@ for (i=0; i<Kupon.length; i++){
 
 //evaluate with yield curve
 for (i=0; i<Kupon.length; i++){
-        curve=JsonRisk.get_const_curve(Rendite[i]/100);
-        curve_down=JsonRisk.get_const_curve(Rendite[i]/100-0.0001);
-        curve_up=JsonRisk.get_const_curve(Rendite[i]/100+0.0001);
-        pu=JsonRisk.bond_dirty_value(bonds[i],curve_up, null, null);
-        pd=JsonRisk.bond_dirty_value(bonds[i],curve_down, null, null);
+        r=Rendite[i]/100;
+        curve_down=JsonRisk.get_const_curve(r-0.0001);
+        curve_up=JsonRisk.get_const_curve(r+0.0001);
+        pu=JsonRisk.pricer_bond(bonds[i],curve_up, null, null);
+        pd=JsonRisk.pricer_bond(bonds[i],curve_down, null, null);
         console.log("JSON Risk Price one basis point cheaper:        " + pu.toFixed(3));    
         console.log("Quote from www.bundesbank.de:                   " + Kurs_Dirty[i].toFixed(3));
         console.log("JSON Risk Price one basis point more expensive: " + pd.toFixed(3));    
@@ -520,11 +532,11 @@ Rendite=[-0.70, 0.93];
 
 //evaluate with yield curve
 for (i=0; i<Kupon.length; i++){
-        curve=JsonRisk.get_const_curve(Rendite[i]/100);
-        curve_down=JsonRisk.get_const_curve(Rendite[i]/100-0.0001);
-        curve_up=JsonRisk.get_const_curve(Rendite[i]/100+0.0001);
-        pu=JsonRisk.bond_dirty_value(bonds[i],curve_up, null, null);
-        pd=JsonRisk.bond_dirty_value(bonds[i],curve_down, null, null);
+        r=Rendite[i]/100;
+        curve_down=JsonRisk.get_const_curve(r-0.0001);
+        curve_up=JsonRisk.get_const_curve(r+0.0001);
+        pu=JsonRisk.pricer_bond(bonds[i],curve_up, null, null);
+        pd=JsonRisk.pricer_bond(bonds[i],curve_down, null, null);
         console.log("JSON Risk Price one basis point cheaper:        " + pu.toFixed(3));    
         console.log("Quote from www.bundesbank.de:                   " + Kurs_Dirty[i].toFixed(3));
         console.log("JSON Risk Price one basis point more expensive: " + pd.toFixed(3));    
