@@ -81,20 +81,20 @@ m="That is " + n*Kupon.length*2/ (t1 - t0)*1000*3600 + " valuations in an hour."
 console.log(m);
 if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
 
+
+t0 = new Date().getTime();
 var objs=[];
 for (i=0; i<Kupon.length; i++){
         objs.push(new JsonRisk.fixed_income(bonds[i]));
 }
-
-t0 = new Date().getTime();
 for (j=1;j<=n;j++){
         //evaluate with yield curve
         for (i=0; i<Kupon.length; i++){
-                price=objs[i].get_present_value(test_curve, null,null);
+                price=objs[i].present_value(test_curve, null,null);
         }
         //evaluate with spread curve
         for (i=0; i<Kupon.length; i++){
-                price=objs[i].get_present_value(null,test_curve,null);
+                price=objs[i].present_value(null,test_curve,null);
         }
         if(j % 100 === 0){
                 console.log(40*j);    

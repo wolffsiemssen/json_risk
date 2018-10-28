@@ -40,7 +40,7 @@
 
         library.pricer_bond=function(bond, disc_curve, spread_curve){
                 var bond_internal=new library.fixed_income(bond);
-                return bond_internal.get_present_value(disc_curve, spread_curve, null);
+                return bond_internal.present_value(disc_curve, spread_curve, null);
         };
         
 
@@ -180,49 +180,22 @@
                 if (null===library.valuation_date) throw new Error("fix_cash_flows: valuation_date must be set");
                 var dates=new Array(schedule.length-1);
                 var times=new Array(schedule.length-1);
+                var times_schedule=new Array(schedule.length);
                 var amounts=new Array(schedule.length-1);
                 var i;
                 var adj=function(d){
                         return library.adjust(d,bdc,is_holiday_func);
                 };
                 var default_yf=library.year_fraction_factory(null);
+                times_schedule[0]=default_yf(library.valuation_date,schedule[0]);
                 for(i=1;i<schedule.length;i++){
                         dates[i-1]=adj(schedule[i]);
                         times[i-1]=default_yf(library.valuation_date,dates[i-1]);
+                        times_schedule[i]=default_yf(library.valuation_date,schedule[i]);
                         amounts[i-1]=notional*rate*year_fraction_func(schedule[i-1],schedule[i]);
                 }
                 amounts[amounts.length-1]+=notional;
-                return {schedule: schedule, dates: dates, amounts: amounts, times: times};
-        };
-        
-        library.float_cash_flows=function(schedule, bdc, is_holiday_func, year_fraction_func, notional, current_rate, float_spread, fwd_curve ){
-                if (null===library.valuation_date) throw new Error("float_cash_flows: valuation_date must be set");
-                var dates=new Array(schedule.length-1);
-                var times=new Array(schedule.length-1);
-                var amounts=new Array(schedule.length-1);
-                var i;
-                var rate;
-                var adj=function(d){
-                        return library.adjust(d,bdc,is_holiday_func);
-                };
-                var default_yf=library.year_fraction_factory(null);
-                for(i=1;i<schedule.length;i++){
-                        if(1==i){
-                                amounts[i-1]=notional*current_rate*year_fraction_func(schedule[i-1],schedule[i]);
-                        }
-                        dates[i-1]=adj(schedule[i]);
-                        times[i-1]=default_yf(library.valuation_date,dates[i-1]);
-                }
-                library.update_float_cash_flows({schedule: schedule, dates: dates, amounts: amounts});
-                return {schedule: schedule, dates: dates, amounts: amounts, times: times};
-        };
-        
-        library.update_float_cash_flows=function(cf_obj,year_fraction_func, notional, float_spread, fwd_curve){
-                var i;
-                for(i=2;i<cf_obj.schedule.length;i++){ //i=1 is fixed, i=0 is before valuation date
-                        cf_obj.amounts[i-1]=notional*library.get_fwd_amount(fwd_curve,cf_obj.schedule[i-1],cf_obj.schedule[i])*yf(cf_obj.schedule[i-1],cf_obj.schedule[i]);
-                }
-                cf_obj.amounts[cf_obj.amounts.length]+=notional;
+                return {schedule: schedule, times_schedule: times_schedule, dates: dates, amounts: amounts, times: times};
         };
         
         library.dcf=function(cf_obj, disc_curve, spread_curve, residual_spread, settlement_date){
@@ -242,13 +215,13 @@
                 var i=0;
                 var df_d;
                 var df_s;
-                var df_res;
+                var df_residual;
                 while(cf_obj.dates[i]<=sd) i++;
                 while (i<cf_obj.times.length){
                         df_d=library.get_df(dc,cf_obj.times[i]);
                         df_s=library.get_df(sc,cf_obj.times[i]);
-                        df_res=Math.exp(-cf_obj.times[i]*residual_spread);
-                        res+=cf_obj.amounts[i]*df_d*df_s*df_res;
+                        df_residual=Math.exp(-cf_obj.times[i]*residual_spread);
+                        res+=cf_obj.amounts[i]*df_d*df_s*df_residual;
                         i++;
                 }
                 return res;
@@ -295,6 +268,9 @@
                         //floating rate instrument
                         this.is_float=true;
                         this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0;
+                        if(typeof instrument.current_rate !== 'number')
+                                throw new Error("fixed_income: must provide valid current_rate.");
+                        this.current_rate=instrument.current_rate;
                 }
                 
                 this.schedule=library.backward_schedule(effective_date, 
@@ -305,30 +281,44 @@
                                                  first_date,
                                                  next_to_last_date);
 
-                this.cash_flows=null;
-                if(!this.is_float) this.cash_flows=library.fix_cash_flows(this.schedule,
-                                                                    this.bdc,
-                                                                    this.is_holiday_func,
-                                                                    this.year_fraction_func,
-                                                                    this.notional,
-                                                                    this.fixed_rate);
+                this.cash_flows=library.fix_cash_flows(this.schedule,
+                                                       this.bdc,
+                                                       this.is_holiday_func,
+                                                       this.year_fraction_func,
+                                                       this.notional,
+                                                       this.fixed_rate);
         };
 
         
         library.fixed_income.prototype.get_cash_flows=function(fwd_curve){
-                if (this.is_float) return library.float_cash_flows(this.schedule,
-                                                              this.bdc,
-                                                              this.is_holiday_func,
-                                                              this.year_fraction_func,
-                                                              this.notional,
-                                                              this.current_rate,
-                                                              this.float_spread,
-                                                              fwd_curve );
-                return this.cash_flows;
+                if (!this.is_float) return this.cash_flows;
+                
+                //recalculate amounts for floater deals
+                var amounts=new Array(this.cash_flows.schedule.length-1);
+                amounts[0]=this.notional*
+                           this.current_rate*
+                           this.year_fraction_func(this.cash_flows.schedule[0],this.cash_flows.schedule[1]);
+                
+                var i;
+                for(i=2;i<this.cash_flows.schedule.length;i++){
+                       amounts[i-1]=this.notional*
+                                    library.get_fwd_amount(fwd_curve,
+                                                           this.cash_flows.times_schedule[i-1],
+                                                           this.cash_flows.times_schedule[i]);
+                       amounts[i-1]+=this.notional*
+                                     this.float_spread*
+                                     this.year_fraction_func(this.cash_flows.schedule[i-1],this.cash_flows.schedule[i]);
+                }
+                amounts[amounts.length-1]+=this.notional;
+                return {schedule: this.cash_flows.schedule,
+                        times_schedule: this.cash_flows.times_schedule, 
+                        dates: this.cash_flows.dates,
+                        amounts: amounts,
+                        times: this.cash_flows.times};
         };
         
-        library.fixed_income.prototype.get_present_value=function(disc_curve, spread_curve, fwd_curve){
-                return library.dcf(this.get_cash_flows(),
+        library.fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
+                return library.dcf(this.get_cash_flows(fwd_curve || null),
                                    disc_curve,
                                    spread_curve,
                                    this.residual_spread,
@@ -341,7 +331,7 @@
 
         library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
                 var floater_internal=new library.fixed_income(floater);
-                return floater_internal.get_present_value(disc_curve, spread_curve, fwd_curve);
+                return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
         
 

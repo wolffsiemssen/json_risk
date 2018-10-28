@@ -544,3 +544,57 @@ for (i=0; i<Kupon.length; i++){
         am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Bond Valuation (Real BUND Bonds just before interest payment date minus settlement days, " + (i+1) +")");
 }
 
+//evaluate floaters
+Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
+Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
+          "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
+          "15.08.2046", "15.08.2048"];
+Kurs_Dirty=[109.396, 109.114, 105.367, 101.279, 105.139, 100.490,
+            161.156, 173.187, 144.244, 128.600, 129.562, 98.366];
+Rendite=[0.18, 0.21, 0.25, 0.32, 0.37, 0.44, 1.15, 1.17,
+         1.24, 1.29, 1.31, 1.34];
+     
+JsonRisk.valuation_date=new Date(2018,1,23);             
+var floaters=[];
+for (i=0; i<Kupon.length; i++){
+        floaters.push({
+        maturity: Maturity[i],
+        notional: 100.0,
+        float_spread: Kupon[i]/100,
+        current_rate: Kupon[i]/100,
+        tenor: 12,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement_days: 2
+        });
+}
+var fwd_curve=JsonRisk.get_const_curve(0.0);
+
+for (i=0; i<Kupon.length; i++){
+        r=Rendite[i]/100;
+        curve_down=JsonRisk.get_const_curve(r-0.0001);
+        curve_up=JsonRisk.get_const_curve(r+0.0001);
+        pu=JsonRisk.pricer_floater(floaters[i],curve_up, null, fwd_curve);
+        pd=JsonRisk.pricer_floater(floaters[i],curve_down, null, fwd_curve);
+                console.log("JSON Risk Price one basis point cheaper:        " + pu.toFixed(3));    
+        console.log("Quote from www.bundesbank.de:                   " + Kurs_Dirty[i].toFixed(3));
+        console.log("JSON Risk Price one basis point more expensive: " + pd.toFixed(3));
+       
+        am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Floater Valuation (using constant forward curve with rate 0.0 and a positive float_spread, " + (i+1) +")");
+}
+
+
+for (i=0; i<Kupon.length; i++){
+        floaters[i].float_spread=0;
+        fwd_curve=JsonRisk.get_const_curve(Kupon[i]/100);
+        r=Rendite[i]/100;
+        curve_down=JsonRisk.get_const_curve(r-0.0001);
+        curve_up=JsonRisk.get_const_curve(r+0.0001);
+        pu=JsonRisk.pricer_floater(floaters[i],curve_up, null, fwd_curve);
+        pd=JsonRisk.pricer_floater(floaters[i],curve_down, null, fwd_curve);   
+       
+        am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Floater Valuation (using constant forward curve with rate reflecting Bund coupon and a zero float_spread, " + (i+1) +")");
+}
+
+
