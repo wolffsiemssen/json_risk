@@ -149,5 +149,15 @@
                                    this.residual_spread,
                                    this.settlement_date);
         };
+        
+        library.pricer_bond=function(bond, disc_curve, spread_curve){
+                var bond_internal=new library.fixed_income(bond);
+                return bond_internal.present_value(disc_curve, spread_curve, null);
+        };
+        
+        library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
+                var floater_internal=new library.fixed_income(floater);
+                return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
+        };
 
 }(this.JsonRisk || module.exports));
