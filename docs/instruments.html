@@ -5,8 +5,9 @@
 <ul>
 <li>Fixed rate bonds (bond)</li>
 <li>Floating rate bonds (floater)</li>
-<li>Equity (equity)</li>
+<li>Interest rate swaps (swap)</li>
 <li>FX Spot/Forward (fxterm)</li>
+<li>Equity (equity)</li>
 </ul>
 
 <h2>Single instrument JSON field definitions</h2>
@@ -36,13 +37,6 @@
 <li>currency</li>
 </ul>
 
-<p>Optional (for automatic parameter assignment):</p>
-
-<ul>
-<li>tag_disc_curve (string, hint for discount curve assignment)</li>
-<li>tag_spread_curve (string, hint for spread curve assignment)</li>
-</ul>
-
 <h3>Floater</h3>
 
 <p>Floating rate plain vanilla bond positions. Fields:</p>
@@ -54,7 +48,7 @@
 <li>tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
 </ul>
 
-<p>Optional (improving pricing accuracy):</p>
+<p>Optional (improving pricing accuracy or adding features):</p>
 
 <ul>
 <li>effective_date (date string)</li>
@@ -69,12 +63,49 @@
 <li>currency</li>
 </ul>
 
-<p>Optional (for automatic parameter assignment):</p>
+<h3>Swap</h3>
+
+<p>Plain vanilla swap positions. Fields:</p>
 
 <ul>
-<li>tag_disc_curve (string, hint for discount curve assignment)</li>
-<li>tag_spread_curve (string, hint for spread curve assignment)</li>
-<li>tag_fwd_curve (string, hint for forward curve assignment)</li>
+<li>is_payer (boolean, true for swap paying fixed rate, false for swap receiving fixed rate)</li>
+<li>maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))</li>
+<li>notional (number)</li>
+<li>fixed_rate (number, coupon rate for fixed rate bonds)</li>
+<li>fixed_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
+<li>float_spread (number, spread above index for float leg)</li>
+<li>float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
+</ul>
+
+<p>Optional (improving pricing accuracy or adding features):</p>
+
+<ul>
+<li>effective_date (date string)</li>
+<li>calendar (string)</li>
+<li>fixed_bdc (string)</li>
+<li>float_bdc (string)</li>
+<li>fixed_dcc (string)</li>
+<li>float_dcc (string)</li>
+<li>float<em>current</em>rate (number, current rate for floater)</li>
+<li>residual_spread (number, discounting spread over yield and spread curves)</li>
+<li>currency</li>
+</ul>
+
+<h3>FXTerm</h3>
+
+<p>OTC FX spot, forward and swap positions, one instrument for each currency. Fields:</p>
+
+<ul>
+<li>maturity (string (YYYY-MM-DD))</li>
+<li>notional (number, negative for pay leg)</li>
+</ul>
+
+<p>Optional (adding FX swap feature)</p>
+
+<ul>
+<li>maturity_2 (string (YYYY-MM-DD))</li>
+<li>notional_2 (number, negative for pay leg)</li>
+<li>currency (string)</li>
 </ul>
 
 <h3>Equity</h3>
@@ -84,29 +115,4 @@
 <ul>
 <li>quantity (number, number of pieces)</li>
 <li>currency</li>
-</ul>
-
-<p>Optional</p>
-
-<ul>
-<li>tag (string, hint for risk factor assignment)</li>
-</ul>
-
-<h3>FX Spot / Forward</h3>
-
-<p>OTC FX Spot and Forward positions. Fields:</p>
-
-<ul>
-<li>maturity (string (YYYY-MM-DD))</li>
-<li>notional_1 (number)</li>
-<li>notional_2 (number)</li>
-<li>currency_1 (string)</li>
-<li>currency_2 (string)</li>
-</ul>
-
-<p>Optional (for automatic parameter assignment):</p>
-
-<ul>
-<li>tag_curve_1 (string, hint for discount curve assignment)</li>
-<li>tag_curve_2 (string, hint for spread curve assignment)</li>
 </ul>

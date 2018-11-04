@@ -124,15 +124,14 @@
                            this.current_rate*
                            this.year_fraction_func(this.cash_flows.schedule[0],this.cash_flows.schedule[1]);
                 
-                var i;
+                var i, rt;
                 for(i=2;i<this.cash_flows.schedule.length;i++){
-                       amounts[i-1]=this.notional*
-                                    library.get_fwd_amount(fwd_curve,
-                                                           this.cash_flows.times_schedule[i-1],
-                                                           this.cash_flows.times_schedule[i]);
-                       amounts[i-1]+=this.notional*
-                                     this.float_spread*
-                                     this.year_fraction_func(this.cash_flows.schedule[i-1],this.cash_flows.schedule[i]);
+                       rt=library.get_fwd_rate(fwd_curve,
+                                               this.cash_flows.times_schedule[i-1],
+                                               this.cash_flows.times_schedule[i])+
+                          this.float_spread;
+                       amounts[i-1]=this.notional*rt*
+                                    this.year_fraction_func(this.cash_flows.schedule[i-1],this.cash_flows.schedule[i]);
                 }
                 amounts[amounts.length-1]+=this.notional;
                 return {schedule: this.cash_flows.schedule,
@@ -158,6 +157,56 @@
         library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
                 var floater_internal=new library.fixed_income(floater);
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
+        };
+        
+        library.pricer_swap=function(swap, disc_curve, fwd_curve){
+                var fixed_sign=(swap.payer) ? -1 : 1;
+                var fixed_leg_internal=new library.fixed_income({
+                        notional: swap.notional * fixed_sign,
+                        maturity: swap.maturity,
+                        fixed_rate: swap.fixed_rate,
+                        tenor: swap.fixed_tenor,
+                        effective_date: swap.effective_date,
+                        calendar: swap.calendar,
+                        bdc: swap.fixed_bdc,
+                        dcc: swap.fixed_dcc
+                });
+                var float_leg_internal=new library.fixed_income({
+                        notional: - swap.notional * fixed_sign,
+                        maturity: swap.maturity,
+                        float_spread: swap.float_spread,
+                        tenor: swap.float_tenor,
+                        effective_date: swap.effective_date,
+                        calendar: swap.calendar,
+                        bdc: swap.float_bdc,
+                        dcc: swap.float_dcc,
+                        current_rate: swap.float_current_rate
+                });
+
+                return fixed_leg_internal.present_value(disc_curve, null, fwd_curve)+
+                       float_leg_internal.present_value(disc_curve, null, fwd_curve);
+        };
+        
+        library.pricer_fxterm=function(fxterm, disc_curve){
+                //first leg
+                var first_leg_internal=new library.fixed_income({
+                        notional: fxterm.notional, // negative is first leg is pay leg
+                        maturity: fxterm.maturity,
+                        fixed_rate: 0,
+                        tenor: 0
+                });
+                
+                var pv=first_leg_internal.present_value(disc_curve, null, null);
+                if (typeof(fxterm.notional_2) !== "number") return pv;
+                //optional second leg
+                var second_leg_internal=new library.fixed_income({
+                        notional: fxterm.notional_2, // negative if second leg is pay leg
+                        maturity: fxterm.maturity_2,
+                        fixed_rate: 0,
+                        tenor: 0
+                });
+
+                return pv+second_leg_internal.present_value(disc_curve, null, null);
         };
 
 }(this.JsonRisk || module.exports));

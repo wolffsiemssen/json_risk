@@ -110,7 +110,7 @@
         };
 
         library.get_df=function(curve,t){
-                c=library.get_initialised_curve(curve);
+                var c=library.get_initialised_curve(curve);
                 return get_df_internal(c,t,0,c.times.length-1);
         };
         
@@ -120,9 +120,10 @@
                 return Math.pow(library.get_df(curve,t),-1/t)-1;
         };
 
-        library.get_fwd_amount=function(curve,tstart,tend){
-                c=library.get_initialised_curve(curve);
-                return library.get_df(c,tstart) / library.get_df(c,tend) -1.0;
+        library.get_fwd_rate=function(curve,tstart,tend){
+                if (tend-tstart<1/512) return 0.0;
+                var c=library.get_initialised_curve(curve);
+                return Math.pow(library.get_df(c,tend) / library.get_df(c,tstart),-1/(tend-tstart))-1;
         };
 
 }(this.JsonRisk || module.exports));

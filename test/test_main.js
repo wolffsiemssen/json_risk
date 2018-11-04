@@ -21,7 +21,7 @@ am (typeof JsonRisk.get_initialised_date == 'function', "get_initialised_date fu
 am (typeof JsonRisk.date_str_to_date == 'function', "date_string_to_date function defined");
 am (typeof JsonRisk.get_rate == 'function', "get_rate function defined");
 am (typeof JsonRisk.get_df == 'function', "get_df function defined");
-am (typeof JsonRisk.get_fwd_amount == 'function', "get_fwd_amount function defined");
+am (typeof JsonRisk.get_fwd_rate == 'function', "get_fwd_rate function defined");
 am (typeof JsonRisk.get_const_curve == 'function', "get_const_curve function defined");
 am (typeof JsonRisk.get_initialised_curve == 'function', "get_initialised_curve function defined");
 
@@ -422,19 +422,19 @@ am("100.7"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valua
 
 //reale bundesanleihen, kurse und renditen vom 23.02.2018
 /*
-Kupon	Bez	Mat	Kurs Clean	Rendite	Kurs Dirty
-1.750	Bund 14	15.02.2024	109.338	0.18	109.396
-1.500	Bund 14	15.05.2024	107.930	0.21	109.114
-1.000	Bund 14	15.08.2024	104.830	0.25	105.367
-0.500	Bund 15	15.02.2025	101.263	0.32	101.279
-1.000	Bund 15	15.08.2025	104.602	0.37	105.139
-0.500	Bund 16	15.02.2026	100.474	0.44	100.490
-4.250	Bund 07	04.07.2039	158.385	1.15	161.156
-4.750	Bund 08	04.07.2040	170.090	1.17	173.187
-3.250	Bund 10	04.07.2042	142.125	1.24	144.244
-2.500	Bund 12	04.07.2044	126.970	1.29	128.600
-2.500	Bund 14	15.08.2046	128.220	1.31	129.562
-1.250	Bund 17	15.08.2048	97.695	1.34	98.366
+Kupon	Bez	Mat	        Kurs Clean	Rendite	Kurs Dirty
+1.750	Bund 14	15.02.2024	109.338	        0.18	109.396
+1.500	Bund 14	15.05.2024	107.930	        0.21	109.114
+1.000	Bund 14	15.08.2024	104.830	        0.25	105.367
+0.500	Bund 15	15.02.2025	101.263	        0.32	101.279
+1.000	Bund 15	15.08.2025	104.602	        0.37	105.139
+0.500	Bund 16	15.02.2026	100.474	        0.44	100.490
+4.250	Bund 07	04.07.2039	158.385	        1.15	161.156
+4.750	Bund 08	04.07.2040	170.090	        1.17	173.187
+3.250	Bund 10	04.07.2042	142.125	        1.24	144.244
+2.500	Bund 12	04.07.2044	126.970	        1.29	128.600
+2.500	Bund 14	15.08.2046	128.220	        1.31	129.562
+1.250	Bund 17	15.08.2048	97.695	        1.34	98.366
 */
 
 var Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
@@ -577,7 +577,7 @@ for (i=0; i<Kupon.length; i++){
         curve_up=JsonRisk.get_const_curve(r+0.0001);
         pu=JsonRisk.pricer_floater(floaters[i],curve_up, null, fwd_curve);
         pd=JsonRisk.pricer_floater(floaters[i],curve_down, null, fwd_curve);
-                console.log("JSON Risk Price one basis point cheaper:        " + pu.toFixed(3));    
+        console.log("JSON Risk Price one basis point cheaper:        " + pu.toFixed(3));    
         console.log("Quote from www.bundesbank.de:                   " + Kurs_Dirty[i].toFixed(3));
         console.log("JSON Risk Price one basis point more expensive: " + pd.toFixed(3));
        
@@ -597,4 +597,56 @@ for (i=0; i<Kupon.length; i++){
         am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Floater Valuation (using constant forward curve with rate reflecting Bund coupon and a zero float_spread, " + (i+1) +")");
 }
 
+//evaluate swaps
+//self consistency tests: create swap with equal tenors and conventions on fix and float leg.
+// 1. create fixed curve for discount and forward
+// 2. evaluate swap
+// 3. evaluate with fix rate, forward curve and current float rate shifted 100 bp up
+// 4. prices should be essentially the same
+
+var months=[6,12,24,48,72,120];
+var tenors=[1,3,6,12];
+var times=[1/12,3/12,6/12,1,2,3,4,5];
+var zcs=[0.001,0.002,0.003,0.004,0.005, 0.006, 0.007,0.007];
+var zcs_up=[0.011,0.012,0.013,0.014,0.015, 0.016, 0.017, 0.017];
+curve={times:times,zcs:zcs};
+curve_up={times:times,zcs:zcs_up};
+var swap, swap_up;
+var p_up, p, p_diff;
+
+JsonRisk.valuation_date=new Date(2018,1,23);             
+for (i=0; i<months.length; i++){
+        for (j=0; j<tenors.length; j++){
+                swap={
+                        is_payer: true,
+                        maturity: JsonRisk.add_months(JsonRisk.valuation_date, months[i]),
+                        notional: 10000,
+                        fixed_rate: 0.015,
+                        fixed_tenor: tenors[j],
+                        float_spread: 0.01,
+                        float_tenor: tenors[j],
+                        float_current_rate: -0.005,
+                        fixed_dcc: "30e/360",
+                        float_dcc: "30e/360"
+                };
+                swap_up={
+                        is_payer: true,
+                        maturity: JsonRisk.add_months(JsonRisk.valuation_date, months[i]),
+                        notional: 10000,
+                        fixed_rate: swap.fixed_rate+1/100,
+                        fixed_tenor: tenors[j],
+                        float_spread: 0.01,
+                        float_tenor: tenors[j],
+                        float_current_rate: swap.float_current_rate+1/100,
+                        fixed_dcc: "30e/360",
+                        float_dcc: "30e/360"
+                };
+                p=JsonRisk.pricer_swap(swap,curve,curve);
+                p_up=JsonRisk.pricer_swap(swap_up,curve,curve_up);
+                p_diff=Math.abs(p-p_up);
+                console.log("JSON Risk swap price:               " + p.toFixed(3));  
+                console.log("JSON Risk swap price with rates up: " + p_up.toFixed(3));  
+                am(p_diff<months[i]/12, "Swap Valuation (" + ((i)*tenors.length+(j+1)) +")");
+        }
+}
 
