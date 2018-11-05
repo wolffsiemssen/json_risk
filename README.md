@@ -49,7 +49,7 @@ var spread_curve={
 
         
 JsonRisk.valuation_date=new Date(2017,11,31);
-var present\_value=JsonRisk.pricer\_bond(bond,discount\_curve, spread\_curve);
+var present_value=JsonRisk.pricer_bond(bond,discount_curve, spread_curve);
 
 ```
 
