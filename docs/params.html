@@ -3,18 +3,17 @@
 <p>JSON Risk supports the parameter types below:</p>
 
 <ul>
-<li>Scalars
+<li>Curves
+<ul>
+<li>Yield term structures (yield)</li>
+<li>FX term structures (fxterm, to be implemented)</li>
+</ul></li>
+<li>Scalars (to be implemented)
 <ul>
 <li>Equity or index prices (equity)</li>
 <li>FX spot prices (fx)</li>
 </ul></li>
-<li>Curves
-<ul>
-<li>Yield term structures (yield)</li>
-<li>Spread curves (spread)</li>
-<li>FX term structures (fxterm)</li>
-</ul></li>
-<li>Surfaces
+<li>Surfaces (to be implemented)
 <ul>
 <li>Black-Scholes volatility (bs)</li>
 <li>Black-76 interest rate volatility (black)</li>
@@ -47,7 +46,7 @@
 <ul>
 <li>type (string (yield, spread or fxterm))</li>
 <li>times (array of number) Note: If times are not provided, but optional days, dates or labels are provided, times are reconstructed from days (preferrably), dates (if days are not given) or labels (if neither times, days ot dates are given)</li>
-<li>values (array of number)</li>
+<li>dfs (discount factors, array of number) Note: If discount factors are not provided, but optional zero coupon rates are, then discount factors are calculated from zero coupon rates</li>
 </ul>
 
 <p>Optional: </p>
@@ -56,6 +55,7 @@
 <li>days (array of integer)</li>
 <li>dates (array of date string (e.g., 2010-01-15, 2010/01/15, 15.01.2010))</li>
 <li>labels (array of period string (e.g., 1D, 3M, 1Y, 10Y))</li>
+<li>zcs (zero coupon rates, array of number)</li>
 </ul>
 
 <p>Optional (for automatic parameter assignment):</p>

@@ -1,14 +1,13 @@
 # JSON Risk parameters guide
 JSON Risk supports the parameter types below:
 
-- Scalars
- - Equity or index prices (equity)
- - FX spot prices (fx)
 - Curves
  - Yield term structures (yield)
- - Spread curves (spread)
- - FX term structures (fxterm)
-- Surfaces
+ - FX term structures (fxterm, to be implemented)
+- Scalars (to be implemented)
+ - Equity or index prices (equity)
+ - FX spot prices (fx)
+- Surfaces (to be implemented)
  - Black-Scholes volatility (bs)
  - Black-76 interest rate volatility (black)
  - Bachelier interest rate volatility (bachelier)
@@ -32,13 +31,14 @@ Fields:
 
 - type (string (yield, spread or fxterm))
 - times (array of number) Note: If times are not provided, but optional days, dates or labels are provided, times are reconstructed from days (preferrably), dates (if days are not given) or labels (if neither times, days ot dates are given)
-- values (array of number)
+- dfs (discount factors, array of number) Note: If discount factors are not provided, but optional zero coupon rates are, then discount factors are calculated from zero coupon rates
 
 Optional: 
 
 - days (array of integer)
 - dates (array of date string (e.g., 2010-01-15, 2010/01/15, 15.01.2010))
 - labels (array of period string (e.g., 1D, 3M, 1Y, 10Y))
+- zcs (zero coupon rates, array of number)
 
 Optional (for automatic parameter assignment):
 

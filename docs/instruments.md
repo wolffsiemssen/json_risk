@@ -5,7 +5,7 @@ JSON Risk supports the instrument types below:
 - Floating rate bonds (floater)
 - Interest rate swaps (swap)
 - FX Spot/Forward (fxterm)
-- Equity (equity)
+- Equity (equity, to be implemented)
 
 ## Single instrument JSON field definitions
 ### Bond
