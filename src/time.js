@@ -6,8 +6,8 @@
                 
                 
         */
-        dl=1000*60*60*24;
-        one_over_dl=1.0/dl;
+        var dl=1000*60*60*24;
+        var one_over_dl=1.0/dl;
         
         function is_leap_year(y){
                 if(y%4!==0) return false;
@@ -200,6 +200,8 @@
                 }
                 return false;
         }
+        
+        var calendars={};
         
         library.is_holiday_factory=function(str){
                 var sl=str.toLowerCase();
