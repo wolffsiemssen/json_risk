@@ -85,7 +85,7 @@ if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
 t0 = new Date().getTime();
 var objs=[];
 for (i=0; i<Kupon.length; i++){
-        objs.push(new JsonRisk.fixed_income(bonds[i]));
+        objs.push(new JsonRisk.simple_fixed_income(bonds[i]));
 }
 for (j=1;j<=n;j++){
         //evaluate with yield curve

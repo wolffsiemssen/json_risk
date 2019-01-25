@@ -2,7 +2,7 @@
 (function(library){
         /*
         
-        Schedule functions used by regular and irregular fixed income instruments.
+        Schedule functions used by simple and irregular fixed income instruments.
         
         */
         library.backward_schedule=function(eff_dt, maturity, tenor, is_holiday_func, bdc, first_dt, next_to_last_dt){

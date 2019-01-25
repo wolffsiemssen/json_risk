@@ -7,6 +7,7 @@
 <li>Floating rate bonds (floater)</li>
 <li>Interest rate swaps (swap)</li>
 <li>FX Spot/Forward (fxterm)</li>
+<li>Loan (loan, to be implemented)</li>
 <li>Equity (equity, to be implemented)</li>
 </ul>
 
@@ -106,6 +107,58 @@
 <li>maturity_2 (string (YYYY-MM-DD))</li>
 <li>notional_2 (number, negative for pay leg)</li>
 <li>currency (string)</li>
+</ul>
+
+<h3>Loan</h3>
+
+<p>Fixed or floating rate loan and deposit positions, supporting amortisation structures. Fields:</p>
+
+<ul>
+<li>maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))</li>
+<li>notional (number)</li>
+<li>fixed_rate (number, coupon rate for fixed rate loans, empty for floating rate loans)</li>
+<li>tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
+</ul>
+
+<p>Optional (improving pricing accuracy or adding features):</p>
+
+<ul>
+<li>amortization (string, either "bullet" which is the default value, "capitalisation", "stepdown" or "annuity")</li>
+<li>repay_amount (number representing the amount repaid at each repayment date when amortisation is "stepdown" or "annuity")</li>
+<li>float_spread (number, coupon spread for floater)</li>
+<li>cap_rate (number)</li>
+<li>floor_rate (number)</li>
+<li>current_accrued_interest (number)</li>
+<li>repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)</li>
+<li>effective_date (date string)</li>
+<li>first_date (date string representing the first or next interest payment date)</li>
+<li>repay_first_date (date string representing the first or next repayment date)</li>
+<li>fixing_first_date (date string representing the first or next fixing date)</li>
+<li>next_to_last_date (date string)</li>
+<li>repay_next_to_last_date (date string)</li>
+<li>fixing_next_to_last_date (date string)</li>
+<li>calendar (string)</li>
+<li>bdc (string)</li>
+<li>dcc (string)</li>
+<li>residual_spread (number, discounting spread over yield and spread curves)</li>
+<li>currency</li>
+</ul>
+
+<p>Optionally, this instrument type supports predetermined conditions. This requires an additional field:</p>
+
+<ul>
+<li>conditions_valid_until (array of date string representing the dates when conditions change. Last array element must match maturity)</li>
+</ul>
+
+<p>If conditions_valid_until is set, the fields below can optionally contain arrays instead of scalars. Length must be one or the length of conditions_valid_until:</p>
+
+<ul>
+<li>fixed_rate</li>
+<li>amortization</li>
+<li>repay_amount</li>
+<li>float_spread</li>
+<li>cap_rate</li>
+<li>floot_rate</li>
 </ul>
 
 <h3>Equity</h3>

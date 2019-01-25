@@ -5,6 +5,7 @@ JSON Risk supports the instrument types below:
 - Floating rate bonds (floater)
 - Interest rate swaps (swap)
 - FX Spot/Forward (fxterm)
+- Loan (loan, to be implemented)
 - Equity (equity, to be implemented)
 
 ## Single instrument JSON field definitions
@@ -90,6 +91,49 @@ Optional (adding FX swap feature)
 - notional_2 (number, negative for pay leg)
 - currency (string)
 
+### Loan
+
+Fixed or floating rate loan and deposit positions, supporting amortisation structures. Fields:
+
+- maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
+- notional (number)
+- fixed_rate (number, coupon rate for fixed rate loans, empty for floating rate loans)
+- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+
+Optional (improving pricing accuracy or adding features):
+
+- amortization (string, either "bullet" which is the default value, "capitalisation", "stepdown" or "annuity")
+- repay_amount (number representing the amount repaid at each repayment date when amortisation is "stepdown" or "annuity")
+- float_spread (number, coupon spread for floater)
+- cap_rate (number)
+- floor_rate (number)
+- current\_accrued\_interest (number)
+- repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)
+- effective\_date (date string)
+- first\_date (date string representing the first or next interest payment date)
+- repay\_first\_date (date string representing the first or next repayment date)
+- fixing\_first\_date (date string representing the first or next fixing date)
+- next\_to\_last\_date (date string)
+- repay\_next\_to\_last\_date (date string)
+- fixing\_next\_to\_last\_date (date string)
+- calendar (string)
+- bdc (string)
+- dcc (string)
+- residual_spread (number, discounting spread over yield and spread curves)
+- currency
+
+Optionally, this instrument type supports predetermined conditions. This requires an additional field:
+
+- conditions\_valid\_until (array of date string representing the dates when conditions change. Last array element must match maturity)
+
+If conditions\_valid\_until is set, the fields below can optionally contain arrays instead of scalars. Length must be one or the length of conditions\_valid\_until:
+
+- fixed_rate
+- amortization
+- repay_amount
+- float_spread
+- cap_rate
+- floot_rate
 
 ### Equity
 
