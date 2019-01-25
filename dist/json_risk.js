@@ -47,24 +47,6 @@
                        };
         };
         
-        library.get_initialised_curve=function(curve){
-                //if valid curve is given, returns curve in initialised form {type, times, dfs}, if null, returns constant zero curve
-                if (!curve) return library.get_const_curve(0.0);
-                var times=get_curve_times(curve);
-                var dfs;
-                if(undefined!==curve.dfs){
-                        dfs=curve.dfs;
-                }else{
-                        if(undefined===curve.zcs) throw new Error("get_initialised_curve: invalid curve, both dfs and zcs undefined");
-                        dfs=get_dfs(curve.zcs, times);
-                }
-                return {
-                                type: "yield", 
-                                times: times,
-                                dfs: dfs
-                        };
-        };
-
         function get_curve_times(curve){
                 var i,times;
                 if (undefined===curve.times){
@@ -81,8 +63,8 @@
                                 i=curve.dates.length;
                                 times=new Array(i);
                                 //curve times are always assumed to be act/365
-                                yf=library.year_fraction_factory("act/365");
-                                ref_date=library.date_str_to_date(curve.dates[0]);
+                                var yf=library.year_fraction_factory("act/365");
+                                var ref_date=library.date_str_to_date(curve.dates[0]);
                                 while (i>0){
                                        i--;
                                        times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
@@ -125,17 +107,36 @@
                 }
                 return dfs;         
         }
+        
+        library.get_initialised_curve=function(curve){
+                //if valid curve is given, returns curve in initialised form {type, times, dfs}, if null, returns constant zero curve
+                if (!curve) return library.get_const_curve(0.0);
+                var times=get_curve_times(curve);
+                var dfs;
+                if(undefined!==curve.dfs){
+                        dfs=curve.dfs;
+                }else{
+                        if(undefined===curve.zcs) throw new Error("get_initialised_curve: invalid curve, both dfs and zcs undefined");
+                        dfs=get_dfs(curve.zcs, times);
+                }
+                return {
+                                type: "yield", 
+                                times: times,
+                                dfs: dfs
+                        };
+        };
+        
 
         get_df_internal=function(curve,t,imin,imax){
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
                 //curve only has one support point
-                if (imin==imax) return (t===curve.times[imin]) ? curve.dfs[imin] : Math.pow(curve.dfs[imin], t/curve.times[imin]);
+                if (imin===imax) return (t===curve.times[imin]) ? curve.dfs[imin] : Math.pow(curve.dfs[imin], t/curve.times[imin]);
                 //extrapolation (constant on zero coupon rates)
                 if (t<curve.times[imin]) return Math.pow(curve.dfs[imin], t/curve.times[imin]);
                 if (t>curve.times[imax]) return Math.pow(curve.dfs[imax], t/curve.times[imax]);
                 //interpolation (linear on discount factors)
-                if (imin+1==imax){
+                if (imin+1===imax){
                         if(curve.times[imax]-curve.times[imin]<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
                         return curve.dfs[imin]*(curve.times[imax]-t)/(curve.times[imax]-curve.times[imin])+
                                curve.dfs[imax]*(t-curve.times[imin])/(curve.times[imax]-curve.times[imin]);
@@ -395,7 +396,7 @@
                         }
                         if(eff_dt instanceof Date && dt<eff_dt){
                                 //schedule begins with eff_dt and there is no stub period
-                                if(adj(res[0]).getTime()!=adj(eff_dt).getTime()){
+                                if(adj(res[0]).getTime()!==adj(eff_dt).getTime()){
                                         res.unshift(eff_dt);
                                 }
                                 return res;
@@ -721,7 +722,7 @@
         }
 
         library.period_str_to_time=function(str){
-                var num=parseInt(str);
+                var num=parseInt(str, 10);
                 var unit=str.charAt(str.length-1);
                 if( unit === 'Y' || unit === 'y') return num;
                 if( unit === 'M' || unit === 'm') return num/12;
@@ -733,13 +734,13 @@
         library.date_str_to_date=function(str){
                 var rr=null,d,m,y;
                 if ((rr = /^([1-2][0-9]{3})[\/-]([0-9]{1,2})[\/-]([0-9]{1,2})/.exec(str)) !== null) { // YYYY/MM/DD or YYYY-MM-DD
-                        y=parseInt(rr[1]);
-                        m=parseInt(rr[2])-1;
-                        d=parseInt(rr[3]);
+                        y=parseInt(rr[1], 10);
+                        m=parseInt(rr[2], 10)-1;
+                        d=parseInt(rr[3], 10);
                 }else if ((rr = /^([0-9]{1,2})\.([0-9]{1,2})\.([1-2][0-9]{3})/.exec(str)) !== null) { // DD.MM.YYYY
-                        y=parseInt(rr[3]);
-                        m=parseInt(rr[2])-1;
-                        d=parseInt(rr[1]);
+                        y=parseInt(rr[3], 10);
+                        m=parseInt(rr[2], 10)-1;
+                        d=parseInt(rr[1], 10);
                 }
                 if (null===rr) throw new Error('date_str_to_time(str) - Invalid date string: ' + str);
                 if (m<0 || m>11) throw new Error('date_str_to_time(str) - Invalid month in date string: ' + str);

@@ -53,7 +53,7 @@
                         }
                         if(eff_dt instanceof Date && dt<eff_dt){
                                 //schedule begins with eff_dt and there is no stub period
-                                if(adj(res[0]).getTime()!=adj(eff_dt).getTime()){
+                                if(adj(res[0]).getTime()!==adj(eff_dt).getTime()){
                                         res.unshift(eff_dt);
                                 }
                                 return res;

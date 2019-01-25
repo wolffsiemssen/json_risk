@@ -28,6 +28,7 @@ var Rendite=[0.18, 0.21, 0.25, 0.32, 0.37, 0.44, 1.15, 1.17,
 
 JsonRisk.valuation_date=new Date(2018,1,23);
 
+var i;
 var bonds=[];
 var curve_t=[];
 var curve_z=[];
@@ -48,8 +49,7 @@ for (i=0; i<Kupon.length; i++){
         curve_z.push(Rendite[i]/100);
 }
 
-test_curve={times: curve_t, zcs: curve_z};
-test_curve=JsonRisk.get_initialised_curve(test_curve);
+var test_curve=JsonRisk.get_initialised_curve({times: curve_t, zcs: curve_z});
  
 var price,i,j,n;
 
@@ -102,7 +102,7 @@ for (j=1;j<=n;j++){
 }
 console.log(""+n*Kupon.length*2+" valuations based on cfs.");
 
-var t1 = new Date().getTime();
+t1 = new Date().getTime();
 m="Valuations took " + (t1 - t0)/1000 + " seconds.";
 console.log(m);
 if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');

@@ -1,4 +1,4 @@
-if (typeof require == 'function' ) var JsonRisk=require('../dist/json_risk.js');
+if (typeof require === 'function' ) var JsonRisk=require('../dist/json_risk.js');
 
 var am=function(expr,msg){
         var m;
@@ -6,7 +6,7 @@ var am=function(expr,msg){
                 m="Failure: "+msg;
                 console.log(m);
                 if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
-                if (typeof process != 'undefined' && typeof process.exit =='function' ) process.exit(1);
+                if (typeof process != 'undefined' && typeof process.exit ==='function' ) process.exit(1);
         }else{
                 m="Success: "+msg;
                 console.log(m);
@@ -14,16 +14,16 @@ var am=function(expr,msg){
         }
 };
 
-am (typeof JsonRisk.pricer == 'function', "pricer function defined");
-am (typeof JsonRisk.pricer_bond == 'function', "pricer_bond function defined");
-am (typeof JsonRisk.period_str_to_time == 'function', "period_str_to_time function defined");
-am (typeof JsonRisk.get_initialised_date == 'function', "get_initialised_date function defined");
-am (typeof JsonRisk.date_str_to_date == 'function', "date_string_to_date function defined");
-am (typeof JsonRisk.get_rate == 'function', "get_rate function defined");
-am (typeof JsonRisk.get_df == 'function', "get_df function defined");
-am (typeof JsonRisk.get_fwd_rate == 'function', "get_fwd_rate function defined");
-am (typeof JsonRisk.get_const_curve == 'function', "get_const_curve function defined");
-am (typeof JsonRisk.get_initialised_curve == 'function', "get_initialised_curve function defined");
+am (typeof JsonRisk.pricer === 'function', "pricer function defined");
+am (typeof JsonRisk.pricer_bond === 'function', "pricer_bond function defined");
+am (typeof JsonRisk.period_str_to_time === 'function', "period_str_to_time function defined");
+am (typeof JsonRisk.get_initialised_date === 'function', "get_initialised_date function defined");
+am (typeof JsonRisk.date_str_to_date === 'function', "date_string_to_date function defined");
+am (typeof JsonRisk.get_rate === 'function', "get_rate function defined");
+am (typeof JsonRisk.get_df === 'function', "get_df function defined");
+am (typeof JsonRisk.get_fwd_rate === 'function', "get_fwd_rate function defined");
+am (typeof JsonRisk.get_const_curve === 'function', "get_const_curve function defined");
+am (typeof JsonRisk.get_initialised_curve === 'function', "get_initialised_curve function defined");
 
 
 /*!
@@ -52,23 +52,23 @@ for (i=1; i<11; i++){
 yf=JsonRisk.year_fraction_factory("30E/360");
 from=new Date(2000,0,1);
 to = new Date(2001,0,1);
-am(yf(from,to).toFixed(10)==1, "30E/360 year fraction (1)");    
+am(yf(from,to).toFixed(10)===(1).toFixed(10), "30E/360 year fraction (1)");    
 
 from=new Date(2010,7,1);
 to = new Date(2020,7,1);
-am(yf(from,to).toFixed(10)==10, "30E/360 year fraction (2)");
+am(yf(from,to).toFixed(10)===(10).toFixed(10), "30E/360 year fraction (2)");
 
 from=new Date(2000,0,31);
 to = new Date(2001,0,30);
-am(yf(from,to).toFixed(10)==1, "30E/360 year fraction (3)");
+am(yf(from,to).toFixed(10)===(1).toFixed(10), "30E/360 year fraction (3)");
 
 from=new Date(2000,0,30);
 to = new Date(2001,0,31);
-am(yf(from,to).toFixed(10)==1, "30E/360 year fraction (4)");
+am(yf(from,to).toFixed(10)===(1).toFixed(10), "30E/360 year fraction (4)");
 
 from=new Date(2000,1,28);
 to = new Date(2010,1,28);
-am(yf(from,to).toFixed(10)==10, "30E/360 year fraction (5)");
+am(yf(from,to).toFixed(10)===(10).toFixed(10), "30E/360 year fraction (5)");
 
 yf=JsonRisk.year_fraction_factory("act/act");
 
@@ -88,7 +88,7 @@ yf=JsonRisk.year_fraction_factory("invalid string");
 for (i=1; i<11; i++){
         from=new Date(2000+i,2*i,3*i);
         to=JsonRisk.add_days(from,i*i);
-        am((yf(from,to)*365).toFixed(10)==(i*i).toFixed(10), "Undefined year fracion fallback to Act/365 (" + i + ")");
+        am((yf(from,to)*365).toFixed(10)===(i*i).toFixed(10), "Undefined year fracion fallback to Act/365 (" + i + ")");
 }
 
 /*!
@@ -98,24 +98,24 @@ for (i=1; i<11; i++){
 */
 from=new Date(2000,1,25);
 for (i=1; i<11; i++){
-        am(JsonRisk.add_months(from,i*i).getTime()==new Date(2000,1+(i*i),25).getTime(),"Month addition (pos)");
-        am(JsonRisk.add_months(from,-i*i).getTime()==new Date(2000,1-(i*i),25).getTime(),"Month addition (neg)");
+        am(JsonRisk.add_months(from,i*i).getTime()===new Date(2000,1+(i*i),25).getTime(),"Month addition (pos)");
+        am(JsonRisk.add_months(from,-i*i).getTime()===new Date(2000,1-(i*i),25).getTime(),"Month addition (neg)");
 }
 
 from=new Date(2000,0,31);
 for (i=1; i<4; i++){
-        am(JsonRisk.add_months(from,2*i).getTime()==new Date(2000,2*i,31).getTime(),"Month addition (31st)");
-        am(JsonRisk.add_months(from,2*i+5).getTime()==new Date(2000,2*i+5,31).getTime(),"Month addition (31st)");
-        am(JsonRisk.add_months(from,12*i+1).getTime()==new Date(2000,12*i+1,28).getTime(),"Month addition (31st, Feb)");
+        am(JsonRisk.add_months(from,2*i).getTime()===new Date(2000,2*i,31).getTime(),"Month addition (31st)");
+        am(JsonRisk.add_months(from,2*i+5).getTime()===new Date(2000,2*i+5,31).getTime(),"Month addition (31st)");
+        am(JsonRisk.add_months(from,12*i+1).getTime()===new Date(2000,12*i+1,28).getTime(),"Month addition (31st, Feb)");
 }
-am(JsonRisk.add_months(from,49).getTime()==new Date(2000,49,29).getTime(),"Month addition (31st, Feb, Leap Year)");
+am(JsonRisk.add_months(from,49).getTime()===new Date(2000,49,29).getTime(),"Month addition (31st, Feb, Leap Year)");
 
 /*!
 	
 	Test holidays / calendar / adjustment
 	
 */
-cal=JsonRisk.is_holiday_factory("TARGET");
+var cal=JsonRisk.is_holiday_factory("TARGET");
 
 from=new Date(2000,0,1);
 for (i=1; i<10; i++){
@@ -124,36 +124,36 @@ for (i=1; i<10; i++){
 }
 
 from=new Date(2018,0,1); //Monday
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
-am(JsonRisk.add_days(from,-3).getTime()==JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
+am(JsonRisk.add_days(from,-3).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 
 from=new Date(2018,2,30);//Friday
-am(JsonRisk.add_days(from,4).getTime()==JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
-am(JsonRisk.add_days(from,-1).getTime()==JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
-am(JsonRisk.add_days(from,-1).getTime()==JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
+am(JsonRisk.add_days(from,4).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
+am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
+am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 
 from=new Date(2018,3,2); //Monday (Ostermontag)
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
-am(JsonRisk.add_days(from,-4).getTime()==JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
+am(JsonRisk.add_days(from,-4).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 from=new Date(2018,4,1); //Tuesday
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
-am(JsonRisk.add_days(from,-1).getTime()==JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
+am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 from=new Date(2018,11,25); //Tuesday
-am(JsonRisk.add_days(from,2).getTime()==JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
-am(JsonRisk.add_days(from,2).getTime()==JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
-am(JsonRisk.add_days(from,-1).getTime()==JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
+am(JsonRisk.add_days(from,2).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
+am(JsonRisk.add_days(from,2).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
+am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 from=new Date(2018,11,26); //Wednesday
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
-am(JsonRisk.add_days(from,1).getTime()==JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
-am(JsonRisk.add_days(from,-2).getTime()==JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
+am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
+am(JsonRisk.add_days(from,-2).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 /*
 
@@ -235,10 +235,10 @@ am(foo==="do not overwrite", "Period string (invalid period string)");
 
 //Constant zero curve - extrapolation only
 var c=JsonRisk.get_const_curve(0.03);
-am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 0.1).toFixed(10), "Const Yield Curve Extrapolation short (1)");
-am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 1/365).toFixed(10), "Const Yield Curve Extrapolation short (2)");
-am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 10).toFixed(10), "Const Yield Curve Extrapolation long (1)");
-am ((0.03).toFixed(10) == JsonRisk.get_rate(c, 20).toFixed(10), "Const Yield Curve Extrapolation long (2)");
+am ((0.03).toFixed(10) === JsonRisk.get_rate(c, 0.1).toFixed(10), "Const Yield Curve Extrapolation short (1)");
+am ((0.03).toFixed(10) === JsonRisk.get_rate(c, 1/365).toFixed(10), "Const Yield Curve Extrapolation short (2)");
+am ((0.03).toFixed(10) === JsonRisk.get_rate(c, 10).toFixed(10), "Const Yield Curve Extrapolation long (1)");
+am ((0.03).toFixed(10) === JsonRisk.get_rate(c, 20).toFixed(10), "Const Yield Curve Extrapolation long (2)");
 
 //
 
@@ -408,17 +408,17 @@ var bond={
 };
 console.log(JsonRisk.pricer_bond(bond,curve, null, null));
 
-am("105.0"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (1)");
+am("105.0"===JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (1)");
 
 bond.settlement_days=1;
 
-am("100.0"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (2)");
+am("100.0"===JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (2)");
 
 bond.tenor=6;
-am("100.5"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (3)");
+am("100.5"===JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (3)");
 
 bond.tenor=3;
-am("100.7"==JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (4)");
+am("100.7"===JsonRisk.pricer_bond(bond,curve, null, null).toFixed(1), "bond valuation (4)");
 
 //reale bundesanleihen, kurse und renditen vom 23.02.2018
 /*
@@ -669,11 +669,11 @@ var fx_swapleg ={notional:100,
         };
 
 var pv= JsonRisk.pricer_fxterm(fx_swapleg,curve);
-am(pv.toFixed(2) == "186.00", "FX swap valuation (1)");
+am(pv.toFixed(2) === "186.00", "FX swap valuation (1)");
 
 fx_swapleg.maturity=new Date(2020,10,29);
 fx_swapleg.maturity_2=new Date(2022,10,29);
 
 var pv= JsonRisk.pricer_fxterm(fx_swapleg,curve);
-am(pv.toFixed(2) == "164.00", "FX swap valuation (2)");
+am(pv.toFixed(2) === "164.00", "FX swap valuation (2)");
 

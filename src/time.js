@@ -25,7 +25,7 @@
         }
 
         library.period_str_to_time=function(str){
-                var num=parseInt(str);
+                var num=parseInt(str, 10);
                 var unit=str.charAt(str.length-1);
                 if( unit === 'Y' || unit === 'y') return num;
                 if( unit === 'M' || unit === 'm') return num/12;
@@ -37,13 +37,13 @@
         library.date_str_to_date=function(str){
                 var rr=null,d,m,y;
                 if ((rr = /^([1-2][0-9]{3})[\/-]([0-9]{1,2})[\/-]([0-9]{1,2})/.exec(str)) !== null) { // YYYY/MM/DD or YYYY-MM-DD
-                        y=parseInt(rr[1]);
-                        m=parseInt(rr[2])-1;
-                        d=parseInt(rr[3]);
+                        y=parseInt(rr[1], 10);
+                        m=parseInt(rr[2], 10)-1;
+                        d=parseInt(rr[3], 10);
                 }else if ((rr = /^([0-9]{1,2})\.([0-9]{1,2})\.([1-2][0-9]{3})/.exec(str)) !== null) { // DD.MM.YYYY
-                        y=parseInt(rr[3]);
-                        m=parseInt(rr[2])-1;
-                        d=parseInt(rr[1]);
+                        y=parseInt(rr[3], 10);
+                        m=parseInt(rr[2], 10)-1;
+                        d=parseInt(rr[1], 10);
                 }
                 if (null===rr) throw new Error('date_str_to_time(str) - Invalid date string: ' + str);
                 if (m<0 || m>11) throw new Error('date_str_to_time(str) - Invalid month in date string: ' + str);
