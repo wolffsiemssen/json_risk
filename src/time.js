@@ -6,7 +6,7 @@
                 
                 
         */
-        var dl=1000*60*60*24;
+        var dl=1000*60*60*24; // length of one day in milliseconds
         var one_over_dl=1.0/dl;
         
         function is_leap_year(y){
@@ -172,9 +172,9 @@
         }
         
         function is_holiday_default(dt){
-                d=dt.getDay();
-                if(0===d) return true;
-                if(6===d) return true;
+                wd=dt.getDay();
+                if(0===wd) return true;
+                if(6===wd) return true;
                 return false;
         }
         
@@ -203,12 +203,70 @@
         
         var calendars={};
         
+        library.add_calendar=function(name, dates){
+                if(!(name instanceof String || typeof name === 'string')) throw new Error("add_calendar: invalid input.");
+                if(!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
+                var n=dates.length, i, ht_size;
+                var holidays=[];
+                var dt;
+                //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
+                for (i=0;i<n;i++){
+                       dt=library.get_initialised_date(dates[i]);
+                       if (!dt) continue;
+                       if (is_holiday_default(dt)) continue;
+                       holidays.push(dt);
+                }
+                n=holidays.length;
+                /*
+                        Determine hash table size, must be prime number greater than number of holidays.
+                        According to one of euclid's formulae, i*i - i + 41 is prime when i<41.
+                        Max size is 1601 which is way enough for all reasonable calendars.
+                        
+                */
+                i=1;
+                while( i < 41){
+                        ht_size=i*i - i +41;
+                        if (ht_size>=n/10) break;
+                        i++;
+                }
+                
+                //populate hash table
+                var hash_table=new Array(ht_size);
+                for (i=0;i<ht_size;i++){
+                        hash_table[i]=[];
+                }
+                var ht_index;
+                for (i=0;i<n;i++){
+                       ht_index=Math.floor(holidays[i].getTime() * one_over_dl) % ht_size;
+                       hash_table[ht_index].push(holidays[i].getTime());
+                }
+                
+                //tie new hash table to calendars list and return size for informational purposes
+                calendars[name.toLowerCase()]=hash_table;
+                return ht_size;
+        };
+        
         library.is_holiday_factory=function(str){
                 var sl=str.toLowerCase();
+                //builtin target calendar
                 if(sl==="target") return is_holiday_target;
+                //generic hash lookup function for stored calendars
+                if (Array.isArray(calendars[sl])){
+                        var cal=calendars[sl];
+                        return function(dt){
+                                if (is_holiday_default(dt)) return true;
+                                var ms=dt.getTime();
+                                var ht_index=Math.floor(ms * one_over_dl) % cal.length;
+                                for (var i=0;i<cal[ht_index].length;i++){
+                                        if (ms===cal[ht_index][i]) return true;
+                                }
+                                return false;
+                        };
+                }
                 //fallback
                 return is_holiday_default;
         };
+
                 
         /*!
         

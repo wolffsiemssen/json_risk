@@ -89,6 +89,24 @@ See [supported parameters](docs/params.md) for details and JSON format descripti
 
 JSON Risk supports one built-in calendar (TARGET) as of now.
 
+Adding custom calendars is as simple as
+
+```
+
+var holidays = [
+                new Date(2018,11,1), //javascript date object
+                "2018/12/12",        //valid YYYY/MM/DD date string
+                "2019-12-01",        //valid YYYY/MM/DD date string
+                "01.12.2020"         //valid DD.MM.YYYY date string
+               ];
+
+JsonRisk.add_calendar("CUSTOM", holidays);
+
+
+```
+
+Saturdays and Sundays are considered holidays in all custom calendars.
+
 ### Day count conventions
 
 JSON Risk supports the day count conventions

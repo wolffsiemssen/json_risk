@@ -110,5 +110,46 @@ m="That is " + n*Kupon.length*2/ (t1 - t0)*1000*3600 + " valuations in an hour."
 console.log(m);
 if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
 
+//test custom calendar
+from=new Date(2000,0,1);
+to=new Date(2200,0,1);
+var dates=[];
+var cal=JsonRisk.is_holiday_factory("TARGET");
+while (from.getTime()<to.getTime()){
+        if (cal(from)) dates.push(from); // add all target holidays to custom list
+        from=JsonRisk.add_days(from, 1);
+}
+//create custom calendar
+var calsize=JsonRisk.add_calendar("custom", dates);
+
+for (i=0; i<Kupon.length; i++){
+        bonds.calendar= "CUSTOM";
+}
+
+t0 = new Date().getTime();
+for (j=1;j<=n;j++){
+        //evaluate with yield curve
+        for (i=0; i<Kupon.length; i++){
+                price=JsonRisk.pricer_bond(bonds[i],test_curve, null);
+
+        }
+        //evaluate with spread curve
+        for (i=0; i<Kupon.length; i++){
+                price=JsonRisk.pricer_bond(bonds[i],null, test_curve);
+        }
+        if(j % 100 === 0){
+                console.log(20*j);    
+        }
+}
+console.log(""+n*Kupon.length*2+" valuations with custom calendar of size " +calsize + "." );
+
+t1 = new Date().getTime();
+
+m="Valuations took " + (t1 - t0)/1000 + " seconds.";
+console.log(m);
+if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
+m="That is " + n*Kupon.length*2/ (t1 - t0)*1000*3600 + " valuations in an hour.";
+console.log(m);
+if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
 
 

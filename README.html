@@ -1,0 +1,141 @@
+<p><img src="pics/logo.png" alt="#json_risk" title="" /></p>
+
+<p>JSON / JavaScript financial risk and pricing library</p>
+
+<h2>What is is</h2>
+
+<ul>
+<li>a JSON data model and data format to describe financial instruments and valuation parameters</li>
+<li>a JavaScript pricing library that uses the data model for pricing and risk analysis of financial instruments</li>
+</ul>
+
+<h2>How to include in node.js:</h2>
+
+<p>```
+var JsonRisk=require('path/to/json_risk.js');</p>
+
+<p>```</p>
+
+<h2>How to include in browser:</h2>
+
+<p>```</p>
+
+<script src="path/to/json_risk.min.js"></script>
+
+<p>```</p>
+
+<h2>How to use</h2>
+
+<p>```
+var bond= {
+        maturity: new Date(2028,0,1),
+        notional: 100.0,
+        fixed<em>rate: 0.05,
+        tenor: 12,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement</em>days: 2
+        };</p>
+
+<p>var discount_curve={
+        type: "yield",
+        labels: ["1Y", "2Y", "3Y", "10Y"],
+        zcs: [0.01, 0.02, 0.025, 0.1]
+        };</p>
+
+<p>var spread_curve={
+        type: "spread",
+        labels: ["1Y", "2Y", "3Y", "10Y"],
+        zcs: [0.01, 0.011, 0.012, 0.11]
+        };</p>
+
+<p>JsonRisk.valuation<em>date=new Date(2017,11,31);
+var present</em>value=JsonRisk.pricer<em>bond(bond,discount</em>curve, spread_curve);</p>
+
+<p>```</p>
+
+<h2>Supported instruments</h2>
+
+<p>JSON Risk supports the instrument types below with a pricer function for each instrument:</p>
+
+<ul>
+<li>Fixed income instruments (fixed_income)
+<ul>
+<li>Fixed rate bonds: pricer_bond(disc_curve, spread_curve)</li>
+<li>Floating rate bonds: pricer_floater(disc_curve, spread_curve, forward_curve)</li>
+<li>Interest rate swaps: pricer_swap(disc_curve, forward_curve)</li>
+<li>FX Spot/Forward: pricer_fxterm(disc_curve)</li>
+</ul></li>
+</ul>
+
+<p>Fixed income instrument pricing is implemented in a generic internal class <em>fixed_income</em>. The pricing routine supports features such as</p>
+
+<ul>
+<li>day count conventions</li>
+<li>business day conventions</li>
+<li>calendar</li>
+<li>schedules with long and short stubs</li>
+<li>settlement days offset</li>
+</ul>
+
+<p>See <a href="docs/instruments.md">supported instruments</a> for details and JSON format descriptions.</p>
+
+<h2>Supported parameters</h2>
+
+<p>JSON Risk supports the parameter types below:</p>
+
+<ul>
+<li>Curves
+<ul>
+<li>Yield term structures (yield)</li>
+</ul></li>
+<li>The global parameter JsonRisk.valuation_date</li>
+</ul>
+
+<p>See <a href="docs/params.md">supported parameters</a> for details and JSON format descriptions.</p>
+
+<h2>Library features</h2>
+
+<h3>Calendars</h3>
+
+<p>JSON Risk supports one built-in calendar (TARGET) as of now.</p>
+
+<p>Adding custom calendars is as simple as</p>
+
+<p>```</p>
+
+<p>var holidays = [
+                new Date(2018,11,1), //javascript date object
+                "2018/12/12",        //valid YYYY/MM/DD date string
+                "2019-12-01",        //valid YYYY/MM/DD date string
+                "01.12.2020"         //valid DD.MM.YYYY date string
+               ];</p>
+
+<p>JsonRisk.add_calendar("CUSTOM", holidays);</p>
+
+<p>```</p>
+
+<p>Saturdays and Sundays are considered holidays in all custom calendars.</p>
+
+<h3>Day count conventions</h3>
+
+<p>JSON Risk supports the day count conventions</p>
+
+<ul>
+<li>act/365,</li>
+<li>act/360,</li>
+<li>act/act (ICMA),</li>
+<li>30E/360.</li>
+</ul>
+
+<h3>Business day conventions</h3>
+
+<p>JSON Risk supports the business day conventions</p>
+
+<ul>
+<li>unadjusted,</li>
+<li>following,</li>
+<li>modified following,</li>
+<li>preceding.</li>
+</ul>

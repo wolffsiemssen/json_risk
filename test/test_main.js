@@ -155,6 +155,31 @@ am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).g
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
 am(JsonRisk.add_days(from,-2).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
+//test custom calendar
+from=new Date(2000,0,1);
+to=new Date(2100,0,1);
+dates=[];
+while (from.getTime()<to.getTime()){
+        if (cal(from)) dates.push(from); // add all target holidays to custom list
+        from=JsonRisk.add_days(from, 1);
+}
+//create custom calendar
+JsonRisk.add_calendar("custom", dates);
+
+//check custom calendar equals TARGET
+var customcal=JsonRisk.is_holiday_factory("CUSTOM");
+from=new Date(2000,0,1);
+var res=true;
+while (from.getTime()<to.getTime()){
+
+        if (cal(from) !== customcal(from)){
+                am(cal(from) === customcal(from), "Custom Calendars: " + from);
+                break;
+        }
+        from=JsonRisk.add_days(from, 1);
+}
+
+
 /*
 
         Period string conversion
