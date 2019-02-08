@@ -61,7 +61,7 @@ Plain vanilla swap positions. Fields:
 - is_payer (boolean, true for swap paying fixed rate, false for swap receiving fixed rate)
 - maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
 - notional (number)
-- fixed_rate (number, coupon rate for fixed rate bonds)
+- fixed_rate (number, coupon rate for fixed leg)
 - fixed_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
 - float_spread (number, spread above index for float leg)
 - float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
@@ -74,7 +74,33 @@ Optional (improving pricing accuracy or adding features):
 - float_bdc (string)
 - fixed_dcc (string)
 - float_dcc (string)
-- float\_current\_rate (number, current rate for floater)
+- float\_current\_rate (number, current rate for float leg)
+- residual_spread (number, discounting spread over yield and spread curves)
+- currency
+
+### Swaption
+
+Vanilla swaption positions. Fields:
+
+- is_payer (boolean, true if underlying swap pays fixed rate, false if underlying swap receives fixed rate)
+- is_short (boolean, true for short swaption, false for long swaptions which is the default)
+- maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY) representing the final maturity date of the underlying swap)
+- expiry (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY) representing the swaption expiry date, i.e., the settlement-upon-exercise date)
+- notional (number)
+- fixed_rate (number, coupon rate for fixed leg)
+- fixed_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+- float_spread (number, spread above index for float leg)
+- float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+
+Optional (improving pricing accuracy or adding features):
+
+- effective\_date (date string)
+- calendar (string)
+- fixed_bdc (string)
+- float_bdc (string)
+- fixed_dcc (string)
+- float_dcc (string)
+- float\_current\_rate (number, current rate for float leg)
 - residual_spread (number, discounting spread over yield and spread curves)
 - currency
 

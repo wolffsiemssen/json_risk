@@ -212,7 +212,7 @@
         };
         
         library.pricer_swap=function(swap, disc_curve, fwd_curve){
-                var fixed_sign=(swap.payer) ? -1 : 1;
+                var fixed_sign=(swap.is_payer) ? -1 : 1;
                 var fixed_leg_internal=new library.simple_fixed_income({
                         notional: swap.notional * fixed_sign,
                         maturity: swap.maturity,
@@ -235,7 +235,7 @@
                         current_rate: swap.float_current_rate
                 });
 
-                return fixed_leg_internal.present_value(disc_curve, null, fwd_curve)+
+                return fixed_leg_internal.present_value(disc_curve, null, null)+
                        float_leg_internal.present_value(disc_curve, null, fwd_curve);
         };
         

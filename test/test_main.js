@@ -5,12 +5,14 @@ var am=function(expr,msg){
         if(!expr) {
                 m="Failure: "+msg;
                 console.log(m);
-                if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
+                m='<strong style="color:red">Failure: </strong>'+msg+'</br>';
+                if (typeof document != 'undefined') document.body.innerHTML+=m;
                 if (typeof process != 'undefined' && typeof process.exit ==='function' ) process.exit(1);
         }else{
                 m="Success: "+msg;
                 console.log(m);
-                if (typeof document != 'undefined') document.body.innerHTML+=(m+'</br>');
+                m='<strong style="color:green">Success: </strong>'+msg+'</br>';
+                if (typeof document != 'undefined') document.body.innerHTML+=m;
         }
 };
 
@@ -314,6 +316,39 @@ am ((0.95).toFixed(10) === JsonRisk.get_df(c, 0.5).toFixed(10), "Yield Curve int
 am ((0.85).toFixed(10) === JsonRisk.get_df(c, 1.5).toFixed(10), "Yield Curve interpolation fallback on dates 2");
 am ((0.75).toFixed(10) === JsonRisk.get_df(c, 2.5).toFixed(10), "Yield Curve interpolation fallback on dates 3");
 am ((0.6).toFixed(10) === JsonRisk.get_df(c, 8).toFixed(10), "Yield Curve interpolation fallback on dates 4");
+
+/*!
+	
+	Test Surfaces
+	
+*/
+
+//Constant surface - extrapolation only
+var s=JsonRisk.get_const_surface(0.03);
+console.log(s);
+am ((0.03).toFixed(10) === JsonRisk.get_surface_rate(s, 0.1, 0.2).toFixed(10), "Const Surface Extrapolation short-short (1)");
+am ((0.03).toFixed(10) === JsonRisk.get_surface_rate(s, 0.1, 20).toFixed(10), "Const Surface Extrapolation short-long (2)");
+am ((0.03).toFixed(10) === JsonRisk.get_surface_rate(s, 20, 0.1).toFixed(10), "Const Surface Extrapolation long-short (1)");
+am ((0.03).toFixed(10) === JsonRisk.get_surface_rate(s, 20, 20).toFixed(10), "Const Surface Extrapolation long-long (2)");
+
+//
+
+//bi-linear interpolation on surface
+s={type: "bachelier", expiries: [1,2,3], terms: [1,2,3,4], values: [[1, 1, 2, 2],[2, 2, 3, 3],[3, 3, 4, 4]]};
+
+am ((1.5).toFixed(10) === JsonRisk.get_surface_rate(s, 1, 2.5).toFixed(10), "Surface interpolation (1)");
+am ((2.5).toFixed(10) === JsonRisk.get_surface_rate(s, 2, 2.5).toFixed(10), "Surface interpolation (2)");
+am ((3).toFixed(10) === JsonRisk.get_surface_rate(s, 2.5, 2.5).toFixed(10), "Surface interpolation (3)");
+am ((3.5).toFixed(10) === JsonRisk.get_surface_rate(s, 2.5, 3.5).toFixed(10), "Surface interpolation (4)");
+
+s.labels_expiry=["1Y", "2Y", "3Y"];
+s.labels_term=["1Y", "2Y", "3Y", "4Y"];
+
+am ((1.5).toFixed(10) === JsonRisk.get_surface_rate(s, 1, 2.5).toFixed(10), "Surface interpolation (fallback on labels, 1)");
+am ((2.5).toFixed(10) === JsonRisk.get_surface_rate(s, 2, 2.5).toFixed(10), "Surface interpolation (fallback on labels, 2)");
+am ((3).toFixed(10) === JsonRisk.get_surface_rate(s, 2.5, 2.5).toFixed(10), "Surface interpolation (fallback on labels, 3)");
+am ((3.5).toFixed(10) === JsonRisk.get_surface_rate(s, 2.5, 3.5).toFixed(10), "Surface interpolation (fallback on labels, 4)");
+
 
 /*!
 	
@@ -672,6 +707,70 @@ for (i=0; i<months.length; i++){
                 console.log("JSON Risk swap price:               " + p.toFixed(3));  
                 console.log("JSON Risk swap price with rates up: " + p_up.toFixed(3));  
                 am(p_diff<months[i]/12, "Swap Valuation (" + ((i)*tenors.length+(j+1)) +")");
+        }
+}
+
+/* 
+
+Test distribution functions
+
+*/
+
+var prob_interval=[
+0,
+0.68268949,
+0.95449974,
+0.99730020,
+0.99993666,
+0.99999943
+];
+for (i=0;i<prob_interval.length;i++){
+        am((JsonRisk.ndf(i)*Math.sqrt(4.0*Math.acos(0.0))).toFixed(8)===Math.exp(-i*i/2).toFixed(8), "Test normal distribution function ("+i+")");
+}
+
+for (i=0;i<prob_interval.length;i++){
+        am((JsonRisk.cndf(i)-JsonRisk.cndf(-i)).toFixed(8)===prob_interval[i].toFixed(8), "Test cumulative normal distribution function ("+i+")");
+}
+
+/* 
+
+Test Swaptions
+
+*/
+
+var surface={type: "bachelier", expiries: [1,2,3], terms: [1,2,3,4], values: [[0.01, 0.01, 0.02, 0.02],[0.02, 0.02, 0.03, 0.03],[0.03, 0.03, 0.04, 0.04]]};
+var expiries=[0,6,12,18,24,36,48,60,72,96,120];
+var p1, p2, p3;
+for (i=0; i<months.length; i++){
+        for (j=0; j<expiries.length; j++){
+
+                swaption={
+                        is_payer: false,
+                        maturity: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]+months[i]),
+                        expiry: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
+                        effective_date: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
+                        notional: 10000,
+                        fixed_rate: 0.01,
+                        fixed_tenor: 6,
+                        float_spread: 0.01,
+                        float_tenor: 3,
+                        float_current_rate: 0,
+                        fixed_dcc: "30e/360",
+                        float_dcc: "30e/360"
+                };
+
+                p1=JsonRisk.pricer_swap(swaption,curve,curve);
+                console.log("JSON Risk forward receiver swap price:   " + p1.toFixed(3)); 
+                swaption.is_short=true;
+                p2=JsonRisk.pricer_swaption(swaption,curve,curve, surface);
+                console.log("JSON Risk short receiver swaption price: " + p2.toFixed(3));
+                swaption.is_payer=true;
+                swaption.is_short=false;
+                p3=JsonRisk.pricer_swaption(swaption,curve,curve, surface);
+                console.log("JSON Risk long payer swaption price:     " + p3.toFixed(3));  
+                console.log("Sum of all three instruments:            " + (p1+p2+p3).toFixed(3));  
+                am(Math.abs(p1+p2+p3)<0.01, "Test swaption put call parity      (" + expiries[j] + "M into " + months[i] + "M)");
+                console.log("-----------------");
         }
 }
 

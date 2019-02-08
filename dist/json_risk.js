@@ -343,6 +343,55 @@
 }(this.JsonRisk || module.exports));
 ;
 (function(library){
+        
+        var RT2PI = Math.sqrt(4.0*Math.acos(0.0));
+        var SPLIT = 7.07106781186547;
+        var N0 = 220.206867912376;
+        var N1 = 221.213596169931;
+        var N2 = 112.079291497871;
+        var N3 = 33.912866078383;
+        var N4 = 6.37396220353165;
+        var N5 = 0.700383064443688;
+        var N6 = 3.52624965998911e-02;
+        var M0 = 440.413735824752;
+        var M1 = 793.826512519948;
+        var M2 = 637.333633378831;
+        var M3 = 296.564248779674;
+        var M4 = 86.7807322029461;
+        var M5 = 16.064177579207;
+        var M6 = 1.75566716318264;
+        var M7 = 8.83883476483184e-02;
+        
+        library.ndf=function(x){
+          return Math.exp(-x*x/2.0)/RT2PI;
+        };
+
+        library.cndf=function(x){
+                /*
+                Citation needed!
+                */         
+                var z = Math.abs(x);
+                var c=0;
+
+                if(z<=37.0){
+                        var e = Math.exp(-z*z/2.0);
+                        if(z<SPLIT)
+                        {
+                                var n = (((((N6*z + N5)*z + N4)*z + N3)*z + N2)*z +N1)*z + N0;
+                                var d = ((((((M7*z + M6)*z + M5)*z + M4)*z + M3)*z + M2)*z + M1)*z + M0;
+                                c = e*n/d;
+                        }
+                        else{
+                                var f = z + 1.0/(z + 2.0/(z + 3.0/(z + 4.0/(z + 13.0/20.0))));
+                                c = e/(RT2PI*f);
+                        }
+                }
+                return x<=0.0 ? c : 1-c;
+        };
+
+}(this.JsonRisk || module.exports));
+;
+(function(library){
         /*
         
         Schedule functions used by simple and irregular fixed income instruments.
@@ -645,7 +694,7 @@
         };
         
         library.pricer_swap=function(swap, disc_curve, fwd_curve){
-                var fixed_sign=(swap.payer) ? -1 : 1;
+                var fixed_sign=(swap.is_payer) ? -1 : 1;
                 var fixed_leg_internal=new library.simple_fixed_income({
                         notional: swap.notional * fixed_sign,
                         maturity: swap.maturity,
@@ -668,7 +717,7 @@
                         current_rate: swap.float_current_rate
                 });
 
-                return fixed_leg_internal.present_value(disc_curve, null, fwd_curve)+
+                return fixed_leg_internal.present_value(disc_curve, null, null)+
                        float_leg_internal.present_value(disc_curve, null, fwd_curve);
         };
         
@@ -695,6 +744,198 @@
         };
 
 }(this.JsonRisk || module.exports));
+;(function(library){
+
+        library.get_const_surface=function(value, type){
+                if(typeof value !== 'number') throw new Error("get_const_surface: input must be number."); 
+                return {
+                                type: type || "", 
+                                expiries: [1],
+                                terms: [1],
+                                values: [[value]]
+                       };
+        };
+        
+        function get_surface_times(labels){
+                var i,times;
+                i=surface.labels_expiry.length;
+                times=new Array(i);    
+                while (i>0){
+                       i--;
+                       times[i]=library.period_str_to_time(labels[i]);
+                }                      
+                return times;
+        }
+        
+        library.get_safe_surface=function(surface){
+                //if valid surface is given, returns surface in initialised form {type, times, dfs}, if null, returns constant zero surface
+                var expiries, terms;
+                if (!surface) return library.get_const_surface(0.0);
+                if (!surface.expiries){
+                        if (!surface.labels_expiry) throw new Error("get_initialised_surface: cannot derive expiries");
+                        expiries=get_surface_times(labels_expiry);
+                }else{
+                        expiries=surface.expiries;
+                }
+                if (!surface.terms){
+                        if (!surface.labels_term) throw new Error("get_initialised_surface: cannot derive terms");
+                        terms=get_surface_times(labels_term);
+                }else{
+                        terms=surface.terms;
+                }
+                if (surface.values.length!==expiries.length) throw new Error("get_initialised_surface: expiries dimensions do not match values array");
+                for (var i=0; i< expiries.length; i++){
+                        if (surface.values[i].length!==terms.length) throw new Error("get_initialised_surface: terms dimensions do not match values array");
+                }
+                return {
+                                type: surface.type || "", 
+                                expiries: expiries,
+                                terms: terms,
+                                values: surface.values
+                        };
+        };
+        
+        get_slice_rate_unsafe=function(surface,i_expiry,t_term,imin,imax){
+                imin=imin || 0;
+                imax=imax || surface.terms.length-1;
+                
+                var sl=surface.values[i_expiry];
+                //slice only has one value left
+                if (imin===imax) return sl[imin];
+                //extrapolation (constant)
+                if (t_term<surface.terms[imin]) return sl[imin];
+                if (t_term>surface.terms[imax]) return sl[imax];
+                //interpolation (linear)
+                if (imin+1===imax){
+                        return sl[imin]*(surface.terms[imax]-t_term)/(surface.terms[imax]-surface.terms[imin])+
+                               sl[imax]*(t_term-surface.terms[imin])/(surface.terms[imax]-surface.terms[imin]);
+                }
+                //binary search and recursion
+                imed=Math.ceil((imin+imax)/2.0);
+                if (t_term>surface.terms[imed]) return get_slice_rate_unsafe(surface,i_expiry,t_term,imed,imax);
+                return get_slice_rate_unsafe(surface,i_expiry, t_term,imin,imed);
+        };
+
+
+        get_surface_rate_unsafe=function(surface,t_expiry,t_term,imin,imax){
+                imin=imin || 0;
+                imax=imax || surface.expiries.length-1;
+
+                //surface only has one slice left
+                if (imin===imax) return get_slice_rate_unsafe(surface, imin, t_term);
+                //extrapolation (constant)
+                if (t_expiry<surface.expiries[imin]) return get_slice_rate_unsafe(surface, imin, t_term);
+                if (t_expiry>surface.expiries[imax]) return get_slice_rate_unsafe(surface, imax, t_term);
+                //interpolation (linear)
+                if (imin+1===imax){
+                        return get_slice_rate_unsafe(surface, imin, t_term)*(surface.expiries[imax]-t_expiry)/(surface.expiries[imax]-surface.expiries[imin])+
+                               get_slice_rate_unsafe(surface, imax, t_term)*(t_expiry-surface.expiries[imin])/(surface.expiries[imax]-surface.expiries[imin]);
+                }
+                //binary search and recursion
+                imed=Math.ceil((imin+imax)/2.0);
+                if (t_expiry>surface.expiries[imed]) return get_surface_rate_unsafe(surface,t_expiry,t_term,imed,imax);
+                return get_surface_rate_unsafe(surface,t_expiry,t_term,imin,imed);
+        };
+
+        
+        library.get_surface_rate=function(surface,t_expiry, t_term){
+                var s=library.get_safe_surface(surface);
+                return get_surface_rate_unsafe(s, t_expiry, t_term);
+        };
+
+
+}(this.JsonRisk || module.exports));
+;
+(function(library){
+
+        library.swaption=function(instrument){
+                this.phi=instrument.is_payer ? -1 : 1;
+                this.sign=instrument.is_short ? -1 : 1;
+                this.maturity=library.get_initialised_date(instrument.maturity);       
+                if(!this.maturity)
+                        throw new Error("swaption: must provide valid maturity date.");
+                this.swap_fixed_leg=new library.simple_fixed_income({
+                        notional: instrument.notional,
+                        maturity: instrument.maturity,
+                        fixed_rate: instrument.fixed_rate,
+                        tenor: instrument.fixed_tenor,
+                        effective_date: instrument.expiry,
+                        calendar: instrument.calendar,
+                        bdc: instrument.fixed_bdc,
+                        dcc: instrument.fixed_dcc
+                });
+                this.swap_fixed_leg_1bp=new library.simple_fixed_income({
+                        notional: instrument.notional,
+                        maturity: instrument.maturity,
+                        fixed_rate: 0.0001,
+                        tenor: instrument.fixed_tenor,
+                        effective_date: instrument.expiry,
+                        calendar: instrument.calendar,
+                        bdc: instrument.fixed_bdc,
+                        dcc: instrument.fixed_dcc
+                });
+                
+                this.swap_float_leg=new library.simple_fixed_income({
+                        notional: - instrument.notional,
+                        maturity: instrument.maturity,
+                        float_spread: instrument.float_spread,
+                        tenor: instrument.float_tenor,
+                        effective_date: instrument.expiry,
+                        calendar: instrument.calendar,
+                        bdc: instrument.float_bdc,
+                        dcc: instrument.float_dcc,
+                        current_rate: instrument.float_current_rate
+                });
+                this.expiry=library.get_initialised_date(instrument.expiry);
+                if(!this.expiry)
+                        throw new Error("swaption: must provide valid expiry date.");
+                
+
+        };
+
+        library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
+                if (null===library.valuation_date) throw new Error("swaption.present_value: valuation_date must be set");
+                
+                //obtain times
+                var default_yf=library.year_fraction_factory(null);
+                var t_maturity=default_yf(library.valuation_date, this.maturity);
+                var t_expiry=default_yf(library.valuation_date, this.expiry);
+                var t_term=t_maturity-t_expiry;
+                if (t_term<1/512){
+                        return 0;
+                }       
+                //obtain fwd rate, that is, fair swap rate
+                var pv_notional=library.get_df(disc_curve, t_maturity)*this.swap_fixed_leg.notional;
+                var pv_float=this.swap_float_leg.present_value(disc_curve, null, fwd_curve)+pv_notional;
+                var pv_fix=this.swap_fixed_leg.present_value(disc_curve, null, null)-pv_notional;
+                var annuity=(this.swap_fixed_leg_1bp.present_value(disc_curve, null, null)-pv_notional) / 0.0001;
+                var fair_rate=-pv_float/annuity;
+                
+                //obtain volatility in terms of standard deviation
+                var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
+                
+                var res;
+                if (t_expiry<1/512 || std_dev<0.0001){
+                        //degenerate case where swaption is already expiring or volatility is very low
+                        res=Math.max(this.phi*(this.swap_fixed_leg.fixed_rate - fair_rate), 0);
+                }else{
+                //bachelier formula      
+                        var d1 = (this.swap_fixed_leg.fixed_rate - fair_rate) / std_dev;
+                        res=this.phi*(this.swap_fixed_leg.fixed_rate - fair_rate)*library.cndf(this.phi*d1)+std_dev*library.ndf(d1);
+                }
+                res*=annuity;
+                res*=this.sign;
+                //res*=library.get_df(disc_curve, t_expiry);
+                return res;
+        };
+ 
+        library.pricer_swaption=function(swaption, disc_curve, fwd_curve, vol_surface){
+                var swaption_internal=new library.swaption(swaption);
+                return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
+        };
+
+}(this.JsonRisk || module.exports));
+
 ;(function(library){
 
         /*
@@ -917,14 +1158,13 @@
                 /*
                         Determine hash table size, must be prime number greater than number of holidays.
                         According to one of euclid's formulae, i*i - i + 41 is prime when i<41.
-                        Max size is 1601 which should be enough for reasonable calendars.
-                        Above that, performance will deteriorate but calendar still works.
+                        Max size is 1601 which is way enough for all reasonable calendars.
                         
                 */
                 i=1;
                 while( i < 41){
                         ht_size=i*i - i +41;
-                        if (ht_size>=n/100) break;
+                        if (ht_size>=n/10) break;
                         i++;
                 }
                 
