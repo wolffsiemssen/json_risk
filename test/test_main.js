@@ -750,12 +750,12 @@ for (i=0; i<months.length; i++){
                         expiry: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
                         effective_date: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
                         notional: 10000,
-                        fixed_rate: 0.01,
+                        fixed_rate: 0.02,
                         fixed_tenor: 6,
                         float_spread: 0.01,
                         float_tenor: 3,
                         float_current_rate: 0,
-                        fixed_dcc: "30e/360",
+                        fixed_dcc: "act/365",
                         float_dcc: "30e/360"
                 };
 

@@ -72,7 +72,7 @@
 <li>is_payer (boolean, true for swap paying fixed rate, false for swap receiving fixed rate)</li>
 <li>maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))</li>
 <li>notional (number)</li>
-<li>fixed_rate (number, coupon rate for fixed rate bonds)</li>
+<li>fixed_rate (number, coupon rate for fixed leg)</li>
 <li>fixed_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
 <li>float_spread (number, spread above index for float leg)</li>
 <li>float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
@@ -87,7 +87,37 @@
 <li>float_bdc (string)</li>
 <li>fixed_dcc (string)</li>
 <li>float_dcc (string)</li>
-<li>float_current_rate (number, current rate for floater)</li>
+<li>float_current_rate (number, current rate for float leg)</li>
+<li>residual_spread (number, discounting spread over yield and spread curves)</li>
+<li>currency</li>
+</ul>
+
+<h3>Swaption</h3>
+
+<p>Vanilla swaption positions. Fields:</p>
+
+<ul>
+<li>is_payer (boolean, true if underlying swap pays fixed rate, false if underlying swap receives fixed rate)</li>
+<li>is_short (boolean, true for short swaption, false for long swaptions which is the default)</li>
+<li>maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY) representing the final maturity date of the underlying swap)</li>
+<li>expiry (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY) representing the swaption expiry date, i.e., the settlement-upon-exercise date)</li>
+<li>notional (number)</li>
+<li>fixed_rate (number, coupon rate for fixed leg)</li>
+<li>fixed_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
+<li>float_spread (number, spread above index for float leg)</li>
+<li>float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)</li>
+</ul>
+
+<p>Optional (improving pricing accuracy or adding features):</p>
+
+<ul>
+<li>effective_date (date string)</li>
+<li>calendar (string)</li>
+<li>fixed_bdc (string)</li>
+<li>float_bdc (string)</li>
+<li>fixed_dcc (string)</li>
+<li>float_dcc (string)</li>
+<li>float_current_rate (number, current rate for float leg)</li>
 <li>residual_spread (number, discounting spread over yield and spread curves)</li>
 <li>currency</li>
 </ul>

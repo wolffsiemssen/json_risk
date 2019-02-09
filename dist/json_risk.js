@@ -365,13 +365,16 @@
         library.ndf=function(x){
           return Math.exp(-x*x/2.0)/RT2PI;
         };
-
+        
+        
+        /*
+                Cumulative normal distribution function with double precision
+                according to
+                Graeme West, BETTER APPROXIMATIONS TO CUMULATIVE NORMAL FUNCTIONS, 2004
+        */         
         library.cndf=function(x){
-                /*
-                Citation needed!
-                */         
                 var z = Math.abs(x);
-                var c=0;
+                var c;
 
                 if(z<=37.0){
                         var e = Math.exp(-z*z/2.0);
@@ -385,6 +388,8 @@
                                 var f = z + 1.0/(z + 2.0/(z + 3.0/(z + 4.0/(z + 13.0/20.0))));
                                 c = e/(RT2PI*f);
                         }
+                }else{
+                        c=0;
                 }
                 return x<=0.0 ? c : 1-c;
         };
