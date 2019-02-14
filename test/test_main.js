@@ -169,7 +169,7 @@ while (from.getTime()<to.getTime()){
 JsonRisk.add_calendar("custom", dates);
 
 //check custom calendar equals TARGET
-var customcal=JsonRisk.is_holiday_factory("CUSTOM");
+var customcal=JsonRisk.is_holiday_factory("CUSTOM"); //should be case insensitive
 from=new Date(2000,0,1);
 var res=true;
 while (from.getTime()<to.getTime()){
@@ -774,6 +774,44 @@ for (i=0; i<months.length; i++){
         }
 }
 
+
+/* 
+
+Test cashflow equivalent swaption generation
+
+*/
+var expiry, swaption, swaption_internal, cfs, bond_internal;
+for (i=0; i<months.length; i++){
+        for (j=0; j<expiries.length; j++){
+
+                expiry=JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]);
+                bond={
+                        maturity: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]+months[i]),
+                        notional: 10000,
+                        fixed_rate: 0.02,
+                        tenor: 6,
+                        dcc: "act/365"
+                };
+
+                bond_internal=new JsonRisk.simple_fixed_income(bond);
+                p1=bond_internal.present_value(curve,null);
+                console.log("JSON Risk bond price:                           " + p1.toFixed(3)); 
+                cfs=bond_internal.get_cash_flows();
+                swaption=JsonRisk.create_equivalent_regular_swaption(cfs, expiry, bond);
+                p2=JsonRisk.pricer_swaption(swaption,curve,curve, surface);
+                console.log("JSON Risk bond rate:                            " + bond.fixed_rate);
+                console.log("JSON Risk equivalent regular swaption strike:   " + swaption.fixed_rate);
+                console.log("JSON Risk bond maturity:                        " + bond.maturity);
+                console.log("JSON Risk equivalent regular swaption maturity: " + swaption.maturity);
+                console.log("JSON Risk equivalent regular swaption price:    " + p2.toFixed(3));
+                am(swaption.maturity.getTime()===bond.maturity.getTime(),"Test equivalent swaption consistency for bullet bonds (maturity)");
+                am(swaption.fixed_rate.toFixed(5)===bond.fixed_rate.toFixed(5),"Test equivalent swaption consistency for bullet bonds (rate)");
+                console.log("-----------------");
+        }
+}
+
+
+
 /* 
 
 Test FX Term
@@ -786,18 +824,19 @@ times = [1,2,3,5];
 dfs = [0.95,0.91,0.86,0.78];
 curve = {times:times, dfs:dfs};
 
-var fx_swapleg ={notional:100, 
+var fx_swapleg ={
+         notional: 100, 
          maturity: new Date(2018,10,30),
-         notional_2: 100,
+         notional_2: -100,
          maturity_2: new Date(2019,10,30)
         };
 
 var pv= JsonRisk.pricer_fxterm(fx_swapleg,curve);
-am(pv.toFixed(2) === "186.00", "FX swap valuation (1)");
+am(pv.toFixed(2) === "4.00", "FX swap valuation (1)");
 
 fx_swapleg.maturity=new Date(2020,10,29);
 fx_swapleg.maturity_2=new Date(2022,10,29);
 
 var pv= JsonRisk.pricer_fxterm(fx_swapleg,curve);
-am(pv.toFixed(2) === "164.00", "FX swap valuation (2)");
+am(pv.toFixed(2) === "8.00", "FX swap valuation (2)");
 

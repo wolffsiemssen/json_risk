@@ -65,7 +65,7 @@
         
         */
         function days_between(from, to){
-                return (to-from)  * one_over_dl;
+                return Math.round((to-from)  * one_over_dl);
         }
 
         function yf_act365(from,to){
@@ -78,7 +78,9 @@
         }
         
         function yf_30E360(from,to){
-                return ((to.getFullYear()-from.getFullYear())*360 + (to.getMonth()-from.getMonth()) * 30 + (Math.min(to.getDate(),30)-Math.min(from.getDate(),30)))  / 360;
+                return ((to.getFullYear()-from.getFullYear())*360 + 
+                        (to.getMonth()-from.getMonth()) * 30 + 
+                        (Math.min(to.getDate(),30)-Math.min(from.getDate(),30)))  / 360;
         }
         
         function yf_actact(from,to){
@@ -125,7 +127,9 @@
         */
         
         library.add_days=function(from, ndays){
-                return new Date(from.valueOf()+(dl*ndays));
+                var d=new Date(from.valueOf());
+                d.setDate(d.getDate()+ndays);
+                return d;
         };
         
         
@@ -157,17 +161,17 @@
         
         function easter_sunday(y) {
                 var f=Math.floor,
-                        c = f(y/100),
-                        n = y - 19*f(y/19),
-                        k = f((c - 17)/25);
+                    c = f(y/100),
+                    n = y - 19*f(y/19),
+                    k = f((c - 17)/25);
                 var i = c - f(c/4) - f((c - k)/3) + 19*n + 15;
                 i = i - 30*f((i/30));
                 i = i - f(i/28)*(1 - f(i/28)*f(29/(i + 1))*f((21 - n)/11));
                 var j = y + f(y/4) + i + 2 - c + f(c/4);
                 j = j - 7*f(j/7);
                 var l = i - j,
-                        m = 3 + f((l + 40)/44),
-                        d = l + 28 - 31*f(m/4);
+                    m = 3 + f((l + 40)/44),
+                    d = l + 28 - 31*f(m/4);
                 return new Date(y,m-1,d);
         }
         
@@ -179,9 +183,7 @@
         }
         
         function is_holiday_target(dt){
-                var wd=dt.getDay();
-                if(0===wd) return true;
-                if(6===wd) return true;               
+                if (is_holiday_default(dt)) return true;             
                                 
                 var d=dt.getDate();
                 var m=dt.getMonth();

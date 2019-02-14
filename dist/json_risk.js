@@ -43,7 +43,7 @@
                 return {
                                 type: "yield", 
                                 times: [1], 
-                                dfs: [1/(1+value)]
+                                dfs: [1/(1+value)] //zero rates are act/365 annual compounding
                        };
         };
         
@@ -494,12 +494,12 @@
                 {
                         date_pmt: array(date),
                         t_pmt: array(double),
-                        pmt_total: aray(double)
+                        pmt_total: array(double)
                 }
                 
                 */
                 if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
-                //cuve initialisation and fallbacks
+                //curve initialisation and fallbacks
                 var dc=library.get_initialised_curve(disc_curve);
                 var sc=library.get_initialised_curve(spread_curve);
                 if(typeof residual_spread !== "number") residual_spread=0;
@@ -515,15 +515,34 @@
                 var df_d;
                 var df_s;
                 var df_residual;
-                while(cf_obj.date_pmt[i]<=sd) i++;
+                while(cf_obj.date_pmt[i]<=sd) i++; // only consider cashflows after settlement date
                 while (i<cf_obj.t_pmt.length){
                         df_d=library.get_df(dc,cf_obj.t_pmt[i]);
                         df_s=library.get_df(sc,cf_obj.t_pmt[i]);
-                        df_residual=Math.exp(-cf_obj.t_pmt[i]*residual_spread);
+                        df_residual=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
                         res+=cf_obj.pmt_total[i]*df_d*df_s*df_residual;
                         i++;
                 }
                 return res;
+        };
+        
+        library.irr=function(cf_obj, settlement_date, payment_on_settlement_date){
+                if (null===library.valuation_date) throw new Error("irr: valuation_date must be set");
+                if (undefined===payment_on_settlement_date) payment_on_settlement_date=0;
+                
+                var tset=library.year_fraction_factory(null)(library.valuation_date, settlement_date);
+                var x=0.0, xnext=0.0001, xtemp=0, iter=20;
+                var f=0, fnext=1;
+                while (Math.abs(fnext)>0.000000001 && Math.abs(fnext-f)>0.000000001 && iter>0){
+                        f=library.dcf(cf_obj,null,null,x, settlement_date)+payment_on_settlement_date*Math.pow(1+x,-tset);
+                        fnext=library.dcf(cf_obj,null,null,xnext, settlement_date)+payment_on_settlement_date*Math.pow(1+xnext,-tset);
+                        xtemp=xnext;
+                        xnext=xnext-fnext*(xnext-x)/(fnext-f);
+                        x=xtemp;
+                        iter--;
+                }
+                if (iter===0) throw new Error("irr: failed, too many iterations");
+                return xnext;
         };
 
         library.simple_fixed_income=function(instrument){
@@ -618,7 +637,9 @@
                         date_accrual_start[i]=schedule[i];
                         date_accrual_end[i]=schedule[i+1];
                         date_pmt[i]=adj(schedule[i+1]);
-                        t_pmt[i]=default_yf(library.valuation_date,schedule[i+1]);
+                        t_pmt[i]=default_yf(library.valuation_date,date_pmt[i]);
+                        t_accrual_start[i]=default_yf(library.valuation_date,schedule[i]);
+                        t_accrual_end[i]=default_yf(library.valuation_date,schedule[i+1]);
                         is_interest_date[i]=true;
                         is_repay_date[i]=false;
                         is_fixing_date[i]=false;
@@ -663,18 +684,21 @@
                                 
                 var i, rt, interest, n=c.t_pmt.length;
                 //start with i=1 as current rate does not need recalculating
-                for(i=1;i<n;i++){
-                       c.is_fixing_date[i]=true;
-                       rt=library.get_fwd_rate(fwd_curve,
+                for(i=0;i<n;i++){
+                        c.is_fixing_date[i]=true;
+                        if (c.date_accrual_start[i] < library.valuation_date){
+                                rt=this.current_rate;
+                        }else{
+                                rt=library.get_fwd_rate(fwd_curve,
                                                default_yf(library.valuation_date,c.date_accrual_start[i]),
                                                default_yf(library.valuation_date,c.date_accrual_end[i]))+
-                          this.float_spread;
-                       
-                       interest=this.notional*rt*
-                                this.year_fraction_func(c.date_accrual_start[i],c.date_accrual_end[i]);
-                       c.interest_current_period[i]=interest;
-                       c.accrued_interest[i]=interest;
-                       c.pmt_interest[i]=interest;
+                                               this.float_spread;
+                        }
+                        interest=this.notional*rt*
+                                 this.year_fraction_func(c.date_accrual_start[i],c.date_accrual_end[i]);
+                        c.interest_current_period[i]=interest;
+                        c.accrued_interest[i]=interest;
+                        c.pmt_interest[i]=interest;
                 }
                 c.pmt_total[n-1]=c.pmt_interest[n-1]+this.notional;
                 return c;
@@ -859,16 +883,8 @@
                 this.maturity=library.get_initialised_date(instrument.maturity);       
                 if(!this.maturity)
                         throw new Error("swaption: must provide valid maturity date.");
-                this.swap_fixed_leg=new library.simple_fixed_income({
-                        notional: instrument.notional,
-                        maturity: instrument.maturity,
-                        fixed_rate: instrument.fixed_rate,
-                        tenor: instrument.fixed_tenor,
-                        effective_date: instrument.expiry,
-                        calendar: instrument.calendar,
-                        bdc: instrument.fixed_bdc,
-                        dcc: instrument.fixed_dcc
-                });
+  
+                this.fixed_rate=instrument.fixed_rate;
                 this.swap_fixed_leg_1bp=new library.simple_fixed_income({
                         notional: instrument.notional,
                         maturity: instrument.maturity,
@@ -894,7 +910,6 @@
                 this.expiry=library.get_initialised_date(instrument.expiry);
                 if(!this.expiry)
                         throw new Error("swaption: must provide valid expiry date.");
-                
 
         };
 
@@ -910,27 +925,25 @@
                         return 0;
                 }       
                 //obtain fwd rate, that is, fair swap rate
-                var pv_notional=library.get_df(disc_curve, t_maturity)*this.swap_fixed_leg.notional;
+                var pv_notional=library.get_df(disc_curve, t_maturity)*this.swap_fixed_leg_1bp.notional;
                 var pv_float=this.swap_float_leg.present_value(disc_curve, null, fwd_curve)+pv_notional;
-                var pv_fix=this.swap_fixed_leg.present_value(disc_curve, null, null)-pv_notional;
                 var annuity=(this.swap_fixed_leg_1bp.present_value(disc_curve, null, null)-pv_notional) / 0.0001;
                 var fair_rate=-pv_float/annuity;
                 
-                //obtain volatility in terms of standard deviation
+                //obtain time-scaled volatility
                 var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
                 
                 var res;
                 if (t_expiry<1/512 || std_dev<0.0001){
                         //degenerate case where swaption is already expiring or volatility is very low
-                        res=Math.max(this.phi*(this.swap_fixed_leg.fixed_rate - fair_rate), 0);
+                        res=Math.max(this.phi*(this.fixed_rate - fair_rate), 0);
                 }else{
-                //bachelier formula      
-                        var d1 = (this.swap_fixed_leg.fixed_rate - fair_rate) / std_dev;
-                        res=this.phi*(this.swap_fixed_leg.fixed_rate - fair_rate)*library.cndf(this.phi*d1)+std_dev*library.ndf(d1);
+                        //bachelier formula      
+                        var d1 = (this.fixed_rate - fair_rate) / std_dev;
+                        res=this.phi*(this.fixed_rate - fair_rate)*library.cndf(this.phi*d1)+std_dev*library.ndf(d1);
                 }
                 res*=annuity;
                 res*=this.sign;
-                //res*=library.get_df(disc_curve, t_expiry);
                 return res;
         };
  
@@ -938,9 +951,93 @@
                 var swaption_internal=new library.swaption(swaption);
                 return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
         };
+        
+        library.create_equivalent_regular_swaption=function(cf_obj, expiry, original_instrument){
+                //sanity checks
+                if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
+                if (cf_obj.t_pmt.length !== cf_obj.pmt_total.length || cf_obj.t_pmt.length !== cf_obj.current_principal.length) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
+                if (null===library.valuation_date) throw new Error("create_equivalent_swaption: valuation_date must be set");
+                if (!original_instrument) original_instrument={};
+                var tenor=original_instrument.tenor || 6;
+                var bdc=original_instrument.bdc || "unadjusted";
+                var calendar=original_instrument.calendar || "";
+
+                //retrieve outstanding principal on expiry (corresponds to regular swaption notional)
+                var outstanding_principal=0;
+                var i;
+                for (i=0; i<cf_obj.current_principal.length; i++){
+                        if (cf_obj.date_pmt[i]<=expiry){
+                                outstanding_principal=cf_obj.current_principal[i];
+                        }
+                }
+                if (outstanding_principal===0) throw new Error("create_equivalent_regular_swaption: invalid cashflow object or expiry, zero outstanding principal");
+                //compute internal rate of return for remaining cash flow including settlement payment
+                var irr=library.irr(cf_obj, expiry, -outstanding_principal);
+                
+                //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
+                irr=12/tenor*(Math.pow(1+irr,tenor/12)-1);
+                
+                //compute effective duration of remaining cash flow (corresponds to regular swaption term)
+                var cup=library.get_const_curve(irr+0.0001);
+                var cdown=library.get_const_curve(irr-0.0001);
+                var npv_up=library.dcf(cf_obj, cup, null, null, expiry);
+                var npv_down=library.dcf(cf_obj, cdown, null, null, expiry);
+                var effective_duration_target=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
+                
+                //brief function to compute effective duration
+                var ed=function(bond){   
+                        var bond_internal=new library.simple_fixed_income(bond);  
+                        npv_up=bond_internal.present_value(cup);
+                        npv_down=bond_internal.present_value(cdown);
+                        var res=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
+                        return res;
+                };
+                
+                //find bullet bond maturity that has approximately the same effective duration               
+                // start with analytic best estimate
+                var t_maturity=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
+                var maturity=library.add_days(library.valuation_date, Math.round(t_maturity*365));
+                var bond={
+                          maturity: maturity,
+                          effective_date: expiry,
+                          settlement_date: expiry,
+                          notional: outstanding_principal,
+                          fixed_rate: irr,
+                          tenor: tenor,
+                          calendar: calendar,
+                          bdc: bdc,
+                          dcc: "act/365",
+                        };
+                var effective_duration=ed(bond);
+                var iter=20;
+                //alter maturity until we obtain effective duration target value
+                while (Math.abs(effective_duration-effective_duration_target)>1/512 && iter>0){
+                        t_maturity=t_maturity*effective_duration_target/effective_duration;
+                        maturity=library.add_days(library.valuation_date, Math.round(t_maturity*365));
+                        bond.maturity=maturity;
+                        effective_duration=ed(bond);
+                        iter--;
+                }
+
+                return {
+                        is_payer: false,
+                        maturity: maturity,
+                        expiry: expiry,
+                        notional: outstanding_principal,
+                        fixed_rate: irr,
+                        fixed_tenor: tenor,
+                        float_spread: 0.00,
+                        float_tenor: 6,
+                        float_current_rate: 0.00,
+                        calendar: calendar,
+                        fixed_bdc: bdc,
+                        float_bdc: bdc,
+                        fixed_dcc: "act/365",
+                        float_dcc: "act/365"
+                }; 
+        };
 
 }(this.JsonRisk || module.exports));
-
 ;(function(library){
 
         /*
@@ -1008,7 +1105,7 @@
         
         */
         function days_between(from, to){
-                return (to-from)  * one_over_dl;
+                return Math.round((to-from)  * one_over_dl);
         }
 
         function yf_act365(from,to){
@@ -1021,7 +1118,9 @@
         }
         
         function yf_30E360(from,to){
-                return ((to.getFullYear()-from.getFullYear())*360 + (to.getMonth()-from.getMonth()) * 30 + (Math.min(to.getDate(),30)-Math.min(from.getDate(),30)))  / 360;
+                return ((to.getFullYear()-from.getFullYear())*360 + 
+                        (to.getMonth()-from.getMonth()) * 30 + 
+                        (Math.min(to.getDate(),30)-Math.min(from.getDate(),30)))  / 360;
         }
         
         function yf_actact(from,to){
@@ -1068,7 +1167,9 @@
         */
         
         library.add_days=function(from, ndays){
-                return new Date(from.valueOf()+(dl*ndays));
+                var d=new Date(from.valueOf());
+                d.setDate(d.getDate()+ndays);
+                return d;
         };
         
         
@@ -1100,17 +1201,17 @@
         
         function easter_sunday(y) {
                 var f=Math.floor,
-                        c = f(y/100),
-                        n = y - 19*f(y/19),
-                        k = f((c - 17)/25);
+                    c = f(y/100),
+                    n = y - 19*f(y/19),
+                    k = f((c - 17)/25);
                 var i = c - f(c/4) - f((c - k)/3) + 19*n + 15;
                 i = i - 30*f((i/30));
                 i = i - f(i/28)*(1 - f(i/28)*f(29/(i + 1))*f((21 - n)/11));
                 var j = y + f(y/4) + i + 2 - c + f(c/4);
                 j = j - 7*f(j/7);
                 var l = i - j,
-                        m = 3 + f((l + 40)/44),
-                        d = l + 28 - 31*f(m/4);
+                    m = 3 + f((l + 40)/44),
+                    d = l + 28 - 31*f(m/4);
                 return new Date(y,m-1,d);
         }
         
@@ -1122,9 +1223,7 @@
         }
         
         function is_holiday_target(dt){
-                var wd=dt.getDay();
-                if(0===wd) return true;
-                if(6===wd) return true;               
+                if (is_holiday_default(dt)) return true;             
                                 
                 var d=dt.getDate();
                 var m=dt.getMonth();

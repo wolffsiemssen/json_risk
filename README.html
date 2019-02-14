@@ -60,16 +60,20 @@ var present</em>value=JsonRisk.pricer<em>bond(bond,discount</em>curve, spread_cu
 <p>JSON Risk supports the instrument types below with a pricer function for each instrument:</p>
 
 <ul>
-<li>Fixed income instruments (fixed_income)
+<li>Fixed income instruments (simple_fixed_income)
 <ul>
-<li>Fixed rate bonds: pricer_bond(disc_curve, spread_curve)</li>
-<li>Floating rate bonds: pricer_floater(disc_curve, spread_curve, forward_curve)</li>
-<li>Interest rate swaps: pricer_swap(disc_curve, forward_curve)</li>
-<li>FX Spot/Forward: pricer_fxterm(disc_curve)</li>
+<li>Fixed rate bonds: pricer_bond(bond, disc_curve, spread_curve)</li>
+<li>Floating rate bonds: pricer_floater(floater, disc_curve, spread_curve, forward_curve)</li>
+<li>Interest rate swaps: pricer_swap(swap, disc_curve, forward_curve)</li>
+<li>FX Spot/Forward: pricer_fxterm(fxterm, disc_curve)</li>
+</ul></li>
+<li>Swaptions (swaption)
+<ul>
+<li>Plain vanilla swaptions (pricer_swaption(swaption, disc_curve, fwd_curve, vol_surface)</li>
 </ul></li>
 </ul>
 
-<p>Fixed income instrument pricing is implemented in a generic internal class <em>fixed_income</em>. The pricing routine supports features such as</p>
+<p>Fixed income instrument pricing is implemented in a generic internal class simple_fixed_income_. The pricing routine supports features such as</p>
 
 <ul>
 <li>day count conventions</li>
@@ -89,6 +93,8 @@ var present</em>value=JsonRisk.pricer<em>bond(bond,discount</em>curve, spread_cu
 <li>Curves
 <ul>
 <li>Yield term structures (yield)</li>
+<li>Spread curves (spread)</li>
+<li>Bachelier, that is, normal swaption volatility surfaces (bachelier)</li>
 </ul></li>
 <li>The global parameter JsonRisk.valuation_date</li>
 </ul>

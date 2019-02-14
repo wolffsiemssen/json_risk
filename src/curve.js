@@ -6,7 +6,7 @@
                 return {
                                 type: "yield", 
                                 times: [1], 
-                                dfs: [1/(1+value)]
+                                dfs: [1/(1+value)] //zero rates are act/365 annual compounding
                        };
         };
         

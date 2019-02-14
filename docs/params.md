@@ -2,15 +2,15 @@
 JSON Risk supports the parameter types below:
 
 - Curves
- - Yield term structures (yield)
- - FX term structures (fxterm, to be implemented)
+  - Yield term structures (yield)
+  - Spread curves (spread)
 - Scalars (to be implemented)
- - Equity or index prices (equity)
- - FX spot prices (fx)
-- Surfaces (to be implemented)
- - Black-Scholes volatility (bs)
- - Black-76 interest rate volatility (black)
- - Bachelier interest rate volatility (bachelier)
+  - Equity or index prices (equity)
+  - FX spot prices (fx)
+- Surfaces
+  - Bachelier, that is, normal interest rate volatility (bachelier)
+  - Black-76, that is, log-normal interest rate volatility (black, to be implemented)
+  - Black-Scholes volatility (bs, to be implemented)
 
 ## Parameter Field definitions
 ### Scalars
@@ -66,7 +66,6 @@ Optional:
 
 Optional (for automatic parameter assignment):
 
-- tenor (black only)
 - currency (string)
 - tag (string used for parameter assignment)
 

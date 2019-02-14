@@ -6,18 +6,18 @@
 <li>Curves
 <ul>
 <li>Yield term structures (yield)</li>
-<li>FX term structures (fxterm, to be implemented)</li>
+<li>Spread curves (spread)</li>
 </ul></li>
 <li>Scalars (to be implemented)
 <ul>
 <li>Equity or index prices (equity)</li>
 <li>FX spot prices (fx)</li>
 </ul></li>
-<li>Surfaces (to be implemented)
+<li>Surfaces
 <ul>
-<li>Black-Scholes volatility (bs)</li>
-<li>Black-76 interest rate volatility (black)</li>
-<li>Bachelier interest rate volatility (bachelier)</li>
+<li>Bachelier, that is, normal interest rate volatility (bachelier)</li>
+<li>Black-76, that is, log-normal interest rate volatility (black, to be implemented)</li>
+<li>Black-Scholes volatility (bs, to be implemented)</li>
 </ul></li>
 </ul>
 
@@ -89,7 +89,6 @@
 <p>Optional (for automatic parameter assignment):</p>
 
 <ul>
-<li>tenor (black only)</li>
 <li>currency (string)</li>
 <li>tag (string used for parameter assignment)</li>
 </ul>

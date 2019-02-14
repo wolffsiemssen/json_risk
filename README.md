@@ -11,7 +11,6 @@ JSON / JavaScript financial risk and pricing library
 ```
 var JsonRisk=require('path/to/json_risk.js');
 
-
 ```
 
 ## How to include in browser:
@@ -57,13 +56,15 @@ var present_value=JsonRisk.pricer_bond(bond,discount_curve, spread_curve);
 
 JSON Risk supports the instrument types below with a pricer function for each instrument:
  
-- Fixed income instruments (fixed\_income)
- - Fixed rate bonds: pricer\_bond(disc\_curve, spread\_curve)
- - Floating rate bonds: pricer\_floater(disc\_curve, spread\_curve, forward\_curve)
- - Interest rate swaps: pricer\_swap(disc\_curve, forward\_curve)
- - FX Spot/Forward: pricer\_fxterm(disc\_curve)
+- Fixed income instruments (simple\_fixed\_income)
+  - Fixed rate bonds: pricer\_bond(bond, disc\_curve, spread\_curve)
+  - Floating rate bonds: pricer\_floater(floater, disc\_curve, spread\_curve, forward\_curve)
+  - Interest rate swaps: pricer\_swap(swap, disc\_curve, forward\_curve)
+  - FX Spot/Forward: pricer\_fxterm(fxterm, disc\_curve)
+- Swaptions (swaption)
+  - Plain vanilla swaptions (pricer\_swaption(swaption, disc\_curve, fwd\_curve, vol\_surface)
 
-Fixed income instrument pricing is implemented in a generic internal class _fixed\_income_. The pricing routine supports features such as
+Fixed income instrument pricing is implemented in a generic internal class simple\_fixed\_income_. The pricing routine supports features such as
 
 - day count conventions
 - business day conventions
@@ -78,7 +79,9 @@ See [supported instruments](docs/instruments.md) for details and JSON format des
 JSON Risk supports the parameter types below:
 
 - Curves
- - Yield term structures (yield)
+  - Yield term structures (yield)
+  - Spread curves (spread)
+  - Bachelier, that is, normal swaption volatility surfaces (bachelier)
 - The global parameter JsonRisk.valuation_date
 
 See [supported parameters](docs/params.md) for details and JSON format descriptions.

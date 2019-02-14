@@ -7,12 +7,12 @@
                 {
                         date_pmt: array(date),
                         t_pmt: array(double),
-                        pmt_total: aray(double)
+                        pmt_total: array(double)
                 }
                 
                 */
                 if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
-                //cuve initialisation and fallbacks
+                //curve initialisation and fallbacks
                 var dc=library.get_initialised_curve(disc_curve);
                 var sc=library.get_initialised_curve(spread_curve);
                 if(typeof residual_spread !== "number") residual_spread=0;
@@ -28,15 +28,34 @@
                 var df_d;
                 var df_s;
                 var df_residual;
-                while(cf_obj.date_pmt[i]<=sd) i++;
+                while(cf_obj.date_pmt[i]<=sd) i++; // only consider cashflows after settlement date
                 while (i<cf_obj.t_pmt.length){
                         df_d=library.get_df(dc,cf_obj.t_pmt[i]);
                         df_s=library.get_df(sc,cf_obj.t_pmt[i]);
-                        df_residual=Math.exp(-cf_obj.t_pmt[i]*residual_spread);
+                        df_residual=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
                         res+=cf_obj.pmt_total[i]*df_d*df_s*df_residual;
                         i++;
                 }
                 return res;
+        };
+        
+        library.irr=function(cf_obj, settlement_date, payment_on_settlement_date){
+                if (null===library.valuation_date) throw new Error("irr: valuation_date must be set");
+                if (undefined===payment_on_settlement_date) payment_on_settlement_date=0;
+                
+                var tset=library.year_fraction_factory(null)(library.valuation_date, settlement_date);
+                var x=0.0, xnext=0.0001, xtemp=0, iter=20;
+                var f=0, fnext=1;
+                while (Math.abs(fnext)>0.000000001 && Math.abs(fnext-f)>0.000000001 && iter>0){
+                        f=library.dcf(cf_obj,null,null,x, settlement_date)+payment_on_settlement_date*Math.pow(1+x,-tset);
+                        fnext=library.dcf(cf_obj,null,null,xnext, settlement_date)+payment_on_settlement_date*Math.pow(1+xnext,-tset);
+                        xtemp=xnext;
+                        xnext=xnext-fnext*(xnext-x)/(fnext-f);
+                        x=xtemp;
+                        iter--;
+                }
+                if (iter===0) throw new Error("irr: failed, too many iterations");
+                return xnext;
         };
 
         library.simple_fixed_income=function(instrument){
@@ -131,7 +150,9 @@
                         date_accrual_start[i]=schedule[i];
                         date_accrual_end[i]=schedule[i+1];
                         date_pmt[i]=adj(schedule[i+1]);
-                        t_pmt[i]=default_yf(library.valuation_date,schedule[i+1]);
+                        t_pmt[i]=default_yf(library.valuation_date,date_pmt[i]);
+                        t_accrual_start[i]=default_yf(library.valuation_date,schedule[i]);
+                        t_accrual_end[i]=default_yf(library.valuation_date,schedule[i+1]);
                         is_interest_date[i]=true;
                         is_repay_date[i]=false;
                         is_fixing_date[i]=false;
@@ -176,18 +197,21 @@
                                 
                 var i, rt, interest, n=c.t_pmt.length;
                 //start with i=1 as current rate does not need recalculating
-                for(i=1;i<n;i++){
-                       c.is_fixing_date[i]=true;
-                       rt=library.get_fwd_rate(fwd_curve,
+                for(i=0;i<n;i++){
+                        c.is_fixing_date[i]=true;
+                        if (c.date_accrual_start[i] < library.valuation_date){
+                                rt=this.current_rate;
+                        }else{
+                                rt=library.get_fwd_rate(fwd_curve,
                                                default_yf(library.valuation_date,c.date_accrual_start[i]),
                                                default_yf(library.valuation_date,c.date_accrual_end[i]))+
-                          this.float_spread;
-                       
-                       interest=this.notional*rt*
-                                this.year_fraction_func(c.date_accrual_start[i],c.date_accrual_end[i]);
-                       c.interest_current_period[i]=interest;
-                       c.accrued_interest[i]=interest;
-                       c.pmt_interest[i]=interest;
+                                               this.float_spread;
+                        }
+                        interest=this.notional*rt*
+                                 this.year_fraction_func(c.date_accrual_start[i],c.date_accrual_end[i]);
+                        c.interest_current_period[i]=interest;
+                        c.accrued_interest[i]=interest;
+                        c.pmt_interest[i]=interest;
                 }
                 c.pmt_total[n-1]=c.pmt_interest[n-1]+this.notional;
                 return c;
