@@ -19,13 +19,13 @@ var am=function(expr,msg){
 am (typeof JsonRisk.pricer === 'function', "pricer function defined");
 am (typeof JsonRisk.pricer_bond === 'function', "pricer_bond function defined");
 am (typeof JsonRisk.period_str_to_time === 'function', "period_str_to_time function defined");
-am (typeof JsonRisk.get_initialised_date === 'function', "get_initialised_date function defined");
+am (typeof JsonRisk.get_safe_date === 'function', "get_safe_date function defined");
 am (typeof JsonRisk.date_str_to_date === 'function', "date_string_to_date function defined");
 am (typeof JsonRisk.get_rate === 'function', "get_rate function defined");
 am (typeof JsonRisk.get_df === 'function', "get_df function defined");
 am (typeof JsonRisk.get_fwd_rate === 'function', "get_fwd_rate function defined");
 am (typeof JsonRisk.get_const_curve === 'function', "get_const_curve function defined");
-am (typeof JsonRisk.get_initialised_curve === 'function', "get_initialised_curve function defined");
+am (typeof JsonRisk.get_safe_curve === 'function', "get_safe_curve function defined");
 
 
 /*!
@@ -799,8 +799,8 @@ for (i=0; i<months.length; i++){
                 cfs=bond_internal.get_cash_flows();
                 swaption=JsonRisk.create_equivalent_regular_swaption(cfs, expiry, bond);
                 p2=JsonRisk.pricer_swaption(swaption,curve,curve, surface);
-                console.log("JSON Risk bond rate:                            " + bond.fixed_rate);
-                console.log("JSON Risk equivalent regular swaption strike:   " + swaption.fixed_rate);
+                console.log("JSON Risk bond rate:                            " + bond.fixed_rate.toFixed(8));
+                console.log("JSON Risk equivalent regular swaption strike:   " + swaption.fixed_rate.toFixed(8));
                 console.log("JSON Risk bond maturity:                        " + bond.maturity);
                 console.log("JSON Risk equivalent regular swaption maturity: " + swaption.maturity);
                 console.log("JSON Risk equivalent regular swaption price:    " + p2.toFixed(3));

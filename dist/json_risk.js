@@ -49,9 +49,9 @@
         
         function get_curve_times(curve){
                 var i,times;
-                if (undefined===curve.times){
+                if (!curve.times){
                         //construct times from other parameters in order of preference
-                        if (undefined!==curve.days){
+                        if (curve.days){
                                 i=curve.days.length;
                                 times=new Array(i);
                                 while (i>0){
@@ -59,7 +59,7 @@
                                        //curve times are always assumed to be act/365
                                        times[i]=curve.days[i]/365;
                                 }                      
-                        }else if (undefined!==curve.dates){
+                        }else if (curve.dates){
                                 i=curve.dates.length;
                                 times=new Array(i);
                                 //curve times are always assumed to be act/365
@@ -69,7 +69,7 @@
                                        i--;
                                        times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
                                 }                      
-                        }else if (undefined!==curve.labels){
+                        }else if (curve.labels){
                                 i=curve.labels.length;
                                 times=new Array(i);    
                                 while (i>0){
@@ -108,15 +108,15 @@
                 return dfs;         
         }
         
-        library.get_initialised_curve=function(curve){
+        library.get_safe_curve=function(curve){
                 //if valid curve is given, returns curve in initialised form {type, times, dfs}, if null, returns constant zero curve
                 if (!curve) return library.get_const_curve(0.0);
                 var times=get_curve_times(curve);
                 var dfs;
-                if(undefined!==curve.dfs){
+                if(curve.dfs){
                         dfs=curve.dfs;
                 }else{
-                        if(undefined===curve.zcs) throw new Error("get_initialised_curve: invalid curve, both dfs and zcs undefined");
+                        if(!curve.zcs) throw new Error("get_safe_curve: invalid curve, both dfs and zcs undefined");
                         dfs=get_dfs(curve.zcs, times);
                 }
                 return {
@@ -126,8 +126,15 @@
                         };
         };
         
+        /* 
+        unsafe curve evaluation functions
+        require safe curve, that is, a curve with times and dfs
+        */
 
-        get_df_internal=function(curve,t,imin,imax){
+        library.get_df_unsafe=function(curve,t,imin,imax){
+                if (undefined===imin) imin=0;
+                if (undefined===imax) imax=curve.times.length-1;
+                
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
                 //curve only has one support point
@@ -143,26 +150,46 @@
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t>curve.times[imed]) return get_df_internal(curve,t,imed,imax);
-                return get_df_internal(curve,t,imin,imed);
+                if (t>curve.times[imed]) return library.get_df_unsafe(curve,t,imed,imax);
+                return library.get_df_unsafe(curve,t,imin,imed);
         };
 
-        library.get_df=function(curve,t){
-                var c=library.get_initialised_curve(curve);
-                return get_df_internal(c,t,0,c.times.length-1);
-        };
         
-        library.get_rate=function(curve,t){
+        library.get_rate_unsafe=function(curve,t){
                 if (t<1/512) return 0.0;
                 //zero rates are act/365 annual compounding
-                return Math.pow(library.get_df(curve,t),-1/t)-1;
+                return Math.pow(library.get_df_unsafe(curve,t),-1/t)-1;
         };
+        
+        
+        library.get_fwd_rate_unsafe=function(curve,tstart,tend){
+                if (tend-tstart<1/512) return 0.0;
+                return Math.pow(library.get_df_unsafe(curve,tend) / library.get_df_unsafe(curve,tstart),-1/(tend-tstart))-1;
+        };
+        
+        /* 
+        safe curve evaluation functions
+        will always initialise curve first for convenience
+        */
+        
+        library.get_df=function(curve,t){
+                var c=library.get_safe_curve(curve);
+                return library.get_df_unsafe(c,t,0,c.times.length-1);
+        };
+
+        library.get_rate=function(curve,t){
+                if (t<1/512) return 0.0;
+                var c=library.get_safe_curve(curve);
+                return library.get_rate_unsafe(c,t);
+        };
+
 
         library.get_fwd_rate=function(curve,tstart,tend){
                 if (tend-tstart<1/512) return 0.0;
-                var c=library.get_initialised_curve(curve);
-                return Math.pow(library.get_df(c,tend) / library.get_df(c,tstart),-1/(tend-tstart))-1;
+                var c=library.get_safe_curve(curve);
+                return library.get_fwd_rate_unsafe(c,tstart,tend);
         };
+
 
 }(this.JsonRisk || module.exports));
 ;
@@ -393,6 +420,21 @@
                 }
                 return x<=0.0 ? c : 1-c;
         };
+        
+        library.find_root_secant=function(func, start, next, max_iter, threshold){
+                var x=start, xnext=next, xtemp=0, iter=max_iter||20, t=threshold||0.000000001;
+                var f=0, fnext=1;
+                while (Math.abs(fnext)>t && Math.abs(fnext-f)>t && iter>0){
+                        f=func(x);
+                        fnext=func(xnext);
+                        xtemp=xnext;
+                        xnext=xnext-fnext*(xnext-x)/(fnext-f);
+                        x=xtemp;
+                        iter--;
+                }
+                if (iter===0) throw new Error("find_root_secant: failed, too many iterations");
+                return xnext;      
+        };
 
 }(this.JsonRisk || module.exports));
 ;
@@ -500,10 +542,10 @@
                 */
                 if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
                 //curve initialisation and fallbacks
-                var dc=library.get_initialised_curve(disc_curve);
-                var sc=library.get_initialised_curve(spread_curve);
+                var dc=library.get_safe_curve(disc_curve);
+                var sc=library.get_safe_curve(spread_curve);
                 if(typeof residual_spread !== "number") residual_spread=0;
-                var sd=library.get_initialised_date(settlement_date);
+                var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
 
                 //sanity checks
@@ -531,28 +573,26 @@
                 if (undefined===payment_on_settlement_date) payment_on_settlement_date=0;
                 
                 var tset=library.year_fraction_factory(null)(library.valuation_date, settlement_date);
-                var x=0.0, xnext=0.0001, xtemp=0, iter=20;
-                var f=0, fnext=1;
-                while (Math.abs(fnext)>0.000000001 && Math.abs(fnext-f)>0.000000001 && iter>0){
-                        f=library.dcf(cf_obj,null,null,x, settlement_date)+payment_on_settlement_date*Math.pow(1+x,-tset);
-                        fnext=library.dcf(cf_obj,null,null,xnext, settlement_date)+payment_on_settlement_date*Math.pow(1+xnext,-tset);
-                        xtemp=xnext;
-                        xnext=xnext-fnext*(xnext-x)/(fnext-f);
-                        x=xtemp;
-                        iter--;
-                }
-                if (iter===0) throw new Error("irr: failed, too many iterations");
-                return xnext;
+                var func=function(x){
+                        return library.dcf(cf_obj,null,null,x, settlement_date)+
+                               payment_on_settlement_date*Math.pow(1+x,-tset);
+                };
+                
+                var ret=library.find_root_secant(func,0,0.0001);
+                return ret;
         };
 
-        library.simple_fixed_income=function(instrument){
-                var maturity=library.get_initialised_date(instrument.maturity);       
+        library.simple_fixed_income=function(instrument, include_notional_pmt){
+                var maturity=library.get_safe_date(instrument.maturity);       
                 if(!maturity)
                         throw new Error("simple_fixed_income: must provide maturity date.");
                         
                 if(typeof instrument.notional !== 'number')
                         throw new Error("simple_fixed_income: must provide valid notional.");
                 this.notional=instrument.notional;
+                
+                //include notional payment in cash flows if not explicitely excluded
+                this.include_notional_pmt=(include_notional_pmt===false) ? false : true;
                 
                 if(typeof instrument.tenor !== 'number')
                         throw new Error("simple_fixed_income: must provide valid tenor.");
@@ -566,9 +606,9 @@
                 this.is_holiday_func=library.is_holiday_factory(instrument.calendar || "");
                 this.year_fraction_func=library.year_fraction_factory(instrument.dcc || "");
                 this.bdc=instrument.bdc || "";
-                var effective_date=library.get_initialised_date(instrument.effective_date); //null allowed
-                var first_date=library.get_initialised_date(instrument.first_date); //null allowed
-                var next_to_last_date=library.get_initialised_date(instrument.next_to_last_date); //null allowed
+                var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
+                var first_date=library.get_safe_date(instrument.first_date); //null allowed
+                var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
                 var settlement_days=(typeof instrument.settlement_days==='number') ? instrument.settlement_days: 0;
                 this.settlement_date=library.adjust(library.add_days(library.valuation_date,
                                                                     settlement_days),
@@ -651,8 +691,10 @@
                         pmt_interest[i]=interest_current_period[i];
                         pmt_total[i]=pmt_interest[i];
                 }
-                pmt_total[schedule.length-2]+=notional;
-                pmt_principal[schedule.length-2]+=notional;
+                if (this.include_notional_pmt){
+                        pmt_total[schedule.length-2]+=notional;
+                        pmt_principal[schedule.length-2]+=notional;
+                }
                 is_repay_date[schedule.length-2]=true;
                 //returns cash flow table object
                 return {date_accrual_start: date_accrual_start,
@@ -722,38 +764,10 @@
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
         
-        library.pricer_swap=function(swap, disc_curve, fwd_curve){
-                var fixed_sign=(swap.is_payer) ? -1 : 1;
-                var fixed_leg_internal=new library.simple_fixed_income({
-                        notional: swap.notional * fixed_sign,
-                        maturity: swap.maturity,
-                        fixed_rate: swap.fixed_rate,
-                        tenor: swap.fixed_tenor,
-                        effective_date: swap.effective_date,
-                        calendar: swap.calendar,
-                        bdc: swap.fixed_bdc,
-                        dcc: swap.fixed_dcc
-                });
-                var float_leg_internal=new library.simple_fixed_income({
-                        notional: - swap.notional * fixed_sign,
-                        maturity: swap.maturity,
-                        float_spread: swap.float_spread,
-                        tenor: swap.float_tenor,
-                        effective_date: swap.effective_date,
-                        calendar: swap.calendar,
-                        bdc: swap.float_bdc,
-                        dcc: swap.float_dcc,
-                        current_rate: swap.float_current_rate
-                });
-
-                return fixed_leg_internal.present_value(disc_curve, null, null)+
-                       float_leg_internal.present_value(disc_curve, null, fwd_curve);
-        };
-        
         library.pricer_fxterm=function(fxterm, disc_curve){
                 //first leg
                 var first_leg_internal=new library.simple_fixed_income({
-                        notional: fxterm.notional, // negative is first leg is pay leg
+                        notional: fxterm.notional, // negative if first leg is pay leg
                         maturity: fxterm.maturity,
                         fixed_rate: 0,
                         tenor: 0
@@ -877,40 +891,106 @@
 ;
 (function(library){
 
-        library.swaption=function(instrument){
+       library.swap=function(instrument){
                 this.phi=instrument.is_payer ? -1 : 1;
-                this.sign=instrument.is_short ? -1 : 1;
-                this.maturity=library.get_initialised_date(instrument.maturity);       
-                if(!this.maturity)
-                        throw new Error("swaption: must provide valid maturity date.");
-  
+                
                 this.fixed_rate=instrument.fixed_rate;
-                this.swap_fixed_leg_1bp=new library.simple_fixed_income({
-                        notional: instrument.notional,
+                //the true fixed leg of the swap
+                this.fixed_leg=new library.simple_fixed_income({
+                        notional: instrument.notional * this.phi,
                         maturity: instrument.maturity,
-                        fixed_rate: 0.0001,
+                        fixed_rate: instrument.fixed_rate,
                         tenor: instrument.fixed_tenor,
-                        effective_date: instrument.expiry,
+                        effective_date: instrument.effective_date,
                         calendar: instrument.calendar,
                         bdc: instrument.fixed_bdc,
                         dcc: instrument.fixed_dcc
-                });
+                }, false);
                 
-                this.swap_float_leg=new library.simple_fixed_income({
-                        notional: - instrument.notional,
+                //include fixed leg with 1bp rate so annuity and fair rate are retrievable even if true rate is zero
+                this.fixed_leg_1bp=new library.simple_fixed_income({
+                        notional: instrument.notional * this.phi,
+                        maturity: instrument.maturity,
+                        fixed_rate: 0.0001,
+                        tenor: instrument.fixed_tenor,
+                        effective_date: instrument.effective_date,
+                        calendar: instrument.calendar,
+                        bdc: instrument.fixed_bdc,
+                        dcc: instrument.fixed_dcc
+                }, false);
+                
+                //the floating rate leg of the swap
+                this.float_leg=new library.simple_fixed_income({
+                        notional: - instrument.notional * this.phi,
                         maturity: instrument.maturity,
                         float_spread: instrument.float_spread,
                         tenor: instrument.float_tenor,
-                        effective_date: instrument.expiry,
+                        effective_date: instrument.effective_date,
                         calendar: instrument.calendar,
                         bdc: instrument.float_bdc,
                         dcc: instrument.float_dcc,
                         current_rate: instrument.float_current_rate
-                });
-                this.expiry=library.get_initialised_date(instrument.expiry);
+                }, false);
+        };
+        
+        library.swap.prototype.present_value=function(disc_curve, fwd_curve){
+                var res=0;
+                res+=this.fixed_leg.present_value(disc_curve, null, null);
+                res+=this.float_leg.present_value(disc_curve, null, fwd_curve);
+                return res;
+        };
+        
+        library.swap.prototype.fair_rate=function(disc_curve, fwd_curve){
+                //returns fair rate, that is, rate such that swap has zero present value
+                var pv_float=this.float_leg.present_value(disc_curve, null, fwd_curve);
+                return - this.phi * pv_float / this.annuity(disc_curve);
+        };
+        
+        library.swap.prototype.annuity=function(disc_curve){
+                //returns always positive annuity regardless of payer/receiver flag
+                return this.fixed_leg_1bp.present_value(disc_curve) * this.phi * 10000;
+        };
+        
+        library.swap.prototype.present_value=function(disc_curve, fwd_curve){
+                var res=0;
+                res+=this.fixed_leg.present_value(disc_curve, null, null);
+                res+=this.float_leg.present_value(disc_curve, null, fwd_curve);
+                return res;
+        };
+        
+        library.swap.prototype.get_cash_flows=function(fwd_curve){
+                return{
+                        fixed_leg: this.fixed_leg.get_cash_flows(),
+                        float_leg: this.float_leg.get_cash_flows(fwd_curve)
+                };
+        };
+         
+        
+        library.pricer_swap=function(swap, disc_curve, fwd_curve){
+                var swap_internal=new library.swap(swap);
+                return swap_internal.present_value(disc_curve, fwd_curve);
+        };
+        
+
+}(this.JsonRisk || module.exports));
+;
+(function(library){
+
+        library.swaption=function(instrument){
+                this.sign=instrument.is_short ? -1 : 1;
+                
+                //maturity of the underlying swap
+                this.maturity=library.get_safe_date(instrument.maturity);       
+                if(!this.maturity)
+                        throw new Error("swaption: must provide valid maturity date.");
+  
+                //expiry of the swaption
+                this.expiry=library.get_safe_date(instrument.expiry);
                 if(!this.expiry)
                         throw new Error("swaption: must provide valid expiry date.");
 
+                //underlying swap object
+                this.swap=new library.swap(instrument);
         };
 
         library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
@@ -925,10 +1005,7 @@
                         return 0;
                 }       
                 //obtain fwd rate, that is, fair swap rate
-                var pv_notional=library.get_df(disc_curve, t_maturity)*this.swap_fixed_leg_1bp.notional;
-                var pv_float=this.swap_float_leg.present_value(disc_curve, null, fwd_curve)+pv_notional;
-                var annuity=(this.swap_fixed_leg_1bp.present_value(disc_curve, null, null)-pv_notional) / 0.0001;
-                var fair_rate=-pv_float/annuity;
+                var fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
                 
                 //obtain time-scaled volatility
                 var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
@@ -936,13 +1013,13 @@
                 var res;
                 if (t_expiry<1/512 || std_dev<0.0001){
                         //degenerate case where swaption is already expiring or volatility is very low
-                        res=Math.max(this.phi*(this.fixed_rate - fair_rate), 0);
+                        res=Math.max(this.swap.phi*(this.swap.fixed_rate - fair_rate), 0);
                 }else{
                         //bachelier formula      
-                        var d1 = (this.fixed_rate - fair_rate) / std_dev;
-                        res=this.phi*(this.fixed_rate - fair_rate)*library.cndf(this.phi*d1)+std_dev*library.ndf(d1);
+                        var d1 = (this.swap.fixed_rate - fair_rate) / std_dev;
+                        res=this.swap.phi*(this.swap.fixed_rate - fair_rate)*library.cndf(this.swap.phi*d1)+std_dev*library.ndf(d1);
                 }
-                res*=annuity;
+                res*=this.swap.annuity(disc_curve);
                 res*=this.sign;
                 return res;
         };
@@ -1091,12 +1168,12 @@
                 return new Date(y,m,d);
         };
         
-        library.get_initialised_date=function(d){
+        library.get_safe_date=function(d){
                 //takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
                 if(!d) return null;
                 if(d instanceof Date) return d;
                 if((d instanceof String) || typeof d === 'string') return library.date_str_to_date(d);
-                throw new Error("get_initialised_date: invalid input.");
+                throw new Error("get_safe_date: invalid input.");
         };
         
         /*!
@@ -1253,7 +1330,7 @@
                 var dt;
                 //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
                 for (i=0;i<n;i++){
-                       dt=library.get_initialised_date(dates[i]);
+                       dt=library.get_safe_date(dates[i]);
                        if (!dt) continue;
                        if (is_holiday_default(dt)) continue;
                        holidays.push(dt);

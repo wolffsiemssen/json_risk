@@ -12,9 +12,9 @@
         
         function get_curve_times(curve){
                 var i,times;
-                if (undefined===curve.times){
+                if (!curve.times){
                         //construct times from other parameters in order of preference
-                        if (undefined!==curve.days){
+                        if (curve.days){
                                 i=curve.days.length;
                                 times=new Array(i);
                                 while (i>0){
@@ -22,7 +22,7 @@
                                        //curve times are always assumed to be act/365
                                        times[i]=curve.days[i]/365;
                                 }                      
-                        }else if (undefined!==curve.dates){
+                        }else if (curve.dates){
                                 i=curve.dates.length;
                                 times=new Array(i);
                                 //curve times are always assumed to be act/365
@@ -32,7 +32,7 @@
                                        i--;
                                        times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
                                 }                      
-                        }else if (undefined!==curve.labels){
+                        }else if (curve.labels){
                                 i=curve.labels.length;
                                 times=new Array(i);    
                                 while (i>0){
@@ -71,15 +71,15 @@
                 return dfs;         
         }
         
-        library.get_initialised_curve=function(curve){
+        library.get_safe_curve=function(curve){
                 //if valid curve is given, returns curve in initialised form {type, times, dfs}, if null, returns constant zero curve
                 if (!curve) return library.get_const_curve(0.0);
                 var times=get_curve_times(curve);
                 var dfs;
-                if(undefined!==curve.dfs){
+                if(curve.dfs){
                         dfs=curve.dfs;
                 }else{
-                        if(undefined===curve.zcs) throw new Error("get_initialised_curve: invalid curve, both dfs and zcs undefined");
+                        if(!curve.zcs) throw new Error("get_safe_curve: invalid curve, both dfs and zcs undefined");
                         dfs=get_dfs(curve.zcs, times);
                 }
                 return {
@@ -89,8 +89,15 @@
                         };
         };
         
+        /* 
+        unsafe curve evaluation functions
+        require safe curve, that is, a curve with times and dfs
+        */
 
-        get_df_internal=function(curve,t,imin,imax){
+        library.get_df_unsafe=function(curve,t,imin,imax){
+                if (undefined===imin) imin=0;
+                if (undefined===imax) imax=curve.times.length-1;
+                
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
                 //curve only has one support point
@@ -106,25 +113,45 @@
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t>curve.times[imed]) return get_df_internal(curve,t,imed,imax);
-                return get_df_internal(curve,t,imin,imed);
+                if (t>curve.times[imed]) return library.get_df_unsafe(curve,t,imed,imax);
+                return library.get_df_unsafe(curve,t,imin,imed);
         };
 
-        library.get_df=function(curve,t){
-                var c=library.get_initialised_curve(curve);
-                return get_df_internal(c,t,0,c.times.length-1);
-        };
         
-        library.get_rate=function(curve,t){
+        library.get_rate_unsafe=function(curve,t){
                 if (t<1/512) return 0.0;
                 //zero rates are act/365 annual compounding
-                return Math.pow(library.get_df(curve,t),-1/t)-1;
+                return Math.pow(library.get_df_unsafe(curve,t),-1/t)-1;
         };
+        
+        
+        library.get_fwd_rate_unsafe=function(curve,tstart,tend){
+                if (tend-tstart<1/512) return 0.0;
+                return Math.pow(library.get_df_unsafe(curve,tend) / library.get_df_unsafe(curve,tstart),-1/(tend-tstart))-1;
+        };
+        
+        /* 
+        safe curve evaluation functions
+        will always initialise curve first for convenience
+        */
+        
+        library.get_df=function(curve,t){
+                var c=library.get_safe_curve(curve);
+                return library.get_df_unsafe(c,t,0,c.times.length-1);
+        };
+
+        library.get_rate=function(curve,t){
+                if (t<1/512) return 0.0;
+                var c=library.get_safe_curve(curve);
+                return library.get_rate_unsafe(c,t);
+        };
+
 
         library.get_fwd_rate=function(curve,tstart,tend){
                 if (tend-tstart<1/512) return 0.0;
-                var c=library.get_initialised_curve(curve);
-                return Math.pow(library.get_df(c,tend) / library.get_df(c,tstart),-1/(tend-tstart))-1;
+                var c=library.get_safe_curve(curve);
+                return library.get_fwd_rate_unsafe(c,tstart,tend);
         };
+
 
 }(this.JsonRisk || module.exports));

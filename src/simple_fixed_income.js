@@ -13,10 +13,10 @@
                 */
                 if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
                 //curve initialisation and fallbacks
-                var dc=library.get_initialised_curve(disc_curve);
-                var sc=library.get_initialised_curve(spread_curve);
+                var dc=library.get_safe_curve(disc_curve);
+                var sc=library.get_safe_curve(spread_curve);
                 if(typeof residual_spread !== "number") residual_spread=0;
-                var sd=library.get_initialised_date(settlement_date);
+                var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
 
                 //sanity checks
@@ -44,28 +44,26 @@
                 if (undefined===payment_on_settlement_date) payment_on_settlement_date=0;
                 
                 var tset=library.year_fraction_factory(null)(library.valuation_date, settlement_date);
-                var x=0.0, xnext=0.0001, xtemp=0, iter=20;
-                var f=0, fnext=1;
-                while (Math.abs(fnext)>0.000000001 && Math.abs(fnext-f)>0.000000001 && iter>0){
-                        f=library.dcf(cf_obj,null,null,x, settlement_date)+payment_on_settlement_date*Math.pow(1+x,-tset);
-                        fnext=library.dcf(cf_obj,null,null,xnext, settlement_date)+payment_on_settlement_date*Math.pow(1+xnext,-tset);
-                        xtemp=xnext;
-                        xnext=xnext-fnext*(xnext-x)/(fnext-f);
-                        x=xtemp;
-                        iter--;
-                }
-                if (iter===0) throw new Error("irr: failed, too many iterations");
-                return xnext;
+                var func=function(x){
+                        return library.dcf(cf_obj,null,null,x, settlement_date)+
+                               payment_on_settlement_date*Math.pow(1+x,-tset);
+                };
+                
+                var ret=library.find_root_secant(func,0,0.0001);
+                return ret;
         };
 
-        library.simple_fixed_income=function(instrument){
-                var maturity=library.get_initialised_date(instrument.maturity);       
+        library.simple_fixed_income=function(instrument, include_notional_pmt){
+                var maturity=library.get_safe_date(instrument.maturity);       
                 if(!maturity)
                         throw new Error("simple_fixed_income: must provide maturity date.");
                         
                 if(typeof instrument.notional !== 'number')
                         throw new Error("simple_fixed_income: must provide valid notional.");
                 this.notional=instrument.notional;
+                
+                //include notional payment in cash flows if not explicitely excluded
+                this.include_notional_pmt=(include_notional_pmt===false) ? false : true;
                 
                 if(typeof instrument.tenor !== 'number')
                         throw new Error("simple_fixed_income: must provide valid tenor.");
@@ -79,9 +77,9 @@
                 this.is_holiday_func=library.is_holiday_factory(instrument.calendar || "");
                 this.year_fraction_func=library.year_fraction_factory(instrument.dcc || "");
                 this.bdc=instrument.bdc || "";
-                var effective_date=library.get_initialised_date(instrument.effective_date); //null allowed
-                var first_date=library.get_initialised_date(instrument.first_date); //null allowed
-                var next_to_last_date=library.get_initialised_date(instrument.next_to_last_date); //null allowed
+                var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
+                var first_date=library.get_safe_date(instrument.first_date); //null allowed
+                var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
                 var settlement_days=(typeof instrument.settlement_days==='number') ? instrument.settlement_days: 0;
                 this.settlement_date=library.adjust(library.add_days(library.valuation_date,
                                                                     settlement_days),
@@ -164,8 +162,10 @@
                         pmt_interest[i]=interest_current_period[i];
                         pmt_total[i]=pmt_interest[i];
                 }
-                pmt_total[schedule.length-2]+=notional;
-                pmt_principal[schedule.length-2]+=notional;
+                if (this.include_notional_pmt){
+                        pmt_total[schedule.length-2]+=notional;
+                        pmt_principal[schedule.length-2]+=notional;
+                }
                 is_repay_date[schedule.length-2]=true;
                 //returns cash flow table object
                 return {date_accrual_start: date_accrual_start,
@@ -235,38 +235,10 @@
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
         
-        library.pricer_swap=function(swap, disc_curve, fwd_curve){
-                var fixed_sign=(swap.is_payer) ? -1 : 1;
-                var fixed_leg_internal=new library.simple_fixed_income({
-                        notional: swap.notional * fixed_sign,
-                        maturity: swap.maturity,
-                        fixed_rate: swap.fixed_rate,
-                        tenor: swap.fixed_tenor,
-                        effective_date: swap.effective_date,
-                        calendar: swap.calendar,
-                        bdc: swap.fixed_bdc,
-                        dcc: swap.fixed_dcc
-                });
-                var float_leg_internal=new library.simple_fixed_income({
-                        notional: - swap.notional * fixed_sign,
-                        maturity: swap.maturity,
-                        float_spread: swap.float_spread,
-                        tenor: swap.float_tenor,
-                        effective_date: swap.effective_date,
-                        calendar: swap.calendar,
-                        bdc: swap.float_bdc,
-                        dcc: swap.float_dcc,
-                        current_rate: swap.float_current_rate
-                });
-
-                return fixed_leg_internal.present_value(disc_curve, null, null)+
-                       float_leg_internal.present_value(disc_curve, null, fwd_curve);
-        };
-        
         library.pricer_fxterm=function(fxterm, disc_curve){
                 //first leg
                 var first_leg_internal=new library.simple_fixed_income({
-                        notional: fxterm.notional, // negative is first leg is pay leg
+                        notional: fxterm.notional, // negative if first leg is pay leg
                         maturity: fxterm.maturity,
                         fixed_rate: 0,
                         tenor: 0

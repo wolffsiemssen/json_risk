@@ -2,39 +2,20 @@
 (function(library){
 
         library.swaption=function(instrument){
-                this.phi=instrument.is_payer ? -1 : 1;
                 this.sign=instrument.is_short ? -1 : 1;
-                this.maturity=library.get_initialised_date(instrument.maturity);       
+                
+                //maturity of the underlying swap
+                this.maturity=library.get_safe_date(instrument.maturity);       
                 if(!this.maturity)
                         throw new Error("swaption: must provide valid maturity date.");
   
-                this.fixed_rate=instrument.fixed_rate;
-                this.swap_fixed_leg_1bp=new library.simple_fixed_income({
-                        notional: instrument.notional,
-                        maturity: instrument.maturity,
-                        fixed_rate: 0.0001,
-                        tenor: instrument.fixed_tenor,
-                        effective_date: instrument.expiry,
-                        calendar: instrument.calendar,
-                        bdc: instrument.fixed_bdc,
-                        dcc: instrument.fixed_dcc
-                });
-                
-                this.swap_float_leg=new library.simple_fixed_income({
-                        notional: - instrument.notional,
-                        maturity: instrument.maturity,
-                        float_spread: instrument.float_spread,
-                        tenor: instrument.float_tenor,
-                        effective_date: instrument.expiry,
-                        calendar: instrument.calendar,
-                        bdc: instrument.float_bdc,
-                        dcc: instrument.float_dcc,
-                        current_rate: instrument.float_current_rate
-                });
-                this.expiry=library.get_initialised_date(instrument.expiry);
+                //expiry of the swaption
+                this.expiry=library.get_safe_date(instrument.expiry);
                 if(!this.expiry)
                         throw new Error("swaption: must provide valid expiry date.");
 
+                //underlying swap object
+                this.swap=new library.swap(instrument);
         };
 
         library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
@@ -49,10 +30,7 @@
                         return 0;
                 }       
                 //obtain fwd rate, that is, fair swap rate
-                var pv_notional=library.get_df(disc_curve, t_maturity)*this.swap_fixed_leg_1bp.notional;
-                var pv_float=this.swap_float_leg.present_value(disc_curve, null, fwd_curve)+pv_notional;
-                var annuity=(this.swap_fixed_leg_1bp.present_value(disc_curve, null, null)-pv_notional) / 0.0001;
-                var fair_rate=-pv_float/annuity;
+                var fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
                 
                 //obtain time-scaled volatility
                 var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
@@ -60,13 +38,13 @@
                 var res;
                 if (t_expiry<1/512 || std_dev<0.0001){
                         //degenerate case where swaption is already expiring or volatility is very low
-                        res=Math.max(this.phi*(this.fixed_rate - fair_rate), 0);
+                        res=Math.max(this.swap.phi*(this.swap.fixed_rate - fair_rate), 0);
                 }else{
                         //bachelier formula      
-                        var d1 = (this.fixed_rate - fair_rate) / std_dev;
-                        res=this.phi*(this.fixed_rate - fair_rate)*library.cndf(this.phi*d1)+std_dev*library.ndf(d1);
+                        var d1 = (this.swap.fixed_rate - fair_rate) / std_dev;
+                        res=this.swap.phi*(this.swap.fixed_rate - fair_rate)*library.cndf(this.swap.phi*d1)+std_dev*library.ndf(d1);
                 }
-                res*=annuity;
+                res*=this.swap.annuity(disc_curve);
                 res*=this.sign;
                 return res;
         };

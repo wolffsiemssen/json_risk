@@ -51,12 +51,12 @@
                 return new Date(y,m,d);
         };
         
-        library.get_initialised_date=function(d){
+        library.get_safe_date=function(d){
                 //takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
                 if(!d) return null;
                 if(d instanceof Date) return d;
                 if((d instanceof String) || typeof d === 'string') return library.date_str_to_date(d);
-                throw new Error("get_initialised_date: invalid input.");
+                throw new Error("get_safe_date: invalid input.");
         };
         
         /*!
@@ -213,7 +213,7 @@
                 var dt;
                 //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
                 for (i=0;i<n;i++){
-                       dt=library.get_initialised_date(dates[i]);
+                       dt=library.get_safe_date(dates[i]);
                        if (!dt) continue;
                        if (is_holiday_default(dt)) continue;
                        holidays.push(dt);

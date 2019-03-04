@@ -50,5 +50,20 @@
                 }
                 return x<=0.0 ? c : 1-c;
         };
+        
+        library.find_root_secant=function(func, start, next, max_iter, threshold){
+                var x=start, xnext=next, xtemp=0, iter=max_iter||20, t=threshold||0.000000001;
+                var f=0, fnext=1;
+                while (Math.abs(fnext)>t && Math.abs(fnext-f)>t && iter>0){
+                        f=func(x);
+                        fnext=func(xnext);
+                        xtemp=xnext;
+                        xnext=xnext-fnext*(xnext-x)/(fnext-f);
+                        x=xtemp;
+                        iter--;
+                }
+                if (iter===0) throw new Error("find_root_secant: failed, too many iterations");
+                return xnext;      
+        };
 
 }(this.JsonRisk || module.exports));
