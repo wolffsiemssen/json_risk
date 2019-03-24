@@ -235,27 +235,5 @@
                 var floater_internal=new library.simple_fixed_income(floater);
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
-        
-        library.pricer_fxterm=function(fxterm, disc_curve){
-                //first leg
-                var first_leg_internal=new library.simple_fixed_income({
-                        notional: fxterm.notional, // negative if first leg is pay leg
-                        maturity: fxterm.maturity,
-                        fixed_rate: 0,
-                        tenor: 0
-                });
-                
-                var pv=first_leg_internal.present_value(disc_curve, null, null);
-                if (typeof(fxterm.notional_2) !== "number") return pv;
-                //optional second leg
-                var second_leg_internal=new library.simple_fixed_income({
-                        notional: fxterm.notional_2, // negative if second leg is pay leg
-                        maturity: fxterm.maturity_2,
-                        fixed_rate: 0,
-                        tenor: 0
-                });
-
-                return pv+second_leg_internal.present_value(disc_curve, null, null);
-        };
 
 }(this.JsonRisk || module.exports));
