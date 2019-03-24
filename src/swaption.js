@@ -127,14 +127,14 @@
                         expiry: expiry,
                         notional: outstanding_principal,
                         fixed_rate: irr,
-                        fixed_tenor: tenor,
+                        tenor: tenor,
                         float_spread: 0.00,
                         float_tenor: 6,
                         float_current_rate: 0.00,
                         calendar: calendar,
-                        fixed_bdc: bdc,
+                        bdc: bdc,
                         float_bdc: bdc,
-                        fixed_dcc: "act/365",
+                        dcc: "act/365",
                         float_dcc: "act/365"
                 }; 
         };

@@ -62,7 +62,7 @@ Plain vanilla swap positions. Fields:
 - maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
 - notional (number)
 - fixed_rate (number, coupon rate for fixed leg)
-- fixed_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
 - float_spread (number, spread above index for float leg)
 - float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
 
@@ -88,7 +88,7 @@ Vanilla swaption positions. Fields:
 - expiry (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY) representing the swaption expiry date, i.e., the settlement-upon-exercise date)
 - notional (number)
 - fixed_rate (number, coupon rate for fixed leg)
-- fixed_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
 - float_spread (number, spread above index for float leg)
 - float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
 

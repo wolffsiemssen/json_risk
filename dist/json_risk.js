@@ -1311,11 +1311,11 @@
                         notional: instrument.notional * this.phi,
                         maturity: instrument.maturity,
                         fixed_rate: instrument.fixed_rate,
-                        tenor: instrument.fixed_tenor,
+                        tenor: instrument.tenor,
                         effective_date: instrument.effective_date,
                         calendar: instrument.calendar,
-                        bdc: instrument.fixed_bdc,
-                        dcc: instrument.fixed_dcc
+                        bdc: instrument.bdc,
+                        dcc: instrument.dcc
                 }, false);
                 
                 //include fixed leg with 1bp rate so annuity and fair rate are retrievable even if true rate is zero
@@ -1323,11 +1323,11 @@
                         notional: instrument.notional * this.phi,
                         maturity: instrument.maturity,
                         fixed_rate: 0.0001,
-                        tenor: instrument.fixed_tenor,
+                        tenor: instrument.tenor,
                         effective_date: instrument.effective_date,
                         calendar: instrument.calendar,
-                        bdc: instrument.fixed_bdc,
-                        dcc: instrument.fixed_dcc
+                        bdc: instrument.bdc,
+                        dcc: instrument.dcc
                 }, false);
                 
                 //the floating rate leg of the swap
@@ -1506,14 +1506,14 @@
                         expiry: expiry,
                         notional: outstanding_principal,
                         fixed_rate: irr,
-                        fixed_tenor: tenor,
+                        tenor: tenor,
                         float_spread: 0.00,
                         float_tenor: 6,
                         float_current_rate: 0.00,
                         calendar: calendar,
-                        fixed_bdc: bdc,
+                        bdc: bdc,
                         float_bdc: bdc,
-                        fixed_dcc: "act/365",
+                        dcc: "act/365",
                         float_dcc: "act/365"
                 }; 
         };

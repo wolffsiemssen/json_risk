@@ -684,11 +684,11 @@ for (i=0; i<months.length; i++){
                         maturity: JsonRisk.add_months(JsonRisk.valuation_date, months[i]),
                         notional: 10000,
                         fixed_rate: 0.015,
-                        fixed_tenor: tenors[j],
+                        tenor: tenors[j],
                         float_spread: 0.01,
                         float_tenor: tenors[j],
                         float_current_rate: -0.005,
-                        fixed_dcc: "30e/360",
+                        dcc: "30e/360",
                         float_dcc: "30e/360"
                 };
                 swap_up={
@@ -696,11 +696,11 @@ for (i=0; i<months.length; i++){
                         maturity: JsonRisk.add_months(JsonRisk.valuation_date, months[i]),
                         notional: 10000,
                         fixed_rate: swap.fixed_rate+1/100,
-                        fixed_tenor: tenors[j],
+                        tenor: tenors[j],
                         float_spread: 0.01,
                         float_tenor: tenors[j],
                         float_current_rate: swap.float_current_rate+1/100,
-                        fixed_dcc: "30e/360",
+                        dcc: "30e/360",
                         float_dcc: "30e/360"
                 };
                 p=JsonRisk.pricer_swap(swap,curve,curve);
@@ -753,11 +753,11 @@ for (i=0; i<months.length; i++){
                         effective_date: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
                         notional: 10000,
                         fixed_rate: 0.02,
-                        fixed_tenor: 6,
+                        tenor: 6,
                         float_spread: 0.01,
                         float_tenor: 3,
                         float_current_rate: 0,
-                        fixed_dcc: "act/365",
+                        dcc: "act/365",
                         float_dcc: "30e/360"
                 };
 
@@ -901,10 +901,10 @@ var results;
 var check=function(arr){
         for (var j=0; j<arr.length; j++){
                 if(typeof(arr[j])!== 'number') return false;
-                if (arr[j]===NaN) return false;
+                if (isNaN(arr[j])) return false;
         }
         return true;
-}
+};
 results=JsonRisk.vector_pricer({
         type: 'bond',
         maturity: new Date(2032,1,1),
@@ -966,13 +966,13 @@ results=JsonRisk.vector_pricer({
         maturity: new Date(2032,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
-        fixed_tenor: 12,
+        tenor: 12,
         float_spread: 0.00758,
         float_current_rate: 0,
         float_tenor: 3,
-        fixed_bdc: "following",
+        bdc: "following",
         float_bdc: "modified",
-        fixed_dcc: "act/act",
+        dcc: "act/act",
         calendar: "TARGET",
         disc_curve: "EURO-GOV",
         fwd_curve: "EURO-GOV",
@@ -987,13 +987,13 @@ results=JsonRisk.vector_pricer({
         expiry: new Date(2022,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
-        fixed_tenor: 12,
+        tenor: 12,
         float_spread: 0.00758,
         float_current_rate: 0,
         float_tenor: 3,
-        fixed_bdc: "following",
+        bdc: "following",
         float_bdc: "modified",
-        fixed_dcc: "act/act",
+        dcc: "act/act",
         calendar: "TARGET",
         disc_curve: "EURO-GOV",
         fwd_curve: "EURO-GOV",
