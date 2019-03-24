@@ -43,13 +43,6 @@
                 }, false);
         };
         
-        library.swap.prototype.present_value=function(disc_curve, fwd_curve){
-                var res=0;
-                res+=this.fixed_leg.present_value(disc_curve, null, null);
-                res+=this.float_leg.present_value(disc_curve, null, fwd_curve);
-                return res;
-        };
-        
         library.swap.prototype.fair_rate=function(disc_curve, fwd_curve){
                 //returns fair rate, that is, rate such that swap has zero present value
                 var pv_float=this.float_leg.present_value(disc_curve, null, fwd_curve);
