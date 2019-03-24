@@ -49,7 +49,7 @@ Optional (improving pricing accuracy or adding features):
 - bdc (string)
 - dcc (string)
 - settlement_days (number)
-- current_rate (number, current rate for floater)
+- float\_current\_rate (number, current rate for floater)
 - residual_spread (number, discounting spread over yield and spread curves)
 - currency
 
@@ -70,9 +70,9 @@ Optional (improving pricing accuracy or adding features):
 
 - effective\_date (date string)
 - calendar (string)
-- fixed_bdc (string)
+- bdc (string)
 - float_bdc (string)
-- fixed_dcc (string)
+- dcc (string)
 - float_dcc (string)
 - float\_current\_rate (number, current rate for float leg)
 - residual_spread (number, discounting spread over yield and spread curves)
@@ -96,9 +96,9 @@ Optional (improving pricing accuracy or adding features):
 
 - effective\_date (date string)
 - calendar (string)
-- fixed_bdc (string)
+- bdc (string)
 - float_bdc (string)
-- fixed_dcc (string)
+- dcc (string)
 - float_dcc (string)
 - float\_current\_rate (number, current rate for float leg)
 - residual_spread (number, discounting spread over yield and spread curves)

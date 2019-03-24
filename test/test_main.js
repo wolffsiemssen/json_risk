@@ -343,6 +343,8 @@ am ((3.5).toFixed(10) === JsonRisk.get_surface_rate(s, 2.5, 3.5).toFixed(10), "S
 
 s.labels_expiry=["1Y", "2Y", "3Y"];
 s.labels_term=["1Y", "2Y", "3Y", "4Y"];
+delete s.expiries;
+delete s.terms;
 
 am ((1.5).toFixed(10) === JsonRisk.get_surface_rate(s, 1, 2.5).toFixed(10), "Surface interpolation (fallback on labels, 1)");
 am ((2.5).toFixed(10) === JsonRisk.get_surface_rate(s, 2, 2.5).toFixed(10), "Surface interpolation (fallback on labels, 2)");
@@ -621,7 +623,7 @@ for (i=0; i<Kupon.length; i++){
         maturity: Maturity[i],
         notional: 100.0,
         float_spread: Kupon[i]/100,
-        current_rate: Kupon[i]/100,
+        float_current_rate: Kupon[i]/100,
         tenor: 12,
         bdc: "following",
         dcc: "act/act",
@@ -840,3 +842,71 @@ fx_swapleg.maturity_2=new Date(2022,10,29);
 var pv= JsonRisk.pricer_fxterm(fx_swapleg,curve);
 am(pv.toFixed(2) === "8.00", "FX swap valuation (2)");
 
+/* 
+
+Test Loan
+
+*/
+
+//test special case of regular loan, value should always be equal to bond
+/*
+Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
+Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
+              "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
+              "15.08.2046", "15.08.2048"];
+Kurs_Dirty=[109.396, 109.114, 105.367, 101.279, 105.139, 100.490,
+                161.156, 173.187, 144.244, 128.600, 129.562, 98.366];
+
+JsonRisk.valuation_date=new Date(2018,1,23);
+
+bonds=[];
+for (i=0; i<Kupon.length; i++){
+        bonds.push({
+        maturity: Maturity[i],
+        notional: 100.0,
+        fixed_rate: Kupon[i]/100,
+        tenor: 12,
+        repay_tenor: 0,
+        fixing_tenor: 0,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET"
+        });
+}
+
+times=[1/12,3/12,6/12,1,2,3,4,5];
+zcs=[0.001,0.002,0.003,0.004,0.005, 0.006, 0.007,0.007];
+curve={times:times,zcs:zcs};
+
+for (i=0; i<Kupon.length; i++){
+        pv_bond=JsonRisk.pricer_bond(bonds[i],curve_up, null, null);
+        pv_loan=JsonRisk.pricer_loan(bonds[i],curve_up, null, null);
+        
+        
+        console.log("JSON Risk regular bond price                                               : " + pv_bond.toFixed(3));
+        console.log("JSON Risk regular bond price priced with irregular_fixed_income instrument : " + pv_loan.toFixed(3));
+       
+        am(pv_bond===pv_loan, "Loan valuation with regular loan against bond pricer, (" + (i+1) +")");
+}
+*/
+/* 
+
+Test vector pricing
+
+*/
+
+var params=(typeof(test_params)==='object') ? test_params : require('./params_example.json');
+JsonRisk.store_params(params);
+console.log(JsonRisk.get_params());
+
+console.log(JsonRisk.vector_pricer({
+        maturity: Maturity[i],
+        notional: 100.0,
+        fixed_rate: Kupon[i]/100,
+        tenor: 12,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement_days: 2,
+        disc_curve: "EURO-GOV"
+        }));

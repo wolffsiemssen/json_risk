@@ -19,7 +19,7 @@
                         throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
                 if(tenor<0 || Math.floor(tenor) !== tenor)
                         throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
-                if (0===tenor) return [eff_dt, maturity];
+                if (0===tenor) return [(eff_dt instanceof Date) ? eff_dt : library.valuation_date, maturity];
                 
                 var adj=function(d){
                         return library.adjust(d,bdc,is_holiday_func);

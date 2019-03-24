@@ -35,7 +35,8 @@
         return JsonRisk;
 
 }));
-;(function(library){
+;(function(library){        
+        var default_yf=null;
 
         library.get_const_curve=function(value){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
@@ -47,147 +48,98 @@
                        };
         };
         
-        function get_curve_times(curve){
-                var i,times;
+        function get_time_at(curve, i){
                 if (!curve.times){
                         //construct times from other parameters in order of preference
-                        if (curve.days){
-                                i=curve.days.length;
-                                times=new Array(i);
-                                while (i>0){
-                                       i--;
-                                       //curve times are always assumed to be act/365
-                                       times[i]=curve.days[i]/365;
-                                }                      
-                        }else if (curve.dates){
-                                i=curve.dates.length;
-                                times=new Array(i);
-                                //curve times are always assumed to be act/365
-                                var yf=library.year_fraction_factory("act/365");
-                                var ref_date=library.date_str_to_date(curve.dates[0]);
-                                while (i>0){
-                                       i--;
-                                       times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
-                                }                      
-                        }else if (curve.labels){
-                                i=curve.labels.length;
-                                times=new Array(i);    
-                                while (i>0){
-                                       i--;
-                                       times[i]=library.period_str_to_time(curve.labels[i]);
-                                }                      
-                        }else{
-                                throw new Error("init_curve: invalid curve, cannot derive times");
+                        //curve times are always act/365
+                        if (curve.days) return curve.days[i]/365;               
+                        if (curve.dates){
+                                default_yf=default_yf || library.year_fraction_factory("a/365");
+                                return default_yf(library.get_safe_date(curve.dates[0]),library.get_safe_date(curve.dates[i]));
                         }
-                        return times;
-                }else{
-                        i=curve.times.length;
-                        while (i>0){
-                                i--;
-                                if (typeof curve.times[i] != 'number') 
-                                        throw new Error("get_curve_times: invalid vector of times, must be numeric");
-                        }
-                        return curve.times;
+                        if (curve.labels) return library.period_str_to_time(curve.labels[i]);
+                        throw new Error("get_time_at: invalid curve, cannot derive times");
                 }
+                return curve.times[i];
         }
         
-        function get_dfs(zcs, times){
-                var i, dfs;
-                i=zcs.length;
-                if(times.length!==i) throw new Error("get_dfs: invalid input, length of zcs does not match length of times");
-
-                //construct discount factors from zero coupons
-                dfs=new Array(i);
+        library.get_curve_times=function(curve){
+                var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
+                if (!i) throw new Error("get_curve_times: invalid curve, need to provide valid times, days, dates, or labels");
+                var times=new Array(i);
                 while (i>0){
-                       //zero coupon curves are always assumed to be annual compounding act/365
                         i--;
-                        if (typeof zcs[i] != 'number')
-                                throw new Error("get_curve_times: invalid vector of times, must be numeric");
-                        dfs[i]=Math.pow(1+zcs[i],-times[i]);
+                        times[i]=get_time_at(curve, i);
                 }
-                return dfs;         
+                return times;
+        };
+        
+        function get_df_at(curve, i){
+                if (curve.dfs) return curve.dfs[i];
+                if (curve.zcs) return Math.pow(1+curve.zcs[i],-get_time_at(curve,i));
+                throw new Error("get_df: invalid curve, must provide dfs or zcs");
+        }
+        
+        function get_curve_dfs(curve){
+                var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
+                if (!i) throw new Error("get_curve_dfs: invalid curve, need to provide valid times, days, dates, or labels");
+                if(curve.dfs){
+                        if (curve.dfs.length !== i) throw new Error("get_curve_dfs: invalid curve, dfs length must match times length");
+                }else{
+                        if (curve.zcs.length !== i) throw new Error("get_curve_dfs: invalid curve, zcs length must match times length");
+                }
+                var dfs=new Array(i);
+                while (i>0){
+                        i--;
+                        dfs[i]=curve.dfs ? curve.dfs[i] :get_df_at(curve, i);
+                        if (typeof dfs[i] != 'number') throw new Error("get_curve_dfs: invalid curve, must provide numeric zcs or dfs");
+                }
+                return dfs;
         }
         
         library.get_safe_curve=function(curve){
-                //if valid curve is given, returns curve in initialised form {type, times, dfs}, if null, returns constant zero curve
+                //if valid curve is given, returns validated curve in most efficient form {type, times, dfs}, 
+                //if null or other falsy argument is given, returns constant zero curve
                 if (!curve) return library.get_const_curve(0.0);
-                var times=get_curve_times(curve);
-                var dfs;
-                if(curve.dfs){
-                        dfs=curve.dfs;
-                }else{
-                        if(!curve.zcs) throw new Error("get_safe_curve: invalid curve, both dfs and zcs undefined");
-                        dfs=get_dfs(curve.zcs, times);
-                }
                 return {
                                 type: "yield", 
-                                times: times,
-                                dfs: dfs
+                                times: library.get_curve_times(curve),
+                                dfs: get_curve_dfs(curve)
                         };
         };
-        
-        /* 
-        unsafe curve evaluation functions
-        require safe curve, that is, a curve with times and dfs
-        */
 
-        library.get_df_unsafe=function(curve,t,imin,imax){
+        
+        library.get_df=function(curve,t,imin,imax){
                 if (undefined===imin) imin=0;
-                if (undefined===imax) imax=curve.times.length-1;
+                if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
                 
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
                 //curve only has one support point
-                if (imin===imax) return (t===curve.times[imin]) ? curve.dfs[imin] : Math.pow(curve.dfs[imin], t/curve.times[imin]);
+                if (imin===imax) return (t===get_time_at(curve,imin)) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
                 //extrapolation (constant on zero coupon rates)
-                if (t<curve.times[imin]) return Math.pow(curve.dfs[imin], t/curve.times[imin]);
-                if (t>curve.times[imax]) return Math.pow(curve.dfs[imax], t/curve.times[imax]);
+                if (t<get_time_at(curve,imin)) return Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
+                if (t>get_time_at(curve,imax)) return Math.pow(get_df_at(curve,imax), t/get_time_at(curve,imax));
                 //interpolation (linear on discount factors)
                 if (imin+1===imax){
-                        if(curve.times[imax]-curve.times[imin]<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-                        return curve.dfs[imin]*(curve.times[imax]-t)/(curve.times[imax]-curve.times[imin])+
-                               curve.dfs[imax]*(t-curve.times[imin])/(curve.times[imax]-curve.times[imin]);
+                        if(get_time_at(curve,imax)-get_time_at(curve,imin)<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+                        return get_df_at(curve,imin)*(get_time_at(curve,imax)-t)/(get_time_at(curve,imax)-get_time_at(curve,imin))+
+                               get_df_at(curve,imax)*(t-get_time_at(curve,imin))/(get_time_at(curve,imax)-get_time_at(curve,imin));
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t>curve.times[imed]) return library.get_df_unsafe(curve,t,imed,imax);
-                return library.get_df_unsafe(curve,t,imin,imed);
-        };
-
-        
-        library.get_rate_unsafe=function(curve,t){
-                if (t<1/512) return 0.0;
-                //zero rates are act/365 annual compounding
-                return Math.pow(library.get_df_unsafe(curve,t),-1/t)-1;
-        };
-        
-        
-        library.get_fwd_rate_unsafe=function(curve,tstart,tend){
-                if (tend-tstart<1/512) return 0.0;
-                return Math.pow(library.get_df_unsafe(curve,tend) / library.get_df_unsafe(curve,tstart),-1/(tend-tstart))-1;
-        };
-        
-        /* 
-        safe curve evaluation functions
-        will always initialise curve first for convenience
-        */
-        
-        library.get_df=function(curve,t){
-                var c=library.get_safe_curve(curve);
-                return library.get_df_unsafe(c,t,0,c.times.length-1);
+                if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
+                return library.get_df(curve,t,imin,imed);
         };
 
         library.get_rate=function(curve,t){
                 if (t<1/512) return 0.0;
-                var c=library.get_safe_curve(curve);
-                return library.get_rate_unsafe(c,t);
+                return Math.pow(library.get_df(curve,t),-1/t)-1;
         };
-
 
         library.get_fwd_rate=function(curve,tstart,tend){
                 if (tend-tstart<1/512) return 0.0;
-                var c=library.get_safe_curve(curve);
-                return library.get_fwd_rate_unsafe(c,tstart,tend);
+                return Math.pow(library.get_df(curve,tend) / library.get_df(curve,tstart),-1/(tend-tstart))-1;
         };
 
 
@@ -197,8 +149,8 @@
         
  
         library.irregular_fixed_income=function(instrument){
-                //needs to be reimplemented for irregular instruments
-                var maturity=library.get_initialised_date(instrument.maturity);       
+                
+                var maturity=library.get_safe_date(instrument.maturity);       
                 if(!maturity)
                         throw new Error("irregular_fixed_income: must provide maturity date.");
                         
@@ -212,15 +164,54 @@
                 if(instrument.tenor < 0 || instrument.tenor!==Math.floor(instrument.tenor))
                         throw new Error("irregular_fixed_income: must provide valid tenor.");
                 var tenor=instrument.tenor;
+            
+                this.amortization = typeof(instrument.amortization) === 'string' ? instrument.amortization.toLowerCase(): 'bullet';
+
+                //parameters for amortising instruments
+                var repay_tenor=instrument.repay_tenor;     
+                if(this.amortization==="annuity" || this.amortization==="stepdown") {
                 
-                this.type=(typeof instrument.type==='string') ? instrument.type : 'unknown';
+                        if(instrument.repay_tenor < 0 || instrument.repay_tenor!==Math.floor(instrument.repay_tenor))
+                                throw new Error("irregular_fixed_income: must provide valid repay_tenor.");
+                        repay_tenor=instrument.repay_tenor;
+                    
+                        this.repay_amount = instrument.repay_amount;
+                }else{
+                        this.repay_amount= 0;
+                }
+                this.current_accrued_interest = instrument.current_accrued_interest || 0.0;
+            
+            
+                this.type=(typeof instrument.type==='string') ? instrument.type : 'unknown';  // AG what is instrument.type, something like "loan" or "deposit" ?
                 
                 this.is_holiday_func=library.is_holiday_factory(instrument.calendar || "");
                 this.year_fraction_func=library.year_fraction_factory(instrument.dcc || "");
                 this.bdc=instrument.bdc || "";
-                var effective_date=library.get_initialised_date(instrument.effective_date); //null allowed
-                var first_date=library.get_initialised_date(instrument.first_date); //null allowed
-                var next_to_last_date=library.get_initialised_date(instrument.next_to_last_date); //null allowed
+                var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
+                var first_date=library.get_safe_date(instrument.first_date); //null allowed
+                var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
+            
+            
+            // AG addition
+            
+                var repay_first_date=library.get_safe_date(instrument.repay_first_date); //null allowed
+                var repay_next_to_last_date=library.get_safe_date(instrument.repay_next_to_last_date); //null allowed
+            
+                var fixing_first_date=library.get_safe_date(instrument.fixing_first_date); //null allowed
+                var fixing_next_to_last_date=library.get_safe_date(instrument.fixing_next_to_last_date); //null allowed
+            
+                if(instrument.conditions_valid_until != null){ 
+                    this.conditions_valid_until = new Array(instrument.conditions_valid_until.length-1);
+                    for(i=0;i<instrument.conditions_valid_until;i++){
+                                this.conditions_valid_until[i]=
+                                    library.get_safe_date(instrument.conditions_valid_until[i]);
+                                }
+                    }
+            
+            // AG addition end
+            
+            
+            
                 var settlement_days=(typeof instrument.settlement_days==='number') ? instrument.settlement_days: 0;
                 this.settlement_date=library.adjust(library.add_days(library.valuation_date,
                                                                     settlement_days),
@@ -230,17 +221,30 @@
                 var currency=instrument.currency || "";
 
 
-                if(typeof instrument.fixed_rate === 'number'){
+                if(typeof instrument.fixed_rate === 'number' || instrument.fixed_rate.length>1  /* AG account for multiconditions*/){
                         //fixed rate instrument
                         this.is_float=false;
                         this.fixed_rate=instrument.fixed_rate;
+                        this.fixing_tenor=0;
                 }else{
                         //floating rate instrument
                         this.is_float=true;
-                        this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0;
+                        this.float_spread=(typeof instrument.float_spread === 'number' || instrument.float_spread.length>1 /*AG account for multiconditions*/) ? instrument.float_spread : 0;
                         if(typeof instrument.current_rate !== 'number')
                                 throw new Error("irregular_fixed_income: must provide valid current_rate.");
-                        this.current_rate=instrument.current_rate;
+                        this.current_rate=instrument.current_rate;                 
+                    
+                        // AG addition to floater constructor
+                    
+                        this.cap_rate = instrument.cap_rate; // can be number or array, entries can be null
+                        this.floor_rate = instrument.floor_rate; // can be number or array, entries can be null
+                    
+                        this.fixing_tenor = instrument.fixing_tenor;
+                        this.fixing_first_date = library.get_safe_date(instrument.fixing_first_date);
+                        this.fixing_next_to_last_date = library.get_safe_date(instrument.fixing_next_to_last_date);
+                    
+                        // AG end of addition to floater constructor
+                    
                 }
                 
                 this.schedule=library.backward_schedule(effective_date, 
@@ -250,108 +254,215 @@
                                                  this.bdc,
                                                  first_date,
                                                  next_to_last_date);
+            
+            
+            // AG modified
+            
+            
+                if(this.is_float==true){
+                                        this.fixing_schedule = 
+                                                library.backward_schedule(this.fixing_first_date,this.fixing_next_to_last_date,this.fixing_tenor,
+                                                        this.is_holiday_func,this.bdc,this.fixing_first_date,this.fixing_next_to_last_date);
+                                        }
 
-                this.cash_flows=this.fix_cash_flows(this.schedule,
+                          
+                this.repay_schedule = library.backward_schedule(effective_date, 
+                                                     maturity,
+                                                     repay_tenor,
+                                                     this.is_holiday_func,
+                                                     this.bdc,
+                                                     repay_first_date,
+                                                     repay_next_to_last_date);
+            
+                this.merged_schedule = this.get_merged_schedule(this.schedule,this.repay_schedule,this.is_float,tenor,this.fixing_tenor,fixing_first_date);
+            
+                this.cash_flows=this.fixflt_cash_flows(this.merged_schedule, 
                                                        this.bdc,
                                                        this.is_holiday_func,
                                                        this.year_fraction_func,
                                                        this.notional,
-                                                       (this.is_float) ? this.current_rate : this.fixed_rate);
+                                                       (this.is_float) ? this.current_rate : this.fixed_rate,
+                                                       null);
+            
+       
+           
+            // AG end of modification and addition
+                        
+            
         };
 
-        library.irregular_fixed_income.prototype.fix_cash_flows=function(schedule, bdc, is_holiday_func, year_fraction_func, notional, rate ){
-                //needs to be reimplemented for irregular instruments
+        library.irregular_fixed_income.prototype.fixflt_cash_flows=function(schedule, bdc, is_holiday_func, year_fraction_func, notional, rate,fwd_curve ){
+            
+            
                 if (null===library.valuation_date) throw new Error("fix_cash_flows: valuation_date must be set");
-
-                var date_accrual_start=new Array(schedule.length-1);
-                var date_accrual_end=new Array(schedule.length-1);
-                var date_pmt=new Array(schedule.length-1);
-                var t_accrual_start=new Array(schedule.length-1);
-                var t_accrual_end=new Array(schedule.length-1);
-                var t_pmt=new Array(schedule.length-1);
-                var is_interest_date=new Array(schedule.length-1);
-                var is_repay_date=new Array(schedule.length-1);
-                var is_fixing_date=new Array(schedule.length-1);
-                var is_condition_date=new Array(schedule.length-1);
-                var current_principal=new Array(schedule.length-1);
-                var interest_current_period=new Array(schedule.length-1);
-                var accrued_interest=new Array(schedule.length-1);
-                var pmt_principal=new Array(schedule.length-1);
-                var pmt_interest=new Array(schedule.length-1);
-                var pmt_total=new Array(schedule.length-1);
-                
-                var i;
-                var adj=function(d){
-                        return library.adjust(d,bdc,is_holiday_func);
-                };
+            
                 var default_yf=library.year_fraction_factory(null);
 
-                for(i=0;i<schedule.length-1;i++){
-                        date_accrual_start[i]=schedule[i];
-                        date_accrual_end[i]=schedule[i+1];
-                        date_pmt[i]=adj(schedule[i+1]);
-                        t_pmt[i]=default_yf(library.valuation_date,schedule[i+1]);
-                        is_interest_date[i]=true;
-                        is_repay_date[i]=false;
-                        is_fixing_date[i]=false;
-                        is_condition_date[i]=false;
-                        current_principal[i]=notional;
-                        interest_current_period[i]=notional*rate*year_fraction_func(date_accrual_start[i],date_accrual_end[i]);
-                        accrued_interest[i]=interest_current_period[i];
-                        pmt_principal[i]=0;
-                        pmt_interest[i]=interest_current_period[i];
-                        pmt_total[i]=pmt_interest[i];
+                var current_principal=new Array(schedule.date_accrual_start.length-1);
+                var interest_current_period=new Array(schedule.date_accrual_start.length-1);
+                var accrued_interest=new Array(schedule.date_accrual_start.length-1);
+                var pmt_principal=new Array(schedule.date_accrual_start.length-1);
+                var pmt_interest=new Array(schedule.date_accrual_start.length-1);
+                var pmt_total=new Array(schedule.date_accrual_start.length-1);
+            
+            
+            
+                    /* introduce temporary workable and
+                                    overridable variables */
+                
+                this.temp_rate = rate || rate[0];  
+                this.temp_notional = notional;  
+                this.temp_int_accrual = this.current_accrued_interest;  
+                this.temp_payment = this.repay_amount || this.repay_amount[0];  
+                this.temp_amortization = this.amortization || this.amortization[0];  
+                
+                
+                if(this.is_float==true){
+                    //this.float_rate_series = this.create_float_rate_series(fwd_curve);
+                    this.float_rate_series = this.get_fwd_rate_series(fwd_curve);
+                    this.rate_pos = 0;
+                    
+                    if (this.float_spread != null){
+                        this.temp_float_spread = this.float_spread || this.float_spread[0];
+                    }
+                    
+                    if (this.cap_rate != null) {
+                        this.temp_cap_rate = this.cap_rate || this.cap_rate[0]; // consider it can be an array, replaces this.actual_cap in cf_step 
+                    }
+                    if (this.floor_rate != null) {
+                        this.temp_floor_rate = this.floor_rate || this.floor_rate[0]; // consider it can be an array, replaces this.actual_cap in cf_step 
+                    }
+                    
+                    
                 }
-                pmt_total[schedule.length-2]+=notional;
-                pmt_principal[schedule.length-2]+=notional;
-                is_repay_date[schedule.length-2]=true;
-                //returns cash flow table object
-                return {date_accrual_start: date_accrual_start,
-                        date_accrual_end: date_accrual_end,
-                        date_pmt: date_pmt,
-                        t_accrual_start: t_accrual_start,
-                        t_accrual_end: t_accrual_end,
-                        t_pmt: t_pmt,
-                        is_interest_date: is_interest_date,
-                        is_repay_date: is_repay_date,
-                        is_fixing_date: is_fixing_date,
-                        is_condition_date: is_condition_date,
+                
+                    //then do the following loop of computations
+            
+            
+                var pos_condition_series = 0;        
+                                    
+                for (var j = 0; j < schedule.date_accrual_start.length; j++ ) {
+                    
+                                 if (schedule.is_condition_date[j]==true)  {
+                                        pos_condition_series++; 
+                                        this.temp_amortization = this.amortization[pos_condition_series] ;  
+                                        this.temp_payment = this.repay_amount[pos_condition_series] ; 
+                                                                /*if end date is condition date go one position further
+                                                                in the conditions series and override the amortization 
+                                                                conditions for interest and notional payment, not for rate calculation*/
+                                 }
+                    
+                                 cf_step= this.cf_step(this.temp_notional,this.temp_int_accrual,
+                                                       schedule.date_accrual_start[j],
+                                                       schedule.date_accrual_end[j],
+                                                       schedule.is_interest_date[j],
+                                                       schedule.is_repay_date[j],
+                                                       schedule.is_fixing_date[j],
+                                                       schedule.is_condition_date[j],
+                                                       
+                                                       year_fraction_func,this.temp_rate,this.temp_amortization,this.temp_payment);
+                    
+                
+                       // write the [j].th entries of the market-dependent part of the table as computed by cf_step function
+                    
+                        current_principal[j]=cf_step.current_principal;
+                        interest_current_period[j]=cf_step.interest_current_period;
+                        accrued_interest[j]=cf_step.accrued_interest;
+                        pmt_principal[j]=cf_step.pmt_principal;
+                        pmt_interest[j]=cf_step.pmt_interest;
+                        pmt_total[j]=cf_step.pmt_principal + cf_step.pmt_interest; 
+                    
+                    /*At each change of deal conditions this.rate and the amortization must be appropriately updated before the next cashflow computation step. This is done by the following code*/
+              
+                    if (schedule.is_condition_date==true) { 
+                
+                
+                         this.temp_amortization = this.amortization[pos_condition_series] ;  
+                                /* pos_condition_series is the index of the new condition properties in the condition array */
+                         this.temp_rate = rate[pos_condition_series]? rate[pos_condition_series] : this.temp_rate ;                            
+                                       /*in this way the rate is changed only if there is a new condition rate. In particular, this allows
+                                       floaters to deal correctly situations in which the next fixing may occur either before or after a new
+                                       condition date*/
+                         this.temp_payment = this.repay_amount[pos_condition_series] ; 
+                          
+                       
+                     }      /*  update condition deal conditions at condition date, before beginning of new condition  */
+     
+                    
+                    
+                    
+                    
+                if (this.is_float == true)  { 
+                
+                            /*the cf_step method always uses this.rate for the computations. In case of floaters, this quantity already includes the spread, cap and floor contribution. After each computation, its value must be appropriately updated before the next cashflow computation step. This is done by the following code*/
+
+
+                                            if (schedule.is_fixing_date[j]==true) {  
+
+                                                this.temp_rate = this.float_rate_series[this.rate_pos]; 
+                                                if(this.rate_pos < this.float_rate_series.length-1) this.rate_pos++; 
+                                                            }
+
+
+
+                            if (schedule.is_condition_date[j]==true){ /* update temporary spread cap and floor*/  
+
+                                                this.temp_float_spread = this.float_spread[pos_condition_series];
+                                                this.temp_cap_rate = this.cap_rate[pos_condition_series];
+                                                this.temp_floor_rate = this.floor_rate[pos_condition_series];
+
+                            }/* pos_condition_series is the index of the new condition properties in the array of conditions */
+
+                            if (isNaN(this.temp_floor_rate)&&isNaN(this.temp_cap_rate)) {this.temp_rate += (this.temp_float_spread||0);}
+
+                                            else if (isNaN(this.temp_floor_rate)&&((typeof this.temp_cap_rate)=="number")) {
+                                                    this.temp_rate = Math.max(this.temp_rate,this.temp_cap_rate - (this.temp_float_spread||0))+(this.temp_float_spread||0);
+                                                                            }
+                                            else if (isNaN(this.temp_cap_rate)&&((typeof this.temp_floor_rate)=="number")) {
+                                                    this.temp_rate = Math.min(this.temp_rate,this.temp_floor_rate - (this.temp_float_spread||0))+(this.temp_float_spread||0);
+                                                                            }
+
+                                            else {
+                                                        this.temp_rate = Math.min(Math.max(this.temp_rate,this.temp_floor_rate- (this.temp_float_spread||0)),this.temp_cap_rate - (this.temp_float_spread||0) )+(this.temp_spread_spread||0);
+                                                     }
+
+                      
+                    } // end line if floater condition    
+                           
+                
+                }// end of the for j loop
+                       
+            
+            // finally output to the cashflow object
+                
+                return {
+                        date_accrual_start: schedule.date_accrual_start,
+                        date_accrual_end: schedule.date_accrual_end,
+                        date_pmt: schedule.date_pmt,
+                        t_accrual_start: schedule.t_accrual_start,
+                        t_accrual_end: schedule.t_accrual_end,
+                        t_pmt: schedule.t_pmt,
+                        is_interest_date: schedule.is_interest_date,
+                        is_repay_date: schedule.is_repay_date,
+                        is_fixing_date: schedule.is_fixing_date,
+                        is_condition_date: schedule.is_condition_date,
+                    
                         current_principal: current_principal,
                         interest_current_period: interest_current_period,
                         accrued_interest: accrued_interest,
                         pmt_principal: pmt_principal,
                         pmt_interest: pmt_interest,
                         pmt_total: pmt_total
-                };
+                };          
                 
         };
         
         library.irregular_fixed_income.prototype.get_cash_flows=function(fwd_curve){
-                //needs to be reimplemented for irregular instruments
-        
-                if (!this.is_float) return this.cash_flows;
-                
-                //recalculate amounts for floater deals
-                var c=this.cash_flows;
-                var default_yf=library.year_fraction_factory(null);
-                                
-                var i, rt, interest, n=c.t_pmt.length;
-                //start with i=1 as current rate does not need recalculating
-                for(i=1;i<n;i++){
-                       c.is_fixing_date[i]=true;
-                       rt=library.get_fwd_rate(fwd_curve,
-                                               default_yf(library.valuation_date,c.date_accrual_start[i]),
-                                               default_yf(library.valuation_date,c.date_accrual_end[i]))+
-                          this.float_spread;
-                       
-                       interest=this.notional*rt*
-                                this.year_fraction_func(c.date_accrual_start[i],c.date_accrual_end[i]);
-                       c.interest_current_period[i]=interest;
-                       c.accrued_interest[i]=interest;
-                       c.pmt_interest[i]=interest;
-                }
-                c.pmt_total[n-1]=c.pmt_interest[n-1]+this.notional;
-                return c;
+            
+           
+            return this.cash_flows;
+                    
+            
         };
         
         library.irregular_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
@@ -366,6 +477,283 @@
                 var loan_internal=new library.irregular_fixed_income(loan);
                 return loan_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
+    
+    
+    
+    //AG methods
+    
+    library.irregular_fixed_income.prototype.get_merged_schedule = function(interest_schedule,repay_schedule,is_float,tenor,fixing_tenor,fixing_first_date){
+        
+        
+                var ft_ratio = fixing_tenor / tenor;
+                   
+                var schedul =[];
+                    for(var p=0; p< interest_schedule.length; p++) schedul.push([interest_schedule[p],0]);  
+                    for(var q=0; q< repay_schedule.length; q++) schedul.push([repay_schedule[q],1]); 
+                    /* collects interest and notional schedules together*/
+        
+                if (this.conditions_valid_until != null){
+                    if (this.conditions_valid_until.length > 1){
+                                for (var j=0;j<this.conditions_valid_until.length-1;j++) schedul.push([this.conditions_valid_until[j],0.5,j]);
+                                }
+                    } /* adds condition dates with array condition number, 0.5 is just chosen to be different from the other indices. maturity does not belong to the array */
+        
+                
+                schedul.sort(function(a,b) {if (a[0] > b[0]) return 1; if (a[0] < b[0]) return -1; return 0;});/* sort by increasing date*/
+      
+               /* the following code merges interest and notional schedules into a unique series with index, and indexes condition dates with
+                        a second index, whose value is the condition number, starting from 0 (first condition) */ 
+    
+                        for (var l = 0; l < schedul.length - 1; l++) {
+                        
+                                  
+                               while ((schedul[l+1]) && Math.abs(schedul[l][0]-schedul[l+1][0]) < 1000) {  
+                                   /* equality of dates up to one second*/
+                  
+                                       if (schedul[l].length == 2 && schedul[l+1].length == 2) 
+                                            { 
+                                              schedul[l] = [schedul[l][0],2];
+                                              schedul.splice(l+1,1); 
+                                             }
+                                       else if( schedul[l+1].length == 3 ) 
+                                            { 
+                                              schedul[l] = [schedul[l][0],schedul[l][1],schedul[l+1][2]];
+                                              schedul.splice(l+1,1);                  
+                                            }
+                                       else if( schedul[l].length == 3 ) 
+                                            { 
+                                              schedul[l] = [schedul[l+1][0],schedul[l+1][1],schedul[l][2]];
+                                              schedul.splice(l+1,1); 
+                                            }  // end line if */ 
+                        
+                                   }  // end line while
+                            
+                                }    // end line for        
+                    
+                    
+                    /* the code of above eliminates double dates, joining into a single date with interest and notional index
+                        interest date = 0, notional date = 1, interest AND notional date = 2
+                         takes condition dates into account with a second index */
+        
+     
+        if (null===library.valuation_date) throw new Error("fix_cash_flows: valuation_date must be set");
+        
+        var length = schedul.length-1;
+        var default_yf = library.year_fraction_factory(null);
+        
+        
+        var date_accrual_start=new Array(length);
+        var date_accrual_end=new Array(length);
+        var date_pmt=new Array(length);        
+        var t_accrual_start=new Array(length);
+        var t_accrual_end=new Array(length);
+        var t_pmt=new Array(length);       
+        var is_interest_date=new Array(length);
+        var is_repay_date=new Array(length);
+        var is_fixing_date=new Array(length);
+        var is_condition_date=new Array(length);
+        
+        var adj=function(d){
+                        return library.adjust(d,this.bdc,this.is_holiday_func);
+                };
+        
+        
+       for (var i=0;i<length;i++){
+            date_accrual_start[i]=schedul[i][0];
+            date_accrual_end[i]=schedul[i+1][0];
+            date_pmt[i]= ((schedul[i+1][1] <= 0) || (schedul[i+1][1] == 1) || (schedul[i+1][1] >= 2)) ? 
+                                        adj(schedul[i+1][0]): null;
+            t_accrual_start[i]=default_yf(library.valuation_date,schedul[i][0]);
+            t_accrual_end[i]=default_yf(library.valuation_date,schedul[i+1][0]);
+            t_pmt[i]=(date_pmt[i] != null) ? default_yf(library.valuation_date,date_pmt[i]) :null;
+            is_interest_date[i]= ((schedul[i+1][1] <= 0) || (schedul[i+1][1] >= 2)) ? true: false;
+            is_repay_date[i]= ((schedul[i+1][1] == 1) || (schedul[i+1][1] >= 2)) ? true: false;
+            is_fixing_date[i]= false; 
+            is_condition_date[i]= (schedul[i+1].length == 3) ? true: false;       
+        }
+        
+        
+        
+                    /* here below floater fixing dates are implemented */
+        
+        if (is_float == true) {
+            
+            /*determine first interest date after next fixing*/
+            
+                        var index_next_fixing;
+                        var condition_next_fixing;
+            
+                        for (var r=0; r< length;r++) {
+                            
+                            if (is_interest_date[r]==true) {
+                                if ((date_accrual_end[r] - fixing_first_date)>1000) {
+                                                              index_next_fixing = r; 
+                                                              break;} 
+                                                            } 
+                                               }
+     
+                        condition_next_fixing = 2*ft_ratio -1; 
+                                 
+            // set index for any interest date which is also fixing date by looping over just the interest dates 
+            
+                        for (var s=0;s< length;s++)  {
+                            if ((is_interest_date[s]==true) && (s >= index_next_fixing)) {
+                                condition_next_fixing++;     
+                                /*at any interest date condition_next_fixing increases by one, and only when it reaches the next multiple of
+                                fixing/interest tenor the date is indexed as next fixing date*/
+                                if ((condition_next_fixing % ft_ratio) == 0){  
+                                    is_fixing_date = true;
+                                }      
+                            }     
+                        }
+                    }  
+                                
+        
+
+        return {
+            date_accrual_start: date_accrual_start,
+            date_accrual_end: date_accrual_end,
+            date_pmt: date_pmt,
+            t_accrual_start: t_accrual_start,
+            t_accrual_end: t_accrual_end,
+            t_pmt: t_pmt,
+            is_interest_date: is_interest_date,
+            is_repay_date: is_repay_date,
+            is_fixing_date: is_fixing_date,
+            is_condition_date: is_condition_date
+        };
+        
+      
+            
+    };  
+   
+    
+    
+    library.irregular_fixed_income.prototype.get_fwd_rate_series = function(fwd_curve){
+        
+                var default_yf=library.year_fraction_factory(null);
+                var rate_series=[];
+                for(var i =0; i < this.fixing_schedule.length-1; i++  ) {
+                                     // the following works if valuation_date < fixing_first_date
+                    
+                    if ((this.fixing_schedule[i]-library.valuation_date) > 1000) {
+                        rate_series.push(library.get_fwd_rate(fwd_curve, default_yf(library.valuation_date,this.fixing_schedule[i]),
+                                                        default_yf(library.valuation_date,this.fixing_schedule[i+1]))) ;
+                                                        }
+                                              } 
+                return rate_series;
+    }; 
+    
+    
+    
+    
+    library.irregular_fixed_income.prototype.cf_step = function(notional,int_acc,
+                                                                 start_date,
+                                                                 end_date,
+                                                                 is_interest_date,
+                                                                 is_repay_date,
+                                                                 is_fixing_date,
+                                                                 is_condition_date,
+                                                                 year_fraction_func,rate,amort_type,payment){
+             var Nnew;
+             var Int;
+             var Int_step;
+             var NPayment;
+             var IPayment;
+             var effPayment=0; // effective annuity payment (can differ from the established payment, e.g. if notional <= 0)   
+     
+            switch(amort_type){
+                    case 'bullet':  // no interest capitalization
+                
+                            Int_step = notional * year_fraction_func(start_date,end_date)*rate;
+                            Int = int_acc + Int_step;
+                            Nnew = notional;
+                            IPayment = is_interest_date==true ? (Int + int_acc) : 0;                             
+                            int_acc = (is_condition_date==true && is_interest_date==false) ? Int : 0; 
+                            /* at the first interest payment date, accrued interest is set to zero for all the next computations;
+                            at condition change date which is not interest date interest is cumulated. is_repay_date boolean is here irrelevant */
+                            NPayment = 0;
+            
+                    break;
+                
+                
+                    case 'capitalization': // bullet with interest capitalization
+        
+                            Int_step = notional * year_fraction_func(start_date,end_date)*rate;
+                            Int = int_acc + Int_step;
+                            Nnew = (is_condition_date== true && is_interest_date==false) ? notional: Math.max(notional + Int, 0);
+                            /* if date is condition change date but not interest date the notional remains unvaried, otherwise
+                            interest is capitalized */              
+                            int_acc =  (is_interest_date == false) ? Int : 0;
+                            /* if date is not interest (capitalization) date, interest is accrued, for instance at a condition change date,
+                            otherwise it is capitalized and not accrued.is_repay_date boolean is here irrelevant */
+                
+             
+                            IPayment = 0;
+                            NPayment = 0;
+                            
+                    break;
+                   
+                    case 'stepdown': // interest is not capitalized
+                            Int_step = notional * year_fraction_func(start_date,end_date)*rate;
+                            Int = int_acc + Int_step;
+                            Nnew = is_repay_date==true ? Math.max(notional - payment, 0) : notional;  
+                            NPayment = is_repay_date == true ? Math.min(payment,notional) : 0; 
+                            IPayment = is_interest_date == true ? Int : 0;
+                            int_acc = is_interest_date == false ? Int : 0; 
+                            /*if interest is not paid, it is cumulated */
+                    break;
+        
+
+                    case 'annuity': // interest is capitalized
+                            Int_step = notional * year_fraction_func(start_date,end_date)*rate;
+                            Int = int_acc + Int_step;
+                            if (is_repay_date==true && is_interest_date==false) {
+                                Nnew = Math.max(notional - payment, 0);
+                                } /* only notional payment date */
+                            else if (is_repay_date==true && is_interest_date==true) {
+                                Nnew = Math.max(notional + Int - payment, 0);
+                                } /* notional payment and interest capitalization date */
+                            else if (is_repay_date==false && is_interest_date==true) {
+                                Nnew = Math.max(notional + Int,0);
+                                } /* only interest capitalization date */
+                            else {Nnew = notional;} /* if it is neither principal nor interest date, but just condition change date */
+                            effPayment = is_repay_date==true  ? Math.min(payment, notional + Int) : 0;
+                            int_acc = is_interest_date==false ? Int : 0; 
+                            /* if date is not interest capitalization date, 
+                            interest is cumulated. This occurs when date is only principal payment date, or only condition change date */
+                            NPayment = effPayment;
+                            IPayment = 0;           
+                    break;
+           
+                    default: throw new Error("invalid amortization type parameter.");
+                         
+                }  // end line of switch amort_type cases
+        
+       
+        
+           
+     
+            this.temp_notional = Nnew;
+            this.temp_int_accrual = int_acc;     
+     
+     
+        
+                return {
+                         
+                    
+                         current_principal:  (this.type == "deposit") ? -notional: notional,  /* notional used to compute the interest*/ 
+                         interest_current_period: (this.type == "deposit") ? -Int_step: Int_step, /* the interest pruduced from start to end date of the period */
+                         accrued_interest: (this.type == "deposit") ? -int_acc: int_acc, /* the cumulated interest */
+                         pmt_principal: (this.type == "deposit") ? -NPayment: NPayment,
+                         pmt_interest: (this.type == "deposit") ? -IPayment: IPayment
+                        };
+     
+    }; 
+    
+       
+    
+    //AG methods end
 
 }(this.JsonRisk || module.exports));
 ;
@@ -458,7 +846,7 @@
                         throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
                 if(tenor<0 || Math.floor(tenor) !== tenor)
                         throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
-                if (0===tenor) return [eff_dt, maturity];
+                if (0===tenor) return [(eff_dt instanceof Date) ? eff_dt : library.valuation_date, maturity];
                 
                 var adj=function(d){
                         return library.adjust(d,bdc,is_holiday_func);
@@ -538,12 +926,13 @@
                         t_pmt: array(double),
                         pmt_total: array(double)
                 }
+                requires safe curves
                 
                 */
+                var dc=disc_curve || library.get_safe_curve(null);
+                var sc=spread_curve || library.get_safe_curve(null);
                 if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
                 //curve initialisation and fallbacks
-                var dc=library.get_safe_curve(disc_curve);
-                var sc=library.get_safe_curve(spread_curve);
                 if(typeof residual_spread !== "number") residual_spread=0;
                 var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
@@ -626,9 +1015,9 @@
                         //floating rate instrument
                         this.is_float=true;
                         this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0;
-                        if(typeof instrument.current_rate !== 'number')
-                                throw new Error("simple_fixed_income: must provide valid current_rate.");
-                        this.current_rate=instrument.current_rate;
+                        if(typeof instrument.float_current_rate !== 'number')
+                                throw new Error("simple_fixed_income: must provide valid float_current_rate.");
+                        this.current_rate=instrument.float_current_rate;
                 }
                 
                 this.schedule=library.backward_schedule(effective_date, 
@@ -747,9 +1136,9 @@
         };
         
         library.simple_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-                return library.dcf(this.get_cash_flows(fwd_curve || null),
-                                   disc_curve,
-                                   spread_curve,
+                return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
+                                   library.get_safe_curve(disc_curve),
+                                   library.get_safe_curve(spread_curve),
                                    this.residual_spread,
                                    this.settlement_date);
         };
@@ -799,91 +1188,93 @@
                        };
         };
         
-        function get_surface_times(labels){
-                var i,times;
-                i=surface.labels_expiry.length;
-                times=new Array(i);    
+        function get_term_at(surface, i){
+                //construct terms from labels_term if terms are not defined
+                if (surface.terms) return surface.terms[i];
+                if (surface.labels_term) return library.period_str_to_time(surface.labels_term[i]);
+                throw new Error("get_term_at: invalid surface, cannot derive terms");
+        }
+        
+        function get_expiry_at(surface, i){
+                //construct expiries from labels_expiry if expiries are not defined
+                if (surface.expiries) return surface.expiries[i];
+                if (surface.labels_expiry) return library.period_str_to_time(surface.labels_expiry[i]);
+                throw new Error("get_expiry_at: invalid surface, cannot derive expiries");
+        }
+        
+        function get_terms(surface){
+                var i=(surface.terms || surface.labels_term || []).length;
+                if (!i) throw new Error("get_surface_terms: invalid surface, need to provide valid terms or labels_term");
+                var terms=new Array(i);
                 while (i>0){
-                       i--;
-                       times[i]=library.period_str_to_time(labels[i]);
-                }                      
-                return times;
+                        i--;
+                        terms[i]=get_term_at(surface, i);
+                }
+                return terms;
+        }
+        
+        function get_expiries(surface){
+                var i=(surface.expiries || surface.labels_expiry || []).length;
+                if (!i) throw new Error("get_surface_terms: invalid surface, need to provide valid expiries or labels_expiry");
+                var expiries=new Array(i);
+                while (i>0){
+                        i--;
+                        expiries[i]=get_expiry_at(surface, i);
+                }
+                return expiries;
         }
         
         library.get_safe_surface=function(surface){
-                //if valid surface is given, returns surface in initialised form {type, times, dfs}, if null, returns constant zero surface
-                var expiries, terms;
+                //if valid surface is given, returns surface in initialised form {type, expiries, terms, values}
+                //if null or other falsy argument is given, returns constant zero surface
                 if (!surface) return library.get_const_surface(0.0);
-                if (!surface.expiries){
-                        if (!surface.labels_expiry) throw new Error("get_initialised_surface: cannot derive expiries");
-                        expiries=get_surface_times(labels_expiry);
-                }else{
-                        expiries=surface.expiries;
-                }
-                if (!surface.terms){
-                        if (!surface.labels_term) throw new Error("get_initialised_surface: cannot derive terms");
-                        terms=get_surface_times(labels_term);
-                }else{
-                        terms=surface.terms;
-                }
-                if (surface.values.length!==expiries.length) throw new Error("get_initialised_surface: expiries dimensions do not match values array");
-                for (var i=0; i< expiries.length; i++){
-                        if (surface.values[i].length!==terms.length) throw new Error("get_initialised_surface: terms dimensions do not match values array");
-                }
                 return {
                                 type: surface.type || "", 
-                                expiries: expiries,
-                                terms: terms,
+                                expiries: get_expiries(surface),
+                                terms: get_terms(surface),
                                 values: surface.values
                         };
         };
         
-        get_slice_rate_unsafe=function(surface,i_expiry,t_term,imin,imax){
+        function get_slice_rate(surface,i_expiry,t_term,imin,imax){
                 imin=imin || 0;
-                imax=imax || surface.terms.length-1;
+                imax=imax || (surface.terms || surface.labels_term || []).length-1;
                 
                 var sl=surface.values[i_expiry];
                 //slice only has one value left
                 if (imin===imax) return sl[imin];
                 //extrapolation (constant)
-                if (t_term<surface.terms[imin]) return sl[imin];
-                if (t_term>surface.terms[imax]) return sl[imax];
+                if (t_term<get_term_at(surface, imin)) return sl[imin];
+                if (t_term>get_term_at(surface, imax)) return sl[imax];
                 //interpolation (linear)
                 if (imin+1===imax){
-                        return sl[imin]*(surface.terms[imax]-t_term)/(surface.terms[imax]-surface.terms[imin])+
-                               sl[imax]*(t_term-surface.terms[imin])/(surface.terms[imax]-surface.terms[imin]);
+                        return sl[imin]*(get_term_at(surface, imax)-t_term)/(get_term_at(surface, imax)-get_term_at(surface, imin))+
+                               sl[imax]*(t_term-get_term_at(surface, imin))/(get_term_at(surface, imax)-get_term_at(surface, imin));
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t_term>surface.terms[imed]) return get_slice_rate_unsafe(surface,i_expiry,t_term,imed,imax);
-                return get_slice_rate_unsafe(surface,i_expiry, t_term,imin,imed);
-        };
+                if (t_term>get_term_at(surface,imed)) return get_slice_rate(surface,i_expiry,t_term,imed,imax);
+                return get_slice_rate(surface,i_expiry, t_term,imin,imed);
+        }
 
-
-        get_surface_rate_unsafe=function(surface,t_expiry,t_term,imin,imax){
+        library.get_surface_rate=function(surface,t_expiry,t_term,imin,imax){
                 imin=imin || 0;
-                imax=imax || surface.expiries.length-1;
+                imax=imax || (surface.expiries || surface.labels_expiry || []).length-1;
 
                 //surface only has one slice left
-                if (imin===imax) return get_slice_rate_unsafe(surface, imin, t_term);
+                if (imin===imax) return get_slice_rate(surface, imin, t_term);
                 //extrapolation (constant)
-                if (t_expiry<surface.expiries[imin]) return get_slice_rate_unsafe(surface, imin, t_term);
-                if (t_expiry>surface.expiries[imax]) return get_slice_rate_unsafe(surface, imax, t_term);
+                if (t_expiry<get_expiry_at(surface, imin)) return get_slice_rate(surface, imin, t_term);
+                if (t_expiry>get_expiry_at(surface, imax)) return get_slice_rate(surface, imax, t_term);
                 //interpolation (linear)
                 if (imin+1===imax){
-                        return get_slice_rate_unsafe(surface, imin, t_term)*(surface.expiries[imax]-t_expiry)/(surface.expiries[imax]-surface.expiries[imin])+
-                               get_slice_rate_unsafe(surface, imax, t_term)*(t_expiry-surface.expiries[imin])/(surface.expiries[imax]-surface.expiries[imin]);
+                        return get_slice_rate(surface, imin, t_term)*(get_expiry_at(surface, imax)-t_expiry)/(get_expiry_at(surface, imax)-get_expiry_at(surface, imin))+
+                               get_slice_rate(surface, imax, t_term)*(t_expiry-get_expiry_at(surface, imin))/(get_expiry_at(surface, imax)-get_expiry_at(surface, imin));
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t_expiry>surface.expiries[imed]) return get_surface_rate_unsafe(surface,t_expiry,t_term,imed,imax);
-                return get_surface_rate_unsafe(surface,t_expiry,t_term,imin,imed);
-        };
-
-        
-        library.get_surface_rate=function(surface,t_expiry, t_term){
-                var s=library.get_safe_surface(surface);
-                return get_surface_rate_unsafe(s, t_expiry, t_term);
+                if (t_expiry>get_expiry_at(surface,imed)) return library.get_surface_rate(surface,t_expiry,t_term,imed,imax);
+                return library.get_surface_rate(surface,t_expiry,t_term,imin,imed);
         };
 
 
@@ -929,7 +1320,7 @@
                         calendar: instrument.calendar,
                         bdc: instrument.float_bdc,
                         dcc: instrument.float_dcc,
-                        current_rate: instrument.float_current_rate
+                        float_current_rate: instrument.float_current_rate
                 }, false);
         };
         
@@ -1412,6 +1803,120 @@
 
         
 
+}(this.JsonRisk || module.exports));
+
+
+;(function(library){
+
+        /*
+        
+                JsonRisk vector pricing
+                
+                
+        */
+        
+        var stored_params=null; //hidden variable for parameter storage
+        
+        var normalise_scalar=function(obj){ //makes value an array of length one if it is not an array
+                return (Array.isArray(obj.value)) ? {value: obj.value} : {value: [obj.value]};
+        };
+        
+        var normalise_curve=function(obj){ // constructs times from days, dates or labels and makes dfs and zcs an array of length one if it is not an array
+                return {
+                        times: library.get_curve_times(obj),
+                        dfs: obj.dfs ? ((Array.isArray(obj.dfs[0])) ? obj.dfs : [obj.dfs]) : null,
+                        zcs: obj.zcs ? ((Array.isArray(obj.zcs[0])) ? obj.zcs : [obj.zcs]) : null
+                };
+        };
+        
+        var normalise_surface=function(obj){ // constructs terms from labels_term, expiries from labels_expiry and makes value an array of length one if it is not an array
+                var safe_surface=library.get_safe_surface(obj); //has terms and expiries
+                return {
+                        expiries: safe_surface.expiries,
+                        terms: safe_surface.terms,
+                        values: (Array.isArray(obj.values[0][0])) ? obj.values : [obj.values]
+                };
+        };
+        
+        var update_vector_length=function(len){
+                if (1===len) return;
+                if (1===stored_params.vector_length){
+                        stored_params.vector_length = len;
+                        return;
+                }
+                if (len !== stored_params.vector_length) throw new Error("vector_pricing: parameters need to have the same length or length one");
+        };
+        
+        library.store_params=function(params){
+                stored_params={vector_length: 1};
+                var keys, i;
+                //valuation date
+                stored_params.valuation_date=params.valuation_date || null;
+                //scalars
+                if (typeof(params.scalars) === 'object'){
+                        stored_params.scalars={};
+                        keys=Object.keys(params.scalars);
+                        for (i=0; i< keys.length;i++){
+                                stored_params.scalars[keys[i]]=normalise_scalar(params.scalars[keys[i]]);
+                                update_vector_length(stored_params.scalars[keys[i]].value.length);
+                        }
+                }
+                //curves
+                if (typeof(params.curves) === 'object'){
+                        stored_params.curves={};
+                        keys=Object.keys(params.curves);
+                        var obj,len;
+                        for (i=0; i< keys.length;i++){
+                                obj=normalise_curve(params.curves[keys[i]]);
+                                stored_params.curves[keys[i]]=obj;
+                                len=obj.dfs ? obj.dfs.length : obj.zcs.length;
+                                update_vector_length(len);
+                                
+                        }
+                }
+                
+                //surfaces
+                if (typeof(params.surfaces) === 'object'){
+                        stored_params.surfaces={};
+                        keys=Object.keys(params.surfaces);
+                        for (i=0; i< keys.length;i++){
+                                stored_params.surfaces[keys[i]]=normalise_surface(params.surfaces[keys[i]]);
+                                update_vector_length(stored_params.surfaces[keys[i]].values.length);
+                        }
+                }
+        
+        };
+        
+        library.get_params=function(){
+                return stored_params;
+        };
+        
+        var get_scalar_curve=function(vec_curve, i){
+                return { times: vec_curve.times,
+                        dfs: vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null,
+                        zcs: vec_curve.zcs ? (vec_curve.zcs[vec_curve.zcs.length>1 ? i : 0]) : null
+                };
+        };
+        
+        var get_scalar_surface=function(vec_surface, i){
+                return { expiries: vec_surface.expiries,
+                         terms: vec_surface.terms,
+                         values: vec_surface.values[vec_surface.values.length>1 ? i : 0]
+                };
+        };
+        
+        library.vector_pricer=function(instrument){
+                var vec_curve=stored_params.curves[instrument.disc_curve];
+                var curve;
+                var instr=new library.simple_fixed_income(instrument);
+                var res=new Array(stored_params.vector_length);
+                for (var i=0; i< stored_params.vector_length; i++){
+                        curve=get_scalar_curve(vec_curve, i);
+                        res[i]=instr.present_value(curve,null,null);
+                }
+                return res;
+        };
+        
 }(this.JsonRisk || module.exports));
 
 

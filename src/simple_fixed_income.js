@@ -9,12 +9,13 @@
                         t_pmt: array(double),
                         pmt_total: array(double)
                 }
+                requires safe curves
                 
                 */
+                var dc=disc_curve || library.get_safe_curve(null);
+                var sc=spread_curve || library.get_safe_curve(null);
                 if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
                 //curve initialisation and fallbacks
-                var dc=library.get_safe_curve(disc_curve);
-                var sc=library.get_safe_curve(spread_curve);
                 if(typeof residual_spread !== "number") residual_spread=0;
                 var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
@@ -97,9 +98,9 @@
                         //floating rate instrument
                         this.is_float=true;
                         this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0;
-                        if(typeof instrument.current_rate !== 'number')
-                                throw new Error("simple_fixed_income: must provide valid current_rate.");
-                        this.current_rate=instrument.current_rate;
+                        if(typeof instrument.float_current_rate !== 'number')
+                                throw new Error("simple_fixed_income: must provide valid float_current_rate.");
+                        this.current_rate=instrument.float_current_rate;
                 }
                 
                 this.schedule=library.backward_schedule(effective_date, 
@@ -218,9 +219,9 @@
         };
         
         library.simple_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-                return library.dcf(this.get_cash_flows(fwd_curve || null),
-                                   disc_curve,
-                                   spread_curve,
+                return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
+                                   library.get_safe_curve(disc_curve),
+                                   library.get_safe_curve(spread_curve),
                                    this.residual_spread,
                                    this.settlement_date);
         };

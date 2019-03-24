@@ -1,4 +1,5 @@
-(function(library){
+(function(library){        
+        var default_yf=null;
 
         library.get_const_curve=function(value){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
@@ -10,147 +11,98 @@
                        };
         };
         
-        function get_curve_times(curve){
-                var i,times;
+        function get_time_at(curve, i){
                 if (!curve.times){
                         //construct times from other parameters in order of preference
-                        if (curve.days){
-                                i=curve.days.length;
-                                times=new Array(i);
-                                while (i>0){
-                                       i--;
-                                       //curve times are always assumed to be act/365
-                                       times[i]=curve.days[i]/365;
-                                }                      
-                        }else if (curve.dates){
-                                i=curve.dates.length;
-                                times=new Array(i);
-                                //curve times are always assumed to be act/365
-                                var yf=library.year_fraction_factory("act/365");
-                                var ref_date=library.date_str_to_date(curve.dates[0]);
-                                while (i>0){
-                                       i--;
-                                       times[i]=yf(ref_date,library.date_str_to_date(curve.dates[i]));
-                                }                      
-                        }else if (curve.labels){
-                                i=curve.labels.length;
-                                times=new Array(i);    
-                                while (i>0){
-                                       i--;
-                                       times[i]=library.period_str_to_time(curve.labels[i]);
-                                }                      
-                        }else{
-                                throw new Error("init_curve: invalid curve, cannot derive times");
+                        //curve times are always act/365
+                        if (curve.days) return curve.days[i]/365;               
+                        if (curve.dates){
+                                default_yf=default_yf || library.year_fraction_factory("a/365");
+                                return default_yf(library.get_safe_date(curve.dates[0]),library.get_safe_date(curve.dates[i]));
                         }
-                        return times;
-                }else{
-                        i=curve.times.length;
-                        while (i>0){
-                                i--;
-                                if (typeof curve.times[i] != 'number') 
-                                        throw new Error("get_curve_times: invalid vector of times, must be numeric");
-                        }
-                        return curve.times;
+                        if (curve.labels) return library.period_str_to_time(curve.labels[i]);
+                        throw new Error("get_time_at: invalid curve, cannot derive times");
                 }
+                return curve.times[i];
         }
         
-        function get_dfs(zcs, times){
-                var i, dfs;
-                i=zcs.length;
-                if(times.length!==i) throw new Error("get_dfs: invalid input, length of zcs does not match length of times");
-
-                //construct discount factors from zero coupons
-                dfs=new Array(i);
+        library.get_curve_times=function(curve){
+                var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
+                if (!i) throw new Error("get_curve_times: invalid curve, need to provide valid times, days, dates, or labels");
+                var times=new Array(i);
                 while (i>0){
-                       //zero coupon curves are always assumed to be annual compounding act/365
                         i--;
-                        if (typeof zcs[i] != 'number')
-                                throw new Error("get_curve_times: invalid vector of times, must be numeric");
-                        dfs[i]=Math.pow(1+zcs[i],-times[i]);
+                        times[i]=get_time_at(curve, i);
                 }
-                return dfs;         
+                return times;
+        };
+        
+        function get_df_at(curve, i){
+                if (curve.dfs) return curve.dfs[i];
+                if (curve.zcs) return Math.pow(1+curve.zcs[i],-get_time_at(curve,i));
+                throw new Error("get_df: invalid curve, must provide dfs or zcs");
+        }
+        
+        function get_curve_dfs(curve){
+                var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
+                if (!i) throw new Error("get_curve_dfs: invalid curve, need to provide valid times, days, dates, or labels");
+                if(curve.dfs){
+                        if (curve.dfs.length !== i) throw new Error("get_curve_dfs: invalid curve, dfs length must match times length");
+                }else{
+                        if (curve.zcs.length !== i) throw new Error("get_curve_dfs: invalid curve, zcs length must match times length");
+                }
+                var dfs=new Array(i);
+                while (i>0){
+                        i--;
+                        dfs[i]=curve.dfs ? curve.dfs[i] :get_df_at(curve, i);
+                        if (typeof dfs[i] != 'number') throw new Error("get_curve_dfs: invalid curve, must provide numeric zcs or dfs");
+                }
+                return dfs;
         }
         
         library.get_safe_curve=function(curve){
-                //if valid curve is given, returns curve in initialised form {type, times, dfs}, if null, returns constant zero curve
+                //if valid curve is given, returns validated curve in most efficient form {type, times, dfs}, 
+                //if null or other falsy argument is given, returns constant zero curve
                 if (!curve) return library.get_const_curve(0.0);
-                var times=get_curve_times(curve);
-                var dfs;
-                if(curve.dfs){
-                        dfs=curve.dfs;
-                }else{
-                        if(!curve.zcs) throw new Error("get_safe_curve: invalid curve, both dfs and zcs undefined");
-                        dfs=get_dfs(curve.zcs, times);
-                }
                 return {
                                 type: "yield", 
-                                times: times,
-                                dfs: dfs
+                                times: library.get_curve_times(curve),
+                                dfs: get_curve_dfs(curve)
                         };
         };
-        
-        /* 
-        unsafe curve evaluation functions
-        require safe curve, that is, a curve with times and dfs
-        */
 
-        library.get_df_unsafe=function(curve,t,imin,imax){
+        
+        library.get_df=function(curve,t,imin,imax){
                 if (undefined===imin) imin=0;
-                if (undefined===imax) imax=curve.times.length-1;
+                if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
                 
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
                 //curve only has one support point
-                if (imin===imax) return (t===curve.times[imin]) ? curve.dfs[imin] : Math.pow(curve.dfs[imin], t/curve.times[imin]);
+                if (imin===imax) return (t===get_time_at(curve,imin)) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
                 //extrapolation (constant on zero coupon rates)
-                if (t<curve.times[imin]) return Math.pow(curve.dfs[imin], t/curve.times[imin]);
-                if (t>curve.times[imax]) return Math.pow(curve.dfs[imax], t/curve.times[imax]);
+                if (t<get_time_at(curve,imin)) return Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
+                if (t>get_time_at(curve,imax)) return Math.pow(get_df_at(curve,imax), t/get_time_at(curve,imax));
                 //interpolation (linear on discount factors)
                 if (imin+1===imax){
-                        if(curve.times[imax]-curve.times[imin]<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-                        return curve.dfs[imin]*(curve.times[imax]-t)/(curve.times[imax]-curve.times[imin])+
-                               curve.dfs[imax]*(t-curve.times[imin])/(curve.times[imax]-curve.times[imin]);
+                        if(get_time_at(curve,imax)-get_time_at(curve,imin)<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+                        return get_df_at(curve,imin)*(get_time_at(curve,imax)-t)/(get_time_at(curve,imax)-get_time_at(curve,imin))+
+                               get_df_at(curve,imax)*(t-get_time_at(curve,imin))/(get_time_at(curve,imax)-get_time_at(curve,imin));
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t>curve.times[imed]) return library.get_df_unsafe(curve,t,imed,imax);
-                return library.get_df_unsafe(curve,t,imin,imed);
-        };
-
-        
-        library.get_rate_unsafe=function(curve,t){
-                if (t<1/512) return 0.0;
-                //zero rates are act/365 annual compounding
-                return Math.pow(library.get_df_unsafe(curve,t),-1/t)-1;
-        };
-        
-        
-        library.get_fwd_rate_unsafe=function(curve,tstart,tend){
-                if (tend-tstart<1/512) return 0.0;
-                return Math.pow(library.get_df_unsafe(curve,tend) / library.get_df_unsafe(curve,tstart),-1/(tend-tstart))-1;
-        };
-        
-        /* 
-        safe curve evaluation functions
-        will always initialise curve first for convenience
-        */
-        
-        library.get_df=function(curve,t){
-                var c=library.get_safe_curve(curve);
-                return library.get_df_unsafe(c,t,0,c.times.length-1);
+                if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
+                return library.get_df(curve,t,imin,imed);
         };
 
         library.get_rate=function(curve,t){
                 if (t<1/512) return 0.0;
-                var c=library.get_safe_curve(curve);
-                return library.get_rate_unsafe(c,t);
+                return Math.pow(library.get_df(curve,t),-1/t)-1;
         };
-
 
         library.get_fwd_rate=function(curve,tstart,tend){
                 if (tend-tstart<1/512) return 0.0;
-                var c=library.get_safe_curve(curve);
-                return library.get_fwd_rate_unsafe(c,tstart,tend);
+                return Math.pow(library.get_df(curve,tend) / library.get_df(curve,tstart),-1/(tend-tstart))-1;
         };
 
 

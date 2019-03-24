@@ -39,7 +39,7 @@
                         calendar: instrument.calendar,
                         bdc: instrument.float_bdc,
                         dcc: instrument.float_dcc,
-                        current_rate: instrument.float_current_rate
+                        float_current_rate: instrument.float_current_rate
                 }, false);
         };
         

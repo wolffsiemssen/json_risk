@@ -33,7 +33,7 @@ var bonds=[];
 var curve_t=[];
 var curve_z=[];
 var yf=JsonRisk.year_fraction_factory("act/365");
-var gdt=JsonRisk.get_initialised_date;
+var gdt=JsonRisk.get_safe_date;
 for (i=0; i<Kupon.length; i++){
         bonds.push({
         maturity: Maturity[i],
@@ -49,8 +49,12 @@ for (i=0; i<Kupon.length; i++){
         curve_z.push(Rendite[i]/100);
 }
 
-var test_curve=JsonRisk.get_initialised_curve({times: curve_t, zcs: curve_z});
- 
+var test_curve=JsonRisk.get_safe_curve({times: curve_t, zcs: curve_z});
+//var test_curve={times: curve_t, zcs: curve_z};
+//var test_curve={labels: ["1Y", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "8Y", "9Y", "10Y", "11Y", "12Y"], zcs: curve_z};
+//var test_curve={days: [10,20,30,40,50,60,70,80,90,100,120,200], zcs: curve_z};
+//var test_curve={times: curve_t, dfs: [1,1,1,1,1,1,1,1,1,1,1,1]};
+//var test_curve={days: [10,20,30,40,50,60,70,80,90,100,120,200], zcs: curve_z};
 var price,i,j,n;
 
 var n=100;
