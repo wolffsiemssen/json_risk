@@ -897,16 +897,107 @@ Test vector pricing
 
 var params=(typeof(test_params)==='object') ? test_params : require('./params_example.json');
 JsonRisk.store_params(params);
-console.log(JsonRisk.get_params());
-
-console.log(JsonRisk.vector_pricer({
-        maturity: Maturity[i],
+var results;
+var check=function(arr){
+        for (var j=0; j<arr.length; j++){
+                if(typeof(arr[j])!== 'number') return false;
+                if (arr[j]===NaN) return false;
+        }
+        return true;
+}
+results=JsonRisk.vector_pricer({
+        type: 'bond',
+        maturity: new Date(2032,1,1),
         notional: 100.0,
-        fixed_rate: Kupon[i]/100,
+        fixed_rate: 0.0125,
         tenor: 12,
         bdc: "following",
         dcc: "act/act",
         calendar: "TARGET",
         settlement_days: 2,
+        disc_curve: "EURO-GOV",
+        currency: "USD"
+});
+am(check(results), "Vector pricing with bond returns valid vector of numbers");
+        
+results=JsonRisk.vector_pricer({
+        type: 'floater',
+        maturity: new Date(2032,1,1),
+        notional: 100.0,
+        float_spread: 0.0125,
+        float_current_rate: 0.0125,
+        tenor: 12,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement_days: 2,
+        disc_curve: "EURO-GOV",
+        fwd_curve: "EURO-GOV",
+        currency: "USD"
+});
+am(check(results), "Vector pricing with floater returns valid vector of numbers");
+      
+results=JsonRisk.vector_pricer({
+        type: 'fxterm',
+        maturity: new Date(2032,1,1),
+        notional: 100.0,
+        maturity_2: new Date(2038,1,1),
+        notional_2: 105,
+        currency: "EUR",
         disc_curve: "EURO-GOV"
-        }));
+});  
+am(check(results), "Vector pricing with fxterm returns valid vector of numbers (0)");
+
+
+results=JsonRisk.vector_pricer({
+        type: 'fxterm',
+        maturity: new Date(2032,1,1),
+        notional: 107.0,
+        maturity_2: new Date(2038,1,1),
+        notional_2: 112,
+        currency: "USD",
+        disc_curve: "EURO-GOV"
+}); 
+am(check(results), "Vector pricing with fxterm returns valid vector of numbers (1)");
+        
+results=JsonRisk.vector_pricer({
+        type: 'swap',
+        is_payer: true,
+        maturity: new Date(2032,1,1),
+        notional: 100.0,
+        fixed_rate: 0.0125,
+        fixed_tenor: 12,
+        float_spread: 0.00758,
+        float_current_rate: 0,
+        float_tenor: 3,
+        fixed_bdc: "following",
+        float_bdc: "modified",
+        fixed_dcc: "act/act",
+        calendar: "TARGET",
+        disc_curve: "EURO-GOV",
+        fwd_curve: "EURO-GOV",
+        currency: "USD"
+}); 
+am(check(results), "Vector pricing with swap returns valid vector of numbers");
+         
+results=JsonRisk.vector_pricer({
+        type: 'swaption',
+        is_payer: true,
+        maturity: new Date(2032,1,1),
+        expiry: new Date(2022,1,1),
+        notional: 100.0,
+        fixed_rate: 0.0125,
+        fixed_tenor: 12,
+        float_spread: 0.00758,
+        float_current_rate: 0,
+        float_tenor: 3,
+        fixed_bdc: "following",
+        float_bdc: "modified",
+        fixed_dcc: "act/act",
+        calendar: "TARGET",
+        disc_curve: "EURO-GOV",
+        fwd_curve: "EURO-GOV",
+        surface: "EUR-SWPTN",
+        currency: "USD"
+});        
+am(check(results), "Vector pricing with swaption returns valid vector of numbers");

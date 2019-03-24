@@ -1170,8 +1170,10 @@
                         c.interest_current_period[i]=interest;
                         c.accrued_interest[i]=interest;
                         c.pmt_interest[i]=interest;
+                        c.pmt_total[i]=interest;
                 }
-                c.pmt_total[n-1]=c.pmt_interest[n-1]+this.notional;
+                if (this.include_notional_pmt) c.pmt_total[n-1]=c.pmt_interest[n-1]+this.notional;
+
                 return c;
         };
         
@@ -1903,6 +1905,7 @@
         };
         
         var get_scalar_curve=function(vec_curve, i){
+                if (!vec_curve) return null;
                 return { times: vec_curve.times,
                         dfs: vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null,
                         zcs: vec_curve.zcs ? (vec_curve.zcs[vec_curve.zcs.length>1 ? i : 0]) : null
@@ -1910,20 +1913,56 @@
         };
         
         var get_scalar_surface=function(vec_surface, i){
+                if (!vec_surface) return null;
                 return { expiries: vec_surface.expiries,
                          terms: vec_surface.terms,
                          values: vec_surface.values[vec_surface.values.length>1 ? i : 0]
                 };
         };
         
+        var get_internal_object=function(instrument){
+                switch (instrument.type.toLowerCase()){
+                        case "bond":
+                        case "floater":
+                        return new library.simple_fixed_income(instrument);
+                        case "swap":
+                        return new library.swap(instrument);
+                        case "swaption":
+                        return new library.swaption(instrument);
+                        case "fxterm":
+                        return new library.fxterm(instrument);
+                        default:
+                        throw new Error ("vector_pricer: invalid instrument type");
+                }
+        };
+        
         library.vector_pricer=function(instrument){
-                var vec_curve=stored_params.curves[instrument.disc_curve];
-                var curve;
-                var instr=new library.simple_fixed_income(instrument);
+                if (typeof(instrument.type)!== 'string') throw new Error ("vector_pricer: instrument object must contain valid type");
+                var obj=get_internal_object(instrument);
+                var vec_dc=stored_params.curves[instrument.disc_curve || ""] || null;
+                var vec_sc=stored_params.curves[instrument.spread_curve || ""] || null;
+                var vec_fc=stored_params.curves[instrument.fwd_curve || ""] || null;
+                var vec_surface=stored_params.surfaces[instrument.surface || ""] || null;
+                var vec_fx=stored_params.scalars[instrument.currency || ""] || null;
+                var dc, sc, fc, su, fx;
                 var res=new Array(stored_params.vector_length);
                 for (var i=0; i< stored_params.vector_length; i++){
-                        curve=get_scalar_curve(vec_curve, i);
-                        res[i]=instr.present_value(curve,null,null);
+                        dc=get_scalar_curve(vec_dc, i);
+                        sc=get_scalar_curve(vec_sc, i);
+                        fc=get_scalar_curve(vec_fc, i);
+                        su=get_scalar_surface(vec_surface, i);
+                        switch (instrument.type.toLowerCase()){
+                                case "bond":
+                                case "floater":
+                                case "fxterm":
+                                res[i]=obj.present_value(dc,sc,fc);
+                                break;
+                                case "swap":
+                                case "swaption":
+                                res[i]=obj.present_value(dc,fc,su);
+                                break;
+                        }
+                        if (vec_fx) res[i]/=vec_fx.value[vec_fx.value.length>1 ? i : 0];
                 }
                 return res;
         };

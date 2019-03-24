@@ -213,8 +213,10 @@
                         c.interest_current_period[i]=interest;
                         c.accrued_interest[i]=interest;
                         c.pmt_interest[i]=interest;
+                        c.pmt_total[i]=interest;
                 }
-                c.pmt_total[n-1]=c.pmt_interest[n-1]+this.notional;
+                if (this.include_notional_pmt) c.pmt_total[n-1]=c.pmt_interest[n-1]+this.notional;
+
                 return c;
         };
         
