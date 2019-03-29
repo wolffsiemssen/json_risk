@@ -43,7 +43,7 @@
                 stored_params={vector_length: 1};
                 var keys, i;
                 //valuation date
-                stored_params.valuation_date=params.valuation_date || null;
+                stored_params.valuation_date=library.get_safe_date(params.valuation_date);
                 //scalars
                 if (typeof(params.scalars) === 'object'){
                         stored_params.scalars={};
@@ -117,6 +117,7 @@
         
         library.vector_pricer=function(instrument){
                 if (typeof(instrument.type)!== 'string') throw new Error ("vector_pricer: instrument object must contain valid type");
+                library.valuation_date=stored_params.valuation_date;
                 var obj=get_internal_object(instrument);
                 var vec_dc=stored_params.curves[instrument.disc_curve || ""] || null;
                 var vec_sc=stored_params.curves[instrument.spread_curve || ""] || null;
