@@ -1001,3 +1001,182 @@ results=JsonRisk.vector_pricer({
         currency: "USD"
 });        
 am(check(results), "Vector pricing with swaption returns valid vector of numbers");
+
+/*
+
+Test irregular_fixed_income
+
+*/
+times = [1,2,3,5];
+dfs = [0.95,0.91,0.86,0.78];
+curve ={times:times, dfs:dfs};
+
+var conditiondate= new Date(2021,0,15);
+var maturityDate = new Date(2022,0,20);
+
+cf_instrumentFix1 = {
+    "notional": 10000,
+    "maturity": maturityDate,  
+    "type": "loan",
+    "tenor": 3,
+    "repay_tenor": 6,
+    "calendar": "target",  
+    "dcc": 0,  // set day count convention
+    "conditions_valid_until": [conditiondate, maturityDate],   
+    "fixed_rate":0.05, //if fixed_rate is provided, it is recognized as fixed deal, and floater fields are ignored
+    "current_rate":0.05,    
+    "amortization":["annuity","stepdown"],    // entry either as a string (one condition) or as array of strings (multicondition)
+    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
+    "current_accrued_interest": 2,
+    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
+    "effective_date": new Date(2019,0,20),  
+    "next_to_last_date": "10.1.2022",  
+    "repay_first_date": new Date(2019,0,20),    
+    "repay_next_to_last_date": "2022/1/20",
+    "bdc":"f",   
+    "fixing_first_date": "2019-9-12",     
+    "fixing_next_to_last_date":"",    
+    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
+    "cap_rate":[0.2,""],        // entry either as a number (one condition) or as array (multicondition)
+    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
+    "fixing_tenor": 6
+    
+    };
+
+cf_instrumentFix2 = {
+    "notional": 10000,
+    "maturity": "20.1.2022",  
+    "type": "loan",
+    "tenor": 3,
+    "repay_tenor": 6,
+    "calendar": "target",  
+    "dcc": 0,  // set day count convention
+    "conditions_valid_until": ["15.1.2021", "20.1.2022"],   
+    "fixed_rate":0.05,//if fixed_rate is provided, it is recognized as fixed deal, and floater fields are ignored
+    "current_rate":0.05,    
+    "amortization":["annuity","stepdown"],    // entry either as a string (one condition) or as array of strings (multicondition)
+    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
+    "current_accrued_interest": 2,
+    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
+    "effective_date": new Date(2019,0,20),  
+    "next_to_last_date": "10.1.2022",   
+    "repay_first_date": new Date(2019,0,20),     
+    "repay_next_to_last_date": "2022/1/20",
+    "bdc":"f",    
+    "fixing_first_date": "2019-9-12",   
+    "fixing_next_to_last_date":"",    
+    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
+    "cap_rate":[0.2,""],        // entry either as a number (one condition) or as array (multicondition)
+    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
+    "fixing_tenor": 6
+    
+    };
+
+cf_instrumentFix3 = {
+    "notional": 10000,
+    "maturity": "20.1.2024",  
+    "type": "loan",
+    "tenor": 3,
+    "repay_tenor": 6,
+    "calendar": "target",  
+    "dcc": 0,  // set day count convention
+    "conditions_valid_until": ["15.1.2021", "16.1.2022", "17.1.2023","20.1.2024"],   
+    "fixed_rate":0.05,//if fixed_rate is provided, it is recognized as fixed deal, and floater fields are ignored
+    "current_rate":0.05,    
+    "amortization":["annuity","stepdown","bullet","capitalization"],    // entry either as a string (one condition) or as array of strings (multicondition)
+    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
+    "current_accrued_interest": 2,
+    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
+    "effective_date": new Date(2019,0,20),  
+    "next_to_last_date": "10.1.2024",    
+    "repay_first_date": new Date(2019,0,20),    
+    "repay_next_to_last_date": "2024/1/20",
+    "bdc":"f",   
+    "fixing_first_date": "2019-9-12",    
+    "fixing_next_to_last_date":"",  
+    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
+    "cap_rate":[0.2,""],        // entry either as a number (one condition) or as array (multicondition)
+    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
+    "fixing_tenor": 6
+    
+    };
+
+
+cf_instrumentFlt1 = {
+    "notional": 10000,
+    "maturity": maturityDate,  
+    "type": "loan",
+    "tenor": 3,
+    "repay_tenor": 6,
+    "calendar": "target", 
+    "dcc": 0,  // set day count convention
+    "conditions_valid_until": [conditiondate, maturityDate],   
+    //"fixed_rate":"",
+    "current_rate":0.05,    
+    "amortization":["annuity","stepdown"],    // entry either as a string (one condition) or as array of strings (multicondition)
+    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
+    "current_accrued_interest": 2,
+    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
+    "effective_date": new Date(2019,0,20),  
+    "next_to_last_date": "10.1.2022",   
+    "repay_first_date": new Date(2019,0,20),    
+    "repay_next_to_last_date": "2022/1/20",
+    "bdc":"f",   
+    "fixing_first_date": "2019-9-12",     
+    "fixing_next_to_last_date":"2021-9-12",   
+    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
+    "cap_rate":[0.1,0.3],        // entry either as a number (one condition) or as array (multicondition)
+    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
+    "fixing_tenor": 6
+    
+    };
+
+
+li = JsonRisk;
+
+console.log("test irregular_fixed_income:");
+
+var ifi = new li.irregular_fixed_income(cf_instrumentFlt1,curve);
+
+var ifiscd = ifi.merged_schedule;
+var length = ifiscd.date_accrual_start.length;
+console.log("schedule length: " + length);
+console.log("schedule:");
+for (var i = 0; i< length; i++){
+    console.log(ifiscd.date_accrual_start[i] + "; " + ifiscd.date_accrual_end[i] + "; " +
+                ifiscd.date_pmt[i] + "; " + ifiscd.t_accrual_start[i] + "; " +
+                ifiscd.t_accrual_end[i] + "; " + ifiscd.t_pmt[i] + "; " +
+                ifiscd.is_interest_date[i] + "; " + ifiscd.is_repay_date[i] + "; " +
+                ifiscd.is_fixing_date[i] + "; " + ifiscd.is_condition_date[i]
+                );
+    
+}
+
+console.log("cashflows:");
+var ificf = ifi.cash_flows;
+var cashflows_to_console = function(cfls){
+    var cf_string="";
+    for (var i = 0; i< length; i++){
+        cf_string+= cfls.date_accrual_start[i] + "; " + cfls.date_accrual_end[i] + "; " +
+                    cfls.date_pmt[i] + "; " + cfls.t_accrual_start[i] + "; " +
+                    cfls.t_accrual_end[i] + "; " + cfls.t_pmt[i] + "; " +
+                    cfls.is_interest_date[i] + "; " + cfls.is_repay_date[i] + "; " +
+                    cfls.is_fixing_date[i] + "; " + cfls.is_condition_date[i] + "; " +
+
+                    cfls.current_principal[i] + "; " + cfls.interest_current_period[i] + "; " +
+                    cfls.accrued_interest[i] + "; " + cfls.pmt_principal[i] + "; " +
+                    cfls.pmt_interest[i] + "; " + cfls.pmt_total[i] + "\n"
+                    ;
+       }
+    console.log(cf_string);
+};
+
+cashflows_to_console(ificf);
+
+console.log("test update_flt_cash_flows function:");
+
+times = [1,2,3,5];
+dfs1 = [0.90,0.88,0.82,0.72];
+curve1 ={times:times, dfs:dfs1};
+
+cashflows_to_console(ifi.update_flt_cash_flows(curve1));

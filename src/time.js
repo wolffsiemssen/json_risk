@@ -8,22 +8,17 @@
         */
         var dl=1000*60*60*24; // length of one day in milliseconds
         var one_over_dl=1.0/dl;
-        
+
         function is_leap_year(y){
                 if(y%4!==0) return false;
                 if(y===2000) return true;
                 return (y%100!==0);
         }
-        
-        function days_in_month(y,m){
-                if(1===m){ //Feb
-                        if (is_leap_year(y)) return 29; //Leap Year
-                        return 28;
-                }
-                if(3===m || 5===m || 8===m || 10===m) return 30; //Apr, Jun, Sep, Nov
-                return 31; 
-        }
 
+        function days_in_month(y,m){
+                return new Date(y,m+1,0).getDate();
+        }
+        
         library.period_str_to_time=function(str){
                 var num=parseInt(str, 10);
                 var unit=str.charAt(str.length-1);
