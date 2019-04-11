@@ -16,7 +16,7 @@ var am=function(expr,msg){
         }
 };
 
-am (typeof JsonRisk.pricer === 'function', "pricer function defined");
+am (typeof JsonRisk.require_vd === 'function', "require_vd function defined");
 am (typeof JsonRisk.pricer_bond === 'function', "pricer_bond function defined");
 am (typeof JsonRisk.period_str_to_time === 'function', "period_str_to_time function defined");
 am (typeof JsonRisk.get_safe_date === 'function', "get_safe_date function defined");
@@ -808,7 +808,7 @@ for (i=0; i<months.length; i++){
                 console.log("JSON Risk equivalent regular swaption price:    " + p2.toFixed(3));
                 am(swaption.maturity.getTime()===bond.maturity.getTime(),"Test equivalent swaption consistency for bullet bonds (maturity)");
                 am(swaption.fixed_rate.toFixed(5)===bond.fixed_rate.toFixed(5),"Test equivalent swaption consistency for bullet bonds (rate)");
-                console.log("-----------------");
+		console.log("-----------------");
         }
 }
 
@@ -1002,181 +1002,96 @@ results=JsonRisk.vector_pricer({
 });        
 am(check(results), "Vector pricing with swaption returns valid vector of numbers");
 
+
 /*
 
-Test irregular_fixed_income
+Test LGM option pricing
 
 */
-times = [1,2,3,5];
-dfs = [0.95,0.91,0.86,0.78];
-curve ={times:times, dfs:dfs};
-
-var conditiondate= new Date(2021,0,15);
-var maturityDate = new Date(2022,0,20);
-
-cf_instrumentFix1 = {
-    "notional": 10000,
-    "maturity": maturityDate,  
-    "type": "loan",
-    "tenor": 3,
-    "repay_tenor": 6,
-    "calendar": "target",  
-    "dcc": 0,  // set day count convention
-    "conditions_valid_until": [conditiondate, maturityDate],   
-    "fixed_rate":0.05, //if fixed_rate is provided, it is recognized as fixed deal, and floater fields are ignored
-    "current_rate":0.05,    
-    "amortization":["annuity","stepdown"],    // entry either as a string (one condition) or as array of strings (multicondition)
-    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
-    "current_accrued_interest": 2,
-    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
-    "effective_date": new Date(2019,0,20),  
-    "next_to_last_date": "10.1.2022",  
-    "repay_first_date": new Date(2019,0,20),    
-    "repay_next_to_last_date": "2022/1/20",
-    "bdc":"f",   
-    "fixing_first_date": "2019-9-12",     
-    "fixing_next_to_last_date":"",    
-    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
-    "cap_rate":[0.2,""],        // entry either as a number (one condition) or as array (multicondition)
-    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
-    "fixing_tenor": 6
-    
-    };
-
-cf_instrumentFix2 = {
-    "notional": 10000,
-    "maturity": "20.1.2022",  
-    "type": "loan",
-    "tenor": 3,
-    "repay_tenor": 6,
-    "calendar": "target",  
-    "dcc": 0,  // set day count convention
-    "conditions_valid_until": ["15.1.2021", "20.1.2022"],   
-    "fixed_rate":0.05,//if fixed_rate is provided, it is recognized as fixed deal, and floater fields are ignored
-    "current_rate":0.05,    
-    "amortization":["annuity","stepdown"],    // entry either as a string (one condition) or as array of strings (multicondition)
-    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
-    "current_accrued_interest": 2,
-    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
-    "effective_date": new Date(2019,0,20),  
-    "next_to_last_date": "10.1.2022",   
-    "repay_first_date": new Date(2019,0,20),     
-    "repay_next_to_last_date": "2022/1/20",
-    "bdc":"f",    
-    "fixing_first_date": "2019-9-12",   
-    "fixing_next_to_last_date":"",    
-    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
-    "cap_rate":[0.2,""],        // entry either as a number (one condition) or as array (multicondition)
-    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
-    "fixing_tenor": 6
-    
-    };
-
-cf_instrumentFix3 = {
-    "notional": 10000,
-    "maturity": "20.1.2024",  
-    "type": "loan",
-    "tenor": 3,
-    "repay_tenor": 6,
-    "calendar": "target",  
-    "dcc": 0,  // set day count convention
-    "conditions_valid_until": ["15.1.2021", "16.1.2022", "17.1.2023","20.1.2024"],   
-    "fixed_rate":0.05,//if fixed_rate is provided, it is recognized as fixed deal, and floater fields are ignored
-    "current_rate":0.05,    
-    "amortization":["annuity","stepdown","bullet","capitalization"],    // entry either as a string (one condition) or as array of strings (multicondition)
-    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
-    "current_accrued_interest": 2,
-    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
-    "effective_date": new Date(2019,0,20),  
-    "next_to_last_date": "10.1.2024",    
-    "repay_first_date": new Date(2019,0,20),    
-    "repay_next_to_last_date": "2024/1/20",
-    "bdc":"f",   
-    "fixing_first_date": "2019-9-12",    
-    "fixing_next_to_last_date":"",  
-    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
-    "cap_rate":[0.2,""],        // entry either as a number (one condition) or as array (multicondition)
-    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
-    "fixing_tenor": 6
-    
-    };
-
-
-cf_instrumentFlt1 = {
-    "notional": 10000,
-    "maturity": maturityDate,  
-    "type": "loan",
-    "tenor": 3,
-    "repay_tenor": 6,
-    "calendar": "target", 
-    "dcc": 0,  // set day count convention
-    "conditions_valid_until": [conditiondate, maturityDate],   
-    //"fixed_rate":"",
-    "current_rate":0.05,    
-    "amortization":["annuity","stepdown"],    // entry either as a string (one condition) or as array of strings (multicondition)
-    "repay_amount": [50,100],   // entry either as a number (one condition) or as array (multicondition)
-    "current_accrued_interest": 2,
-    /*here below dates are given in four different ways, to test that they are all correctly worked out by the get_initialised_date function */
-    "effective_date": new Date(2019,0,20),  
-    "next_to_last_date": "10.1.2022",   
-    "repay_first_date": new Date(2019,0,20),    
-    "repay_next_to_last_date": "2022/1/20",
-    "bdc":"f",   
-    "fixing_first_date": "2019-9-12",     
-    "fixing_next_to_last_date":"2021-9-12",   
-    "float_spread":0.02,       // entry either as a number (one condition) or as array (multicondition)
-    "cap_rate":[0.1,0.3],        // entry either as a number (one condition) or as array (multicondition)
-    "floor_rate":[0,0],    // entry either as a number (one condition) or as array (multicondition)
-    "fixing_tenor": 6
-    
-    };
-
-
-li = JsonRisk;
-
-console.log("test irregular_fixed_income:");
-
-var ifi = new li.irregular_fixed_income(cf_instrumentFlt1,curve);
-
-var ifiscd = ifi.merged_schedule;
-var length = ifiscd.date_accrual_start.length;
-console.log("schedule length: " + length);
-console.log("schedule:");
-for (var i = 0; i< length; i++){
-    console.log(ifiscd.date_accrual_start[i] + "; " + ifiscd.date_accrual_end[i] + "; " +
-                ifiscd.date_pmt[i] + "; " + ifiscd.t_accrual_start[i] + "; " +
-                ifiscd.t_accrual_end[i] + "; " + ifiscd.t_pmt[i] + "; " +
-                ifiscd.is_interest_date[i] + "; " + ifiscd.is_repay_date[i] + "; " +
-                ifiscd.is_fixing_date[i] + "; " + ifiscd.is_condition_date[i]
-                );
-    
-}
-
-console.log("cashflows:");
-var ificf = ifi.cash_flows;
-var cashflows_to_console = function(cfls){
-    var cf_string="";
-    for (var i = 0; i< length; i++){
-        cf_string+= cfls.date_accrual_start[i] + "; " + cfls.date_accrual_end[i] + "; " +
-                    cfls.date_pmt[i] + "; " + cfls.t_accrual_start[i] + "; " +
-                    cfls.t_accrual_end[i] + "; " + cfls.t_pmt[i] + "; " +
-                    cfls.is_interest_date[i] + "; " + cfls.is_repay_date[i] + "; " +
-                    cfls.is_fixing_date[i] + "; " + cfls.is_condition_date[i] + "; " +
-
-                    cfls.current_principal[i] + "; " + cfls.interest_current_period[i] + "; " +
-                    cfls.accrued_interest[i] + "; " + cfls.pmt_principal[i] + "; " +
-                    cfls.pmt_interest[i] + "; " + cfls.pmt_total[i] + "\n"
-                    ;
-       }
-    console.log(cf_string);
+JsonRisk.valuation_date=new Date(2019,0,1);
+yf=JsonRisk.year_fraction_factory("");
+var cf_obj={
+	date_pmt:[new Date(2019,0,1),
+		  new Date(2020,0,1),
+		  new Date(2021,0,1),
+		  new Date(2022,0,1),
+		  new Date(2023,0,1),
+	 	  new Date(2024,0,1),
+	 	  new Date(2025,0,1),
+	 	  new Date(2026,0,1),
+	 	  new Date(2027,0,1)],
+	current_principal:[100,100,90,80,70,60,50,40,30],
+	pmt_total:[0,11,10.9,10.8,10.7,10.6, 10.5, 10.4, 30.3]
 };
 
-cashflows_to_console(ificf);
+cf_obj.t_pmt=new Array(cf_obj.date_pmt.length);
+for (i=0;i<cf_obj.date_pmt.length;i++){
+	cf_obj.t_pmt[i]=yf(JsonRisk.valuation_date,cf_obj.date_pmt[i]);
+}
 
-console.log("test update_flt_cash_flows function:");
+var cf_regular;
 
-times = [1,2,3,5];
-dfs1 = [0.90,0.88,0.82,0.72];
-curve1 ={times:times, dfs:dfs1};
+expiries=[new Date(2019,0,1),
+	  new Date(2020,0,1),
+	  new Date(2021,0,1),
+	  new Date(2022,0,1),
+	  new Date(2023,0,1),
+	  new Date(2024,0,1),
+	  new Date(2025,0,1)];
+var lgm_xi;
+var lgm_state;
+var result, result_orig, result_numeric, bpv;
+curve=JsonRisk.get_const_curve(0.01);
+curve_1bp=JsonRisk.get_const_curve(0.0101);
+curve_100bp=JsonRisk.get_const_curve(0.02);
 
-cashflows_to_console(ifi.update_flt_cash_flows(curve1));
+//create bcbs 352 scenarios
+var bcbs352times=[0.0028,0.0417,0.1667,0.375,0.625,0.875,1.25,1.75,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,12.5,17.5,25];
+
+var curve_up={ times:bcbs352times,zcs:[]};
+var curve_down={ times:bcbs352times,zcs:[]};
+var curve_steepener={ times:bcbs352times,zcs:[]};
+var curve_flattener={ times:bcbs352times,zcs:[]};
+var curve_shortup={ times:bcbs352times,zcs:[]};
+var curve_shortdown={ times:bcbs352times,zcs:[]};
+
+var slong,sshort;
+for (var i=0;i<bcbs352times.length;i++){
+        curve_up.zcs.push(0.02);
+        curve_down.zcs.push(-0.02);
+        sshort=Math.exp(-bcbs352times[i]/4);
+        slong=1-sshort;
+        curve_shortup.zcs.push(0.025*sshort);
+        curve_shortdown.zcs.push(-0.025*sshort);
+        curve_steepener.zcs.push(-0.65*0.025*sshort+0.9*0.01*slong);
+        curve_flattener.zcs.push(0.8*0.025*sshort-0.6*0.01*slong);
+}
+
+
+for (i=0;i<expiries.length;i++){
+	swaption=JsonRisk.create_equivalent_regular_swaption(cf_obj,expiries[i]);
+	cf_regular=new JsonRisk.simple_fixed_income(swaption).get_cash_flows();
+	
+	lgm_xi=0.0004*yf(JsonRisk.valuation_date,expiries[i]);
+	
+	//cash flow PVs
+	result=JsonRisk.dcf(cf_regular, curve, null, null,expiries[i]);
+	bpv=Math.abs(JsonRisk.dcf(cf_regular, curve_1bp, null, null,expiries[i])-result);
+	
+	//option PVs
+	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
+	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (equivalent regular vs original), expiry " +(i+1));
+	result=JsonRisk.lgm_european_call_on_cf_numeric(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (numeric vs original), expiry " +(i+1));
+
+	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
+	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (equivalent regular vs original), expiry " +(i+1));
+	result=JsonRisk.lgm_european_call_on_cf_numeric(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (numeric vs original), expiry " +(i+1));
+
+	
+console.log("--------------------------");
+
+}

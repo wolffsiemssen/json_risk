@@ -24,10 +24,8 @@
                 valuation_date: null
         };
 
-        JsonRisk.pricer=function(instrument, parameters){
-
-                return null;
-                
+        JsonRisk.require_vd=function(){
+		if(!(JsonRisk.valuation_date instanceof Date)) throw new Error("JsonRisk: valuation_date must be set");
         };
 
         

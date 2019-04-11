@@ -24,10 +24,8 @@
                 valuation_date: null
         };
 
-        JsonRisk.pricer=function(instrument, parameters){
-
-                return null;
-                
+        JsonRisk.require_vd=function(){
+		if(!(JsonRisk.valuation_date instanceof Date)) throw new Error("JsonRisk: valuation_date must be set");
         };
 
         
@@ -761,6 +759,148 @@
        
 
 }(this.JsonRisk || module.exports));
+;(function(library){
+
+        /*
+        
+                JsonRisk LGM (a.k.a. Hull-White) model
+                Reference: Hagan, Patrick. (2019). EVALUATING AND HEDGING EXOTIC SWAP INSTRUMENTS VIA LGM.
+                
+        */
+
+	function h_factory(mean_rev){
+		if (mean_rev===0) return function(t){return t;};
+		return function(t){return (1-Math.exp(-mean_rev*t))/mean_rev;};		
+	}
+
+	function h(t){ return t;}
+
+	library.lgm_dcf=function(cf_obj,t_exercise, curve, xi, state, spread_curve, residual_spread){
+                /*
+
+		Calculates the discounted cash flow present value for a given vector of states (reduced value according to formula 4.14b)
+
+                requires cf_obj of type
+                {
+                        current_principal: array(double),
+                        t_pmt: array(double),
+                        pmt_total: array(double)
+                }
+
+		state must be an array of numbers
+		
+                */
+		if(!Array.isArray(state)) throw new Error("lgm_dcf: state variable must be an array of numbers");                
+		
+                var i=0, j, df, dh;
+		var res=new Array(state.length);
+                while(cf_obj.t_pmt[i]<=t_exercise) i++; // move forward to first line after exercise date
+		// include principal payment on or before exercise date
+		df=library.get_df(curve, t_exercise);
+		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
+		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
+		for (j=0; j<state.length; j++){
+			res[j] = - cf_obj.current_principal[i] * df;
+		}
+
+                while (i<cf_obj.t_pmt.length){
+                        // include all payments after exercise date
+			df=library.get_df(curve, cf_obj.t_pmt[i]);
+			if(spread_curve) df*=library.get_df(spread_curve, cf_obj.t_pmt[i]);
+			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
+			dh=h(cf_obj.t_pmt[i])-h(0);
+			for (j=0; j<state.length; j++){
+        	                res[j]+=cf_obj.pmt_total[i] * df * Math.exp(-dh*state[j]-dh*dh*xi*0.5);
+			}
+                        i++;
+                }
+                return res;
+	};
+
+	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, curve, xi){
+                /*
+
+		Calculates the european call option price on a cash flow (closed formula 5.7b).
+
+                requires cf_obj of type
+                {
+                        current_principal: array(double),
+                        t_pmt: array(double),
+                        pmt_total: array(double)
+                }
+
+		state must be an array of numbers
+		
+                */
+		if(t_exercise<1/512 || xi<0.000000064*t_exercise) return library.lgm_dcf(cf_obj,t_exercise, curve, 0, [0])[0];
+		function func(x){
+			return library.lgm_dcf(cf_obj,t_exercise, curve, xi, [x])[0];
+		}
+		var std_dev=Math.sqrt(xi);
+		var one_std_dev=1/std_dev;
+		var break_even=library.find_root_secant(func,-std_dev,std_dev);
+		
+                var i=0, df, dh;
+		
+                while(cf_obj.t_pmt[i]<=t_exercise) i++; // move forward to first line after exercise date
+		// include principal payment on or before exercise date
+		df=library.get_df(curve, t_exercise);
+		var res = - cf_obj.current_principal[i] * df * library.cndf(break_even*one_std_dev);
+		
+                while (i<cf_obj.t_pmt.length){
+                        // include all payments after exercise date
+			df=library.get_df(curve, cf_obj.t_pmt[i]);
+			dh=h(cf_obj.t_pmt[i])-h(0);
+	                res+=cf_obj.pmt_total[i] * df * library.cndf((break_even+dh*xi)*one_std_dev);
+                        i++;
+                }
+                return res;
+	};
+
+	var STD_DEV_RANGE=4;
+	var RESOLUTION=20;
+
+	library.lgm_european_call_on_cf_numeric=function(cf_obj,t_exercise, curve, xi){
+                /*
+
+		Calculates the european call option price on a cash flow (numeric integration according to martingale formula 4.14a).
+
+                requires cf_obj of type
+                {
+                        current_principal: array(double),
+                        t_pmt: array(double),
+                        pmt_total: array(double)
+                }
+
+		state must be an array of numbers
+		
+                */
+		if(t_exercise<1/512 || xi<0.000000064*t_exercise) return library.lgm_dcf(cf_obj,t_exercise, curve, 0, [0])[0];
+
+		var std_dev=Math.sqrt(xi);
+		var ds=std_dev/RESOLUTION;
+		var n=2*STD_DEV_RANGE*RESOLUTION+1, i;
+		var state=new Array(n);
+		state[0]=-STD_DEV_RANGE*std_dev;
+		for (i=1; i<n; i++){
+			state[i]=state[0]+i*ds;
+		}
+		var payoff=library.lgm_dcf(cf_obj,t_exercise, curve, xi, state);
+		
+                var res=0;
+		for (i=0; i<n; i++){
+			if(payoff[i]>0){
+				res+=payoff[i]*Math.exp(-0.5*state[i]*state[i]/xi);
+			}
+		}
+		res*=ds;
+		res/=Math.sqrt(2*Math.PI*xi);
+		return res;
+	};
+        
+}(this.JsonRisk || module.exports));
+
+
 ;
 (function(library){
         
@@ -936,7 +1076,7 @@
                 */
                 var dc=disc_curve || library.get_safe_curve(null);
                 var sc=spread_curve || library.get_safe_curve(null);
-                if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
+		library.require_vd(); //valuation date must be set
                 //curve initialisation and fallbacks
                 if(typeof residual_spread !== "number") residual_spread=0;
                 var sd=library.get_safe_date(settlement_date);
@@ -963,8 +1103,8 @@
         };
         
         library.irr=function(cf_obj, settlement_date, payment_on_settlement_date){
-                if (null===library.valuation_date) throw new Error("irr: valuation_date must be set");
-                if (undefined===payment_on_settlement_date) payment_on_settlement_date=0;
+		library.require_vd(); //valuation date must be set
+                if (!payment_on_settlement_date) payment_on_settlement_date=0;
                 
                 var tset=library.year_fraction_factory(null)(library.valuation_date, settlement_date);
                 var func=function(x){
@@ -1042,7 +1182,7 @@
         };
 
         library.simple_fixed_income.prototype.fix_cash_flows=function(schedule, bdc, is_holiday_func, year_fraction_func, notional, rate ){
-                if (null===library.valuation_date) throw new Error("fix_cash_flows: valuation_date must be set");
+		library.require_vd(); //valuation date must be set
 
                 var date_accrual_start=new Array(schedule.length-1);
                 var date_accrual_end=new Array(schedule.length-1);
@@ -1363,7 +1503,7 @@
         };
 
         library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
-                if (null===library.valuation_date) throw new Error("swaption.present_value: valuation_date must be set");
+                library.require_vd();
                 
                 //obtain times
                 var default_yf=library.year_fraction_factory(null);
@@ -1398,24 +1538,22 @@
                 return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
         };
         
-        library.create_equivalent_regular_swaption=function(cf_obj, expiry, original_instrument){
+        library.create_equivalent_regular_swaption=function(cf_obj, expiry, conventions){
                 //sanity checks
                 if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
                 if (cf_obj.t_pmt.length !== cf_obj.pmt_total.length || cf_obj.t_pmt.length !== cf_obj.current_principal.length) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
-                if (null===library.valuation_date) throw new Error("create_equivalent_swaption: valuation_date must be set");
-                if (!original_instrument) original_instrument={};
-                var tenor=original_instrument.tenor || 6;
-                var bdc=original_instrument.bdc || "unadjusted";
-                var calendar=original_instrument.calendar || "";
+		library.require_vd();//valuation date must be set
+                if (!conventions) conventions={};
+                var tenor=conventions.tenor || 6;
+                var bdc=conventions.bdc || "unadjusted";
+                var calendar=conventions.calendar || "";
 
                 //retrieve outstanding principal on expiry (corresponds to regular swaption notional)
                 var outstanding_principal=0;
-                var i;
-                for (i=0; i<cf_obj.current_principal.length; i++){
-                        if (cf_obj.date_pmt[i]<=expiry){
-                                outstanding_principal=cf_obj.current_principal[i];
-                        }
-                }
+                var i=0;
+		while (cf_obj.date_pmt[i]<=expiry) i++;
+                outstanding_principal=cf_obj.current_principal[i];
+
                 if (outstanding_principal===0) throw new Error("create_equivalent_regular_swaption: invalid cashflow object or expiry, zero outstanding principal");
                 //compute internal rate of return for remaining cash flow including settlement payment
                 var irr=library.irr(cf_obj, expiry, -outstanding_principal);
@@ -1423,7 +1561,7 @@
                 //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
                 irr=12/tenor*(Math.pow(1+irr,tenor/12)-1);
                 
-                //compute effective duration of remaining cash flow (corresponds to regular swaption term)
+                //compute effective duration of remaining cash flow
                 var cup=library.get_const_curve(irr+0.0001);
                 var cdown=library.get_const_curve(irr-0.0001);
                 var npv_up=library.dcf(cf_obj, cup, null, null, expiry);
@@ -1455,7 +1593,7 @@
                           dcc: "act/365",
                         };
                 var effective_duration=ed(bond);
-                var iter=20;
+                var iter=10;
                 //alter maturity until we obtain effective duration target value
                 while (Math.abs(effective_duration-effective_duration_target)>1/512 && iter>0){
                         t_maturity=t_maturity*effective_duration_target/effective_duration;
@@ -1469,6 +1607,8 @@
                         is_payer: false,
                         maturity: maturity,
                         expiry: expiry,
+			effective_date: expiry,
+			settlement_date: expiry,
                         notional: outstanding_principal,
                         fixed_rate: irr,
                         tenor: tenor,
@@ -1599,6 +1739,11 @@
                 //Fallback to default dcc
                 return yf_act365;
         };
+
+	library.time_from_now=function(d){
+		library.require_vd();
+		return yf_act365(library.valuation_date, d); 
+	};
 
         
         /*!

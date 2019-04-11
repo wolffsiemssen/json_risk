@@ -19,7 +19,7 @@
         };
 
         library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
-                if (null===library.valuation_date) throw new Error("swaption.present_value: valuation_date must be set");
+                library.require_vd();
                 
                 //obtain times
                 var default_yf=library.year_fraction_factory(null);
@@ -54,24 +54,22 @@
                 return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
         };
         
-        library.create_equivalent_regular_swaption=function(cf_obj, expiry, original_instrument){
+        library.create_equivalent_regular_swaption=function(cf_obj, expiry, conventions){
                 //sanity checks
                 if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
                 if (cf_obj.t_pmt.length !== cf_obj.pmt_total.length || cf_obj.t_pmt.length !== cf_obj.current_principal.length) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
-                if (null===library.valuation_date) throw new Error("create_equivalent_swaption: valuation_date must be set");
-                if (!original_instrument) original_instrument={};
-                var tenor=original_instrument.tenor || 6;
-                var bdc=original_instrument.bdc || "unadjusted";
-                var calendar=original_instrument.calendar || "";
+		library.require_vd();//valuation date must be set
+                if (!conventions) conventions={};
+                var tenor=conventions.tenor || 6;
+                var bdc=conventions.bdc || "unadjusted";
+                var calendar=conventions.calendar || "";
 
                 //retrieve outstanding principal on expiry (corresponds to regular swaption notional)
                 var outstanding_principal=0;
-                var i;
-                for (i=0; i<cf_obj.current_principal.length; i++){
-                        if (cf_obj.date_pmt[i]<=expiry){
-                                outstanding_principal=cf_obj.current_principal[i];
-                        }
-                }
+                var i=0;
+		while (cf_obj.date_pmt[i]<=expiry) i++;
+                outstanding_principal=cf_obj.current_principal[i];
+
                 if (outstanding_principal===0) throw new Error("create_equivalent_regular_swaption: invalid cashflow object or expiry, zero outstanding principal");
                 //compute internal rate of return for remaining cash flow including settlement payment
                 var irr=library.irr(cf_obj, expiry, -outstanding_principal);
@@ -79,7 +77,7 @@
                 //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
                 irr=12/tenor*(Math.pow(1+irr,tenor/12)-1);
                 
-                //compute effective duration of remaining cash flow (corresponds to regular swaption term)
+                //compute effective duration of remaining cash flow
                 var cup=library.get_const_curve(irr+0.0001);
                 var cdown=library.get_const_curve(irr-0.0001);
                 var npv_up=library.dcf(cf_obj, cup, null, null, expiry);
@@ -111,7 +109,7 @@
                           dcc: "act/365",
                         };
                 var effective_duration=ed(bond);
-                var iter=20;
+                var iter=10;
                 //alter maturity until we obtain effective duration target value
                 while (Math.abs(effective_duration-effective_duration_target)>1/512 && iter>0){
                         t_maturity=t_maturity*effective_duration_target/effective_duration;
@@ -125,6 +123,8 @@
                         is_payer: false,
                         maturity: maturity,
                         expiry: expiry,
+			effective_date: expiry,
+			settlement_date: expiry,
                         notional: outstanding_principal,
                         fixed_rate: irr,
                         tenor: tenor,

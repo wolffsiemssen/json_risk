@@ -14,7 +14,7 @@
                 */
                 var dc=disc_curve || library.get_safe_curve(null);
                 var sc=spread_curve || library.get_safe_curve(null);
-                if (null===library.valuation_date) throw new Error("dcf: valuation_date must be set");
+		library.require_vd(); //valuation date must be set
                 //curve initialisation and fallbacks
                 if(typeof residual_spread !== "number") residual_spread=0;
                 var sd=library.get_safe_date(settlement_date);
@@ -41,8 +41,8 @@
         };
         
         library.irr=function(cf_obj, settlement_date, payment_on_settlement_date){
-                if (null===library.valuation_date) throw new Error("irr: valuation_date must be set");
-                if (undefined===payment_on_settlement_date) payment_on_settlement_date=0;
+		library.require_vd(); //valuation date must be set
+                if (!payment_on_settlement_date) payment_on_settlement_date=0;
                 
                 var tset=library.year_fraction_factory(null)(library.valuation_date, settlement_date);
                 var func=function(x){
@@ -120,7 +120,7 @@
         };
 
         library.simple_fixed_income.prototype.fix_cash_flows=function(schedule, bdc, is_holiday_func, year_fraction_func, notional, rate ){
-                if (null===library.valuation_date) throw new Error("fix_cash_flows: valuation_date must be set");
+		library.require_vd(); //valuation date must be set
 
                 var date_accrual_start=new Array(schedule.length-1);
                 var date_accrual_end=new Array(schedule.length-1);
