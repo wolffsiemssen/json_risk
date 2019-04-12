@@ -143,15 +143,14 @@
                 var adj=function(d){
                         return library.adjust(d,bdc,is_holiday_func);
                 };
-                var default_yf=library.year_fraction_factory(null);
 
                 for(i=0;i<schedule.length-1;i++){
                         date_accrual_start[i]=schedule[i];
                         date_accrual_end[i]=schedule[i+1];
                         date_pmt[i]=adj(schedule[i+1]);
-                        t_pmt[i]=default_yf(library.valuation_date,date_pmt[i]);
-                        t_accrual_start[i]=default_yf(library.valuation_date,schedule[i]);
-                        t_accrual_end[i]=default_yf(library.valuation_date,schedule[i+1]);
+                        t_pmt[i]=library.time_from_now(date_pmt[i]);
+                        t_accrual_start[i]=library.time_from_now(schedule[i]);
+                        t_accrual_end[i]=library.time_from_now(schedule[i+1]);
                         is_interest_date[i]=true;
                         is_repay_date[i]=false;
                         is_fixing_date[i]=false;
@@ -194,7 +193,6 @@
                 
                 //recalculate amounts for floater deals
                 var c=this.cash_flows;
-                var default_yf=library.year_fraction_factory(null);
                                 
                 var i, rt, interest, n=c.t_pmt.length;
                 //start with i=1 as current rate does not need recalculating
@@ -204,8 +202,8 @@
                                 rt=this.current_rate;
                         }else{
                                 rt=library.get_fwd_rate(fwd_curve,
-                                               default_yf(library.valuation_date,c.date_accrual_start[i]),
-                                               default_yf(library.valuation_date,c.date_accrual_end[i]))+
+                                               library.time_from_now(c.date_accrual_start[i]),
+                                               library.time_from_now(c.date_accrual_end[i]))+
                                                this.float_spread;
                         }
                         interest=this.notional*rt*

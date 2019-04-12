@@ -33,6 +33,88 @@
         return JsonRisk;
 
 }));
+;
+(function(library){
+
+       library.callable_fixed_income=function(instrument){
+       		/*
+		
+		callable fixed income constist of
+		  -- an internal simple_fixed_income base instrument
+		  -- a call schedule
+		  -- a calibration basket of internal swaptions
+		  
+
+		*/
+		
+		//only fixed rate instruments 
+		if(typeof instrument.fixed_rate !== 'number') throw new Error("callable_fixed_income: must provide valid fixed_rate.");
+
+	        this.base=new library.simple_fixed_income(instrument);
+		this.call_schedule=library.backward_schedule(instrument.first_call_date, 
+							     instrument.maturity, 
+							     instrument.call_tenor,
+							     base.is_holiday_func, 
+							     base.bdc).pop(); //pop removes maturity from call schedule as maturity is not really a call date
+
+		this.basket=new Array(call_schedule.length);
+		for (var i=0; i<call_schedule.length; i++){
+			//basket instruments are co-terminal swaptions mit standard conditions
+			basket[i]=new swaption({
+		                is_payer: false,
+		                maturity: instrument.maturity,
+		                expiry: this.call_schedule[i],
+				effective_date: this.call_schedule[i],
+				settlement_date: this.call_schedule[i],
+		                notional: instrument.notional,
+		                fixed_rate: instrument.fixed_rate,
+		                tenor: 12,
+		                float_spread: 0.00,
+		                float_tenor: 6,
+		                float_current_rate: 0.00,
+		                calendar: "TARGET",
+		                bdc: "u",
+		                float_bdc: "u",
+		                dcc: "act/365",
+		                float_dcc: "act/365"
+		        });
+		}
+                
+                
+
+        };
+        
+        library.callable_bond.prototype.present_value=function(disc_curve, spread_curve, fwd_curve, surface){
+                var res=0;
+                res+=this.base.present_value(disc_curve, spread_curve, null);
+		
+		//eliminate past call dates and derive time to exercise
+		library.require_vd(); //valuation date must be set
+		var t_exercise=[];
+		for (var i=0; i<call_schedule.length; i++){
+				
+		}
+				
+		//calibrate lgm model - returns xi for non-expired swaptions only
+		var xi_vec=library.lgm_calibrate(basket, disc_curve, spread_curve);
+
+		//subtract lgm call price
+		if (1===xi_vec.length){
+			//european call, use closed formula
+			res-=library.lgm_european_call_on_cf=(this.base.get_cash_flows(),t_exercise, disc_curve, xi_vec);
+		}
+
+                return res;
+        };
+         
+        
+        library.pricer_callable_bond=function(bond, disc_curve, spread_curve, fwd_curve, surface){
+                var cb_internal=new library.callable_fixed_income(bond);
+                return cb_internal.present_value(disc_curve, spread_curve, fwd_curve, surface);
+        };
+        
+
+}(this.JsonRisk || module.exports));
 ;(function(library){        
         var default_yf=null;
 
@@ -1205,15 +1287,14 @@
                 var adj=function(d){
                         return library.adjust(d,bdc,is_holiday_func);
                 };
-                var default_yf=library.year_fraction_factory(null);
 
                 for(i=0;i<schedule.length-1;i++){
                         date_accrual_start[i]=schedule[i];
                         date_accrual_end[i]=schedule[i+1];
                         date_pmt[i]=adj(schedule[i+1]);
-                        t_pmt[i]=default_yf(library.valuation_date,date_pmt[i]);
-                        t_accrual_start[i]=default_yf(library.valuation_date,schedule[i]);
-                        t_accrual_end[i]=default_yf(library.valuation_date,schedule[i+1]);
+                        t_pmt[i]=library.time_from_now(date_pmt[i]);
+                        t_accrual_start[i]=library.time_from_now(schedule[i]);
+                        t_accrual_end[i]=library.time_from_now(schedule[i+1]);
                         is_interest_date[i]=true;
                         is_repay_date[i]=false;
                         is_fixing_date[i]=false;
@@ -1256,7 +1337,6 @@
                 
                 //recalculate amounts for floater deals
                 var c=this.cash_flows;
-                var default_yf=library.year_fraction_factory(null);
                                 
                 var i, rt, interest, n=c.t_pmt.length;
                 //start with i=1 as current rate does not need recalculating
@@ -1266,8 +1346,8 @@
                                 rt=this.current_rate;
                         }else{
                                 rt=library.get_fwd_rate(fwd_curve,
-                                               default_yf(library.valuation_date,c.date_accrual_start[i]),
-                                               default_yf(library.valuation_date,c.date_accrual_end[i]))+
+                                               library.time_from_now(c.date_accrual_start[i]),
+                                               library.time_from_now(c.date_accrual_end[i]))+
                                                this.float_spread;
                         }
                         interest=this.notional*rt*
@@ -1506,9 +1586,8 @@
                 library.require_vd();
                 
                 //obtain times
-                var default_yf=library.year_fraction_factory(null);
-                var t_maturity=default_yf(library.valuation_date, this.maturity);
-                var t_expiry=default_yf(library.valuation_date, this.expiry);
+                var t_maturity=library.time_from_now(this.maturity);
+                var t_expiry=library.time_from_now(this.expiry);
                 var t_term=t_maturity-t_expiry;
                 if (t_term<1/512){
                         return 0;

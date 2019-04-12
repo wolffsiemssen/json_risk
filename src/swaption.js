@@ -22,9 +22,8 @@
                 library.require_vd();
                 
                 //obtain times
-                var default_yf=library.year_fraction_factory(null);
-                var t_maturity=default_yf(library.valuation_date, this.maturity);
-                var t_expiry=default_yf(library.valuation_date, this.expiry);
+                var t_maturity=library.time_from_now(this.maturity);
+                var t_expiry=library.time_from_now(this.expiry);
                 var t_term=t_maturity-t_expiry;
                 if (t_term<1/512){
                         return 0;
