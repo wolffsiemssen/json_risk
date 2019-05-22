@@ -110,6 +110,8 @@
                         return new library.swaption(instrument);
                         case "fxterm":
                         return new library.fxterm(instrument);
+                        case "callable_bond":
+                        return new library.callable_fixed_income(instrument);
                         default:
                         throw new Error ("vector_pricer: invalid instrument type");
                 }
@@ -140,6 +142,9 @@
                                 case "swap":
                                 case "swaption":
                                 res[i]=obj.present_value(dc,fc,su);
+				break;
+                                case "callable_bond":
+                                res[i]=obj.present_value(dc,sc,fc,su);
                                 break;
                         }
                         if (vec_fx) res[i]/=vec_fx.value[vec_fx.value.length>1 ? i : 0];

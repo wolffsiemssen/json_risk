@@ -86,6 +86,10 @@ from=new Date(2010,11,30);
 to = new Date(2013,0,2);
 am(yf(from,to).toFixed(10)===(367/365 + 1 + 1/365).toFixed(10), "act/act year fraction (3)");
 
+from=new Date(2010,3,30);
+to = new Date(2010,9,30);
+am(yf(from,to).toFixed(10)===(183/365).toFixed(10), "act/act year fraction (4)");
+
 yf=JsonRisk.year_fraction_factory("invalid string");
 for (i=1; i<11; i++){
         from=new Date(2000+i,2*i,3*i);
@@ -889,6 +893,199 @@ for (i=0; i<Kupon.length; i++){
         am(pv_bond===pv_loan, "Loan valuation with regular loan against bond pricer, (" + (i+1) +")");
 }
 */
+
+
+
+/*
+
+Test LGM option pricing
+
+*/
+JsonRisk.valuation_date=new Date(2019,0,1);
+yf=JsonRisk.year_fraction_factory("");
+var cf_obj={
+	date_pmt:[new Date(2019,0,1),
+		  new Date(2020,0,1),
+		  new Date(2021,0,1),
+		  new Date(2022,0,1),
+		  new Date(2023,0,1),
+	 	  new Date(2024,0,1),
+	 	  new Date(2025,0,1),
+	 	  new Date(2026,0,1),
+	 	  new Date(2027,0,1)],
+	current_principal:[100,100,90,80,70,60,50,40,30],
+	pmt_interest:[0,11,0.9,0.8,0.7,0.6, 0.5, 0.4, 0.3],
+	pmt_total:[0,11,10.9,10.8,10.7,10.6, 10.5, 10.4, 30.3]
+};
+
+cf_obj.t_pmt=new Array(cf_obj.date_pmt.length);
+for (i=0;i<cf_obj.date_pmt.length;i++){
+	cf_obj.t_pmt[i]=JsonRisk.time_from_now(cf_obj.date_pmt[i]);
+}
+
+var cf_regular;
+
+expiries=[new Date(2019,0,1),
+	  new Date(2020,0,1),
+	  new Date(2021,0,1),
+	  new Date(2022,0,1),
+	  new Date(2023,0,1),
+	  new Date(2024,0,1),
+	  new Date(2025,0,1)];
+var lgm_xi;
+var lgm_state;
+var result, result_orig, result_numeric, bpv;
+curve=JsonRisk.get_const_curve(0.01);
+curve_1bp=JsonRisk.get_const_curve(0.0101);
+curve_100bp=JsonRisk.get_const_curve(0.02);
+
+//create bcbs 352 scenarios
+var bcbs352times=[0.0028,0.0417,0.1667,0.375,0.625,0.875,1.25,1.75,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,12.5,17.5,25];
+
+var curve_up={ times:bcbs352times,zcs:[]};
+var curve_down={ times:bcbs352times,zcs:[]};
+var curve_steepener={ times:bcbs352times,zcs:[]};
+var curve_flattener={ times:bcbs352times,zcs:[]};
+var curve_shortup={ times:bcbs352times,zcs:[]};
+var curve_shortdown={ times:bcbs352times,zcs:[]};
+
+var slong,sshort;
+for (var i=0;i<bcbs352times.length;i++){
+        curve_up.zcs.push(0.02);
+        curve_down.zcs.push(-0.02);
+        sshort=Math.exp(-bcbs352times[i]/4);
+        slong=1-sshort;
+        curve_shortup.zcs.push(0.025*sshort);
+        curve_shortdown.zcs.push(-0.025*sshort);
+        curve_steepener.zcs.push(-0.65*0.025*sshort+0.9*0.01*slong);
+        curve_flattener.zcs.push(0.8*0.025*sshort-0.6*0.01*slong);
+}
+
+
+for (i=0;i<expiries.length;i++){
+	swaption=JsonRisk.create_equivalent_regular_swaption(cf_obj,expiries[i]);
+	cf_regular=new JsonRisk.simple_fixed_income(swaption).get_cash_flows();
+	
+	lgm_xi=0.0004*yf(JsonRisk.valuation_date,expiries[i]);
+	
+	//cash flow PVs
+	result=JsonRisk.dcf(cf_regular, curve, null, null,expiries[i]);
+	bpv=Math.abs(JsonRisk.dcf(cf_regular, curve_1bp, null, null,expiries[i])-result);
+	
+	//option PVs
+	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
+	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (equivalent regular vs original), expiry " +(i+1));
+	result=JsonRisk.lgm_european_call_on_cf_numeric(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (numeric vs original), expiry " +(i+1));
+
+	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
+	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (equivalent regular vs original), expiry " +(i+1));
+	result=JsonRisk.lgm_european_call_on_cf_numeric(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (numeric vs original), expiry " +(i+1));
+
+	
+	console.log("--------------------------");
+
+}
+
+
+/*
+	
+	Test callable bond Valuation
+	
+*/
+var curve=JsonRisk.get_const_curve(0.05);
+var curve_up=JsonRisk.get_const_curve(0.0501);
+surface={type: "bachelier", expiries: [1,2,3], terms: [1,2,3,4], values: [[0.01, 0.01, 0.02, 0.02],[0.02, 0.02, 0.03, 0.03],[0.03, 0.03, 0.031, 0.031]]};
+//surface=JsonRisk.get_const_surface(0.06);
+JsonRisk.valuation_date=new Date(2000,0,17);
+
+Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
+          "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
+          "15.08.2046", "15.08.2048", "15.08.2048", "15.08.2048", "15.08.2048"];
+var Firstcall=["15.02.2020", "22.05.2010", "15.08.2015", "15.02.1990", "15.08.2005",
+               "15.05.2010", "04.07.2029", "04.07.2020", "04.12.2003", "04.12.1999",
+               "15.12.2045", "15.04.2038", "15.05.2038","15.06.2038","18.07.2038"];
+var Tenor=[3,3,6,6,3,3,6,6,12,12,12,12,12,1,3];
+var Calltenor=[1,3,6,12,3,3,6,6,12,12,12,12,12,12,12]; // not yet used - bermudans not yet implemented
+
+bonds=[];
+swaptions=[];
+multi_callable_bonds=[];
+var result_multi;
+for (i=0; i<Maturity.length; i++){
+        bonds.push({
+		maturity: Maturity[i],
+		first_call_date: Firstcall[i],
+		tenor: Tenor[i],
+		call_tenor: 0,
+		notional: 100.0,
+		fixed_rate: 0.01,
+		bdc: "m",
+		dcc: "act/365",
+		calendar: "TARGET",
+		// just for the swaption representation
+		expiry: Firstcall[i],
+		float_tenor: 6,
+		float_current_rate: 0,
+		float_bdc: "m",
+		float_dcc: "act/365"
+        });
+        multi_callable_bonds.push({
+		maturity: Maturity[i],
+		first_call_date: Firstcall[i],
+		tenor: Tenor[i],
+		call_tenor: Calltenor[i],
+		notional: 100.0,
+		fixed_rate: 0.01,
+		bdc: "m",
+		dcc: "act/365",
+		calendar: "TARGET",
+		// just for the swaption representation
+		expiry: Firstcall[i],
+		float_tenor: 6,
+		float_current_rate: 0,
+		float_bdc: "m",
+		float_dcc: "act/365"
+        });
+
+	swaptions.push({
+                is_payer: false,
+                maturity: Maturity[i],
+                expiry: Firstcall[i],
+                notional: 100,
+                fixed_rate: 0.01,
+                tenor: 12,
+                float_spread: 0.00,
+                float_tenor: 6,
+                float_current_rate: 0.00,
+                calendar: "TARGET",
+                bdc: "m",
+                float_bdc: "m",
+                dcc: "act/365",
+                float_dcc: "act/365"
+        });
+
+	result=JsonRisk.pricer_callable_bond(bonds[i],curve, null, curve, surface);
+	result_multi=JsonRisk.pricer_callable_bond(multi_callable_bonds[i],curve, null, curve, surface);
+	bpv=JsonRisk.pricer_bond(bonds[i],curve_up, null)-JsonRisk.pricer_bond(bonds[i],curve, null);
+	console.log("Non-callable bond price : " + JsonRisk.pricer_bond(bonds[i],curve, null));
+	console.log("Embedded swaption price : " + JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface));
+	console.log("Callable bond price     : " + result);
+	console.log("Difference in BP   ("+(i+1)+"): " + ((result+
+					  JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-
+					  JsonRisk.pricer_bond(bonds[i],curve, null))/bpv).toFixed(1));
+	console.log("Multi-callable bond price: " + result_multi);
+	am(Math.abs((result+
+		     JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-
+		     JsonRisk.pricer_bond(bonds[i],curve, null))/bpv)<3, "Callable bond consistency check (" +(i+1)+")");
+	am(result>=result_multi, "Multi-callable bond consistency check (" +(i+1)+")");
+}
+
+
+
 /* 
 
 Test vector pricing
@@ -1002,96 +1199,21 @@ results=JsonRisk.vector_pricer({
 });        
 am(check(results), "Vector pricing with swaption returns valid vector of numbers");
 
-
-/*
-
-Test LGM option pricing
-
-*/
-JsonRisk.valuation_date=new Date(2019,0,1);
-yf=JsonRisk.year_fraction_factory("");
-var cf_obj={
-	date_pmt:[new Date(2019,0,1),
-		  new Date(2020,0,1),
-		  new Date(2021,0,1),
-		  new Date(2022,0,1),
-		  new Date(2023,0,1),
-	 	  new Date(2024,0,1),
-	 	  new Date(2025,0,1),
-	 	  new Date(2026,0,1),
-	 	  new Date(2027,0,1)],
-	current_principal:[100,100,90,80,70,60,50,40,30],
-	pmt_total:[0,11,10.9,10.8,10.7,10.6, 10.5, 10.4, 30.3]
-};
-
-cf_obj.t_pmt=new Array(cf_obj.date_pmt.length);
-for (i=0;i<cf_obj.date_pmt.length;i++){
-	cf_obj.t_pmt[i]=yf(JsonRisk.valuation_date,cf_obj.date_pmt[i]);
-}
-
-var cf_regular;
-
-expiries=[new Date(2019,0,1),
-	  new Date(2020,0,1),
-	  new Date(2021,0,1),
-	  new Date(2022,0,1),
-	  new Date(2023,0,1),
-	  new Date(2024,0,1),
-	  new Date(2025,0,1)];
-var lgm_xi;
-var lgm_state;
-var result, result_orig, result_numeric, bpv;
-curve=JsonRisk.get_const_curve(0.01);
-curve_1bp=JsonRisk.get_const_curve(0.0101);
-curve_100bp=JsonRisk.get_const_curve(0.02);
-
-//create bcbs 352 scenarios
-var bcbs352times=[0.0028,0.0417,0.1667,0.375,0.625,0.875,1.25,1.75,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,12.5,17.5,25];
-
-var curve_up={ times:bcbs352times,zcs:[]};
-var curve_down={ times:bcbs352times,zcs:[]};
-var curve_steepener={ times:bcbs352times,zcs:[]};
-var curve_flattener={ times:bcbs352times,zcs:[]};
-var curve_shortup={ times:bcbs352times,zcs:[]};
-var curve_shortdown={ times:bcbs352times,zcs:[]};
-
-var slong,sshort;
-for (var i=0;i<bcbs352times.length;i++){
-        curve_up.zcs.push(0.02);
-        curve_down.zcs.push(-0.02);
-        sshort=Math.exp(-bcbs352times[i]/4);
-        slong=1-sshort;
-        curve_shortup.zcs.push(0.025*sshort);
-        curve_shortdown.zcs.push(-0.025*sshort);
-        curve_steepener.zcs.push(-0.65*0.025*sshort+0.9*0.01*slong);
-        curve_flattener.zcs.push(0.8*0.025*sshort-0.6*0.01*slong);
-}
-
-
-for (i=0;i<expiries.length;i++){
-	swaption=JsonRisk.create_equivalent_regular_swaption(cf_obj,expiries[i]);
-	cf_regular=new JsonRisk.simple_fixed_income(swaption).get_cash_flows();
-	
-	lgm_xi=0.0004*yf(JsonRisk.valuation_date,expiries[i]);
-	
-	//cash flow PVs
-	result=JsonRisk.dcf(cf_regular, curve, null, null,expiries[i]);
-	bpv=Math.abs(JsonRisk.dcf(cf_regular, curve_1bp, null, null,expiries[i])-result);
-	
-	//option PVs
-	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
-	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (equivalent regular vs original), expiry " +(i+1));
-	result=JsonRisk.lgm_european_call_on_cf_numeric(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (numeric vs original), expiry " +(i+1));
-
-	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
-	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (equivalent regular vs original), expiry " +(i+1));
-	result=JsonRisk.lgm_european_call_on_cf_numeric(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (numeric vs original), expiry " +(i+1));
-
-	
-console.log("--------------------------");
-
-}
+results=JsonRisk.vector_pricer({
+        type: 'callable_bond',
+        maturity: new Date(2032,1,1),
+	first_call_date: new Date(2025,1,1),
+	call_tenor: 3,
+        notional: 100.0,
+        fixed_rate: 0.0125,
+        tenor: 12,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement_days: 2,
+        disc_curve: "EURO-GOV",
+        surface: "EUR-SWPTN",
+        fwd_curve: "EURO-GOV",
+        currency: "EUR"
+});
+am(check(results), "Vector pricing with callable bond returns valid vector of numbers");

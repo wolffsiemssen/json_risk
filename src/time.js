@@ -83,7 +83,7 @@
                 if (from>to) return -yf_actact(to, from);
                 var yfrom=from.getFullYear();
                 var yto=to.getFullYear();
-                if(yfrom===yto) return days_between(to,from)/((is_leap_year(yfrom))? 366 : 365);
+                if(yfrom===yto) return days_between(from,to)/((is_leap_year(yfrom))? 366 : 365);
                 var res=yto-yfrom-1;
                 res+=days_between(from, new Date(yfrom+1,0,1))/((is_leap_year(yfrom))? 366 : 365);
                 res+=days_between(new Date(yto,0,1), to)/((is_leap_year(yto))? 366 : 365);

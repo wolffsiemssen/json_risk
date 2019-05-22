@@ -15,7 +15,23 @@
                         throw new Error("swaption: must provide valid expiry date.");
 
                 //underlying swap object
-                this.swap=new library.swap(instrument);
+		this.swap=new library.swap({
+			is_payer: instrument.is_payer,
+                        notional: instrument.notional,
+			effective_date: this.expiry,
+			settlement_date: this.expiry,
+                        maturity: instrument.maturity,
+                        fixed_rate: instrument.fixed_rate,
+                        tenor: instrument.tenor,
+                        calendar: instrument.calendar,
+                        bdc: instrument.bdc,
+                        dcc: instrument.dcc,
+                        float_spread: instrument.float_spread,
+                        float_tenor: instrument.float_tenor,
+                        float_bdc: instrument.float_bdc,
+                        float_dcc: instrument.float_dcc,
+                        float_current_rate: instrument.float_current_rate
+		});
         };
 
         library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
@@ -35,8 +51,11 @@
                 var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
                 
                 var res;
-                if (t_expiry<1/512 || std_dev<0.0001){
-                        //degenerate case where swaption is already expiring or volatility is very low
+		if (t_expiry<0){
+			//degenerate case where swaption has expired in the past
+			return 0;
+		}else if (t_expiry<1/512 || std_dev<0.0001){
+                        //degenerate case where swaption is almost expiring or volatility is very low
                         res=Math.max(this.swap.phi*(this.swap.fixed_rate - fair_rate), 0);
                 }else{
                         //bachelier formula      

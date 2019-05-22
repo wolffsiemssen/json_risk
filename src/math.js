@@ -45,25 +45,90 @@
                                 var f = z + 1.0/(z + 2.0/(z + 3.0/(z + 4.0/(z + 13.0/20.0))));
                                 c = e/(RT2PI*f);
                         }
-                }else{
+                }else if(z>37.0){
                         c=0;
-                }
+                }else{
+			throw new Error("cndf: invalid input.");
+		}
                 return x<=0.0 ? c : 1-c;
         };
         
         library.find_root_secant=function(func, start, next, max_iter, threshold){
-                var x=start, xnext=next, xtemp=0, iter=max_iter||20, t=threshold||0.000000001;
-                var f=0, fnext=1;
-                while (Math.abs(fnext)>t && Math.abs(fnext-f)>t && iter>0){
-                        f=func(x);
-                        fnext=func(xnext);
-                        xtemp=xnext;
-                        xnext=xnext-fnext*(xnext-x)/(fnext-f);
-                        x=xtemp;
+                var x=start, xnext=next, temp=0, iter=max_iter||20, t=threshold||0.00000001;
+                var f=func(x), fnext=func(xnext);
+		if(Math.abs(fnext)>Math.abs(f)){
+			//swap start values if start is better than next
+			temp=x;
+			x=xnext;
+			xnext=temp;
+			temp=f;
+			f=fnext;
+			fnext=temp;
+		}
+                while (Math.abs(fnext)>t && iter>0){ //&& Math.abs(fnext-f)>t
+			temp=(x-xnext)*fnext/(fnext-f);
+			x=xnext;
+			f=fnext;
+                        xnext=x+temp;
+			fnext=func(xnext);
+			//stabilisation: if step does not decrease the error, divide step by two (only works for monotonous functions)
+			while(Math.abs(fnext)>Math.abs(f) && iter>0){
+				temp=(Math.abs(temp)>1) ? Math.sqrt(Math.abs(temp)) * (temp<0 ? -1 : 1) : temp/2;
+	                        xnext=x+temp;
+				fnext=func(xnext);
+				iter--;
+			}
                         iter--;
                 }
-                if (iter===0) throw new Error("find_root_secant: failed, too many iterations");
-                return xnext;      
+                if (iter<=0) throw new Error("find_root_secant: failed, too many iterations");
+		if (isNaN(xnext)) {
+			throw new Error("find_root_secant: failed, invalid result");
+		}
+		return xnext;      
+        };
+
+	function signum(x){
+		if (x>0) return 1;
+		if (x<0) return -1;
+		return 0;
+	}
+
+        library.find_root_ridders=function(func, start, next, max_iter, threshold){
+                var x=start, y=next, z=0, w=0, r=0, iter=max_iter||20, t=threshold||0.00000001;
+                var fx=func(x), fy=func(y), fz, fw;
+		if(fx*fy>0) throw new Error("find_root_ridders: start values do not bracket the root");
+		if(Math.abs(fx)<t) return x;
+		if(Math.abs(fy)<t) return y;
+                while (iter>0){
+                        iter--;
+			z=(x+y)*0.5;			
+			fz=func(z);
+			if(Math.abs(fz)<t) return z;
+			r=Math.sqrt((fz*fz)-(fy*fx));
+			if(0===r) return z;
+			w=(z-x)*signum(fx-fy)*fz/r + z;
+			if(isNaN(w)) w=z;
+			fw=func(w);
+			if(Math.abs(fw)<t) return w;
+			if(fz*fw<0){
+				x=w;
+				fx=fw;
+				y=z;
+				fy=fz;
+				continue;
+			}
+			if(fx*fw<0){
+				y=w;
+				fy=fw;
+				continue;
+			}
+			if(fy*fw<0){
+				x=w;
+				fx=fw;
+				continue;
+			}
+                }
+                if (iter<=0) throw new Error("find_root_ridders: failed, too many iterations");
         };
 
 }(this.JsonRisk || module.exports));

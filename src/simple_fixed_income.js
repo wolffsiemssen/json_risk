@@ -44,7 +44,7 @@
 		library.require_vd(); //valuation date must be set
                 if (!payment_on_settlement_date) payment_on_settlement_date=0;
                 
-                var tset=library.year_fraction_factory(null)(library.valuation_date, settlement_date);
+                var tset=library.time_from_now(settlement_date);
                 var func=function(x){
                         return library.dcf(cf_obj,null,null,x, settlement_date)+
                                payment_on_settlement_date*Math.pow(1+x,-tset);
