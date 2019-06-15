@@ -6,6 +6,10 @@
                 
                 
         */
+
+
+	'use strict';
+
         var dl=1000*60*60*24; // length of one day in milliseconds
         var one_over_dl=1.0/dl;
 
@@ -134,8 +138,7 @@
         
         
         library.add_months=function(from, nmonths, roll_day){ 
-                y=from.getFullYear();
-                m=from.getMonth()+nmonths;
+                var y=from.getFullYear(), m=from.getMonth()+nmonths, d;
                 while (m>=12){
                         m=m-12;
                         y=y+1;
@@ -176,7 +179,7 @@
         }
         
         function is_holiday_default(dt){
-                wd=dt.getDay();
+                var wd=dt.getDay();
                 if(0===wd) return true;
                 if(6===wd) return true;
                 return false;

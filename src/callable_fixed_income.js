@@ -24,10 +24,11 @@
 							     this.base.is_holiday_func, 
 							     this.base.bdc);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
+		var i;
 
 		//basket generation
 		this.basket=new Array(this.call_schedule.length);
-		for (var i=0; i<this.call_schedule.length; i++){
+		for (i=0; i<this.call_schedule.length; i++){
 			//basket instruments are co-terminal swaptions mit standard conditions
 			this.basket[i]=new library.swaption({
 		                is_payer: false,
@@ -69,20 +70,17 @@
 							     t_exercise[0],
 							     disc_curve,
 							     xi_vec[0],
-							     spread_curve);
+							     spread_curve,
+							     null);
 		}else if (1<xi_vec.length){
-			//bermudan call, use max european approach until numeric integration is implemented
-			var european;
-			for (i=0;i<xi_vec.length;i++){
-				european=-library.lgm_european_call_on_cf(this.base.get_cash_flows(),
-									  t_exercise[i],
-									  disc_curve,
-									  xi_vec[i],
-									  spread_curve);
-				if(european<res) res=european;
-			}
-			//bermudan call, use numeric integration TO BE IMPLEMENTED
-			// res-=library.lgm_bermudan_call_on_cf=(this.base.get_cash_flows(),t_exercise, disc_curve, xi_vec, spread_curve);
+			//bermudan call, use numeric integration
+
+			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
+								t_exercise,
+								disc_curve,
+								xi_vec,
+								spread_curve,
+								null);
 		} //if xi_vec.length===0 all calls are expired, no value subtracted
 		
 		//add bond base price

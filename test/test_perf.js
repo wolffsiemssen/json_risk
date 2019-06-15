@@ -4,8 +4,8 @@ JsonRisk.store_params(data);
 data=require('./portfolio_example.json');
 
 console.log("Start...");
-var t0 = new Date().getTime();
 var n=JsonRisk.vector_pricer(data[0]).length;
+var t0 = new Date().getTime();
 for (j=1;j<data.length;j++){
 	JsonRisk.vector_pricer(data[j]);
 	console.log(""+ (n*j) + " valuations...");

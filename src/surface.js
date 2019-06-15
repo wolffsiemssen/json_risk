@@ -63,6 +63,7 @@
                 imax=imax || (surface.terms || surface.labels_term || []).length-1;
                 
                 var sl=surface.values[i_expiry];
+		if (!Array.isArray(sl)) throw new Error("get_slice_rate: invalid surface, values property must be an array of arrays");
                 //slice only has one value left
                 if (imin===imax) return sl[imin];
                 //extrapolation (constant)

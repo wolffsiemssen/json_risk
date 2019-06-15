@@ -7,6 +7,8 @@
                 
         */
 
+	'use strict';
+
 	function h_factory(mean_rev){
 		if (mean_rev===0) return function(t){return t;};
 		return function(t){return (1-Math.exp(-mean_rev*t))/mean_rev;};		
@@ -64,12 +66,6 @@
                 return res;
 	};
 
-	function log_trans(x){
-		var y=Math.abs(x);
-		y=Math.log(1+y);
-		return (x>0) ? y : -y;
-	}
-
 	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread){
                 /*
 
@@ -85,22 +81,32 @@
 		
                 */
 		if(t_exercise<0) return 0; //expired option		
-		if(t_exercise<1/512 || xi<1e-15) return library.lgm_dcf(cf_obj,t_exercise, disc_curve, 0, [0], spread_curve, residual_spread)[0];
+		if(t_exercise<1/512 || xi<1e-15) return Math.max(0,library.lgm_dcf(cf_obj,t_exercise, disc_curve, 0, [0], spread_curve, residual_spread)[0]);
 		function func(x){
 			return library.lgm_dcf(cf_obj,t_exercise, disc_curve, xi, [x], spread_curve, residual_spread)[0];
 		}
 		var std_dev=Math.sqrt(xi);
 		var one_std_dev=1/std_dev;
 	
-		//find break even point
+		//find break even point and good initial guess for it
+		var t_maturity=cf_obj.t_pmt[cf_obj.t_pmt.length-1];
 		var break_even, dh, guess, lower, upper;
 		dh=h(cf_obj.t_pmt[cf_obj.t_pmt.length-1])-h(t_exercise);
-		guess=-0.5*xi*dh-Math.log(library.get_df(disc_curve,t_exercise))/dh+
-			     Math.log(library.get_df(disc_curve,cf_obj.t_pmt[cf_obj.t_pmt.length-1]))/dh;
-		if (Math.abs(guess)<1E-10) guess=-std_dev;
+		guess=-0.5*xi*dh;
+		guess-=Math.log(library.get_df(disc_curve,t_exercise))/dh;
+		guess+=Math.log(library.get_df(disc_curve,t_maturity))/dh;
+		if(spread_curve){
+			guess-=Math.log(library.get_df(spread_curve,t_exercise))/dh;
+			guess+=Math.log(library.get_df(spread_curve,t_maturity))/dh;
+		}
+		if(residual_spread){
+			guess+=t_exercise*residual_spread;
+			guess-=t_maturity*residual_spread;
+		}
+		if (guess>-1E-10) guess=-std_dev; //do not want very small or positive guess
 		if(func(guess)>0){
 			upper=guess;
-			lower=0.5*guess;
+			lower=0.9*guess;
 			while(func(lower)>0) lower=upper-2*lower;
 		}else{
 			lower=guess;
@@ -108,6 +114,7 @@
 			while(func(lower)<0) upper=2*upper;
 		}
 		break_even=library.find_root_ridders(func, upper, lower, 100);
+		//console.log("BREAK EVEN:" + break_even);
                 var i=0, df;
 		
 		// move forward to first line after exercise date
@@ -121,11 +128,15 @@
 
 		// include principal payment on or before exercise date
 		df=library.get_df(disc_curve, t_exercise);
+		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
+		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
 		var res = - (cf_obj.current_principal[i]+accrued_interest) * df * library.cndf(break_even*one_std_dev);
 
 		// include all payments after exercise date
                 while (i<cf_obj.t_pmt.length){
 			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
+			if(spread_curve) df*=library.get_df(spread_curve, cf_obj.t_pmt[i]);
+			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
 			dh=h(cf_obj.t_pmt[i])-h(t_exercise);
 	                res+=(cf_obj.pmt_total[i]) * df * library.cndf((break_even*one_std_dev)+(dh*std_dev));
                         i++;
@@ -209,14 +220,14 @@
 				if(target>max_value) target=max_value;
 
 				try{
-					root=library.find_root_secant(func, Math.sqrt(xi), Math.sqrt(xi*0.5), 100);
+					root=library.find_root_secant(func, Math.sqrt(xi), Math.sqrt(xi*0.9), 100);
 					//throws error if secant method fails
 					xi = root*root; //if secant method was successful
 				}catch(e){
 					
 				}
 
-				if(xi_vec.length>0 && xi_vec[xi_vec.length-1]<xi) xi=xi_vec[xi_vec.length-1]; //fallback if monotonicity is violated
+				if(xi_vec.length>0 && xi_vec[xi_vec.length-1]>xi) xi=xi_vec[xi_vec.length-1]; //fallback if monotonicity is violated
 				xi_vec.push(xi);
 			}
 		}
@@ -225,12 +236,12 @@
 
 
 	var STD_DEV_RANGE=4;
-	var RESOLUTION=20;
+	var RESOLUTION=15;
 
-	library.lgm_european_call_on_cf_numeric=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread){
+	library.lgm_bermudan_call_on_cf=function(cf_obj,t_exercise_vec, disc_curve, xi_vec, spread_curve, residual_spread){
                 /*
 
-		Calculates the european call option price on a cash flow (numeric integration according to martingale formula 4.14a).
+		Calculates the bermudan call option price on a cash flow (numeric integration according to martingale formula 4.14a).
 
                 requires cf_obj of type
                 {
@@ -242,39 +253,121 @@
 		state must be an array of numbers
 		
                 */
-		if(t_exercise<1/512 || xi<1e-15) return library.lgm_dcf(cf_obj,
-  											 t_exercise,
-											 disc_curve, 
-											 0,
-											 [0],
-											 spread_curve,
-											 residual_spread)[0];
 
-		var std_dev=Math.sqrt(xi);
-		var ds=std_dev/RESOLUTION;
-		var n=2*STD_DEV_RANGE*RESOLUTION+1, i;
-		var state=new Array(n);
-		state[0]=-STD_DEV_RANGE*std_dev;
-		for (i=1; i<n; i++){
-			state[i]=state[0]+i*ds;
+		if(t_exercise_vec[t_exercise_vec.length-1]<0) return 0; //expired option		
+		if(t_exercise_vec[t_exercise_vec.length-1]<1/512 || xi_vec[xi_vec.length-1]<1e-15){
+			return Math.max(0,library.lgm_dcf(cf_obj,
+							t_exercise_vec[t_exercise_vec.length-1],
+							disc_curve,
+							0,
+							[0],
+							spread_curve,
+							residual_spread)[0]); //expiring option
 		}
-		var payoff=library.lgm_dcf(cf_obj,
-					   t_exercise,
- 					   disc_curve,
-					   xi,
-					   state);
-		
-                var res=0;
-		for (i=0; i<n; i++){
-			if(payoff[i]>0){
-				res+=payoff[i]*Math.exp(-0.5*state[i]*state[i]/xi);
+
+
+		function make_state_vector(){ //repopulates state vector and ds measure
+			var res=new Array(n);			
+			res[0]=-STD_DEV_RANGE*std_dev;
+			for (i=1; i<n; i++){
+				res[i]=res[0]+i*ds;
+			}
+			return res;
+		}
+
+		function update_value(){ //take maximum of payoff and hold values
+			var i_d=0;
+			for (i=0; i<n; i++){
+				value[i]=Math.max(hold[i], payoff[i]);
+				if(!i_d && i>0){
+					if((payoff[i]-hold[i])*(payoff[i-1]-hold[i-1])<0){
+						i_d=i; //discontinuity where payoff-hold changes sign
+					}
+				}
+			}
+			//account for discontinuity if any
+			if(i_d){
+				var max_0=value[i_d-1], max_1=value[i_d];
+				var min_0=Math.min(payoff[i_d-1],hold[i_d-1]),min_1=Math.min(payoff[i_d],hold[i_d]);
+				var cross=(max_0-min_0)/(max_1-min_1+max_0-min_0);
+				var err=0.25*(cross*(max_1-min_1)+(1-cross)*(max_0-min_0));
+				value[i_d]-=cross*err;
+				value[i_d-1]-=(1-cross)*err;
 			}
 		}
-		res*=ds;
-		res/=Math.sqrt(2*Math.PI*xi);
-		return res;
+
+		function numeric_integration(j){ //simple implementation of lgm martingale formula
+			if(xi_last-xi<1E-15) return value[j];
+		        var temp=0, dp_lo=0, dp_hi, norm_scale=1/Math.sqrt(xi_last-xi);
+			for (i=0; i<n; i++){
+				dp_hi= (i===n-1) ? 1 : library.cndf((state_last[i]-state[j]+0.5*ds)*norm_scale);	
+				temp+=value[i]*(dp_hi-dp_lo);
+				dp_lo=dp_hi; // for next iteration
+			}
+			return temp;
+		}
+
+
+		var n=2*STD_DEV_RANGE*RESOLUTION+1;
+		var j, i, n_ex;
+		var xi, xi_last=0, std_dev, ds, ds_last;
+		var state, state_last;
+		var payoff;
+		var value=new Array(n);
+		var hold=new Array(n);
+	
+
+
+		//n_ex starts at last exercise date
+		n_ex=xi_vec.length-1;		
+
+		//iterate backwards through call dates if at least one call date is left	
+		while (n_ex >= 0){
+			//set volatility and state parameters
+			xi=xi_vec[n_ex];
+			std_dev=Math.sqrt(xi);
+			ds=std_dev/RESOLUTION;
+			state=make_state_vector();
+
+			//payoff is what option holder obtains when exercising
+			payoff=library.lgm_dcf(cf_obj,
+						   t_exercise_vec[n_ex],
+	 					   disc_curve,
+						   xi,
+						   state,
+						   spread_curve,
+						   residual_spread);
+			
+			//hold is what option holder obtains when not exercising
+			if(n_ex<xi_vec.length-1){
+				for (j=0; j<n; j++){
+					hold[j]=numeric_integration(j); //hold value is determined by martingale formula
+				}
+			}else{
+				for (j=0; j<n; j++){
+					hold[j]=0; //on last exercise date, hold value is zero (no more option left to hold).
+				}
+			}
+			
+			//value is maximum of payoff and hold
+			update_value();
+
+			//prepare next iteration
+			xi_last=xi;
+			state_last=state;
+			ds_last=ds;
+			n_ex--;			
+		}
+
+		//last integration for time zero, state zero
+		state=[0];
+
+		xi=0;
+		hold=numeric_integration(0); //last integration according to martingale formula
+		return hold;
 	};
         
 }(this.JsonRisk || module.exports));
+
 
 

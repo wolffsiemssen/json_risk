@@ -1,5 +1,6 @@
 
 (function(library){
+	'use strict';
         
         var RT2PI = Math.sqrt(4.0*Math.acos(0.0));
         var SPLIT = 7.07106781186547;
