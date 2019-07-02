@@ -1210,5 +1210,73 @@ results=JsonRisk.vector_pricer({
 });
 am(check(results), "Vector pricing with callable bond returns valid vector of numbers");
 
+JsonRisk.valuation_date=new Date(2002,1,15);
+var sd=new Date(2002,1,19);
+curve=JsonRisk.get_const_curve(0.048);
+values= [
+  [0.1490, 0.1340, 0.1228, 0.1189, 0.1148],
+  [0.1290, 0.1201, 0.1146, 0.1108, 0.1040],
+  [0.1149, 0.1112, 0.1070, 0.1010, 0.0957],
+  [0.1047, 0.1021, 0.0980, 0.0951, 0.1270],
+  [0.1000, 0.0950, 0.0900, 0.1230, 0.1160]];
+for(i=0;i<values.length;i++){
+	for(j=0;j<values[i].length;j++){
+		values[i][j]=0.1*0.04875;
+	}
+}
+surface={expiries: [1,2,3,4,5], terms: [1,2,3,4,5], values: values};
+
+var bond={
+		effective_date: sd,
+		maturity: JsonRisk.add_months(sd,5*12),
+		first_call_date: JsonRisk.add_months(sd, 12),
+		tenor: 12,
+		notional: 1000.0,
+		fixed_rate: 0.05,
+		bdc: "m",
+		dcc: "act/365",
+		calendar: "TARGET"
+        };
 
 
+
+for (i=0;i<13;i++){
+	bond.call_tenor=i;
+	result=JsonRisk.pricer_bond(bond, curve, null, null);
+	result_multi=JsonRisk.pricer_callable_bond(bond,curve, null, null, surface);
+	console.log((i===0) ? "EUROPEAN:" : "BERMUDAN WITH TENOR " +i);
+	console.log("BOND PRICE:                " + result);
+	console.log("MULTI CALLABLE BOND PRICE: " + result_multi);
+	console.log("EMBEDDED OPTION PRICE:     " + (result-result_multi));
+}
+
+JsonRisk.valuation_date=new Date(2014,3,30);
+sd=JsonRisk.valuation_date;
+fwd_curve=JsonRisk.get_const_curve(0.02);
+disc_curve=JsonRisk.get_const_curve(0.02);
+
+surface={expiries: [1], terms: [1], values: [[0.2*0.02]]};
+
+bond={
+		effective_date: sd,
+		maturity: new Date(2024, 4, 6),
+		first_call_date: new Date(2015, 4, 6),
+		tenor: 12,
+		notional: 1.0,
+		fixed_rate: 0.04,
+		bdc: "m",
+		dcc: "30/360",
+		calendar: "TARGET"
+        };
+
+
+
+for (i=0;i<13;i++){
+	bond.call_tenor=i;
+	result=JsonRisk.pricer_bond(bond, disc_curve, null, null);
+	result_multi=JsonRisk.pricer_callable_bond(bond, disc_curve, null, fwd_curve, surface);
+	console.log((i===0) ? "EUROPEAN:" : "BERMUDAN WITH TENOR " +i);
+	console.log("BOND PRICE:                " + result);
+	console.log("MULTI CALLABLE BOND PRICE: " + result_multi);
+	console.log("EMBEDDED OPTION PRICE:     " + (result-result_multi));
+}

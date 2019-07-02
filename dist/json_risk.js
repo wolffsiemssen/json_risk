@@ -108,68 +108,18 @@
 							     spread_curve,
 							     null);
 		}else if (1<xi_vec.length){
-			//bermudan call, use max european approach for testing
-			/*			
-			var european;
-			for (i=0;i<xi_vec.length;i++){
-				european=-library.lgm_european_call_on_cf(this.base.get_cash_flows(),
-									  t_exercise[i],
-									  disc_curve,
-									  xi_vec[i],
-									  spread_curve,
-									  null);
-				if(i===0) console.log("FIRST EURO: " + european + " XI: " + xi_vec[i]);
-				if(i===1) console.log("SECOND EURO: " + european + " XI: " + xi_vec[i]);
-				if(european<res) res=european;
-			}
-			
 			//bermudan call, use numeric integration
 
-			console.log("MAX EURO: " + res);
-
-			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
-								[t_exercise[0]],
-								disc_curve,
-								[xi_vec[0]],
-								spread_curve,
-								null);
-			console.log("FIRST EURO NUMERIC: " + res);
-			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
-								[t_exercise[0],t_exercise[1]],
-								disc_curve,
-								[xi_vec[0],xi_vec[0]],
-								spread_curve,
-								null);
-			console.log("BERMUDAN FIRST AND SECOND WITH SAME XI: " + res);
-
-			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
-								[t_exercise[0],t_exercise[1]],
-								disc_curve,
-								[xi_vec[0],xi_vec[0]*(1-1E-5)+xi_vec[1]*1E-5],
-								spread_curve,
-								null);
-			console.log("BERMUDAN FIRST AND SECOND WITH ALMOST SAME XI: " + res);
-
-			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
-								[t_exercise[0],t_exercise[1]],
-								disc_curve,
-								[xi_vec[0],xi_vec[1]],
-								spread_curve,
-								null);
-			console.log("BERMUDAN FIRST AND SECOND: " + res);
-			*/
 			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
 								t_exercise,
 								disc_curve,
 								xi_vec,
 								spread_curve,
 								null);
-			//console.log("BERMUDAN: " + res);
 		} //if xi_vec.length===0 all calls are expired, no value subtracted
 		
 		//add bond base price
 		res+=this.base.present_value(disc_curve, spread_curve, null);
-		//console.log("CALLABLE BOND: " + res);
                 return res;
         };
          
@@ -1145,7 +1095,7 @@
 
 
 	var STD_DEV_RANGE=4;
-	var RESOLUTION=12;
+	var RESOLUTION=15;
 
 	library.lgm_bermudan_call_on_cf=function(cf_obj,t_exercise_vec, disc_curve, xi_vec, spread_curve, residual_spread){
                 /*
@@ -1200,17 +1150,8 @@
 				var min_0=Math.min(payoff[i_d-1],hold[i_d-1]),min_1=Math.min(payoff[i_d],hold[i_d]);
 				var cross=(max_0-min_0)/(max_1-min_1+max_0-min_0);
 				var err=0.25*(cross*(max_1-min_1)+(1-cross)*(max_0-min_0));
-				/*
-				var midpoint=-ds*(payoff[i_d-1]-hold[i_d-1])/((payoff[i_d]-hold[i_d])-(payoff[i_d-1]-hold[i_d-1]));
-				var err=value[i_d-1]*(ds-midpoint);
-				err+=value[i_d]*midpoint;
-				err-=(payoff[i_d-1]+hold[i_d-1])*0.5*(ds-midpoint);
-				err-=(payoff[i_d]+hold[i_d])*0.5*midpoint;
-				err*=0.5;
-				*/
 				value[i_d]-=cross*err;
 				value[i_d-1]-=(1-cross)*err;
-				//console.log("NUMERIC ERROR CORRECTION: " + err + ", cross: " + cross);
 			}
 		}
 
@@ -1357,19 +1298,13 @@
 			f=fnext;
 			fnext=temp;
 		}
-                while (Math.abs(fnext)>t && iter>0){ //&& Math.abs(fnext-f)>t
+                while (Math.abs(fnext)>t && iter>0){
 			temp=(x-xnext)*fnext/(fnext-f);
 			x=xnext;
 			f=fnext;
                         xnext=x+temp;
 			fnext=func(xnext);
-			//stabilisation: if step does not decrease the error, divide step by two (only works for monotonous functions)
-			while(Math.abs(fnext)>Math.abs(f) && iter>0){
-				temp=(Math.abs(temp)>1) ? Math.sqrt(Math.abs(temp)) * (temp<0 ? -1 : 1) : temp/2;
-	                        xnext=x+temp;
-				fnext=func(xnext);
-				iter--;
-			}
+
                         iter--;
                 }
                 if (iter<=0) throw new Error("find_root_secant: failed, too many iterations");

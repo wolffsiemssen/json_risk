@@ -66,19 +66,13 @@
 			f=fnext;
 			fnext=temp;
 		}
-                while (Math.abs(fnext)>t && iter>0){ //&& Math.abs(fnext-f)>t
+                while (Math.abs(fnext)>t && iter>0){
 			temp=(x-xnext)*fnext/(fnext-f);
 			x=xnext;
 			f=fnext;
                         xnext=x+temp;
 			fnext=func(xnext);
-			//stabilisation: if step does not decrease the error, divide step by two (only works for monotonous functions)
-			while(Math.abs(fnext)>Math.abs(f) && iter>0){
-				temp=(Math.abs(temp)>1) ? Math.sqrt(Math.abs(temp)) * (temp<0 ? -1 : 1) : temp/2;
-	                        xnext=x+temp;
-				fnext=func(xnext);
-				iter--;
-			}
+
                         iter--;
                 }
                 if (iter<=0) throw new Error("find_root_secant: failed, too many iterations");
