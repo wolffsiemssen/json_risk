@@ -48,6 +48,7 @@
                 var fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
                 
                 //obtain time-scaled volatility
+		if(typeof vol_surface!=='object' || vol_surface===null) throw new Error("swaption.present_value: must provide valid surface");
                 var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
                 
                 var res;

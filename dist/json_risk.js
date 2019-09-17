@@ -96,6 +96,7 @@
 		}
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
+		if(typeof surface!=='object' || surface===null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
 		var xi_vec=library.lgm_calibrate(this.basket, disc_curve, fwd_curve, surface);
 
 		//derive call option price
@@ -1920,6 +1921,7 @@
                 var fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
                 
                 //obtain time-scaled volatility
+		if(typeof vol_surface!=='object' || vol_surface===null) throw new Error("swaption.present_value: must provide valid surface");
                 var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
                 
                 var res;

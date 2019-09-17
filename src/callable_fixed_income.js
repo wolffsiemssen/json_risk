@@ -61,6 +61,7 @@
 		}
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
+		if(typeof surface!=='object' || surface===null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
 		var xi_vec=library.lgm_calibrate(this.basket, disc_curve, fwd_curve, surface);
 
 		//derive call option price
