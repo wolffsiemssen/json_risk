@@ -385,21 +385,55 @@ var expected=[
         new Date(1984,0,1)
 ];
 
-var sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 12, JsonRisk.is_holiday_factory(""), "unadjusted", null, null);
+var adj=function(d){return JsonRisk.adjust(d,"unadjusted",JsonRisk.is_holiday_factory(""));};
+
+var sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, null, null);
 am (same_dates(sched, expected), "Backward schedule generation (1)");
 
-sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 12, JsonRisk.is_holiday_factory(""), "unadjusted", new Date(1981,0,1), new Date(1983,0,1));
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), new Date(1983,0,1));
 am (same_dates(sched, expected), "Backward schedule generation (2)");
 
-sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 12, JsonRisk.is_holiday_factory(""), "unadjusted", new Date(1981,0,1), new Date(1984,0,1));
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), new Date(1984,0,1));
 am (same_dates(sched, expected), "Backward schedule generation (3)");
 
-sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 12, JsonRisk.is_holiday_factory(""), "preceding", new Date(1981,0,1), new Date(1983,0,1));
+adj=function(d){return JsonRisk.adjust(d,"preceding",JsonRisk.is_holiday_factory(""));};
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), new Date(1983,0,1));
 am (same_dates(sched, expected), "Backward schedule generation (4)");
 
 
-sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 12, JsonRisk.is_holiday_factory("Target"), "following", new Date(1980,0,2), new Date(1983,0,1));
-am (same_dates(sched, expected), "Backward schedule generation with first date that is already adjusted (1)");
+adj=function(d){return JsonRisk.adjust(d,"unadjusted",JsonRisk.is_holiday_factory(""));};
+
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, null, null, true /*stub at end*/);
+am (same_dates(sched, expected), "Forward schedule generation (1)");
+
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), null);
+am (same_dates(sched, expected), "Forward schedule generation (2)");
+
+expected=[
+        new Date(1980,0,1),
+        new Date(1981,0,2),
+        new Date(1982,0,2),
+        new Date(1983,0,2),
+        new Date(1984,0,2)
+];
+
+adj=function(d){return JsonRisk.adjust(d,"following",JsonRisk.is_holiday_factory("Target"));};
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,2), 12, adj);
+am (same_dates(sched, expected), "Backward schedule generation where effective date is unadjusted and duplicate needs to be avoided");
+
+
+expected=[
+        new Date(1980,11,31),
+        new Date(1981,11,31),
+        new Date(1982,11,31),
+        new Date(1983,11,31),
+        new Date(1985,0,1)
+];
+
+adj=function(d){return JsonRisk.adjust(d,"preceding",JsonRisk.is_holiday_factory("Target"));};
+sched=JsonRisk.schedule(new Date(1980,11,31), new Date(1985,0,1), 12, adj, null, null, true /*stub at end*/);
+am (same_dates(sched, expected), "Forward schedule generation where maturity date is unadjusted and duplicate needs to be avoided");
+
 
 expected=[
         new Date(1980,0,1),
@@ -409,8 +443,13 @@ expected=[
         new Date(1983,2,1), //next to last date
         new Date(1984,0,1)
 ];
-sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 12, JsonRisk.is_holiday_factory(""), "unadjusted", new Date(1980,2,1), new Date(1983,2,1));
+
+adj=function(d){return JsonRisk.adjust(d,"unadjusted",JsonRisk.is_holiday_factory(""));};
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1980,2,1), new Date(1983,2,1));
 am (same_dates(sched, expected), "Backward schedule generation (6)");
+
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1980,2,1), null);
+am (same_dates(sched, expected), "Forward schedule generation (6)");
 
 expected=[
         new Date(1980,0,1),
@@ -423,8 +462,25 @@ expected=[
         new Date(1983,2,1), //next to last date
         new Date(1984,0,1)
 ];
-sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 6, JsonRisk.is_holiday_factory(""), "unadjusted", new Date(1980,2,1), new Date(1983,2,1));
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 6, adj, new Date(1980,2,1), new Date(1983,2,1));
 am (same_dates(sched, expected), "Backward schedule generation (7)");
+
+
+expected=[
+        new Date(1980,0,1),
+        new Date(1980,2,1), //first date
+        new Date(1980,8,1),
+        new Date(1981,2,1),
+        new Date(1981,8,1),
+        new Date(1982,2,1),
+        new Date(1982,8,1),
+        new Date(1983,2,1), 
+        new Date(1983,8,1), //implicit final stub
+        new Date(1984,0,1)
+];
+
+sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 6, adj, new Date(1980,2,1), null);
+am (same_dates(sched, expected), "Forward schedule generation (7)");
 
 expected=[
         new Date(1980,0,1),
@@ -434,10 +490,10 @@ expected=[
         new Date(1984,0,1)
 ];
 JsonRisk.valuation_date=new Date(1980,6,1);
-sched=JsonRisk.backward_schedule(null, new Date(1984,0,1), 12, JsonRisk.is_holiday_factory(""), "unadjusted", null, null);
+sched=JsonRisk.schedule(null, new Date(1984,0,1), 12, adj, null, null);
 am (same_dates(sched, expected), "Backward schedule generation without effective date (1)");
 
-sched=JsonRisk.backward_schedule(null, new Date(1984,0,1), 12, JsonRisk.is_holiday_factory(""), "unadjusted", null, new Date(1983,0,1));
+sched=JsonRisk.schedule(null, new Date(1984,0,1), 12, adj, null, new Date(1983,0,1));
 am (same_dates(sched, expected), "Backward schedule generation without effective date (2)");
 
 expected=[
@@ -452,13 +508,45 @@ expected=[
 ];
 
 
-sched=JsonRisk.backward_schedule(null, new Date(1984,0,1), 6, JsonRisk.is_holiday_factory(""), "unadjusted", null, new Date(1983,3,1));
+sched=JsonRisk.schedule(null, new Date(1984,0,1), 6, adj, null, new Date(1983,3,1));
 am (same_dates(sched, expected), "Backward schedule generation without effective date (3)");
 
-sched=JsonRisk.backward_schedule(new Date(1980,0,1), new Date(1984,0,1), 6, JsonRisk.is_holiday_factory(""), "unadjusted", new Date(1980,3,1), new Date(1983,3,1));
-am (same_dates(sched, expected), "Backward schedule generation with first date just before valuation date (1)");
 
 /*!
+
+	Schedule generation consistency checks
+
+*/
+var start, end, stub;
+for (i=2;i<=12;i++){
+	start=new Date(2000+i, i-2, 2*i); //starts in Jan, Feb, Mar ...
+	end=JsonRisk.add_months(start, 12*i+1);   //always requires one-month short stub or one+i months long stub ...
+	expected=JsonRisk.schedule(start, end, i, adj, null, null, false, false); //standard backward schedule has short stub at beginning
+	stub=JsonRisk.add_months(start, 1);
+	sched=JsonRisk.schedule(start, end, i, adj, stub, null, false, false);
+	am (same_dates(sched, expected), "Schedule generation consistency short stub at beginning (" + (i-1) + ")");
+
+	expected=JsonRisk.schedule(start, end, i, adj, null, null, false, true);  //backward schedule with long stub at beginning
+	stub=JsonRisk.add_months(start, 1+i);
+	sched=JsonRisk.schedule(start, end, i, adj, stub, null, null, null);
+	am (same_dates(sched, expected), "Schedule generation consistency long stub at beginning (" + (i-1) + ")");
+
+	expected=JsonRisk.schedule(start, end, i, adj, null, null, true, false); //forward schedule with short stub at end
+	stub=JsonRisk.add_months(end, -1);
+	console.log("Explicit short stub at end: " + stub);
+	sched=JsonRisk.schedule(start, end, i, adj, null, stub, null, null);
+	am (same_dates(sched, expected), "Schedule generation consistency short stub at end (" + (i-1) + ")");
+
+	expected=JsonRisk.schedule(start, end, i, adj, null, null, true, true);  //forward schedule with long stub at end
+	stub=JsonRisk.add_months(end, -1-i);
+	sched=JsonRisk.schedule(start, end, i, adj, null, stub, null, null);
+	am (same_dates(sched, expected), "Schedule generation consistency long stub at end (" + (i-1) + ")");
+}
+
+
+
+/*!
+
 	
 	Test bond Valuation
 	

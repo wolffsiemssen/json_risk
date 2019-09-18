@@ -102,12 +102,17 @@
                                 throw new Error("simple_fixed_income: must provide valid float_current_rate.");
                         this.current_rate=instrument.float_current_rate;
                 }
+
+
+                var adj=function(d){
+                        return library.adjust(d,this.bdc,this.is_holiday_func);
+                };
+
                 
-                this.schedule=library.backward_schedule(effective_date, 
+                this.schedule=library.schedule(effective_date, 
                                                  maturity,
                                                  tenor,
-                                                 this.is_holiday_func,
-                                                 this.bdc,
+                                                 adj,
                                                  first_date,
                                                  next_to_last_date);
 

@@ -1,90 +1,100 @@
 
 (function(library){
-        /*
+	/*
         
         Schedule functions used by simple and irregular fixed income instruments.
         
         */
-        library.backward_schedule=function(eff_dt, maturity, tenor, is_holiday_func, bdc, first_dt, next_to_last_dt){
-                if(!(maturity instanceof Date)) throw new Error ("backward_schedule: maturity must be provided");
+
+	var forward_rollout=function(start, end, tenor, adjust_func){
+		//creates a forward schedule from start up to but excluding end, using tenor as frequency
+		var res=[start];
+		var dt=library.add_months(start, tenor);
+		while(dt.getTime()<end.getTime()){
+			res.push(dt);
+			dt=library.add_months(dt, tenor);
+		}
+		if(adjust_func(end).getTime() <= adjust_func(res[res.length-1]).getTime()) res.pop(); //make sure end is excluded after adjustments
+		return res;
+	};
+
+	var backward_rollout=function(start, end, tenor, adjust_func){
+		//creates a backward schedule from end down to but excluding start, using tenor as frequency
+		var res=[end];
+		var dt=library.add_months(end, -tenor);
+		while(dt.getTime()>start.getTime()){
+			res.unshift(dt);
+			dt=library.add_months(dt, -tenor);
+		}
+		if(adjust_func(start).getTime() >= adjust_func(res[0]).getTime()) res.shift(); //make sure start is excluded after adjustments
+		return res;
+
+	};
+
+
+        library.schedule=function(eff_dt, maturity, tenor, adjust_func, first_dt, next_to_last_dt, stub_end, stub_long){
+                if(!(maturity instanceof Date)) throw new Error ("schedule: maturity must be provided");
+	
                 if(!(eff_dt instanceof Date)){
                         //effective date is strictly needed if valuation date is not set
-                        if (null===library.valuation_date) throw new Error("backward_schedule: if valuation_date is unset, effective date must be provided");
-                        //effective date is strictly needed if first date is given
-                        if (first_dt instanceof Date) throw new Error("backward_schedule: if first date is provided, effective date must be provided");                                
+                        if (null===library.valuation_date) throw new Error("schedule: if valuation_date is unset, effective date must be provided");
+                        //effective date is strictly needed if first date is given (explicit stub at beginning)
+                        if (first_dt instanceof Date) throw new Error("schedule: if first date is provided, effective date must be provided");
+			//effective date is strictly needed if next_to_last_date is not given and stub_end is true (implicit stub in the end)
+                        if (!(next_to_last_dt instanceof Date) && stub_end) throw new Error("schedule: if next to last date is not provided and stub in the end is specified, effective date must be provided");
                 }
                 if ((eff_dt instanceof Date && maturity<eff_dt) || (library.valuation_date instanceof Date && maturity < library.valuation_date)) 
-                        throw new Error("backward_schedule: maturity is before valution or effective date.");
+                        throw new Error("schedule: maturity is before valution or effective date.");
                 if(typeof tenor !== "number")
-                        throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
+                        throw new Error("schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
                 if(tenor<0 || Math.floor(tenor) !== tenor)
-                        throw new Error("backward_schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
+                        throw new Error("schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
                 if (0===tenor) return [(eff_dt instanceof Date) ? eff_dt : library.valuation_date, maturity];
-                
-                var adj=function(d){
-                        return library.adjust(d,bdc,is_holiday_func);
-                };
 
-                var res=[maturity];
-                
-                var ref_dt=maturity;
-
-                if (next_to_last_dt instanceof Date && (adj(next_to_last_dt)<adj(maturity))){
-                        res.unshift(next_to_last_dt);
-                        ref_dt=next_to_last_dt;
-                }
-                
-                //loop rolls out backward until eff_dt, first_dt or valuation_date is preceded
-                var dt,n=0;
-                while (true){
-                        n++;
-                        dt=library.add_months(ref_dt, -tenor*n);
-                        if(first_dt instanceof Date && dt<first_dt){
-                                //stub period to be considered
-                                //insert first_dt if not already included
-                                if(adj(res[0]).getTime()!==adj(first_dt).getTime()){
-                                        res.unshift(first_dt);
-                                }
-                                //insert effective date which is needed for calculation of first interest payment
-                                if(adj(res[0]).getTime()!==adj(eff_dt).getTime()){
-                                        res.unshift(eff_dt);
-                                }
-                                return res;
-                        }
-                        if(eff_dt instanceof Date && dt<eff_dt){
-                                //schedule begins with eff_dt and there is no stub period
-                                if(adj(res[0]).getTime()!==adj(eff_dt).getTime()){
-                                        res.unshift(eff_dt);
-                                }
-                                return res;
-                        }
-                        if(library.valuation_date instanceof Date && dt<library.valuation_date){
-                                //if dt is before val date but neither before eff_dt nor first_dt, 
-                                //just insert dt in order to calculate first interes payment.
-                                res.unshift(dt);
-                                //if dt after adjustment lies after valuation date, 
-                                //the schedule date before is needed in order to calculate first interest payment.
-                                if(adj(dt)>library.valuation_date){
-                                        //the schedule date before is either first_dt,
-                                        //eff_dt or just the date obtained by rolling back one period more.
-                                        n++;
-                                        dt=library.add_months(ref_dt, -tenor*n);
-                                        if(first_dt instanceof Date && dt<first_dt){
-                                                res.unshift(first_dt);
-                                        }
-                                        else if(eff_dt instanceof Date && dt<eff_dt){
-                                                res.unshift(eff_dt);
-                                        }
-                                        else{
-                                                res.unshift(dt);
-                                        }
-                                        
-                                }
-                                return res;
-                        }
-                        res.unshift(dt);    
-                }
-        }; 
-        
+		var res;
+		if (first_dt instanceof Date && !(next_to_last_dt instanceof Date)){
+			// forward generation with explicit stub at beginning
+			res=forward_rollout(first_dt, maturity, tenor, adjust_func);
+			//add maturity date
+			res.push(maturity);
+			//add effective date
+			if(eff_dt.getTime() !== first_dt.getTime()) res.unshift(eff_dt);
+		}else if (next_to_last_dt instanceof Date && !(first_dt instanceof Date)){
+			// backward generation with explicit stub at end
+			res=backward_rollout((eff_dt instanceof Date) ? eff_dt : library.valuation_date, next_to_last_dt, tenor, adjust_func);
+			//add maturity date
+			if(maturity.getTime() !== next_to_last_dt.getTime()) res.push(maturity);
+			//add effective date if given
+			if(eff_dt instanceof Date) res.unshift(eff_dt);
+			//if effective date is not given, add another period
+			if(!(eff_dt instanceof Date))res.unshift(library.add_months(res[0], -tenor));
+		}else if (first_dt instanceof Date && next_to_last_dt instanceof Date){
+			// backward generation with both explicit stubs
+			res=backward_rollout(first_dt, next_to_last_dt, tenor, adjust_func);
+			//add maturity date
+			if(maturity.getTime() !== next_to_last_dt.getTime()) res.push(maturity);
+			//add first date
+			res.unshift(first_dt);
+			//add effective date
+			res.unshift(eff_dt);
+		}else if (stub_end){
+			// forward generation with implicit stub, effective date always given
+			res=forward_rollout(eff_dt, maturity, tenor, adjust_func);
+			//remove last item if long stub and more than one date present
+			if (stub_long && res.length>1) res.pop();
+			//add maturity date if not already included (taking into account adjustments)
+			res.push(maturity);
+		}else{
+			// backward generation with implicit stub
+			res=backward_rollout((eff_dt instanceof Date) ? eff_dt : library.valuation_date, maturity, tenor, adjust_func);
+			//remove first item if long stub and more than one date present
+			if (stub_long && res.length>1) res.shift();
+			//add effective date if given
+			if(eff_dt instanceof Date) res.unshift(eff_dt);
+			//if effective date is not given and beginning of schedule is still after valuation date, add another period
+			if(!(eff_dt instanceof Date)) res.unshift(library.add_months(res[0], -tenor));
+		}
+		return res;
+	};
         
 }(this.JsonRisk || module.exports));
