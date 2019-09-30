@@ -9,10 +9,11 @@
 	var forward_rollout=function(start, end, tenor, adjust_func){
 		//creates a forward schedule from start up to but excluding end, using tenor as frequency
 		var res=[start];
-		var dt=library.add_months(start, tenor);
+		var i=1, dt=library.add_months(start, tenor);
 		while(dt.getTime()<end.getTime()){
 			res.push(dt);
-			dt=library.add_months(dt, tenor);
+			i++;
+			dt=library.add_months(start, i*tenor);
 		}
 		if(adjust_func(end).getTime() <= adjust_func(res[res.length-1]).getTime()) res.pop(); //make sure end is excluded after adjustments
 		return res;
@@ -21,10 +22,11 @@
 	var backward_rollout=function(start, end, tenor, adjust_func){
 		//creates a backward schedule from end down to but excluding start, using tenor as frequency
 		var res=[end];
-		var dt=library.add_months(end, -tenor);
+		var i=1, dt=library.add_months(end, -tenor);
 		while(dt.getTime()>start.getTime()){
 			res.unshift(dt);
-			dt=library.add_months(dt, -tenor);
+			i++;
+			dt=library.add_months(end, -i*tenor);
 		}
 		if(adjust_func(start).getTime() >= adjust_func(res[0]).getTime()) res.shift(); //make sure start is excluded after adjustments
 		return res;

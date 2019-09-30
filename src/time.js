@@ -131,9 +131,9 @@
         */
         
         library.add_days=function(from, ndays){
-                var d=new Date(from.valueOf());
-                d.setDate(d.getDate()+ndays);
-                return d;
+                return new Date(from.getFullYear(),
+				from.getMonth(),
+				from.getDate()+ndays);
         };
         
         
@@ -147,7 +147,7 @@
                         m=m+12;
                         y=y-1;
                 }
-                if(undefined===roll_day){
+                if(!roll_day){
                         d=from.getDate();
                 }else{
                         d=roll_day;
@@ -295,6 +295,15 @@
                 while (is_holiday_function(adj)) adj=library.add_days(adj,-1);    //modified following or preceding
                 return adj;
         };
+
+	library.add_business_days=function(from, n, is_holiday_function){
+		var res=from, i=n;
+		while (i>0){
+			res=library.adjust(library.add_days(res, 1), "f", is_holiday_function);
+			i--;
+		}
+		return res;
+	};
 
         
 

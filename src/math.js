@@ -19,6 +19,19 @@
         var M5 = 16.064177579207;
         var M6 = 1.75566716318264;
         var M7 = 8.83883476483184e-02;
+
+
+	library.get_safe_positive=function(n){ //returns positive number if a valid positive number is entered and null otherwise
+		if(typeof n !== 'number') return null;
+		if(n <= 0) return null;
+		return n;
+	};
+
+	library.get_safe_natural=function(n){ //returns natural number if a valid natural number is entered and null otherwise
+		if(typeof n !== 'number') return null;
+		if(n < 0 || n!==Math.floor(n)) return null;
+		return n;
+	};
         
         library.ndf=function(x){
           return Math.exp(-x*x/2.0)/RT2PI;

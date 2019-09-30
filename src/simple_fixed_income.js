@@ -66,13 +66,10 @@
                 //include notional payment in cash flows if not explicitely excluded
                 this.include_notional_pmt=(include_notional_pmt===false) ? false : true;
                 
-                if(typeof instrument.tenor !== 'number')
+                var tenor=library.get_safe_natural(instrument.tenor);
+                if(null===tenor)
                         throw new Error("simple_fixed_income: must provide valid tenor.");
-                
-                if(instrument.tenor < 0 || instrument.tenor!==Math.floor(instrument.tenor))
-                        throw new Error("simple_fixed_income: must provide valid tenor.");
-                var tenor=instrument.tenor;
-                
+
                 this.type=(typeof instrument.type==='string') ? instrument.type : 'unknown';
                 
                 this.is_holiday_func=library.is_holiday_factory(instrument.calendar || "");
@@ -81,11 +78,9 @@
                 var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
                 var first_date=library.get_safe_date(instrument.first_date); //null allowed
                 var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
-                var settlement_days=(typeof instrument.settlement_days==='number') ? instrument.settlement_days: 0;
-                this.settlement_date=library.adjust(library.add_days(library.valuation_date,
-                                                                    settlement_days),
-                                                                    "following",
-                                                                    this.is_holiday_func);
+                var settlement_days=library.get_safe_natural(instrument.settlement_days) || 0;
+                this.settlement_date=library.add_business_days(library.valuation_date, settlement_days, this.is_holiday_func);
+
                 var residual_spread=(typeof instrument.residual_spread=='number') ? instrument.residual_spread : 0;
                 var currency=instrument.currency || "";
 
@@ -104,7 +99,7 @@
                 }
 
 
-                var adj=function(d){
+                this.adj=function(d){
                         return library.adjust(d,this.bdc,this.is_holiday_func);
                 };
 
@@ -112,7 +107,7 @@
                 this.schedule=library.schedule(effective_date, 
                                                  maturity,
                                                  tenor,
-                                                 adj,
+                                                 this.adj,
                                                  first_date,
                                                  next_to_last_date);
 
@@ -145,14 +140,10 @@
                 var pmt_total=new Array(schedule.length-1);
                 
                 var i;
-                var adj=function(d){
-                        return library.adjust(d,bdc,is_holiday_func);
-                };
-
                 for(i=0;i<schedule.length-1;i++){
                         date_accrual_start[i]=schedule[i];
                         date_accrual_end[i]=schedule[i+1];
-                        date_pmt[i]=adj(schedule[i+1]);
+                        date_pmt[i]=this.adj(schedule[i+1]);
                         t_pmt[i]=library.time_from_now(date_pmt[i]);
                         t_accrual_start[i]=library.time_from_now(schedule[i]);
                         t_accrual_end[i]=library.time_from_now(schedule[i+1]);
@@ -207,8 +198,8 @@
                                 rt=this.current_rate;
                         }else{
                                 rt=library.get_fwd_rate(fwd_curve,
-                                               library.time_from_now(c.date_accrual_start[i]),
-                                               library.time_from_now(c.date_accrual_end[i]))+
+                                               c.t_accrual_start[i],
+                                               c.t_accrual_end[i])+
                                                this.float_spread;
                         }
                         interest=this.notional*rt*

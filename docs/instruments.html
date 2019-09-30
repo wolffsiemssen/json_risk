@@ -139,11 +139,12 @@
 <li>currency (string)</li>
 </ul>
 
-<h3>Loan</h3>
+<h3>Irregular bond</h3>
 
-<p>Fixed or floating rate loan and deposit positions, supporting amortisation structures. Fields:</p>
+<p>Fixed or floating rate irregular bond positions, supporting amortisation structures. Fields:</p>
 
 <ul>
+<li>effective_date (date string)</li>
 <li>maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))</li>
 <li>notional (number)</li>
 <li>fixed_rate (number, coupon rate for fixed rate loans, empty for floating rate loans)</li>
@@ -153,14 +154,14 @@
 <p>Optional (improving pricing accuracy or adding features):</p>
 
 <ul>
-<li>amortization (string, either "bullet" which is the default value, "capitalisation", "stepdown" or "annuity")</li>
-<li>repay_amount (number representing the amount repaid at each repayment date when amortisation is "stepdown" or "annuity")</li>
+<li>repay_amount (non-negative number representing the amount repaid at each repayment date, defaults to zero)</li>
+<li>linear_amortization (boolean, defaults to "false". overrides repay_amount if true)</li>
+<li>interest_capitalization (boolean, defaults to "false".)</li>
 <li>float_spread (number, coupon spread for floater)</li>
 <li>cap_rate (number)</li>
 <li>floor_rate (number)</li>
 <li>current_accrued_interest (number)</li>
 <li>repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)</li>
-<li>effective_date (date string)</li>
 <li>first_date (date string representing the first or next interest payment date)</li>
 <li>repay_first_date (date string representing the first or next repayment date)</li>
 <li>fixing_first_date (date string representing the first or next fixing date)</li>

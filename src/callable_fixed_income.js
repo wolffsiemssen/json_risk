@@ -18,11 +18,10 @@
 		var fcd=library.get_safe_date(instrument.first_call_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
 	        this.base=new library.simple_fixed_income(instrument);
-		this.call_schedule=library.backward_schedule(fcd, 
-							     library.get_safe_date(instrument.maturity), 
-							     instrument.call_tenor || 0, //european call by default
-							     this.base.is_holiday_func, 
-							     this.base.bdc);
+		this.call_schedule=library.schedule(fcd, 
+						     library.get_safe_date(instrument.maturity), 
+						     instrument.call_tenor || 0, //european call by default
+						     this.base.adj);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
 		var i;
 

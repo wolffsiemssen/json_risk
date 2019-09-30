@@ -936,12 +936,12 @@ am(pv.toFixed(2) === "8.00", "FX swap valuation (2)");
 
 /* 
 
-Test Loan
+Test irregular bonds
 
 */
 
-//test special case of regular loan, value should always be equal to bond
-/*
+//test special case of regular bond, value should always be equal to simple bond
+
 Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
 Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
               "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
@@ -955,10 +955,10 @@ bonds=[];
 for (i=0; i<Kupon.length; i++){
         bonds.push({
         maturity: Maturity[i],
+	effective_date: new Date(2017,5,5),
         notional: 100.0,
         fixed_rate: Kupon[i]/100,
         tenor: 12,
-        repay_tenor: 0,
         fixing_tenor: 0,
         bdc: "following",
         dcc: "act/act",
@@ -971,19 +971,50 @@ zcs=[0.001,0.002,0.003,0.004,0.005, 0.006, 0.007,0.007];
 curve={times:times,zcs:zcs};
 
 for (i=0; i<Kupon.length; i++){
-        pv_bond=JsonRisk.pricer_bond(bonds[i],curve_up, null, null);
-        pv_loan=JsonRisk.pricer_loan(bonds[i],curve_up, null, null);
+        pv_bond=JsonRisk.pricer_bond(bonds[i],curve, null, null);
+        pv_irreg=JsonRisk.pricer_irregular_bond(bonds[i],curve, null, null);
         
         
         console.log("JSON Risk regular bond price                                               : " + pv_bond.toFixed(3));
-        console.log("JSON Risk regular bond price priced with irregular_fixed_income instrument : " + pv_loan.toFixed(3));
+        console.log("JSON Risk regular bond price priced with irregular_fixed_income instrument : " + pv_irreg.toFixed(3));
        
-        am(pv_bond===pv_loan, "Loan valuation with regular loan against bond pricer, (" + (i+1) +")");
+        am(pv_bond===pv_irreg, "Irregular bond valuation consistency with simple bond pricer, (" + (i+1) +")");
 }
-*/
 
+//test irregular bonds by checking that, regardless of the amortisation used, a bond with coupon r, when discounted at r, always values at par.
 
+var Repay_Total=[30,70,100];
+var Repay_Tenor=[1,3,6,6,12];
+var Tenor=[1,3,6,6,12,12];
+var IntCap=[true, false];
+var Repay_Stub_Days=[1,2,3,4,5,10,15,30];
+bonds=[];
+var discount_rate;
+for (i=0;i<400;i++){
+        bonds.push({
+		effective_date: new Date(JsonRisk.valuation_date),
+		maturity: Maturity[i % Maturity.length],
+		notional: 100.0,
+		fixed_rate: Kupon[i % Kupon.length]/100,
+		tenor: Tenor[i % Tenor.length],//(1+c*t/12)^(12/t)=1+c0
+		repay_tenor: Repay_Tenor[i % Repay_Tenor.length],
+		repay_next_to_last_date: JsonRisk.add_days(JsonRisk.get_safe_date(Maturity[i % Maturity.length]), -Repay_Stub_Days[i % Repay_Stub_Days.length]),
+		bdc: "unadjusted",
+		dcc: "act/365",
+		repay_amount: Repay_Total[i % Repay_Total.length] / 12 * Repay_Tenor[i % Repay_Tenor.length] / JsonRisk.time_from_now(JsonRisk.get_safe_date(Maturity[i % Maturity.length])),
+		interest_capitalization: IntCap[i % IntCap.length]
+	});
+	//discount curves are always annual compounding act/365, so we need to adjust the rate according to the tenor in order to arrive at a par valuation
+	discount_rate=Math.pow(1+(Kupon[i % Kupon.length] / 100*Tenor[i % Tenor.length] / 12),12 / Tenor[i % Tenor.length] ) -1;
 
+	bond_internal=new JsonRisk.irregular_fixed_income(bonds[i]);
+        p1=bond_internal.present_value({times: [1], zcs: [discount_rate-0.0001]});
+        console.log("JSON Risk irregular bond price discounted at coupon rate minus one basis point (" + (i+1) + "): " + p1.toFixed(3));
+
+        p2=bond_internal.present_value({times: [1], zcs: [discount_rate+0.0001]});
+        console.log("JSON Risk irregular bond price discounted at coupon rate plus one basis point (" + (i+1) + "): " + p2.toFixed(3));
+	am((p1>100 && p2<100), "Irregular bond valuation for amortising bonds (" + (i+1) + ").");
+}
 /*
 
 Test LGM option pricing

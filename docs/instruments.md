@@ -117,10 +117,11 @@ Optional (adding FX swap feature)
 - notional_2 (number, negative for pay leg)
 - currency (string)
 
-### Loan
+### Irregular bond
 
-Fixed or floating rate loan and deposit positions, supporting amortisation structures. Fields:
+Fixed or floating rate irregular bond positions, supporting amortisation structures. Fields:
 
+- effective\_date (date string)
 - maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
 - notional (number)
 - fixed_rate (number, coupon rate for fixed rate loans, empty for floating rate loans)
@@ -128,14 +129,14 @@ Fixed or floating rate loan and deposit positions, supporting amortisation struc
 
 Optional (improving pricing accuracy or adding features):
 
-- amortization (string, either "bullet" which is the default value, "capitalisation", "stepdown" or "annuity")
-- repay_amount (number representing the amount repaid at each repayment date when amortisation is "stepdown" or "annuity")
+- repay_amount (non-negative number representing the amount repaid at each repayment date, defaults to zero)
+- linear_amortization (boolean, defaults to "false". overrides repay\_amount if true)
+- interest_capitalization (boolean, defaults to "false".)
 - float_spread (number, coupon spread for floater)
 - cap_rate (number)
 - floor_rate (number)
 - current\_accrued\_interest (number)
 - repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)
-- effective\_date (date string)
 - first\_date (date string representing the first or next interest payment date)
 - repay\_first\_date (date string representing the first or next repayment date)
 - fixing\_first\_date (date string representing the first or next fixing date)
@@ -155,7 +156,7 @@ Optionally, this instrument type supports predetermined conditions. This require
 If conditions\_valid\_until is set, the fields below can optionally contain arrays instead of scalars. Length must be one or the length of conditions\_valid\_until:
 
 - fixed_rate
-- amortization
+- interest_capitalization
 - repay_amount
 - float_spread
 - cap_rate

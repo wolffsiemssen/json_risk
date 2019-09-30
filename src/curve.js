@@ -38,8 +38,8 @@
         };
         
         function get_df_at(curve, i){
-                if (curve.dfs) return curve.dfs[i];
-                if (curve.zcs) return Math.pow(1+curve.zcs[i],-get_time_at(curve,i));
+                if (Array.isArray(curve.dfs)) return curve.dfs[i];
+                if (Array.isArray(curve.zcs)) return Math.pow(1+curve.zcs[i],-get_time_at(curve,i));
                 throw new Error("get_df: invalid curve, must provide dfs or zcs");
         }
         
