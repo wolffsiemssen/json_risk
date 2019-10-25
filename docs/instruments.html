@@ -7,7 +7,7 @@
 <li>Floating rate bonds (floater)</li>
 <li>Interest rate swaps (swap)</li>
 <li>FX Spot/Forward (fxterm)</li>
-<li>Loan (loan, to be implemented)</li>
+<li>Irregular bond (irregular_bond, to be implemented)</li>
 <li>Equity (equity, to be implemented)</li>
 </ul>
 
@@ -30,6 +30,8 @@
 <li>effective_date (date string)</li>
 <li>first_date (date string)</li>
 <li>next_to_last_date (date string)</li>
+<li>stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)</li>
+<li>stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)</li>
 <li>calendar (string)</li>
 <li>bdc (string)</li>
 <li>dcc (string)</li>
@@ -154,20 +156,26 @@
 <p>Optional (improving pricing accuracy or adding features):</p>
 
 <ul>
+<li>repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)</li>
 <li>repay_amount (non-negative number representing the amount repaid at each repayment date, defaults to zero)</li>
 <li>linear_amortization (boolean, defaults to "false". overrides repay_amount if true)</li>
-<li>interest_capitalization (boolean, defaults to "false".)</li>
-<li>float_spread (number, coupon spread for floater)</li>
+<li><p>interest_capitalization (boolean, defaults to "false")</p></li>
+<li><p>first_date (date string representing the first or next interest payment date)</p></li>
+<li>next_to_last_date (date string)</li>
+<li>stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)</li>
+<li><p>stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)</p></li>
+<li><p>repay_first_date (date string representing the first or next repayment date)</p></li>
+<li>repay_next_to_last_date (date string)</li>
+<li>repay_stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e., schedule is rolled out forwards from effective date)</li>
+<li><p>repay_stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)</p></li>
+<li><p>fixing_first_date (date string representing the first or next fixing date)</p></li>
+<li>fixing_next_to_last_date (date string)</li>
+<li>fixing_stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)</li>
+<li><p>fixing_stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)</p></li>
+<li><p>float_spread (number, coupon spread for floater)</p></li>
 <li>cap_rate (number)</li>
 <li>floor_rate (number)</li>
 <li>current_accrued_interest (number)</li>
-<li>repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)</li>
-<li>first_date (date string representing the first or next interest payment date)</li>
-<li>repay_first_date (date string representing the first or next repayment date)</li>
-<li>fixing_first_date (date string representing the first or next fixing date)</li>
-<li>next_to_last_date (date string)</li>
-<li>repay_next_to_last_date (date string)</li>
-<li>fixing_next_to_last_date (date string)</li>
 <li>calendar (string)</li>
 <li>bdc (string)</li>
 <li>dcc (string)</li>
@@ -185,7 +193,7 @@
 
 <ul>
 <li>fixed_rate</li>
-<li>amortization</li>
+<li>interest_capitalization</li>
 <li>repay_amount</li>
 <li>float_spread</li>
 <li>cap_rate</li>

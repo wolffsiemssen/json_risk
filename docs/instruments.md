@@ -5,7 +5,7 @@ JSON Risk supports the instrument types below:
 - Floating rate bonds (floater)
 - Interest rate swaps (swap)
 - FX Spot/Forward (fxterm)
-- Loan (loan, to be implemented)
+- Irregular bond (irregular_bond, to be implemented)
 - Equity (equity, to be implemented)
 
 ## Single instrument JSON field definitions
@@ -23,6 +23,8 @@ Optional (improving pricing accuracy or adding features):
 - effective\_date (date string)
 - first\_date (date string)
 - next\_to\_last\_date (date string)
+- stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)
+- stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
 - calendar (string)
 - bdc (string)
 - dcc (string)
@@ -129,20 +131,31 @@ Fixed or floating rate irregular bond positions, supporting amortisation structu
 
 Optional (improving pricing accuracy or adding features):
 
+
+- repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)
 - repay_amount (non-negative number representing the amount repaid at each repayment date, defaults to zero)
 - linear_amortization (boolean, defaults to "false". overrides repay\_amount if true)
-- interest_capitalization (boolean, defaults to "false".)
+- interest_capitalization (boolean, defaults to "false")
+
+- first\_date (date string representing the first or next interest payment date)
+- next\_to\_last\_date (date string)
+- stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)
+- stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
+
+- repay\_first\_date (date string representing the first or next repayment date)
+- repay\_next\_to\_last\_date (date string)
+- repay\_stub\_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e., schedule is rolled out forwards from effective date)
+- repay\_stub\_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
+
+- fixing\_first\_date (date string representing the first or next fixing date)
+- fixing\_next\_to\_last\_date (date string)
+- fixing\_stub\_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)
+- fixing\_stub\_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
+
 - float_spread (number, coupon spread for floater)
 - cap_rate (number)
 - floor_rate (number)
 - current\_accrued\_interest (number)
-- repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)
-- first\_date (date string representing the first or next interest payment date)
-- repay\_first\_date (date string representing the first or next repayment date)
-- fixing\_first\_date (date string representing the first or next fixing date)
-- next\_to\_last\_date (date string)
-- repay\_next\_to\_last\_date (date string)
-- fixing\_next\_to\_last\_date (date string)
 - calendar (string)
 - bdc (string)
 - dcc (string)

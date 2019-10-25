@@ -56,21 +56,31 @@ var present_value=JsonRisk.pricer_bond(bond,discount_curve, spread_curve);
 
 JSON Risk supports the instrument types below with a pricer function for each instrument:
  
-- Fixed income instruments (simple\_fixed\_income)
-  - Fixed rate bonds: pricer\_bond(bond, disc\_curve, spread\_curve)
-  - Floating rate bonds: pricer\_floater(floater, disc\_curve, spread\_curve, forward\_curve)
-  - Interest rate swaps: pricer\_swap(swap, disc\_curve, forward\_curve)
-  - FX Spot/Forward: pricer\_fxterm(fxterm, disc\_curve)
-- Swaptions (swaption)
-  - Plain vanilla swaptions (pricer\_swaption(swaption, disc\_curve, fwd\_curve, vol\_surface)
+- Fixed income instruments
+  - Fixed rate bonds: pricer\_bond(instrument, disc\_curve, spread\_curve)
+  - Floating rate bonds: pricer\_floater(instrument, disc\_curve, spread\_curve, forward\_curve)
+  - Irregular fixed rate and floating rate bonds: pricer\_irregular\_bond(instrument, disc\_curve, spread\_curve, forward\_curve)
+  - Interest rate swaps: pricer\_swap(instrument, disc\_curve, forward\_curve)
+  - FX Spot/Forward: pricer\_fxterm(instrument, disc\_curve)
+- Callable fixed income instruments
+  - Plain vanilla swaptions (pricer\_swaption(instrument, disc\_curve, fwd\_curve, vol\_surface)
+  - Single callable and multicallable bond (pricer\_callable\_bond((instrument, disc\_curve, fwd\_curve, spread\_curve, vol\_surface))
 
-Fixed income instrument pricing is implemented in a generic internal class simple\_fixed\_income_. The pricing routine supports features such as
+Fixed income instrument pricing supports features such as
 
 - day count conventions
 - business day conventions
 - calendar
 - schedules with long and short stubs
 - settlement days offset
+
+Irregular bonds pricing supports additional cash flow generation features such as
+
+- step-down amortisation (regular repayments)
+- interest capitalisation (allowing to define annuity-type profiles)
+- repayment and fixing schedules independent of interest payment schedule (including appropriate handling of broken interest periods)
+
+Callable bond pricing is implemented with a Linear Gauss Markov (or, equivalently, Hull-White) model in the spirit of Hagan, Patrick; EVALUATING AND HEDGING EXOTIC SWAP INSTRUMENTS VIA LGM (2019).
 
 See [supported instruments](docs/instruments.md) for details and JSON format descriptions.
 

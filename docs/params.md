@@ -20,7 +20,7 @@ Fields:
 - type (string (equity or fx))
 - value (number)
 
-Optional (for automatic parameter assignment):
+Optional (e.g., for automatic parameter assignment):
 
 - currency (string)
 - tag (string)
@@ -40,7 +40,7 @@ Optional:
 - labels (array of period string (e.g., 1D, 3M, 1Y, 10Y))
 - zcs (zero coupon rates, array of number)
 
-Optional (for automatic parameter assignment):
+Optional (e.g., for automatic parameter assignment):
 
 - currency (string)
 - tag (string)
@@ -64,7 +64,7 @@ Optional:
 - labels_expiry (array of period string (e.g., 1D, 3M, 1Y, 10Y))
 - labels_term (array of period string (e.g., 1D, 3M, 1Y, 10Y))
 
-Optional (for automatic parameter assignment):
+Optional (e.g., for automatic parameter assignment):
 
 - currency (string)
 - tag (string used for parameter assignment)

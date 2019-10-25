@@ -22,6 +22,8 @@
 		
                 var first_date=library.get_safe_date(instrument.first_date); //null allowed
                 var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
+		var stub_end=instrument.stub_end || false;
+		var stub_long=instrument.stub_long || false;
 
                 this.current_accrued_interest = instrument.current_accrued_interest || 0;
 
@@ -39,7 +41,7 @@
                 var repay_tenor=library.get_safe_natural(instrument.repay_tenor);
                 if(null===repay_tenor) repay_tenor=tenor;
 
-                this.linear_amortization = instrument.linear_amortization || false;
+                var linear_amortization = instrument.linear_amortization || false;
 		
                 this.repay_amount = (typeof instrument.repay_amount==='number') ? instrument.repay_amount : 0; //defaults to zero
 		if (this.repay_amount<0) throw new Error("irregular_fixed_income: invalid negative repay_amount");
@@ -48,6 +50,8 @@
 
                 var repay_first_date=library.get_safe_date(instrument.repay_first_date) || this.first_date;
                 var repay_next_to_last_date=library.get_safe_date(instrument.repay_next_to_last_date) || this.next_to_last_date;
+		var repay_stub_end=instrument.stub_end || false;
+		var repay_stub_long=instrument.stub_long || false;
 
 		//condition arrays
 		var i;
@@ -94,6 +98,8 @@
 
 		        var fixing_first_date=library.get_safe_date(instrument.fixing_first_date) || this.first_date;
 		        var fixing_next_to_last_date=library.get_safe_date(instrument.fixing_next_to_last_date) || this.next_to_last_date;
+			var fixing_stub_end=instrument.fixing_stub_end || false;
+			var fixing_stub_long=instrument.fixing_stub_long || false;
 
                         this.cap_rate = (typeof instrument.cap_rate === 'number') ? instrument.cap_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
                         this.floor_rate = (typeof instrument.floor_rate === 'number') ? instrument.floor_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
@@ -111,15 +117,23 @@
                                                         tenor,
                                                         this.adj,
                                                         first_date,
-                                                        next_to_last_date);
+                                                        next_to_last_date,
+							stub_end,
+							stub_long);
 
-
-                this.repay_schedule = library.schedule(effective_date, 
-                                                        maturity,
-                                                        repay_tenor,
-                                                        this.adj,
-                                                        repay_first_date,
-                                                        repay_next_to_last_date);
+		if(this.repay_amount===0 && !this.interest_capitalization && !linear_amortization){
+			repay_schedule=[effective_date, maturity];
+		}else{
+                	this.repay_schedule = library.schedule(effective_date, 
+		                                                maturity,
+		                                                repay_tenor,
+		                                                this.adj,
+		                                                repay_first_date,
+		                                                repay_next_to_last_date,
+								repay_stub_end,
+								repay_stub_long);
+		}
+		if(linear_amortization) this.repay_amount=this.notional / (this.repay_schedule.length - 1)
 
                 this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
 

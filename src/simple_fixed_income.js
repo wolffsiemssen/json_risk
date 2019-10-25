@@ -78,6 +78,8 @@
                 var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
                 var first_date=library.get_safe_date(instrument.first_date); //null allowed
                 var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
+		var stub_end=instrument.stub_end || false;
+		var stub_long=instrument.stub_long || false;
                 var settlement_days=library.get_safe_natural(instrument.settlement_days) || 0;
                 this.settlement_date=library.add_business_days(library.valuation_date, settlement_days, this.is_holiday_func);
 
