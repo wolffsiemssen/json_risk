@@ -28,7 +28,7 @@
 		//basket generation
 		this.basket=new Array(this.call_schedule.length);
 		for (i=0; i<this.call_schedule.length; i++){
-			//basket instruments are co-terminal swaptions mit standard conditions
+			//basket instruments are co-terminal swaptions with standard conditions
 			this.basket[i]=new library.swaption({
 		                is_payer: false,
 		                maturity: instrument.maturity,

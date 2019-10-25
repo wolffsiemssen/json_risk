@@ -70,7 +70,7 @@
                 var settlement_days=library.get_safe_natural(instrument.settlement_days) || 0;
                 this.settlement_date=library.add_business_days(library.valuation_date, settlement_days, this.is_holiday_func);
 
-                var residual_spread=(typeof instrument.residual_spread=='number') ? instrument.residual_spread : 0;
+                this.residual_spread=(typeof instrument.residual_spread=='number') ? instrument.residual_spread : 0;
                 var currency=instrument.currency || "";
 
 		if(typeof instrument.fixed_rate === 'number'){
@@ -122,7 +122,7 @@
 							stub_long);
 
 		if(this.repay_amount===0 && !this.interest_capitalization && !linear_amortization){
-			repay_schedule=[effective_date, maturity];
+			this.repay_schedule=[effective_date, maturity];
 		}else{
                 	this.repay_schedule = library.schedule(effective_date, 
 		                                                maturity,
@@ -133,7 +133,7 @@
 								repay_stub_end,
 								repay_stub_long);
 		}
-		if(linear_amortization) this.repay_amount=this.notional / (this.repay_schedule.length - 1)
+		if(linear_amortization) this.repay_amount=this.notional / (this.repay_schedule.length - 1);
 
                 this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
 
