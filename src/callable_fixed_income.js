@@ -71,7 +71,7 @@
 							     disc_curve,
 							     xi_vec[0],
 							     spread_curve,
-							     null);
+							     this.base.residual_spread);
 		}else if (1<xi_vec.length){
 			//bermudan call, use numeric integration
 
@@ -80,7 +80,7 @@
 								disc_curve,
 								xi_vec,
 								spread_curve,
-								null);
+								this.base.residual_spread);
 		} //if xi_vec.length===0 all calls are expired, no value subtracted
 		
 		//add bond base price
