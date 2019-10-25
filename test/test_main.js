@@ -1286,7 +1286,31 @@ results=JsonRisk.vector_pricer({
         currency: "USD"
 }); 
 am(check(results), "Vector pricing with swap returns valid vector of numbers");
-         
+
+results=JsonRisk.vector_pricer({
+  "id": 15,
+  "type": "swap",
+  "sub_portfolio": "Swap15",
+  "notional": 100000,
+  "market_value": 100000,
+  "currency": "EUR",
+  "maturity": "30.9.2034",
+  "tenor": 12,
+  "fixed_rate": 0.01,
+  "float_current_rate": 0,
+  "calendar": "TARGET",
+  "dcc": "Act/360",
+  "bdc": "following",
+  "float_tenor": 6,
+  "float_dcc": "Act/360",
+  "float_bdc": "following",
+  "effective_date": "30.9.2019",
+  "is_payer": false,
+  "disc_curve": "EURO-GOV",
+  "fwd_curve": "EURO-GOV"
+ });
+am(check(results), "Vector pricing with swap returns valid vector of numbers");
+   
 results=JsonRisk.vector_pricer({
         type: 'swaption',
         is_payer: true,
