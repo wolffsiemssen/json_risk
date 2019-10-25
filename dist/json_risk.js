@@ -2260,6 +2260,8 @@
                         case "bond":
                         case "floater":
                         return new library.simple_fixed_income(instrument);
+			case "irregular_bond":
+			return new library.irregular_fixed_income(instrument);
                         case "swap":
                         return new library.swap(instrument);
                         case "swaption":
@@ -2293,6 +2295,7 @@
                                 case "bond":
                                 case "floater":
                                 case "fxterm":
+				case "irregular_bond":
                                 res[i]=obj.present_value(dc,sc,fc);
                                 break;
                                 case "swap":
