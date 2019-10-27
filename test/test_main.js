@@ -1381,7 +1381,7 @@ var bond={
 for (i=0;i<13;i++){
 	bond.call_tenor=i;
 	result=JsonRisk.pricer_bond(bond, curve, null, null);
-	result_multi=JsonRisk.pricer_callable_bond(bond,curve, null, null, surface);
+	result_multi=JsonRisk.pricer_callable_bond(bond,curve, null, curve, surface);
 	console.log((i===0) ? "EUROPEAN:" : "BERMUDAN WITH TENOR " +i);
 	console.log("BOND PRICE:                " + result);
 	console.log("MULTI CALLABLE BOND PRICE: " + result_multi);

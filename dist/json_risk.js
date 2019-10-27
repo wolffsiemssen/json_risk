@@ -93,6 +93,8 @@
 			tte=library.time_from_now(this.call_schedule[i]);
 			if(tte>1/512) t_exercise.push(tte);  //non-expired call date
 		}
+
+		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: Must provide forward curve for calibration");
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
 		if(typeof surface!=='object' || surface===null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
@@ -630,7 +632,10 @@
 	 };
     
         library.irregular_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-		if(this.is_float) this.update_cash_flows(fwd_curve);                
+		if(this.is_float){
+			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("simple_fixed_income.present_value: Must provide forward curve when evaluating floating rate interest stream");
+			this.update_cash_flows(fwd_curve);
+		}              
 		return library.dcf(this.cash_flows,
                                    disc_curve,
                                    spread_curve,
@@ -761,7 +766,7 @@
 			while(func(lower)<0) upper=2*upper;
 		}
 		break_even=library.find_root_ridders(func, upper, lower, 100);
-		//console.log("BREAK EVEN:" + break_even);
+
                 var i=0, df;
 		
 		// move forward to first line after exercise date
@@ -871,7 +876,7 @@
 					//throws error if secant method fails
 					xi = root*root; //if secant method was successful
 				}catch(e){
-					
+						
 				}
 
 				if(xi_vec.length>0 && xi_vec[xi_vec.length-1]>xi) xi=xi_vec[xi_vec.length-1]; //fallback if monotonicity is violated
@@ -1015,9 +1020,6 @@
 	};
         
 }(this.JsonRisk || module.exports));
-
-
-
 ;
 (function(library){
 	'use strict';
@@ -1481,6 +1483,7 @@
         };
         
         library.simple_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
+		if(this.is_float && (typeof fwd_curve !== 'object' || fwd_curve===null)) throw new Error("simple_fixed_income.present_value: Must provide forward curve when evaluating floating rate interest stream");
                 return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
                                    library.get_safe_curve(disc_curve),
                                    library.get_safe_curve(spread_curve),
@@ -1869,6 +1872,7 @@
         
         library.period_str_to_time=function(str){
                 var num=parseInt(str, 10);
+		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
                 var unit=str.charAt(str.length-1);
                 if( unit === 'Y' || unit === 'y') return num;
                 if( unit === 'M' || unit === 'm') return num/12;
@@ -1997,6 +2001,17 @@
                         d=roll_day;
                 }
                 return new Date(y,m,Math.min(d, days_in_month(y,m)));
+        };
+
+        library.add_period=function(from, str){
+                var num=parseInt(str, 10);
+		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
+                var unit=str.charAt(str.length-1);
+                if( unit === 'Y' || unit === 'y') return library.add_months(from, 12*num);
+                if( unit === 'M' || unit === 'm') return library.add_months(from, num);
+                if( unit === 'W' || unit === 'w') return library.add_days(from, 7*num);
+                if( unit === 'D' || unit === 'd') return library.add_days(from, num);
+                throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
         };
         
                 

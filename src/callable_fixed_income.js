@@ -58,6 +58,8 @@
 			tte=library.time_from_now(this.call_schedule[i]);
 			if(tte>1/512) t_exercise.push(tte);  //non-expired call date
 		}
+
+		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: Must provide forward curve for calibration");
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
 		if(typeof surface!=='object' || surface===null) throw new Error("callable_fixed_income.present_value: must provide valid surface");

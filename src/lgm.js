@@ -114,7 +114,7 @@
 			while(func(lower)<0) upper=2*upper;
 		}
 		break_even=library.find_root_ridders(func, upper, lower, 100);
-		//console.log("BREAK EVEN:" + break_even);
+
                 var i=0, df;
 		
 		// move forward to first line after exercise date
@@ -224,7 +224,7 @@
 					//throws error if secant method fails
 					xi = root*root; //if secant method was successful
 				}catch(e){
-					
+						
 				}
 
 				if(xi_vec.length>0 && xi_vec[xi_vec.length-1]>xi) xi=xi_vec[xi_vec.length-1]; //fallback if monotonicity is violated
@@ -368,6 +368,3 @@
 	};
         
 }(this.JsonRisk || module.exports));
-
-
-

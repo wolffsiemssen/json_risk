@@ -348,7 +348,10 @@
 	 };
     
         library.irregular_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-		if(this.is_float) this.update_cash_flows(fwd_curve);                
+		if(this.is_float){
+			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("simple_fixed_income.present_value: Must provide forward curve when evaluating floating rate interest stream");
+			this.update_cash_flows(fwd_curve);
+		}              
 		return library.dcf(this.cash_flows,
                                    disc_curve,
                                    spread_curve,

@@ -25,6 +25,7 @@
         
         library.period_str_to_time=function(str){
                 var num=parseInt(str, 10);
+		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
                 var unit=str.charAt(str.length-1);
                 if( unit === 'Y' || unit === 'y') return num;
                 if( unit === 'M' || unit === 'm') return num/12;
@@ -153,6 +154,17 @@
                         d=roll_day;
                 }
                 return new Date(y,m,Math.min(d, days_in_month(y,m)));
+        };
+
+        library.add_period=function(from, str){
+                var num=parseInt(str, 10);
+		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
+                var unit=str.charAt(str.length-1);
+                if( unit === 'Y' || unit === 'y') return library.add_months(from, 12*num);
+                if( unit === 'M' || unit === 'm') return library.add_months(from, num);
+                if( unit === 'W' || unit === 'w') return library.add_days(from, 7*num);
+                if( unit === 'D' || unit === 'd') return library.add_days(from, num);
+                throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
         };
         
                 
