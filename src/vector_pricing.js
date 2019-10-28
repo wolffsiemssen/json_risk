@@ -40,13 +40,17 @@
         };
         
         library.store_params=function(params){
-                stored_params={vector_length: 1};
+                stored_params={vector_length: 1,
+			       scalars: {},
+			       curves: {},
+			       surfaces: {}
+			      };
+
                 var keys, i;
                 //valuation date
                 stored_params.valuation_date=library.get_safe_date(params.valuation_date);
                 //scalars
                 if (typeof(params.scalars) === 'object'){
-                        stored_params.scalars={};
                         keys=Object.keys(params.scalars);
                         for (i=0; i< keys.length;i++){
                                 stored_params.scalars[keys[i]]=normalise_scalar(params.scalars[keys[i]]);
@@ -55,7 +59,6 @@
                 }
                 //curves
                 if (typeof(params.curves) === 'object'){
-                        stored_params.curves={};
                         keys=Object.keys(params.curves);
                         var obj,len;
                         for (i=0; i< keys.length;i++){
@@ -63,13 +66,11 @@
                                 stored_params.curves[keys[i]]=obj;
                                 len=obj.dfs ? obj.dfs.length : obj.zcs.length;
                                 update_vector_length(len);
-                                
                         }
                 }
                 
                 //surfaces
                 if (typeof(params.surfaces) === 'object'){
-                        stored_params.surfaces={};
                         keys=Object.keys(params.surfaces);
                         for (i=0; i< keys.length;i++){
                                 stored_params.surfaces[keys[i]]=normalise_surface(params.surfaces[keys[i]]);
