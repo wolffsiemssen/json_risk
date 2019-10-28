@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
+//
 // initialization
-
+//
 var today=new Date(2019,10,22);
 var JR=require('./json_risk.js');
 JR.valuation_date=today;
@@ -11,13 +12,13 @@ var quotes=[-0.0060, -0.0040, -0.0030, -0.0020, 0.0010, 0.0110];
 
 var target_holidays=JR.is_holiday_factory("TARGET");
 
+//
 // instruments definition
-
+//
 var instruments=[];
 var times=[];
 
 //overnight deposit
-
 instruments[0]={
 	notional: 1,
 	effective_date: today,
@@ -29,7 +30,6 @@ instruments[0]={
 times[0]=JR.time_from_now(instruments[0].maturity);
 
 //swaps
-
 var effective_date=JR.add_business_days(today, 2, target_holidays);
 var maturity;
 
@@ -52,8 +52,11 @@ for (i=1;i<quotes.length; i++){
 	times[i]=JR.time_from_now(maturity);
 }
 
-// bootstrapping - initialization
+//
+// bootstrapping
+//
 
+//initialization
 var curve={
 	times: times,
 	dfs: quotes.slice()
@@ -75,14 +78,12 @@ console.log("Discount factor t0: " + curve.dfs[0].toFixed(10));
 console.log("Deposit price   t0: " + (1- JR.pricer_bond(instruments[0], curve)).toFixed(10));
 
 //swaps
-
 for (var i=1; i<quotes.length;i++){
 
 	func_price=function(df){
 		curve.dfs[i]=df;
 		return JR.pricer_swap(instruments[i], curve, curve);
 	}
-
 
 	JR.find_root_secant(func_price  // function to find root for
 				, 1     // start value 1
