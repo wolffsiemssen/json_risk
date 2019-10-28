@@ -16,7 +16,23 @@
 
 	function h(t){ return t;}
 
-	library.lgm_dcf=function(cf_obj,t_exercise, disc_curve, xi, state, spread_curve, residual_spread){
+	var strike_adjustment=function(cf_obj, t_exercise, disc_curve, opportunity_spread){
+		if(!opportunity_spread) return 0;                
+		var i=0, df;
+		var res=0;
+		// move forward to first line after exercise date
+                while(cf_obj.t_pmt[i]<=t_exercise) i++;
+
+                // include all payments after exercise date
+                while (i<cf_obj.t_pmt.length){
+			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
+		        res+=cf_obj.current_principal[i] * df * opportunity_spread * (cf_obj.t_pmt[i]-cf_obj.t_pmt[i-1]);
+			i++;
+                }
+                return res;
+	};
+
+	library.lgm_dcf=function(cf_obj,t_exercise, disc_curve, xi, state, spread_curve, residual_spread, opportunity_spread){
                 /*
 
 		Calculates the discounted cash flow present value for a given vector of states (reduced value according to formula 4.14b)
@@ -48,8 +64,9 @@
 		df=library.get_df(disc_curve, t_exercise);
 		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
 		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
+		var sadj=strike_adjustment(cf_obj, t_exercise, disc_curve, opportunity_spread);
 		for (j=0; j<state.length; j++){
-			res[j] = - (cf_obj.current_principal[i]+accrued_interest) * df;
+			res[j] = - (cf_obj.current_principal[i]+accrued_interest+sadj) * df;
 		}
 
                 // include all payments after exercise date
@@ -66,7 +83,7 @@
                 return res;
 	};
 
-	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread){
+	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread, opportunity_spread){
                 /*
 
 		Calculates the european call option price on a cash flow (closed formula 5.7b).
@@ -81,9 +98,9 @@
 		
                 */
 		if(t_exercise<0) return 0; //expired option		
-		if(t_exercise<1/512 || xi<1e-15) return Math.max(0,library.lgm_dcf(cf_obj,t_exercise, disc_curve, 0, [0], spread_curve, residual_spread)[0]);
+		if(t_exercise<1/512 || xi<1e-15) return Math.max(0,library.lgm_dcf(cf_obj,t_exercise, disc_curve, 0, [0], spread_curve, residual_spread, opportunity_spread)[0]);
 		function func(x){
-			return library.lgm_dcf(cf_obj,t_exercise, disc_curve, xi, [x], spread_curve, residual_spread)[0];
+			return library.lgm_dcf(cf_obj,t_exercise, disc_curve, xi, [x], spread_curve, residual_spread, opportunity_spread)[0];
 		}
 		var std_dev=Math.sqrt(xi);
 		var one_std_dev=1/std_dev;
@@ -130,7 +147,8 @@
 		df=library.get_df(disc_curve, t_exercise);
 		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
 		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
-		var res = - (cf_obj.current_principal[i]+accrued_interest) * df * library.cndf(break_even*one_std_dev);
+		var sadj=strike_adjustment(cf_obj, t_exercise, disc_curve, opportunity_spread);
+		var res = - (cf_obj.current_principal[i]+accrued_interest+sadj) * df * library.cndf(break_even*one_std_dev);
 
 		// include all payments after exercise date
                 while (i<cf_obj.t_pmt.length){
@@ -180,7 +198,7 @@
 		var cf_obj=library.lgm_european_swaption_adjusted_cashflow(swaption,disc_curve, fwd_curve);
 		
 		//now use lgm model on cash flows
-		return library.lgm_european_call_on_cf(cf_obj,t_exercise, disc_curve, xi, null, null);
+		return library.lgm_european_call_on_cf(cf_obj,t_exercise, disc_curve, xi, null, null, null);
 	};
 
 	library.lgm_calibrate=function(basket, disc_curve, fwd_curve, surface){
@@ -189,7 +207,7 @@
 		var cf_obj, std_dev_bachelier, tte, ttm, deno, target, root, i, j, min_value, max_value;
 
 		var func=function(rt_xi){
-			var val=library.lgm_european_call_on_cf(cf_obj,tte, disc_curve, rt_xi*rt_xi, null, null);
+			var val=library.lgm_european_call_on_cf(cf_obj,tte, disc_curve, rt_xi*rt_xi, null, null, null);
 			return val-target;
 		};
 		for (i=0; i<basket.length; i++){
@@ -209,7 +227,7 @@
 				xi=Math.pow(std_dev_bachelier*basket[i].swap.annuity(disc_curve)/deno,2);
 
 				//second step: calibrate, but be careful with infeasible bachelier prices below min and max
-				min_value=library.lgm_dcf(cf_obj, tte, disc_curve, 0, [0], null, null)[0];
+				min_value=library.lgm_dcf(cf_obj, tte, disc_curve, 0, [0], null, null, null)[0];
 				//max value is value of the payoff without redemption payment
 				max_value=min_value+basket[i].swap.fixed_leg.notional*library.get_df(disc_curve, tte);
 				//min value (attained at vola=0) is maximum of zero and current value of the payoff
@@ -238,7 +256,7 @@
 	var STD_DEV_RANGE=4;
 	var RESOLUTION=15;
 
-	library.lgm_bermudan_call_on_cf=function(cf_obj,t_exercise_vec, disc_curve, xi_vec, spread_curve, residual_spread){
+	library.lgm_bermudan_call_on_cf=function(cf_obj,t_exercise_vec, disc_curve, xi_vec, spread_curve, residual_spread, opportunity_spread){
                 /*
 
 		Calculates the bermudan call option price on a cash flow (numeric integration according to martingale formula 4.14a).
@@ -262,7 +280,7 @@
 							0,
 							[0],
 							spread_curve,
-							residual_spread)[0]); //expiring option
+							residual_spread, opportunity_spread)[0]); //expiring option
 		}
 
 
@@ -336,7 +354,8 @@
 						   xi,
 						   state,
 						   spread_curve,
-						   residual_spread);
+						   residual_spread,
+						   opportunity_spread);
 			
 			//hold is what option holder obtains when not exercising
 			if(n_ex<xi_vec.length-1){

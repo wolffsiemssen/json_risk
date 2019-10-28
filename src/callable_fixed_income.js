@@ -23,6 +23,8 @@
 						     instrument.call_tenor || 0, //european call by default
 						     this.base.adj);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
+		this.opportunity_spread=(typeof instrument.opportunity_spread==='number' ) ? instrument.opportunity_spread : 0;
+
 		var i;
 
 		//basket generation
@@ -34,16 +36,16 @@
 		                maturity: instrument.maturity,
 		                expiry: this.call_schedule[i],
 		                notional: instrument.notional,
-		                fixed_rate: instrument.fixed_rate,
-		                tenor: 12,
+		                fixed_rate: instrument.fixed_rate-this.opportunity_spread,
+		                tenor: instrument.tenor,
 		                float_spread: 0.00,
 		                float_tenor: 6,
 		                float_current_rate: 0.00,
-		                calendar: "TARGET",
-		                bdc: "u",
-		                float_bdc: "u",
-		                dcc: "act/365",
-		                float_dcc: "act/365"
+		                calendar: instrument.calendar,
+		                bdc: instrument.bdc,
+		                float_bdc: instrument.bdc,
+		                dcc: instrument.dcc,
+		                float_dcc: instrument.dcc
 		        });
 		}
         };
@@ -59,7 +61,7 @@
 			if(tte>1/512) t_exercise.push(tte);  //non-expired call date
 		}
 
-		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: Must provide forward curve for calibration");
+		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: must provide forward curve for calibration");
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
 		if(typeof surface!=='object' || surface===null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
@@ -73,7 +75,8 @@
 							     disc_curve,
 							     xi_vec[0],
 							     spread_curve,
-							     this.base.residual_spread);
+							     this.base.residual_spread,
+							     this.opportunity_spread);
 		}else if (1<xi_vec.length){
 			//bermudan call, use numeric integration
 
@@ -82,7 +85,8 @@
 								disc_curve,
 								xi_vec,
 								spread_curve,
-								this.base.residual_spread);
+								this.base.residual_spread,
+								this.opportunity_spread);
 		} //if xi_vec.length===0 all calls are expired, no value subtracted
 		
 		//add bond base price
