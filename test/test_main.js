@@ -716,6 +716,95 @@ for (i=0; i<Kupon.length; i++){
         am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Bond Valuation (Real BUND Bonds just before interest payment date minus settlement days, " + (i+1) +")");
 }
 
+// test against simple reference price
+
+Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
+Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
+              "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
+              "15.08.2046", "15.08.2048"];
+var bond;
+var adj=function(d){
+        return JsonRisk.adjust(d,"following",JsonRisk.is_holiday_factory("TARGET"));
+};
+JsonRisk.valuation_date=adj(new Date(1900,0,1));
+
+var pv=0, pv_reg=0,pv_irreg=0;
+//brief function to calculate bond pv at 10% discount
+var pv_func=function(mat, kup){
+	m=JsonRisk.get_safe_date(mat);
+	var i=1;
+	var t=JsonRisk.time_from_now(m);
+	var t_pay=JsonRisk.time_from_now(adj(m));
+	var t_last=JsonRisk.time_from_now(JsonRisk.add_months(m, -i));
+	var res=100*Math.pow(1.1, -t_pay);
+	while (t_last>0){
+		res+=100*kup*(t-t_last)*Math.pow(1.1, -t_pay);		
+		i++;
+		t=t_last;
+		t_last=JsonRisk.time_from_now(JsonRisk.add_months(m, -i));
+		t_pay=JsonRisk.time_from_now(adj(JsonRisk.add_months(m, -i+1)));		
+	}
+
+	t_last=0;
+	res+=100*kup*(t-t_last)*Math.pow(1.1, -t_pay);		
+	return res;
+};
+//brief function to calculate bond pv at 10% discount, adjusted periods
+var pv_func_adj=function(mat, kup){
+	m=JsonRisk.get_safe_date(mat);
+	var i=1;
+	var t=JsonRisk.time_from_now(adj(m));
+	var t_last=JsonRisk.time_from_now(adj(JsonRisk.add_months(m, -i)));
+	var res=100*Math.pow(1.1, -t);
+	while (t_last>0){
+		res+=100*kup*(t-t_last)*Math.pow(1.1, -t);		
+		i++;
+		t=t_last;
+		t_last=JsonRisk.time_from_now(adj(JsonRisk.add_months(m, -i)));
+		
+	}
+
+	t_last=0;
+	res+=100*kup*(t-t_last)*Math.pow(1.1, -t);		
+	return res;
+};
+curve=JsonRisk.get_const_curve(0.1); // 10 percent discount
+for(i=0; i<Kupon.length; i++){
+	bond={
+		effective_date: JsonRisk.valuation_date,	
+		maturity: Maturity[i],
+		notional: 100.0,
+		fixed_rate: Kupon[i]/100,
+		tenor: 1,
+		bdc: "following",
+		dcc: "act/365",
+		calendar: "TARGET",
+		adjust_accrual_periods: false
+	};
+
+	//unadjusted periods
+	pv_reg=JsonRisk.pricer_bond(bond,curve, null, null);
+	pv_irreg=JsonRisk.pricer_irregular_bond(bond,curve, null, null);
+	pv=pv_func(Maturity[i],Kupon[i]/100);
+        console.log("Bond without adjusted periods, simple pricer       " + pv_reg.toFixed(8));         
+	console.log("Bond without adjusted periods, irreg pricer        " + pv_irreg.toFixed(8));    
+        console.log("Bond without adjusted periods, reference price     " + pv.toFixed(8));    
+        am(pv.toFixed(8)===pv_reg.toFixed(8), "Bond Valuation against reference price, simple pricer   (" + (i+1) +")");
+        am(pv.toFixed(8)===pv_irreg.toFixed(8), "Bond Valuation against reference price, irregular pricer(" + (i+1) +")");
+
+	//adjusted periods
+	bond.adjust_accrual_periods=true;
+	pv_reg=JsonRisk.pricer_bond(bond,curve, null, null);
+	pv_irreg=JsonRisk.pricer_irregular_bond(bond,curve, null, null);
+	pv=pv_func_adj(Maturity[i],Kupon[i]/100);
+        console.log("Bond with adjusted periods, simple pricer       " + pv_reg.toFixed(8));         
+	console.log("Bond with adjusted periods, irreg pricer        " + pv_irreg.toFixed(8));    
+        console.log("Bond with adjusted periods, reference price     " + pv.toFixed(8));    
+        am(pv.toFixed(8)===pv_reg.toFixed(8), "Bond Valuation against reference price, with adjusted periods, simple pricer   (" + (i+1) +")");
+        am(pv.toFixed(8)===pv_irreg.toFixed(8), "Bond Valuation against reference price, with adjusted periods, irregular pricer(" + (i+1) +")");
+}
+ 
+
 //evaluate floaters
 Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
 Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",

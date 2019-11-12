@@ -32,6 +32,7 @@
                 this.is_holiday_func=library.is_holiday_factory(instrument.calendar || "");
                 this.year_fraction_func=library.year_fraction_factory(instrument.dcc || "");
                 this.bdc=instrument.bdc || "";
+		this.adjust_accrual_periods=instrument.adjust_accrual_periods || false;
 
 		this.adj = function(d){
 		        return library.adjust(d,this.bdc,this.is_holiday_func);  
@@ -318,8 +319,12 @@
                 var pmt_interest=new Array(date_accrual_start.length);
                 var pmt_total=new Array(date_accrual_start.length);
 
-		//populate rate-independent fields
+		//populate rate-independent fields and adjust dates if necessary
                 for(i=0;i<date_accrual_start.length;i++){
+			if(this.adjust_accrual_periods){
+				date_accrual_start[i]=this.adj(date_accrual_start[i]);
+				date_accrual_end[i]=this.adj(date_accrual_end[i]);
+			}
                         date_pmt[i]=this.adj(date_accrual_end[i]);
                         t_pmt[i]=library.time_from_now(date_pmt[i]);
                         t_accrual_start[i]=library.time_from_now(date_accrual_start[i]);

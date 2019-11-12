@@ -69,12 +69,11 @@
                 var tenor=library.get_safe_natural(instrument.tenor);
                 if(null===tenor)
                         throw new Error("simple_fixed_income: must provide valid tenor.");
-
-                this.type=(typeof instrument.type==='string') ? instrument.type : 'unknown';
                 
                 this.is_holiday_func=library.is_holiday_factory(instrument.calendar || "");
                 this.year_fraction_func=library.year_fraction_factory(instrument.dcc || "");
                 this.bdc=instrument.bdc || "";
+		this.adjust_accrual_periods=instrument.adjust_accrual_periods || false;
                 var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
                 var first_date=library.get_safe_date(instrument.first_date); //null allowed
                 var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
@@ -143,8 +142,8 @@
                 
                 var i;
                 for(i=0;i<schedule.length-1;i++){
-                        date_accrual_start[i]=schedule[i];
-                        date_accrual_end[i]=schedule[i+1];
+                        date_accrual_start[i]=this.adjust_accrual_periods ? this.adj(schedule[i]) : schedule[i];
+                        date_accrual_end[i]=this.adjust_accrual_periods ? this.adj(schedule[i+1]) : schedule[i+1];
                         date_pmt[i]=this.adj(schedule[i+1]);
                         t_pmt[i]=library.time_from_now(date_pmt[i]);
                         t_accrual_start[i]=library.time_from_now(schedule[i]);
