@@ -106,4 +106,23 @@
         };
 
 
+	library.add_curves=function(c1, c2){
+		var t1=library.get_curve_times(c1);
+		var t2=library.get_curve_times(c2);
+		var times=[], i1=0, i2=0, tmin;
+		var zcs=[];
+		while(true){
+			tmin=Number.POSITIVE_INFINITY;
+			if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
+			if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
+			times.push(tmin);
+			zcs.push(library.get_rate(c1,tmin)+library.get_rate(c2, tmin));
+			if(tmin===t1[i1] && i1<t1.length) i1++;
+			if(tmin===t2[i2] && i2<t2.length) i2++;
+			if(i1===t1.length && i2===t2.length) break;
+		}
+		return {times:times, zcs: zcs};
+	};
+
+
 }(this.JsonRisk || module.exports));
