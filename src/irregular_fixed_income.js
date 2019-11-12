@@ -46,7 +46,7 @@
                 this.repay_amount = (typeof instrument.repay_amount==='number') ? instrument.repay_amount : 0; //defaults to zero
 		if (this.repay_amount<0) throw new Error("irregular_fixed_income: invalid negative repay_amount");
                 
-		this.interest_capitalization=instrument.interest_capitalization || false;
+		this.interest_capitalization=(true===instrument.interest_capitalization) ? true : false;
 
                 var repay_first_date=library.get_safe_date(instrument.repay_first_date) || this.first_date;
                 var repay_next_to_last_date=library.get_safe_date(instrument.repay_next_to_last_date) || this.next_to_last_date;
@@ -346,15 +346,19 @@
                 };
                 
 	 };
+
+	library.irregular_fixed_income.prototype.get_cash_flows=function(fwd_curve){
+		if(this.is_float){
+			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("irregular_fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
+			this.update_cash_flows(fwd_curve);
+		}
+		return this.cash_flows;
+	};
     
         library.irregular_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-		if(this.is_float){
-			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("simple_fixed_income.present_value: Must provide forward curve when evaluating floating rate interest stream");
-			this.update_cash_flows(fwd_curve);
-		}              
-		return library.dcf(this.cash_flows,
-                                   disc_curve,
-                                   spread_curve,
+                return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
+                                   library.get_safe_curve(disc_curve),
+                                   library.get_safe_curve(spread_curve),
                                    this.residual_spread,
                                    this.settlement_date);
         };

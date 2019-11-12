@@ -188,6 +188,7 @@
         
         library.simple_fixed_income.prototype.get_cash_flows=function(fwd_curve){
                 if (!this.is_float) return this.cash_flows;
+		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("simple_fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
                 
                 //recalculate amounts for floater deals
                 var c=this.cash_flows;
@@ -217,7 +218,6 @@
         };
         
         library.simple_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-		if(this.is_float && (typeof fwd_curve !== 'object' || fwd_curve===null)) throw new Error("simple_fixed_income.present_value: Must provide forward curve when evaluating floating rate interest stream");
                 return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
                                    library.get_safe_curve(disc_curve),
                                    library.get_safe_curve(spread_curve),
