@@ -245,6 +245,25 @@
         };
 
 
+	library.add_curves=function(c1, c2){
+		var t1=library.get_curve_times(c1);
+		var t2=library.get_curve_times(c2);
+		var times=[], i1=0, i2=0, tmin;
+		var zcs=[];
+		while(true){
+			tmin=Number.POSITIVE_INFINITY;
+			if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
+			if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
+			times.push(tmin);
+			zcs.push(library.get_rate(c1,tmin)+library.get_rate(c2, tmin));
+			if(tmin===t1[i1] && i1<t1.length) i1++;
+			if(tmin===t2[i2] && i2<t2.length) i2++;
+			if(i1===t1.length && i2===t2.length) break;
+		}
+		return {times:times, zcs: zcs};
+	};
+
+
 }(this.JsonRisk || module.exports));
 ;
 (function(library){
@@ -334,7 +353,7 @@
                 this.repay_amount = (typeof instrument.repay_amount==='number') ? instrument.repay_amount : 0; //defaults to zero
 		if (this.repay_amount<0) throw new Error("irregular_fixed_income: invalid negative repay_amount");
                 
-		this.interest_capitalization=instrument.interest_capitalization || false;
+		this.interest_capitalization=(true===instrument.interest_capitalization) ? true : false;
 
                 var repay_first_date=library.get_safe_date(instrument.repay_first_date) || this.first_date;
                 var repay_next_to_last_date=library.get_safe_date(instrument.repay_next_to_last_date) || this.next_to_last_date;
@@ -634,15 +653,19 @@
                 };
                 
 	 };
+
+	library.irregular_fixed_income.prototype.get_cash_flows=function(fwd_curve){
+		if(this.is_float){
+			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("irregular_fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
+			this.update_cash_flows(fwd_curve);
+		}
+		return this.cash_flows;
+	};
     
         library.irregular_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-		if(this.is_float){
-			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("simple_fixed_income.present_value: Must provide forward curve when evaluating floating rate interest stream");
-			this.update_cash_flows(fwd_curve);
-		}              
-		return library.dcf(this.cash_flows,
-                                   disc_curve,
-                                   spread_curve,
+                return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
+                                   library.get_safe_curve(disc_curve),
+                                   library.get_safe_curve(spread_curve),
                                    this.residual_spread,
                                    this.settlement_date);
         };
@@ -680,13 +703,40 @@
                 while(cf_obj.t_pmt[i]<=t_exercise) i++;
 
                 // include all payments after exercise date
+
                 while (i<cf_obj.t_pmt.length){
 			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
-		        res+=cf_obj.current_principal[i] * df * opportunity_spread * (cf_obj.t_pmt[i]-cf_obj.t_pmt[i-1]);
+			if(spread_curve) df*=library.get_df(spread_curve, -cf_obj.t_pmt[i]);
+			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
+		        res+=cf_obj.current_principal[i] * df * opportunity_spread * (cf_obj.t_pmt[i]-Math.max(cf_obj.t_pmt[i-1], t_exercise));
 			i++;
                 }
-                return res;
+
+		df=library.get_df(disc_curve, t_exercise);
+		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
+		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
+                res/=df;
+		return res;
 	};
+	
+	/*
+	strike_adjustment=function(cf_obj, t_exercise, disc_curve, opportunity_spread){
+		if(!opportunity_spread) return 0;                
+		var i=0, df;
+		var add=0, subtract=0;
+		// move forward to first line after exercise date
+                while(cf_obj.t_pmt[i]<=t_exercise) i++;
+
+                // include all payments after exercise date
+                while (i<cf_obj.t_pmt.length){
+			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
+		        add+=cf_obj.pmt_principal[i] * df;
+		        subtract+=cf_obj.pmt_principal[i] * df * Math.pow(1+opportunity_spread, -(cf_obj.t_pmt[i]-t_exercise));
+			i++;
+                }
+                return add-subtract;
+	};
+	*/
 
 	library.lgm_dcf=function(cf_obj,t_exercise, disc_curve, xi, state, spread_curve, residual_spread, opportunity_spread){
                 /*
@@ -929,7 +979,7 @@
                 */
 
 		if(t_exercise_vec[t_exercise_vec.length-1]<0) return 0; //expired option		
-		if(t_exercise_vec[t_exercise_vec.length-1]<1/512 || xi_vec[xi_vec.length-1]<1e-15){
+		if(t_exercise_vec[t_exercise_vec.length-1]<1/512){
 			return Math.max(0,library.lgm_dcf(cf_obj,
 							t_exercise_vec[t_exercise_vec.length-1],
 							disc_curve,
@@ -1477,6 +1527,7 @@
         
         library.simple_fixed_income.prototype.get_cash_flows=function(fwd_curve){
                 if (!this.is_float) return this.cash_flows;
+		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("simple_fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
                 
                 //recalculate amounts for floater deals
                 var c=this.cash_flows;
@@ -1506,7 +1557,6 @@
         };
         
         library.simple_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
-		if(this.is_float && (typeof fwd_curve !== 'object' || fwd_curve===null)) throw new Error("simple_fixed_income.present_value: Must provide forward curve when evaluating floating rate interest stream");
                 return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
                                    library.get_safe_curve(disc_curve),
                                    library.get_safe_curve(spread_curve),

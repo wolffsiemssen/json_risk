@@ -321,6 +321,24 @@ am ((0.85).toFixed(10) === JsonRisk.get_df(c, 1.5).toFixed(10), "Yield Curve int
 am ((0.75).toFixed(10) === JsonRisk.get_df(c, 2.5).toFixed(10), "Yield Curve interpolation fallback on dates 3");
 am ((0.6).toFixed(10) === JsonRisk.get_df(c, 8).toFixed(10), "Yield Curve interpolation fallback on dates 4");
 
+//curve addition
+var c1={type: "yield",
+   labels: ["0Y", "1Y", "2Y", "3Y", "13Y"], 
+   zcs: [0.01, 0.009, 0.008, 0.008, 0.008]
+  };
+var c2={type: "yield",
+   labels: ["5Y", "10Y"], 
+   zcs: [0.02, 0.02]
+};
+
+c=JsonRisk.add_curves(c1, c2);
+
+am (7 === c.times.length, "Yield Curve addition");
+am ((0.029).toFixed(10) === JsonRisk.get_rate(c, 1).toFixed(10), "Yield Curve addition");
+am ((0.028).toFixed(10) === JsonRisk.get_rate(c, 13).toFixed(10), "Yield Curve addition");
+am ((0.02 + JsonRisk.get_rate(c1, 5)).toFixed(10) === JsonRisk.get_rate(c, 5).toFixed(10), "Yield Curve addition");
+am ((0.02 + JsonRisk.get_rate(c1, 10)).toFixed(10) === JsonRisk.get_rate(c, 10).toFixed(10), "Yield Curve addition");
+
 /*!
 	
 	Test Surfaces
