@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta charset="utf-8"/>
+<title>JSON Risk bond and loan pricing</title>
+<link rel="icon" href="favicon.png" type="image/png">
+
+<!--
+bootstrap
+-->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+<!--
+angular js
+-->
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+
+<!--
+Papa Parse
+-->
+<script src="papaparse.min.js"></script>
+
+<!--
+Chart
+-->
+<script src="Chart.min.js"></script>
+
+<!--
+main app
+-->
+
+<body ng-app="riskapp" ng-controller="main_ctrl">
+
+<nav class="navbar navbar-light bg-light justify-content-between">
+
+	<a class="navbar-brand" href="#">
+		<img src="favicon.png" width="30" height="30" class="d-inline-block align-top" alt="">
+		JSON Risk bond and loan pricing
+	</a>
+
+	<form class="form-inline">
+		<div class="input-group">
+			<div class="input-group-prepend">
+				<label class="input-group-text">Valuation date</button>
+			</div>
+			<input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="params.valuation_date" placeholder="yyyy-mm-dd">
+			<select class="custom-select" ng-options="value for value in available_params" ng-model="selected_params">
+				<option value="" selected>Choose param set...</option>
+			</select>
+			<div class="input-group-append">
+				<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_params()">Load</button>
+			</div>
+		</div>		
+	</form>
+	
+</nav>
+
+<br/>
+<div class="container-fluid" style="font-size:14px;">
+
+	<div id="alert-container">
+		<div class="alert alert-danger alert-dismissible" role="alert" ng-if="errors.length">
+		  <button type="button" class="close" ng-click="errors=[];" aria-label="Close">
+		    <span aria-hidden="true">&times;</span>
+		  </button>
+                  <h4 class="alert-heading">One or more errors occurred.</h4>
+                  <hr>
+                  <p ng-repeat="err in errors">{{err}}</p>
+                </div>
+	</div>
+	<div class="row">    
+		<div class="col-lg-4 bg-light">
+			<p class="lead">
+	  			Basic Input
+			</p>
+
+			<form>
+			  <!-- EFFECTIVE DATE -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Effective Date</label>
+			    <div class="col-sm-9">
+			      <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.effective_date" placeholder="yyyy-mm-dd">
+			    </div>
+			  </div>
+
+			  <!-- MATURITY -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Maturity</label>
+			    <div class="col-sm-9">
+			      <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.maturity" placeholder="yyyy-mm-dd">
+			    </div>
+			  </div>
+
+			  <!-- NOTIONAL -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Notional</label>
+			    <div class="col-sm-9">
+			      <input type="number" step=0.01 class="form-control form-control-sm" ng-model="instrument.notional">
+			    </div>
+			  </div>
+
+
+			  <!-- BUSINESS DAYS -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Business days</label>
+			    
+			    <div class="col-sm-9">
+			      <div class="input-group input-group-sm mb-3">      			    
+			        <select class="custom-select" ng-model="instrument.calendar">
+				<option selected>TARGET</option>
+				</select>
+			        <select class="custom-select" ng-model="instrument.bdc">
+				<option selected>unadjusted</option>
+				<option>following</option>
+				<option>modified following</option>
+				<option>preceding</option>
+				</select>
+			      </div>
+			    </div>
+			  </div>
+
+			<p class="lead">
+	  			Interest
+			</p>
+
+			<form>
+
+			  <!-- INTEREST TENOR -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Tenor</label>
+			    <div class="col-sm-9">
+      			        <select class="custom-select" ng-model="instrument.tenor_string">
+				<option value="12" selected>yearly</option>
+				<option value="6">semi-annual</option>
+				<option value="3">quarterly</option>
+				<option value="1">monthly</option>
+				</select>
+			    </div>
+			  </div>
+
+			  <!-- INTEREST TYPE -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Interest Type</label>
+			    <div class="col-sm-9">
+
+			        <select class="custom-select" ng-model="instrument.rate_type">
+  				  <option>fix</option>
+				  <option>float</option>
+				</select>
+			     
+			    </div>
+			  </div>
+			  <!-- INTEREST -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Interest</label>
+			    <div class="col-sm-9">
+
+			      <div class="input-group input-group-sm mb-3">
+				<div class="input-group-prepend" ng-if="'fix'===instrument.rate_type">
+				 <label class="input-group-text">Rate</label>
+				</div>
+				<div class="input-group-prepend" ng-if="'float'===instrument.rate_type">
+				 <label class="input-group-text input-group-text-sm">Curr fixing</label>
+				</div>
+		
+			        <input type="number" step=0.0001 class="form-control" ng-model="instrument.rate" ng-if="'fix'===instrument.rate_type">
+			        <input type="number" step=0.0001 class="form-control" ng-model="instrument.current_rate" ng-if="'float'===instrument.rate_type">
+
+
+				<div class="input-group-prepend" ng-if="'float'===instrument.rate_type">
+				 <label class="input-group-text">Flt sprd</label>
+				</div>
+			        <input type="number" step=0.0001 class="form-control" ng-model="instrument.float_spread" ng-if="'float'===instrument.rate_type">
+
+			        <select class="custom-select" ng-model="instrument.dcc">
+  				  <option selected>Act/365</option>
+				  <option >Act/360</option>
+				  <option >Act/Act (ICMA)</option>
+				  <option >30E/360</option>
+				</select>
+			      </div>
+
+			    </div>
+			  </div>
+
+			<p class="lead">
+	  			Amortization
+			</p>
+
+			  <!-- AMORTIZATION TENOR -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Tenor</label>
+			    <div class="col-sm-9">
+      			        <select class="custom-select" ng-model="instrument.repay_tenor_string">
+				<option value="12" selected>yearly</option>
+				<option value="6">semi-annual</option>
+				<option value="3">quarterly</option>
+				<option value="1">monthly</option>
+				</select>
+			    </div>
+			  </div>
+
+			  <!-- AMORTIZATION -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Amounts</label>
+			    <div class="col-sm-9">
+
+			      <div class="input-group input-group-sm mb-3">
+				<div class="input-group-prepend">
+				 <label class="input-group-text">Repay amount</label>
+				</div>
+		
+			        <input type="number" step=0.01 class="form-control" ng-model="instrument.repay_amount">
+
+				<div class="input-group-prepend">
+				 <label class="input-group-text">Int capitalization</label>
+				</div>
+		
+			        <select class="custom-select" ng-model="instrument.interest_capitalization_string">
+  				  <option selected>No</option>
+				  <option >Yes</option>
+				</select>
+			      </div>
+
+			    </div>
+			  </div>
+
+			<!-- VALUATION -->
+			<p class="lead">
+				Valuation
+			</p>
+
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Discount Curve</label>
+			    <div class="col-sm-9">
+					<select class="custom-select" ng-options="key as key for (key, value) in params.curves" ng-model="instrument.discount_curve">
+						<option value="" selected>Choose discount curve...</option>
+					</select>
+			    </div>
+			  </div>
+
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Forward Curve</label>
+			    <div class="col-sm-9">
+					<select class="custom-select" ng-options="key as key for (key, value) in params.curves" ng-model="instrument.forward_curve">
+						<option value="" selected>Choose forward curve...</option>
+					</select>
+			    </div>
+			  </div>
+
+			</form>
+
+		</div> <!-- col-lg-4 -->
+
+		<div class="col-lg-8">
+
+			<!-- CHARTS -->
+			<div class="row">
+				<div class="col">
+				  	<canvas id="canvas-curves"></canvas>
+				</div>
+				<div class="col">
+					<canvas id="canvas-scenarios"></canvas>			
+				</div>
+			</div>
+			<div class="row">
+				
+				<div class="col">
+					<!-- chart canvas -->
+				  	<canvas class="my-4" id="canvas-cashflows"></canvas>
+				</div>
+				<div class="col">
+					<!-- chart canvas -->
+				  	<canvas class="my-4" id="canvas-ftp"></canvas>
+				</div>
+			</div>
+		
+
+			<p class="lead">
+	  			Risk figures and Scenarios
+			</p>
+			
+			<div class="row">
+				<div class="col-lg-6">
+					<div class="table-responsive">
+						<table class="table table-responsive table-hover table-sm table-bordered">
+						  <thead class="thead-light">
+						    <tr>
+						      <th scope="col">Description</th>
+						      <th scope="col">Value</th>
+						    </tr>
+						  </thead>
+						  <tbody>
+						    <tr>
+						      <th scope="row">Present value</th>
+						      <td class="text-right">{{res.pv | number:2}}</td> 
+						    </tr>
+
+						    <tr>
+						      <th scope="row">Time to maturity</th>
+						      <td class="text-right">{{res.ttm | number:2}}</td> 
+						    </tr>
+						    <tr>
+						      <th scope="row">Interest rate basis point value</th>
+						      <td class="text-right">{{res.bpv_ir | number:2}}</td> 
+						    </tr>
+						    <tr>
+						      <th scope="row">Spread basis point value</th>
+						      <td class="text-right">{{res.bpv_spr | number:2}}</td> 
+						    </tr>
+
+						    <tr>
+						      <th scope="row">Effective interest rate duration</th>
+						      <td class="text-right">{{res.dur_ir | number:2}}</td> 
+						    </tr>
+
+						    <tr>
+						      <th scope="row">Effective spread duration</th>
+						      <td class="text-right">{{res.dur_spr | number:2}}</td> 
+						    </tr>
+
+						  </tbody>
+						</table>
+					</div>
+				</div> <!-- col-lg-6 -->
+				<div class="col-lg-6">
+					<div class="table-responsive">
+						<table class="table table-responsive table-hover table-sm table-bordered">
+						  <thead class="thead-light">
+						    <tr>
+						      <th scope="col">Scenario</th>
+						      <th scope="col">Value</th>
+						      <th scope="col">PnL</th>
+						    </tr>
+						  </thead>
+						  <tbody>
+						    <tr>
+						      <th scope="row">BCBS 368 up</th>
+						      <td class="text-right">{{res.pv_up | number:2}}</td> 
+						      <td class="text-right">{{res.pv_up-res.pv | number:2}}</td> 
+						    </tr>
+
+						    <tr>
+						      <th scope="row">BCBS 368 down</th>
+						      <td class="text-right">{{res.pv_down | number:2}}</td> 
+						      <td class="text-right">{{res.pv_down-res.pv | number:2}}</td> 
+						    </tr>
+
+						    <tr>
+						      <th scope="row">BCBS 368 short rate up</th>
+						      <td class="text-right">{{res.pv_shortup | number:2}}</td> 
+						      <td class="text-right">{{res.pv_shortup-res.pv | number:2}}</td> 
+						    </tr>
+
+						    <tr>
+						      <th scope="row">BCBS 368 short rate down</th>
+						      <td class="text-right">{{res.pv_shortdown | number:2}}</td> 
+						      <td class="text-right">{{res.pv_shortdown-res.pv | number:2}}</td> 
+						    </tr>
+						    <tr>
+						      <th scope="row">BCBS 368 steepener</th>
+						      <td class="text-right">{{res.pv_steepener | number:2}}</td> 
+						      <td class="text-right">{{res.pv_steepener-res.pv | number:2}}</td> 
+						    </tr>
+
+						    <tr>
+						      <th scope="row">BCBS 368 flattener</th>
+						      <td class="text-right">{{res.pv_flattener | number:2}}</td> 
+						      <td class="text-right">{{res.pv_flattener-res.pv | number:2}}</td> 
+						    </tr>
+
+						  </tbody>
+						</table>
+				  	</div> <!-- table -->
+				</div> <!-- col-lg-6 -->
+			</div> <!-- row -->
+			<div class="row">
+				<div class="col">
+
+				<p class="lead">
+		  			Cashflows
+				</p>
+
+
+				<!-- cash flow table -->
+				<div class="table-responsive">
+				        <table ng-if="cashflows!==null" class="table table-hover table-sm table-bordered">
+				          <thead class="thead-light">
+				            <tr>
+				              <th scope="col">Accr start date</th>
+				              <th scope="col">Accr end date</th>
+				              <th scope="col">Pmt date</th>
+				              <th scope="col">Interest date</th>
+				              <th scope="col">Fixing date</th>
+				              <th scope="col">Repay date</th>
+				              <th scope="col">Curr principal</th>
+				              <th scope="col">Accr</th>
+				              <th scope="col">Int pmt</th>
+				              <th scope="col">Principal pmt</th>
+				              <th scope="col">Total pmt</th>
+				            </tr>
+				          </thead>
+				          <tbody>
+				            <tr ng-repeat="x in cashflows.date_accrual_start">
+					      <td>{{x | date:'yyyy-MM-dd'}}</td>
+					      <td>{{cashflows.date_accrual_end[$index] | date:'yyyy-MM-dd'}}</td>
+					      <td>{{cashflows.date_pmt[$index] | date:'yyyy-MM-dd'}}</td>
+				              <td><span class="badge badge-{{cashflows.is_interest_date[$index] ? 'primary' : 'secondary'}}">{{cashflows.is_interest_date[$index]}}</span></td>
+				              <td><span class="badge badge-{{cashflows.is_fixing_date[$index] ? 'primary' : 'secondary'}}">{{cashflows.is_fixing_date[$index]}}</span></td>
+				              <td><span class="badge badge-{{cashflows.is_repay_date[$index] ? 'primary' : 'secondary'}}">{{cashflows.is_repay_date[$index]}}</span></td>
+				              <td class="text-right">{{cashflows.current_principal[$index] | number:2}}</td> 
+				              <td class="text-right">{{cashflows.accrued_interest[$index] | number:2}}</td>                    
+				              <td class="text-right">{{cashflows.pmt_interest[$index] | number:2}}</td>
+				              <td class="text-right">{{cashflows.pmt_principal[$index] | number:2}}</td>                    
+				              <td class="text-right">{{cashflows.pmt_total[$index] | number:2}}</td>
+				            </tr>
+
+				          </tbody>
+				        </table>
+				  </div> <!-- col -->
+			</div> <!-- row -->
+		</div> <!-- col-lg-8 -->
+	</div> <!-- row -->
+
+</div>
+
+<script src="json_risk.min.js"></script>
+<script src="main.js"></script>
+<script src="charts.js"></script>
+<script src="import.js"></script>
+<script src="export.js"></script>
+
+
+</body>
+</html>
+

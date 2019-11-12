@@ -5,6 +5,8 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 	$scope.portfolio=JSON.parse(JSON.stringify(test_pf));
 	$scope.params=JSON.parse(JSON.stringify(test_params));
+	$scope.available_params=null;
+	$scope.selected_params=null;
 	$scope.res=null;
 	$scope.errors=null;
 	wrk=[];
@@ -17,6 +19,18 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 	$scope.delete_pf=function(){
 		$scope.portfolio=null;
+		$scope.res=null;
+		$scope.errors=null;
+	}
+	
+	$scope.update_params_list=function(){
+		load_params_list($scope);
+		$scope.res=null;
+		$scope.errors=null;
+	}
+
+	$scope.load_params=function(){
+		load_params_from_server($scope);
 		$scope.res=null;
 		$scope.errors=null;
 	}
@@ -199,9 +213,9 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 			wrk[i].postMessage({instrument: $scope.portfolio[unsent-1]});
 			unsent--;
 		}
-		}
+	}
 
-		$scope.cancel=function(){
+	$scope.cancel=function(){
 		while (wrk.length){
 			wrk[0].terminate();
 			wrk.shift();
@@ -209,11 +223,13 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		$scope.busy=false;
 		$scope.res=null;
 		$scope.$apply();
-		}
+	}
 
-		$scope.delete_results=function(){
+	$scope.delete_results=function(){
 		$scope.res=null;
 		$scope.errors=null;
 	}
+
+	$scope.update_params_list();
 }]);
 

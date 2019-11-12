@@ -127,16 +127,25 @@ main app
           <div class="tab-pane fade" id="pills-params" role="tabpanel" aria-labelledby="pills-params-tab">
 
                
-                <div class="alert alert-success" role="alert">
-                  <h4 class="alert-heading">Parameters</h4>
-                  <hr>
-                  <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group mr-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="delete_params()">Clear all</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_params()">Clear and load test params</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_params()">Export</button>
-                    </div>
-                  </div>
+		<div class="alert alert-success" role="alert">
+			<h4 class="alert-heading">Parameters</h4>
+			<hr>
+			<div class="btn-toolbar mb-2 mb-md-0">
+				<div class="btn-group mr-2">
+					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="delete_params()">Clear all</button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_params()">Clear and load test params</button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_params()">Export</button>
+				</div>
+				<div class="input-group" ng-if="available_params!==null">
+					<select class="custom-select" ng-options="value for value in available_params" ng-model="selected_params">
+						<option value="" selected>Choose param set...</option>
+					</select>
+					<div class="input-group-append">
+						<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_params()">Load</button>
+					</div>
+				</div>
+			</div>	
+
                 </div>
 
 
