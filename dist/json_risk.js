@@ -306,7 +306,6 @@
 
 }(this.JsonRisk || module.exports));
 ;(function(library){
-
         library.irregular_fixed_income=function(instrument,curve){
 
                 var maturity=library.get_safe_date(instrument.maturity);       
@@ -314,10 +313,8 @@
                         throw new Error("irregular_fixed_income: must provide maturity date.");
 
 
-                var effective_date=library.get_safe_date(instrument.effective_date);       
-                if(!effective_date)
-                        throw new Error("irregular_fixed_income: must provide effective date.");
-
+                var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
+                
                 if(typeof instrument.notional !== 'number')
                         throw new Error("irregular_fixed_income: must provide valid notional.");
                 this.notional=instrument.notional;
@@ -380,7 +377,19 @@
 
                 this.residual_spread=(typeof instrument.residual_spread=='number') ? instrument.residual_spread : 0;
                 var currency=instrument.currency || "";
+		
+		// interest rate schedule
+                this.schedule=library.schedule(effective_date, 
+                                                        maturity,
+                                                        tenor,
+                                                        this.adj,
+                                                        first_date,
+                                                        next_to_last_date,
+							stub_end,
+							stub_long);
 
+
+		// fixing schedule
 		if(typeof instrument.fixed_rate === 'number'){
                         //fixed rate instrument
                         this.is_float=false;
@@ -388,15 +397,15 @@
 			this.float_spread=0;
 			this.cap_rate=0;
 			this.floor_rate=0;
-			this.fixing_schedule=[effective_date, maturity];
+			this.fixing_schedule=[this.schedule[0], maturity];
                 }else{
                         //floating rate instrument
                         this.is_float=true;
 			this.fixed_rate=null;
                         this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0; // can be number or array, arrays to be impleented
-                        if(typeof instrument.current_rate !== 'number')
-                                throw new Error("irregular_fixed_income: must provide valid current_rate.");
-                        this.current_rate=instrument.current_rate;               
+                        if(typeof instrument.float_current_rate !== 'number')
+                                throw new Error("irregular_fixed_income: must provide valid float_current_rate.");
+                        this.float_current_rate=instrument.float_current_rate;               
 
 
 			//fixing schedule related fields
@@ -411,7 +420,7 @@
 
                         this.cap_rate = (typeof instrument.cap_rate === 'number') ? instrument.cap_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
                         this.floor_rate = (typeof instrument.floor_rate === 'number') ? instrument.floor_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
-			this.fixing_schedule =library.schedule(effective_date, 
+			this.fixing_schedule =library.schedule(this.schedule[0], 
                                                         maturity,
                                                         fixing_tenor,
                                                         this.adj,
@@ -420,19 +429,11 @@
 
                 }
 
-                this.schedule=library.schedule(effective_date, 
-                                                        maturity,
-                                                        tenor,
-                                                        this.adj,
-                                                        first_date,
-                                                        next_to_last_date,
-							stub_end,
-							stub_long);
-
+		// repay schedule
 		if(this.repay_amount===0 && !this.interest_capitalization && !linear_amortization){
-			this.repay_schedule=[effective_date, maturity];
+			this.repay_schedule=[this.schedule[0], maturity];
 		}else{
-                	this.repay_schedule = library.schedule(effective_date, 
+                	this.repay_schedule = library.schedule(this.schedule[0], 
 		                                                maturity,
 		                                                repay_tenor,
 		                                                this.adj,
@@ -473,7 +474,7 @@
 		if(this.is_float){
 	                if (c.date_accrual_start[0] <= library.valuation_date){
 				//effective date is now or in the past, use current_rate
-	                        current_rate=this.current_rate;
+	                        current_rate=this.float_current_rate;
 	                }else{
 				//effective date in the future, use forward curve from now until next fixing date
 				j=0;
@@ -538,7 +539,7 @@
 			if(this.is_float){
 		                if (c.date_accrual_start[i] <= library.valuation_date){
 					//period beginning in the past or now, use current rate
-		                        current_rate=this.current_rate;
+		                        current_rate=this.float_current_rate;
 		                }else if (c.is_fixing_date[i]){
 					//effective date in the future, use forward curve from now until next fixing date
 					j=0;
@@ -680,6 +681,15 @@
                 return bond_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
        
+        library.pricer_bond=function(bond, disc_curve, spread_curve){
+                var bond_internal=new library.irregular_fixed_income(bond);
+                return bond_internal.present_value(disc_curve, spread_curve, null);
+        };
+        
+        library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
+                var floater_internal=new library.irregular_fixed_income(floater);
+                return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
+        };
 
 }(this.JsonRisk || module.exports));
 ;(function(library){
@@ -1242,6 +1252,7 @@
 }(this.JsonRisk || module.exports));
 ;
 (function(library){
+	'use strict';
 	/*
         
         Schedule functions used by simple and irregular fixed income instruments.
@@ -1568,15 +1579,7 @@
                                    this.settlement_date);
         };
         
-        library.pricer_bond=function(bond, disc_curve, spread_curve){
-                var bond_internal=new library.simple_fixed_income(bond);
-                return bond_internal.present_value(disc_curve, spread_curve, null);
-        };
-        
-        library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
-                var floater_internal=new library.simple_fixed_income(floater);
-                return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
-        };
+
 
 }(this.JsonRisk || module.exports));
 ;(function(library){
@@ -2352,7 +2355,6 @@
                 switch (instrument.type.toLowerCase()){
                         case "bond":
                         case "floater":
-                        return new library.simple_fixed_income(instrument);
 			case "irregular_bond":
 			return new library.irregular_fixed_income(instrument);
                         case "swap":

@@ -1,5 +1,6 @@
 
 (function(library){
+	'use strict';
 	/*
         
         Schedule functions used by simple and irregular fixed income instruments.

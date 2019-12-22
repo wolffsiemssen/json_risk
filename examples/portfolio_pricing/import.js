@@ -1,4 +1,8 @@
 var load_params_from_server=function(sc){
+	if (!sc.available_params.selection){
+		alert("No parameter set selected");
+		return 0;
+	}
 	var req=new XMLHttpRequest();
 	
 	req.addEventListener('load', function(evt){
@@ -17,7 +21,7 @@ var load_params_from_server=function(sc){
 		alert("Could not load params from server");
 	});
 
-	req.open('GET', '../jrparams/' + sc.selected_params);
+	req.open('GET', '../jrparams/' + sc.available_params.selection);
 	req.send();
 }
 
@@ -26,8 +30,8 @@ var load_params_list=function(sc){
 	
 	req.addEventListener('load', function(evt){
 		if(req.status===200){
-			sc.available_params=JSON.parse(req.responseText);
-			sc.selected_params=sc.available_params[0];
+			sc.available_params.list=JSON.parse(req.responseText);
+			sc.available_params.selection=sc.available_params.list[0];
                         sc.$apply();
 		}else{
 			//silent error

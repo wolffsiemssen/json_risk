@@ -47,7 +47,7 @@ main app
 				<label class="input-group-text">Valuation date</button>
 			</div>
 			<input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="params.valuation_date" placeholder="yyyy-mm-dd">
-			<select class="custom-select" ng-options="value for value in available_params" ng-model="selected_params">
+			<select class="custom-select" ng-options="value for value in available_params.list" ng-model="available_params.selection">
 				<option value="" selected>Choose param set...</option>
 			</select>
 			<div class="input-group-append">
@@ -262,19 +262,14 @@ main app
 				<div class="col">
 				  	<canvas id="canvas-curves"></canvas>
 				</div>
+			
 				<div class="col">
 					<canvas id="canvas-scenarios"></canvas>			
-				</div>
+				</div>				
 			</div>
-			<div class="row">
-				
-				<div class="col">
-					<!-- chart canvas -->
+			<div class="row justify-content-center">
+				<div class="col col-8">
 				  	<canvas class="my-4" id="canvas-cashflows"></canvas>
-				</div>
-				<div class="col">
-					<!-- chart canvas -->
-				  	<canvas class="my-4" id="canvas-ftp"></canvas>
 				</div>
 			</div>
 		

@@ -1,6 +1,6 @@
 var load_params_from_server=function(sc){
-	if (!sc.selected_params) return 0;
-	if (sc.selected_params==="TEST PARAMETERS"){
+	if (!sc.available_params.selection) return 0;
+	if (sc.available_params.selection==="TEST PARAMETERS"){
 		sc.params={
 			valuation_date: "2018-08-31",
 			curves: {
@@ -77,7 +77,7 @@ var load_params_from_server=function(sc){
 		alert("Could not load params from server");
 	});
 
-	req.open('GET', '../jrparams/' + sc.selected_params);
+	req.open('GET', '../jrparams/' + sc.available_params.selection);
 	req.send();
 }
 
@@ -88,20 +88,20 @@ var load_params_list=function(sc){
 		//silent error
 		console.log("Could not load list of available params from server");
 		//only add test params
-		sc.available_params=["TEST PARAMETERS"];
-		sc.selected_params=sc.available_params[0];
+		sc.available_params.list=["TEST PARAMETERS"];
+		sc.available_params.selection=sc.available_params.list[0];
                 sc.$apply();
 	}
 	
 	req.addEventListener('load', function(evt){
 		if(req.status===200){
 			var result=JSON.parse(req.responseText);
-			sc.available_params=[];
+			sc.available_params.list=[];
 			for (var i=0;i<result.length;i++){
-				if (result[i].toLowerCase().includes("base")) sc.available_params.push(result[i]);
+				if (result[i].toLowerCase().includes("base")) sc.available_params.list.push(result[i]);
 			}
-			sc.available_params.push("TEST PARAMETERS");
-			sc.selected_params=sc.available_params[0];
+			sc.available_params.list.push("TEST PARAMETERS");
+			sc.available_params.selection=sc.available_params.list[0];
                         sc.$apply();
 		}else{
 			err_handler();

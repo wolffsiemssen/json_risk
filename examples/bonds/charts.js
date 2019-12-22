@@ -86,13 +86,13 @@ var chart_curves = new Chart(document.getElementById("canvas-curves"),{
 				label:"Discount Curve",
 				data:[],
 				fill:false,
-				backgroundColor: "#008080"
+				backgroundColor: "#008080",
 			},
 			{
 				label:"Forward Curve",
 				data:[],
 				fill:false,
-				backgroundColor: "#800080"
+				backgroundColor: "#800080",
 			}
 			]
 		},
@@ -105,12 +105,16 @@ var chart_curves = new Chart(document.getElementById("canvas-curves"),{
 			{
 				yAxes:[
 					{
+						type: 'linear',
 						scaleLabel: {
 							labelString: "Zero Coupon Rate",
 							display: true
 						},
 						ticks:{
-							beginAtZero:true
+							beginAtZero:true,
+							precision: 2,
+							suggestedMin: -0.01,
+							suggestedMax: 0.02
 						},
 						gridLines: {
 							display: true
@@ -119,14 +123,17 @@ var chart_curves = new Chart(document.getElementById("canvas-curves"),{
 					}
 				],
 				xAxes:[
-					{	
+					{
+						type: 'linear',	
 						scaleLabel: {
 							labelString: "Time",
 							display: true
 						},
 						ticks:{
-							autoSkip: true,
-							autoSkipPadding: 10
+							beginAtZero: true,
+							precision: 1,
+							suggestedMax: 10,
+							suggestedMin: 0
 						},
 						gridLines: {
 							display: false
@@ -142,12 +149,13 @@ var chart_curves = new Chart(document.getElementById("canvas-curves"),{
 
 var update_chart_curves=function(dc, fc){
 		chart_curves.data.labels=JsonRisk.get_curve_times(JsonRisk.add_curves(dc, fc)); // get common set of times
+		var times=JsonRisk.get_curve_times(JsonRisk.add_curves(dc, fc)); // get common set of times
 		chart_curves.data.datasets[0].data=new Array(chart_curves.data.labels.length);
 		chart_curves.data.datasets[1].data=new Array(chart_curves.data.labels.length);
 		for (var i=0;i<chart_curves.data.labels.length; i++){
-			chart_curves.data.datasets[0].data[i]=JsonRisk.get_rate(dc,chart_curves.data.labels[i]);
-			chart_curves.data.datasets[1].data[i]=JsonRisk.get_rate(fc,chart_curves.data.labels[i]);
-			chart_curves.data.labels[i]=chart_curves.data.labels[i].toFixed(4);
+			chart_curves.data.datasets[0].data[i]={x: times[i], y: JsonRisk.get_rate(dc,chart_curves.data.labels[i])};
+			chart_curves.data.datasets[1].data[i]={x: times[i], y: JsonRisk.get_rate(fc,chart_curves.data.labels[i])};
+			//chart_curves.data.labels[i]=chart_curves.data.labels[i].toFixed(4);
 		
 		}
 		chart_curves.update();
@@ -226,7 +234,7 @@ var update_chart_scenarios=function(res){
 
 
 //charts definition - valuation chart
-
+/*
 var chart_ftp = new Chart(document.getElementById("canvas-ftp"),{
 	type:"bar",
 	data:{
@@ -300,4 +308,5 @@ var chart_ftp = new Chart(document.getElementById("canvas-ftp"),{
 var update_chart_ftp=function(res){		
 		chart_ftp.update();
 }
+*/
 

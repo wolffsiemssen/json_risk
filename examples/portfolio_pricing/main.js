@@ -5,8 +5,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 	$scope.portfolio=JSON.parse(JSON.stringify(test_pf));
 	$scope.params=JSON.parse(JSON.stringify(test_params));
-	$scope.available_params=null;
-	$scope.selected_params=null;
+	$scope.available_params={list: null, selection: null}
 	$scope.res=null;
 	$scope.errors=null;
 	wrk=[];
@@ -25,14 +24,10 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 	
 	$scope.update_params_list=function(){
 		load_params_list($scope);
-		$scope.res=null;
-		$scope.errors=null;
 	}
 
 	$scope.load_params=function(){
 		load_params_from_server($scope);
-		$scope.res=null;
-		$scope.errors=null;
 	}
 
 	$scope.load_test_params=function(){
@@ -229,7 +224,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		$scope.res=null;
 		$scope.errors=null;
 	}
-
+	
 	$scope.update_params_list();
 }]);
 

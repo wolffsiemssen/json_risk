@@ -25,8 +25,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		forward_curve: "EUR_6M_FWD"
 	}
 	$scope.params={valuation_date: "2019-01-01"};
-	$scope.available_params=null;
-	$scope.selected_params=null;
+	$scope.available_params={list: null, selection: null};
 	$scope.cashflows=null;
 	$scope.res={};
 	$scope.errors=[];
@@ -180,8 +179,8 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 	}
 
 	//watch selected_params only once
-	var unwatch_selected_params=$scope.$watch('selected_params', function(){
-		if (!$scope.selected_params) return 0;
+	var unwatch_selected_params=$scope.$watch('available_params.selection', function(){
+		if (!$scope.available_params.selection) return 0;
 		$scope.load_params();
 		unwatch_selected_params();
 	});

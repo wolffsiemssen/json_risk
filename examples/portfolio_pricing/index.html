@@ -14,7 +14,7 @@ bootstrap
 <!--
 angular js
 -->
-<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular.min.js"></script>
 
 <!--
 Papa Parse
@@ -136,8 +136,8 @@ main app
 					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_params()">Clear and load test params</button>
 					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_params()">Export</button>
 				</div>
-				<div class="input-group" ng-if="available_params!==null">
-					<select class="custom-select" ng-options="value for value in available_params" ng-model="selected_params">
+				<div class="input-group" ng-if="available_params.list!==null">
+					<select class="custom-select" ng-options="value group by value.substring(0,10) for value in available_params.list" ng-model="available_params.selection">
 						<option value="" selected>Choose param set...</option>
 					</select>
 					<div class="input-group-append">
