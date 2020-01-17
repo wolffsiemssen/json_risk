@@ -140,6 +140,21 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		$scope.errors=null;
 	}
 
+
+	$scope.add_error=function(message, id){
+		if(!$scope.errors) $scope.errors=[];  //first error
+		var j=0;
+		while(j<$scope.errors.length){
+			if ($scope.errors[j].msg === message){ //same error has already occured
+				$scope.errors[j].count++;
+				break;
+			}
+			j++;
+		}
+		if (j>=$scope.errors.length) $scope.errors.push({msg: message, id: id, count: 1}); //new error
+		$scope.$apply();
+	}
+
 	$scope.calculate=function(){
 		$scope.busy=true;
 		$scope.conc=navigator.hardwareConcurrency;
@@ -167,18 +182,10 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 				                	$scope.res[j]["TOTAL"]=$scope.res[j]["TOTAL"]+e.data.res[j];
 						}
 				        }
-				}else{ //error
-					if(!$scope.errors) $scope.errors=[];  //first error
-					j=0;
-					while(j<$scope.errors.length){
-						if ($scope.errors[j].msg === e.data.msg){ //same error has already occured
-							$scope.errors[j].count++;
-							break;
-						}
-						j++;
-					}
-					if (j>=$scope.errors.length) $scope.errors.push({msg: e.data.msg, id: e.data.id, count: 1}); //new error
-					
+				}else if(e.data.msg) // message
+					alert(e.data.msg);
+				else{ //error
+					$scope.add_error(e.data.msg, e.data.id);
 				}
 				incomplete--;
 
@@ -201,6 +208,12 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 				        unsent--;
 				}
 			}
+
+			//worker process error handling
+			wrk[i].onerror=function(e){
+				$scope.add_error("An error occurred in the worker process. " + (e.message || "") , 'unknown');
+			}
+
 			//send params to worker
 			wrk[i].postMessage({params: $scope.params});
 			

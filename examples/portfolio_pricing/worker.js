@@ -1,4 +1,4 @@
-importScripts('./json_risk.min.js');    
+importScripts('./json_risk.min.js');
 
 onmessage = function(e) {
 	var d=e.data;
