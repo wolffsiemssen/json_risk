@@ -4,7 +4,7 @@
        library.fxterm=function(instrument){
                 
                 //the near payment of the swap
-                this.near_leg=new library.simple_fixed_income({
+                this.near_leg=new library.fixed_income({
                         notional: instrument.notional, // negative if first leg is pay leg
                         maturity: instrument.maturity,
                         fixed_rate: 0,
@@ -13,7 +13,7 @@
                 
                 //the far payment of the swap
                 if (typeof(instrument.notional_2) === "number" && library.get_safe_date(instrument.maturity_2)){
-                        this.far_leg=new library.simple_fixed_income({
+                        this.far_leg=new library.fixed_income({
                                 notional: instrument.notional_2, // negative if first leg is pay leg
                                 maturity: instrument.maturity_2,
                                 fixed_rate: 0,

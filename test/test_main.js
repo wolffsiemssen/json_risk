@@ -994,7 +994,7 @@ for (i=0; i<months.length; i++){
                         dcc: "act/365"
                 };
 
-                bond_internal=new JsonRisk.simple_fixed_income(bond);
+                bond_internal=new JsonRisk.fixed_income(bond);
                 p1=bond_internal.present_value(curve,null);
                 console.log("JSON Risk bond price:                           " + p1.toFixed(3)); 
                 cfs=bond_internal.get_cash_flows();
@@ -1083,7 +1083,7 @@ for (i=0; i<Kupon.length; i++){
         
         
         console.log("JSON Risk regular bond price                                               : " + pv_bond.toFixed(3));
-        console.log("JSON Risk regular bond price priced with irregular_fixed_income instrument : " + pv_irreg.toFixed(3));
+        console.log("JSON Risk regular bond price priced with fixed_income instrument : " + pv_irreg.toFixed(3));
        
         am(pv_bond===pv_irreg, "Irregular bond valuation consistency with simple bond pricer, (" + (i+1) +")");
 }
@@ -1114,7 +1114,7 @@ for (i=0;i<400;i++){
 	//discount curves are always annual compounding act/365, so we need to adjust the rate according to the tenor in order to arrive at a par valuation
 	discount_rate=Math.pow(1+(Kupon[i % Kupon.length] / 100*Tenor[i % Tenor.length] / 12),12 / Tenor[i % Tenor.length] ) -1;
 
-	bond_internal=new JsonRisk.irregular_fixed_income(bonds[i]);
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
         p1=bond_internal.present_value({times: [1], zcs: [discount_rate-0.0001]});
         console.log("JSON Risk irregular bond price discounted at coupon rate minus one basis point (" + (i+1) + "): " + p1.toFixed(3));
 
@@ -1190,7 +1190,7 @@ for (var i=0;i<bcbs352times.length;i++){
 
 for (i=0;i<expiries.length;i++){
 	swaption=JsonRisk.create_equivalent_regular_swaption(cf_obj,expiries[i]);
-	cf_regular=new JsonRisk.simple_fixed_income(swaption).get_cash_flows();
+	cf_regular=new JsonRisk.fixed_income(swaption).get_cash_flows();
 	
 	lgm_xi=0.0004*yf(JsonRisk.valuation_date,expiries[i]);
 	

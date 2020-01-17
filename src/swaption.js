@@ -105,7 +105,7 @@
                 
                 //brief function to compute effective duration
                 var ed=function(bond){   
-                        var bond_internal=new library.simple_fixed_income(bond);  
+                        var bond_internal=new library.fixed_income(bond);  
                         npv_up=bond_internal.present_value(cup);
                         npv_down=bond_internal.present_value(cdown);
                         var res=10000.0*(npv_down-npv_up)/(npv_down+npv_up);

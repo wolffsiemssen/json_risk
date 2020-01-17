@@ -105,7 +105,7 @@
                         case "bond":
                         case "floater":
 			case "irregular_bond":
-			return new library.irregular_fixed_income(instrument);
+			return new library.fixed_income(instrument);
                         case "swap":
                         return new library.swap(instrument);
                         case "swaption":

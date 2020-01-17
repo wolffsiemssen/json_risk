@@ -1,21 +1,24 @@
 (function(library){
-        library.irregular_fixed_income=function(instrument,curve){
+        library.fixed_income=function(instrument){
 
                 var maturity=library.get_safe_date(instrument.maturity);       
                 if(!maturity)
-                        throw new Error("irregular_fixed_income: must provide maturity date.");
+                        throw new Error("fixed_income: must provide maturity date.");
 
 
                 var effective_date=library.get_safe_date(instrument.effective_date); //null allowed
                 
                 if(typeof instrument.notional !== 'number')
-                        throw new Error("irregular_fixed_income: must provide valid notional.");
+                        throw new Error("fixed_income: must provide valid notional.");
                 this.notional=instrument.notional;
+
+		//include notional exchange unless explicitly set to false (e.g., for swaps)
+		this.notional_exchange=(instrument.notional_exchange===false) ? false : true;
 
 		//interest related fields
                 var tenor=library.get_safe_natural(instrument.tenor);
                 if(null===tenor)
-                        throw new Error("irregular_fixed_income: must provide valid tenor.");
+                        throw new Error("fixed_income: must provide valid tenor.");
 		
                 var first_date=library.get_safe_date(instrument.first_date); //null allowed
                 var next_to_last_date=library.get_safe_date(instrument.next_to_last_date); //null allowed
@@ -42,7 +45,7 @@
                 var linear_amortization = instrument.linear_amortization || false;
 		
                 this.repay_amount = (typeof instrument.repay_amount==='number') ? instrument.repay_amount : 0; //defaults to zero
-		if (this.repay_amount<0) throw new Error("irregular_fixed_income: invalid negative repay_amount");
+		if (this.repay_amount<0) throw new Error("fixed_income: invalid negative repay_amount");
                 
 		this.interest_capitalization=(true===instrument.interest_capitalization) ? true : false;
 
@@ -58,9 +61,9 @@
 
 			for(i=0;i<this.conditions_valid_until.length;i++){ 
 				this.conditions_valid_until[i]=library.get_safe_date(instrument.conditions_valid_until[i]);
-				if(!this.conditions_valid_until[i]) throw new Error("irregular_fixed_income: invalid set of dates provided under conditions_valid_until.");
+				if(!this.conditions_valid_until[i]) throw new Error("fixed_income: invalid set of dates provided under conditions_valid_until.");
 			}
-			if(this.conditions_valid_until[i-1].getTime() !==maturity.getTime()) throw new Error("irregular_fixed_income: last date provided under conditions_valid_until must match maturity");
+			if(this.conditions_valid_until[i-1].getTime() !==maturity.getTime()) throw new Error("fixed_income: last date provided under conditions_valid_until must match maturity");
 		}else{
 			this.conditions_valid_until=[maturity];
 		}
@@ -97,7 +100,7 @@
 			this.fixed_rate=null;
                         this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0; // can be number or array, arrays to be impleented
                         if(typeof instrument.float_current_rate !== 'number')
-                                throw new Error("irregular_fixed_income: must provide valid float_current_rate.");
+                                throw new Error("fixed_income: must provide valid float_current_rate.");
                         this.float_current_rate=instrument.float_current_rate;               
 
 
@@ -142,7 +145,7 @@
                 if (!this.is_float) this.update_cash_flows(null); // finalize cash flow table only for fixed rate instruments, for floaters this is done in present_value()
         };
 
-        library.irregular_fixed_income.prototype.update_cash_flows=function(fwd_curve){
+        library.fixed_income.prototype.update_cash_flows=function(fwd_curve){
 		library.require_vd(); //valuation date must be set
 
                 var default_yf=library.year_fraction_factory(null);
@@ -215,7 +218,10 @@
 				c.pmt_principal[i]=c.current_principal[i];
 			}
 
-                        c.pmt_total[i]=c.pmt_principal[i]+c.pmt_interest[i];
+                        c.pmt_total[i]=c.pmt_interest[i];
+			if(this.notional_exchange===true){
+				c.pmt_total[i]+=c.pmt_principal[i];
+			}
 
 			//update conditions for next period
 			if(c.is_condition_date[i]){
@@ -247,7 +253,7 @@
                 }
 	};
 
-	library.irregular_fixed_income.prototype.initialize_cash_flows=function(){
+	library.fixed_income.prototype.initialize_cash_flows=function(){
 		library.require_vd(); //valuation date must be set
 
 		var date_accrual_start=new Array(this.schedule.length-1);
@@ -353,15 +359,15 @@
                 
 	 };
 
-	library.irregular_fixed_income.prototype.get_cash_flows=function(fwd_curve){
+	library.fixed_income.prototype.get_cash_flows=function(fwd_curve){
 		if(this.is_float){
-			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("irregular_fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
+			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
 			this.update_cash_flows(fwd_curve);
 		}
 		return this.cash_flows;
 	};
     
-        library.irregular_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
+        library.fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
                 return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
                                    library.get_safe_curve(disc_curve),
                                    library.get_safe_curve(spread_curve),
@@ -370,17 +376,17 @@
         };
 
         library.pricer_irregular_bond=function(bond, disc_curve, spread_curve, fwd_curve){
-                var bond_internal=new library.irregular_fixed_income(bond);
+                var bond_internal=new library.fixed_income(bond);
                 return bond_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
        
         library.pricer_bond=function(bond, disc_curve, spread_curve){
-                var bond_internal=new library.irregular_fixed_income(bond);
+                var bond_internal=new library.fixed_income(bond);
                 return bond_internal.present_value(disc_curve, spread_curve, null);
         };
         
         library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
-                var floater_internal=new library.irregular_fixed_income(floater);
+                var floater_internal=new library.fixed_income(floater);
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
 

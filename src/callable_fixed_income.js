@@ -17,7 +17,7 @@
 		
 		var fcd=library.get_safe_date(instrument.first_call_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
-	        this.base=new library.simple_fixed_income(instrument);
+	        this.base=new library.fixed_income(instrument);
 		this.call_schedule=library.schedule(fcd, 
 						     library.get_safe_date(instrument.maturity), 
 						     instrument.call_tenor || 0, //european call by default

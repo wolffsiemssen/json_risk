@@ -6,8 +6,9 @@
                 
                 this.fixed_rate=instrument.fixed_rate;
                 //the true fixed leg of the swap
-                this.fixed_leg=new library.simple_fixed_income({
+                this.fixed_leg=new library.fixed_income({
                         notional: instrument.notional * this.phi,
+			notional_exchange : false,
                         maturity: instrument.maturity,
                         fixed_rate: instrument.fixed_rate,
                         tenor: instrument.tenor,
@@ -15,11 +16,12 @@
                         calendar: instrument.calendar,
                         bdc: instrument.bdc,
                         dcc: instrument.dcc
-                }, false);
+                });
                 
                 //include fixed leg with 1bp rate so annuity and fair rate are retrievable even if true rate is zero
-                this.fixed_leg_1bp=new library.simple_fixed_income({
+                this.fixed_leg_1bp=new library.fixed_income({
                         notional: instrument.notional * this.phi,
+			notional_exchange : false,
                         maturity: instrument.maturity,
                         fixed_rate: 0.0001,
                         tenor: instrument.tenor,
@@ -27,11 +29,12 @@
                         calendar: instrument.calendar,
                         bdc: instrument.bdc,
                         dcc: instrument.dcc
-                }, false);
+                });
                 
                 //the floating rate leg of the swap
-                this.float_leg=new library.simple_fixed_income({
+                this.float_leg=new library.fixed_income({
                         notional: - instrument.notional * this.phi,
+			notional_exchange : false,
                         maturity: instrument.maturity,
                         float_spread: instrument.float_spread,
                         tenor: instrument.float_tenor,
@@ -40,7 +43,7 @@
                         bdc: instrument.float_bdc,
                         dcc: instrument.float_dcc,
                         float_current_rate: instrument.float_current_rate
-                }, false);
+                });
         };
         
         library.swap.prototype.fair_rate=function(disc_curve, fwd_curve){
