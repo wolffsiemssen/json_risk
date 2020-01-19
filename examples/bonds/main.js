@@ -10,7 +10,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		rate_type: "fix",
 		rate: 0.0875,
 		get fixed_rate() { return (this.rate_type==='fix') ? this.rate : null;},
-		current_rate: 0.0123,
+		float_current_rate: 0.0123,
 		float_spread: 0,
 		dcc: "Act/365",
 		bdc: "unadjusted",
@@ -64,7 +64,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 		var jrinst;
 		try{
-			jrinst=new JsonRisk.irregular_fixed_income($scope.instrument)
+			jrinst=new JsonRisk.fixed_income($scope.instrument)
 			$scope.cashflows = jrinst.get_cash_flows(fc);
 			update_chart_cashflows($scope.cashflows);
 

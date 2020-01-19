@@ -201,23 +201,10 @@
 
 		}
 		//recalculate cash flow amounts to account for new fixed rate
-		var cf_obj=swaption.swap.fixed_leg_1bp.get_cash_flows();		
-		var pmt_total=new Array(cf_obj.pmt_total.length);
-		var pmt_interest=new Array(cf_obj.pmt_interest.length);
-		for (var i=0;i<cf_obj.pmt_total.length; i++){
-			pmt_interest[i]=cf_obj.pmt_interest[i]*fixed_rate*10000;
-			pmt_total[i]=pmt_interest[i];
-		}
-		//add notional payment in the end
-		pmt_total[i-1]+=cf_obj.current_principal[i-1];
+		var cf_obj=swaption.swap.fixed_leg.finalize_cash_flows(null, fixed_rate);		
+		cf_obj.pmt_total[cf_obj.pmt_total.length-1]+=cf_obj.current_principal[cf_obj.pmt_total.length-1];
 
-		return {
-			current_principal: cf_obj.current_principal, // original principals
-			t_pmt: cf_obj.t_pmt, 			     // original times
-			date_pmt: cf_obj.date_pmt, 		     // original dates
-			pmt_interest: pmt_interest,		     // adjusted interest payment
-			pmt_total: pmt_total 			     // adjusted total payment
-		};
+		return cf_obj;
 	};
 
 	library.lgm_european_swaption=function(swaption,t_exercise, disc_curve, xi, fwd_curve){

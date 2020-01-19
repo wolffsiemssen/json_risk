@@ -368,7 +368,7 @@
                 var linear_amortization = instrument.linear_amortization || false;
 		
                 this.repay_amount = (typeof instrument.repay_amount==='number') ? instrument.repay_amount : 0; //defaults to zero
-		if (this.repay_amount<0) throw new Error("fixed_income: invalid negative repay_amount");
+		//if (this.repay_amount<0) throw new Error("fixed_income: invalid negative repay_amount");
                 
 		this.interest_capitalization=(true===instrument.interest_capitalization) ? true : false;
 
@@ -465,116 +465,9 @@
 
                 this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
 
-                if (!this.is_float) this.update_cash_flows(null); // finalize cash flow table only for fixed rate instruments, for floaters this is done in present_value()
+                if (!this.is_float) this.cash_flows=this.finalize_cash_flows(null); // finalize cash flow table only for fixed rate instruments, for floaters this is done in present_value()
         };
 
-        library.fixed_income.prototype.update_cash_flows=function(fwd_curve){
-		library.require_vd(); //valuation date must be set
-
-                var default_yf=library.year_fraction_factory(null);
-		var c=this.cash_flows;
-		var sign=(this.notional >= 0) ? 1 : -1;
-                
-
-                // initialize conditions
-		var icond=0;
-		while(this.conditions_valid_until[icond] < c.date_accrual_start[0]) icond++;
-
-                var current_rate=0;
-		if(!this.is_float) current_rate = (typeof this.fixed_rate === 'number')? this.fixed_rate: this.fixed_rate[icond];  
-                var current_repay = (typeof this.repay_amount  === 'number')? this.repay_amount: this.repay_amount[icond];  
-                var current_capitalization = (typeof this.interest_capitalization == "boolean") ? this.interest_capitalization: this.interest_capitalization[icond];  
-            	var current_float_spread = (typeof this.float_spread  === 'number')? this.float_spread: this.float_spread[icond];
-            	var current_cap_rate = (typeof this.cap_rate  === 'number')? this.cap_rate: this.cap_rate[icond];
-		var current_floor_rate = (typeof this.floor_rate  === 'number')? this.floor_rate: this.floor_rate[icond];
-
-		//initialize interest rate
-		var j;
-		if(this.is_float){
-	                if (c.date_accrual_start[0] <= library.valuation_date){
-				//effective date is now or in the past, use current_rate
-	                        current_rate=this.float_current_rate;
-	                }else{
-				//effective date in the future, use forward curve from now until next fixing date
-				j=0;
-				while(!c.is_fixing_date[j] && j<c.is_fixing_date.length) j++;
-
-	                        current_rate=library.get_fwd_rate(fwd_curve,
-								       c.t_accrual_start[0],
-								       c.t_accrual_end[j])+
-								       current_float_spread;
-	                }
-		}
-                
-		var i, n=c.date_accrual_start.length;
-		for(i=0;i<n;i++){
-			//update principal
-			c.current_principal[i]=(i>0) ? c.current_principal[i-1]-c.pmt_principal[i-1] : this.notional;
-
-			//pay principal if repay date
-                        if(c.is_repay_date[i]){
-				c.pmt_principal[i]=current_repay * sign;
-			}else{
-				c.pmt_principal[i]=0;
-			}
-
-			//calculate interest amount for the current period
-                        c.interest_current_period[i]=c.current_principal[i]*current_rate*
-                                 this.year_fraction_func(c.date_accrual_start[i],c.date_accrual_end[i]);
-			
-			//accrue interest
-			c.accrued_interest[i]=(i>0 ? c.accrued_interest[i-1] : 0 ) + c.interest_current_period[i];
-				
-			//pay or capitalize interest
-                        if(c.is_interest_date[i]){
-				c.pmt_interest[i]=c.accrued_interest[i];
-				c.accrued_interest[i]=0;
-				if(current_capitalization){
-					c.pmt_principal[i]=c.pmt_principal[i]-c.pmt_interest[i];
-				}
-			}else{
-				c.pmt_interest[i]=0;
-			}
-
-			//make sure principal is not overpaid and all principal is paid back in the end
-			if((i<n-1 && c.pmt_principal[i] * sign > c.current_principal[i] * sign) || (i===n-1)){
-				c.pmt_principal[i]=c.current_principal[i];
-			}
-
-                        c.pmt_total[i]=c.pmt_interest[i];
-			if(this.notional_exchange===true){
-				c.pmt_total[i]+=c.pmt_principal[i];
-			}
-
-			//update conditions for next period
-			if(c.is_condition_date[i]){
-				icond++;
-				if(!this.is_float) current_rate = (typeof this.fixed_rate == "number")? this.fixed_rate: this.fixed_rate[icond];  
-				current_repay = (typeof this.repay_amount == "number")? this.repay_ampount: this.repay_amount[icond];  
-				current_capitalization = (typeof this.interest_capitalization == "boolean") ? this.interest_capitalization: this.interest_capitalization[icond];  
-				current_float_spread = (typeof this.float_spread == "number")? this.float_spread: this.float_spread[icond];
-				current_cap_rate = (typeof this.cap_rate == "number")? this.cap_rate: this.cap_rate[icond];
-				current_floor_rate = (typeof this.floor_rate == "number")? this.floor_rate: this.floor_rate[icond];
-			}
-
-			//update interest rate for next period
-			if(this.is_float){
-		                if (c.date_accrual_start[i] <= library.valuation_date){
-					//period beginning in the past or now, use current rate
-		                        current_rate=this.float_current_rate;
-		                }else if (c.is_fixing_date[i]){
-					//effective date in the future, use forward curve from now until next fixing date
-					j=0;
-					while(!c.is_fixing_date[i+j] && i+j<c.is_fixing_date.length) j++;
-
-		                        current_rate=library.get_fwd_rate(fwd_curve,
-								       c.t_accrual_start[i],
-								       c.t_accrual_end[i+j])+
-								       current_float_spread;
-		                }
-			}
-                }
-	};
 
 	library.fixed_income.prototype.initialize_cash_flows=function(){
 		library.require_vd(); //valuation date must be set
@@ -643,6 +536,7 @@
                 var t_accrual_end=new Array(date_accrual_start.length);
                 var t_pmt=new Array(date_accrual_start.length);
                 var current_principal=new Array(date_accrual_start.length);
+		var accrual_factor=new Array(date_accrual_start.length);
                 var interest_current_period=new Array(date_accrual_start.length);
                 var accrued_interest=new Array(date_accrual_start.length);
                 var pmt_principal=new Array(date_accrual_start.length);
@@ -659,10 +553,13 @@
                         t_pmt[i]=library.time_from_now(date_pmt[i]);
                         t_accrual_start[i]=library.time_from_now(date_accrual_start[i]);
                         t_accrual_end[i]=library.time_from_now(date_accrual_end[i]);
+			accrual_factor[i]=this.year_fraction_func(date_accrual_start[i],date_accrual_end[i]);
                 }
 
                 //returns pre-initialized cash flow table object
-                return {date_accrual_start: date_accrual_start,
+                return {
+			//rate independent fields
+			date_accrual_start: date_accrual_start,
                         date_accrual_end: date_accrual_end,
                         date_pmt: date_pmt,
                         t_accrual_start: t_accrual_start,
@@ -672,6 +569,8 @@
                         is_repay_date: is_repay_date,
                         is_fixing_date: is_fixing_date,
                         is_condition_date: is_condition_date,
+			accrual_factor: accrual_factor,
+			//rate dependent fields
                         current_principal: current_principal,
                         interest_current_period: interest_current_period,
                         accrued_interest: accrued_interest,
@@ -682,10 +581,167 @@
                 
 	 };
 
+
+        library.fixed_income.prototype.finalize_cash_flows=function(fwd_curve, override_rate_or_spread){
+		library.require_vd(); //valuation date must be set
+
+                var default_yf=library.year_fraction_factory(null);
+		var c=this.cash_flows;
+		var n=c.date_accrual_start.length;
+                var current_principal=new Array(n);
+                var interest_current_period=new Array(n);
+                var accrued_interest=new Array(n);
+                var pmt_principal=new Array(n);
+                var pmt_interest=new Array(n);
+                var pmt_total=new Array(n);
+
+		var sign=(this.notional >= 0) ? 1 : -1;                
+
+                // initialize conditions
+		var icond=0;
+		while(this.conditions_valid_until[icond] < c.date_accrual_start[0]) icond++;
+
+                var current_repay = (typeof this.repay_amount  === 'number')? this.repay_amount: this.repay_amount[icond];  
+                var current_capitalization = (typeof this.interest_capitalization == "boolean") ? this.interest_capitalization: this.interest_capitalization[icond];
+            	var current_cap_rate = (typeof this.cap_rate  === 'number')? this.cap_rate: this.cap_rate[icond];
+		var current_floor_rate = (typeof this.floor_rate  === 'number')? this.floor_rate: this.floor_rate[icond];
+
+		//initialize interest rate
+                var current_rate, get_rate_or_spread, j;
+		if(!this.is_float) {
+			var r=this.fixed_rate;
+			if (typeof r === 'number'){
+				get_rate_or_spread=function(){return r;};
+			}else{
+				get_rate_or_spread=function(){return r[icond];};
+			}
+		}else{
+			var s=this.float_spread;
+			if (typeof s === 'number'){
+				get_rate_or_spread=function(){return s;};
+			}else{
+				get_rate_or_spread=function(){return s[icond];};
+			}
+		}
+
+		//override rate if needed
+		if (typeof override_rate_or_spread === 'number'){
+			get_rate_or_spread=function(){return override_rate_or_spread;};
+		}
+		
+		if(!this.is_float){
+			current_rate=get_rate_or_spread();
+		}else{
+	                if (c.date_accrual_start[0] <= library.valuation_date){
+				//effective date is now or in the past, use current_rate
+	                        current_rate=this.float_current_rate;
+	                }else{
+				//effective date in the future, use forward curve from effective date until next fixing date
+				j=0;
+				while(!c.is_fixing_date[j] && j<c.is_fixing_date.length) j++;
+
+	                        current_rate=library.get_fwd_rate(fwd_curve,
+								       c.t_accrual_start[0],
+								       c.t_accrual_end[j])+
+								       get_rate_or_spread();
+	                }
+		}
+                
+		var i;
+		for(i=0;i<n;i++){
+			//update principal
+			current_principal[i]=(i>0) ? current_principal[i-1]-pmt_principal[i-1] : this.notional;
+
+			//pay principal if repay date
+                        if(c.is_repay_date[i]){
+				pmt_principal[i]=current_repay * sign;
+			}else{
+				pmt_principal[i]=0;
+			}
+
+			//calculate interest amount for the current period
+                        interest_current_period[i]=current_principal[i]*current_rate*c.accrual_factor[i];
+			
+			//accrue interest
+			accrued_interest[i]=(i>0 ? accrued_interest[i-1] : 0 ) + interest_current_period[i];
+				
+			//pay or capitalize interest
+                        if(c.is_interest_date[i]){
+				pmt_interest[i]=accrued_interest[i];
+				accrued_interest[i]=0;
+				if(current_capitalization){
+					pmt_principal[i]=pmt_principal[i]-pmt_interest[i];
+				}
+			}else{
+				pmt_interest[i]=0;
+			}
+
+			//make sure principal is not overpaid and all principal is paid back in the end
+			if((i<n-1 && pmt_principal[i] * sign > current_principal[i] * sign) || (i===n-1)){
+				pmt_principal[i]=current_principal[i];
+			}
+
+                        pmt_total[i]=pmt_interest[i];
+			if(this.notional_exchange===true){
+				pmt_total[i]+=pmt_principal[i];
+			}
+
+			//update conditions for next period
+			if(c.is_condition_date[i]){
+				icond++;
+				current_repay = (typeof this.repay_amount == "number")? this.repay_ampount: this.repay_amount[icond];  
+				current_capitalization = (typeof this.interest_capitalization == "boolean") ? this.interest_capitalization: this.interest_capitalization[icond];  
+				current_cap_rate = (typeof this.cap_rate == "number")? this.cap_rate: this.cap_rate[icond];
+				current_floor_rate = (typeof this.floor_rate == "number")? this.floor_rate: this.floor_rate[icond];
+			}
+
+			//update interest rate for next period
+			if(!this.is_float){
+				current_rate=get_rate_or_spread();
+			}else{
+		                if (c.date_accrual_start[i] <= library.valuation_date){
+					//period beginning in the past or now, use current rate
+		                        current_rate=this.float_current_rate;
+		                }else if (c.is_fixing_date[i]){
+					//effective date in the future, use forward curve from now until next fixing date
+					j=0;
+					while(!c.is_fixing_date[i+j] && i+j<c.is_fixing_date.length) j++;
+
+		                        current_rate=library.get_fwd_rate(fwd_curve,
+								       c.t_accrual_start[i],
+								       c.t_accrual_end[i+j])+
+								       get_rate_or_spread();
+		                }
+			}
+                }
+                //returns finalized cash flow table object
+                return {
+			//rate independent fields
+			date_accrual_start: c.date_accrual_start,
+                        date_accrual_end: c.date_accrual_end,
+                        date_pmt: c.date_pmt,
+                        t_accrual_start: c.t_accrual_start,
+                        t_accrual_end: c.t_accrual_end,
+                        t_pmt: c.t_pmt,
+                        is_interest_date: c.is_interest_date,
+                        is_repay_date: c.is_repay_date,
+                        is_fixing_date: c.is_fixing_date,
+                        is_condition_date: c.is_condition_date,
+			accrual_factor: c.accrual_factor,
+			//rate dependent fields
+                        current_principal: current_principal,
+                        interest_current_period: interest_current_period,
+                        accrued_interest: accrued_interest,
+                        pmt_principal: pmt_principal,
+                        pmt_interest: pmt_interest,
+                        pmt_total: pmt_total
+                };
+	};
+
 	library.fixed_income.prototype.get_cash_flows=function(fwd_curve){
 		if(this.is_float){
 			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
-			this.update_cash_flows(fwd_curve);
+			return this.finalize_cash_flows(fwd_curve);
 		}
 		return this.cash_flows;
 	};
@@ -697,6 +753,79 @@
                                    this.residual_spread,
                                    this.settlement_date);
         };
+
+        library.fixed_income.prototype.fair_rate_or_spread=function(disc_curve, spread_curve, fwd_curve){
+		library.require_vd(); //valuation date must be set
+		var fc=library.get_safe_curve(fwd_curve) || library.get_const_curve(0);
+		var cf=this.get_cash_flows(fc);
+
+                //retrieve outstanding principal on valuation date (corresponds to regular swaption notional)
+                var outstanding_principal=0;
+                var i=0;
+		while (cf.date_pmt[i]<=library.valuation_date) i++;
+                outstanding_principal=cf.current_principal[i];
+		
+		//aproximate solution via annuity - will be exact if no interest rate capitalization
+		var guess;		
+		guess=outstanding_principal - library.dcf(cf,
+		                           disc_curve,
+		                           spread_curve,
+		                           this.residual_spread,
+		                           this.settlement_date);
+		guess/=this.annuity(disc_curve, spread_curve, null);
+		guess+=this.fixed_rate;
+
+		var tmp=this;
+		var optfunc=function(rate){
+			cf=tmp.finalize_cash_flows(fc, rate); //use override_rate_or_spread
+
+		        return outstanding_principal - library.dcf(cf,
+		                           disc_curve,
+		                           spread_curve,
+		                           this.residual_spread,
+		                           this.settlement_date);
+		};
+
+		return library.find_root_secant(optfunc, guess, guess+0.0001, 20, 0.0000001);
+        };
+
+        library.fixed_income.prototype.annuity=function(disc_curve, spread_curve, fwd_curve){
+		/*
+			returns the annuity of the fixed income stream,
+			that is, the present value of all interest payments assuming
+			the interest rate is 100%.
+			In case of interest capitalizing instruments, this function
+			uses the notional structure implied by the original fixed rate
+			or, for floaters, uses the supplied forward curve plus spread
+		*/
+		
+                var c=this.get_cash_flows(library.get_safe_curve(fwd_curve) || library.get_const_curve(0));
+		var pmt=new Array(c.pmt_total.length);
+		var accrued=0;		
+		var i;
+		for (i=0;i<pmt.length;i++){
+			pmt[i]=0;
+
+			//calculate interest amount for the current period based on 100% interest rate
+                        accrued+=c.current_principal[i]*c.accrual_factor[i];
+				
+			//pay interest
+                        if(c.is_interest_date[i]){
+				pmt[i]+=accrued;
+				accrued=0;
+			}
+		}
+		return library.dcf({
+					date_pmt: c.date_pmt,
+					t_pmt: c.t_pmt,
+					pmt_total: pmt
+				},
+				library.get_safe_curve(disc_curve),
+				library.get_safe_curve(spread_curve),
+				this.residual_spread,
+				this.settlement_date);
+        };
+
 
         library.pricer_irregular_bond=function(bond, disc_curve, spread_curve, fwd_curve){
                 var bond_internal=new library.fixed_income(bond);
@@ -957,23 +1086,10 @@
 
 		}
 		//recalculate cash flow amounts to account for new fixed rate
-		var cf_obj=swaption.swap.fixed_leg_1bp.get_cash_flows();		
-		var pmt_total=new Array(cf_obj.pmt_total.length);
-		var pmt_interest=new Array(cf_obj.pmt_interest.length);
-		for (var i=0;i<cf_obj.pmt_total.length; i++){
-			pmt_interest[i]=cf_obj.pmt_interest[i]*fixed_rate*10000;
-			pmt_total[i]=pmt_interest[i];
-		}
-		//add notional payment in the end
-		pmt_total[i-1]+=cf_obj.current_principal[i-1];
+		var cf_obj=swaption.swap.fixed_leg.finalize_cash_flows(null, fixed_rate);		
+		cf_obj.pmt_total[cf_obj.pmt_total.length-1]+=cf_obj.current_principal[cf_obj.pmt_total.length-1];
 
-		return {
-			current_principal: cf_obj.current_principal, // original principals
-			t_pmt: cf_obj.t_pmt, 			     // original times
-			date_pmt: cf_obj.date_pmt, 		     // original dates
-			pmt_interest: pmt_interest,		     // adjusted interest payment
-			pmt_total: pmt_total 			     // adjusted total payment
-		};
+		return cf_obj;
 	};
 
 	library.lgm_european_swaption=function(swaption,t_exercise, disc_curve, xi, fwd_curve){
@@ -1539,19 +1655,6 @@
                         dcc: instrument.dcc
                 });
                 
-                //include fixed leg with 1bp rate so annuity and fair rate are retrievable even if true rate is zero
-                this.fixed_leg_1bp=new library.fixed_income({
-                        notional: instrument.notional * this.phi,
-			notional_exchange : false,
-                        maturity: instrument.maturity,
-                        fixed_rate: 0.0001,
-                        tenor: instrument.tenor,
-                        effective_date: instrument.effective_date,
-                        calendar: instrument.calendar,
-                        bdc: instrument.bdc,
-                        dcc: instrument.dcc
-                });
-                
                 //the floating rate leg of the swap
                 this.float_leg=new library.fixed_income({
                         notional: - instrument.notional * this.phi,
@@ -1575,7 +1678,7 @@
         
         library.swap.prototype.annuity=function(disc_curve){
                 //returns always positive annuity regardless of payer/receiver flag
-                return this.fixed_leg_1bp.present_value(disc_curve) * this.phi * 10000;
+		return this.fixed_leg.annuity(disc_curve) * this.phi;
         };
         
         library.swap.prototype.present_value=function(disc_curve, fwd_curve){

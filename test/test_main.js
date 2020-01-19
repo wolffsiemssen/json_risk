@@ -1122,6 +1122,58 @@ for (i=0;i<400;i++){
         console.log("JSON Risk irregular bond price discounted at coupon rate plus one basis point (" + (i+1) + "): " + p2.toFixed(3));
 	am((p1>100 && p2<100), "Irregular bond valuation for amortising bonds (" + (i+1) + ").");
 }
+
+// test fair rate derivation for all kinds of amortizing bonds
+
+bonds=[];
+times = [1,2,3,5];
+dfs = [0.95,0.91,0.86,0.78];
+curve = {times:times, dfs:dfs};
+var spread_curve={times: [1], zcs: [0.05]};
+var r;
+for (i=0;i<400;i++){
+        bonds.push({
+		effective_date: new Date(JsonRisk.valuation_date),
+		maturity: Maturity[i % Maturity.length],
+		notional: 100.0,
+		fixed_rate: Kupon[i % Kupon.length]/100,
+		tenor: Tenor[i % Tenor.length],//(1+c*t/12)^(12/t)=1+c0
+		repay_tenor: Repay_Tenor[i % Repay_Tenor.length],
+		repay_next_to_last_date: JsonRisk.add_days(JsonRisk.get_safe_date(Maturity[i % Maturity.length]), -Repay_Stub_Days[i % Repay_Stub_Days.length]),
+		bdc: "following",
+		calendar: "TARGET",
+		dcc: "act/365",
+		repay_amount: Repay_Total[i % Repay_Total.length] / 12 * Repay_Tenor[i % Repay_Tenor.length] / JsonRisk.time_from_now(JsonRisk.get_safe_date(Maturity[i % Maturity.length])),
+		interest_capitalization: IntCap[i % IntCap.length]
+	});
+	
+
+	//fix rate
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
+	r=bond_internal.fair_rate_or_spread(curve, spread_curve, null);
+
+	bonds[i].fixed_rate=r;
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
+        p1=bond_internal.present_value(curve, spread_curve);
+	console.log("JSON Risk irregular bond fair rate        (" + (i+1) + "): " + (100*r).toFixed(4) + "%");
+	console.log("JSON Risk price at fair rate              (" + (i+1) + "): " + p1.toFixed(4));
+	am((p1.toFixed(3)==="100.000"), "Fair rate derivation for amortising bonds (" + (i+1) + ").");
+
+	//floater
+	bonds[i].fixed_rate=null;
+	bonds[i].float_current_rate=0;
+	bonds[i].float_spread=0;
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
+	r=bond_internal.fair_rate_or_spread(curve, spread_curve, curve);
+
+	bonds[i].float_spread=r;
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
+        p1=bond_internal.present_value(curve, spread_curve, curve);
+	console.log("JSON Risk irregular floater fair spread        (" + (i+1) + "): " + (100*r).toFixed(4) + "%");
+	console.log("JSON Risk price at fair spread                 (" + (i+1) + "): " + p1.toFixed(4));
+	am((p1.toFixed(3)==="100.000"), "Fair spread derivation for amortising bonds (" + (i+1) + ").");
+}
+
 /*
 
 Test LGM option pricing

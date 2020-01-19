@@ -18,19 +18,6 @@
                         dcc: instrument.dcc
                 });
                 
-                //include fixed leg with 1bp rate so annuity and fair rate are retrievable even if true rate is zero
-                this.fixed_leg_1bp=new library.fixed_income({
-                        notional: instrument.notional * this.phi,
-			notional_exchange : false,
-                        maturity: instrument.maturity,
-                        fixed_rate: 0.0001,
-                        tenor: instrument.tenor,
-                        effective_date: instrument.effective_date,
-                        calendar: instrument.calendar,
-                        bdc: instrument.bdc,
-                        dcc: instrument.dcc
-                });
-                
                 //the floating rate leg of the swap
                 this.float_leg=new library.fixed_income({
                         notional: - instrument.notional * this.phi,
@@ -54,7 +41,7 @@
         
         library.swap.prototype.annuity=function(disc_curve){
                 //returns always positive annuity regardless of payer/receiver flag
-                return this.fixed_leg_1bp.present_value(disc_curve) * this.phi * 10000;
+		return this.fixed_leg.annuity(disc_curve) * this.phi;
         };
         
         library.swap.prototype.present_value=function(disc_curve, fwd_curve){
