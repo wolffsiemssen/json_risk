@@ -182,12 +182,11 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 				                	$scope.res[j]["TOTAL"]=$scope.res[j]["TOTAL"]+e.data.res[j];
 						}
 				        }
-				}else if(e.data.msg) // message
-					alert(e.data.msg);
-				else{ //error
+					incomplete--;
+				}else{ //error
 					$scope.add_error(e.data.msg, e.data.id);
+					incomplete--;
 				}
-				incomplete--;
 
 				if (0===incomplete){ //all done, terminate workers and exit
 				        while (wrk.length){
