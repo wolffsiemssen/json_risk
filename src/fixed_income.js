@@ -436,22 +436,23 @@
 		var fc=library.get_safe_curve(fwd_curve) || library.get_const_curve(0);
 		var cf=this.get_cash_flows(fc);
 
-                //retrieve outstanding principal on valuation date (corresponds to regular swaption notional)
+                //retrieve outstanding principal on valuation date
                 var outstanding_principal=0;
                 var i=0;
 		while (cf.date_pmt[i]<=library.valuation_date) i++;
                 outstanding_principal=cf.current_principal[i];
 		
-		//aproximate solution via annuity - will be exact if no interest rate capitalization
+		//approximate solution via annuity - will be exact if no interest rate capitalization
 		var guess;		
 		guess=outstanding_principal - library.dcf(cf,
 		                           disc_curve,
 		                           spread_curve,
 		                           this.residual_spread,
 		                           this.settlement_date);
-		guess/=this.annuity(disc_curve, spread_curve, null);
-		guess+=this.fixed_rate;
-
+		guess/=this.annuity(disc_curve, spread_curve, fc);
+		guess+=this.is_float ? this.float_spread : this.fixed_rate;
+		return guess;
+		/*
 		var tmp=this;
 		var optfunc=function(rate){
 			cf=tmp.finalize_cash_flows(fc, rate); //use override_rate_or_spread
@@ -464,6 +465,7 @@
 		};
 
 		return library.find_root_secant(optfunc, guess, guess+0.0001, 20, 0.0000001);
+		*/
         };
 
         library.fixed_income.prototype.annuity=function(disc_curve, spread_curve, fwd_curve){

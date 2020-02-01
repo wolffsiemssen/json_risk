@@ -1144,7 +1144,7 @@ for (i=0;i<400;i++){
 		calendar: "TARGET",
 		dcc: "act/365",
 		repay_amount: Repay_Total[i % Repay_Total.length] / 12 * Repay_Tenor[i % Repay_Tenor.length] / JsonRisk.time_from_now(JsonRisk.get_safe_date(Maturity[i % Maturity.length])),
-		interest_capitalization: IntCap[i % IntCap.length]
+		interest_capitalization: false //test can only work for non-capitalising instruments. For capitalising instruments, changing the rate would change the notional structure.
 	});
 	
 
@@ -1157,7 +1157,7 @@ for (i=0;i<400;i++){
         p1=bond_internal.present_value(curve, spread_curve);
 	console.log("JSON Risk irregular bond fair rate        (" + (i+1) + "): " + (100*r).toFixed(4) + "%");
 	console.log("JSON Risk price at fair rate              (" + (i+1) + "): " + p1.toFixed(4));
-	am((p1.toFixed(3)==="100.000"), "Fair rate derivation for amortising bonds (" + (i+1) + ").");
+	am((p1.toFixed(3)==="100.000"), "Fair rate derivation for amortising fixed rate bonds (" + (i+1) + ").");
 
 	//floater
 	bonds[i].fixed_rate=null;
@@ -1167,11 +1167,12 @@ for (i=0;i<400;i++){
 	r=bond_internal.fair_rate_or_spread(curve, spread_curve, curve);
 
 	bonds[i].float_spread=r;
+	bonds[i].float_current_rate=r;
 	bond_internal=new JsonRisk.fixed_income(bonds[i]);
         p1=bond_internal.present_value(curve, spread_curve, curve);
 	console.log("JSON Risk irregular floater fair spread        (" + (i+1) + "): " + (100*r).toFixed(4) + "%");
 	console.log("JSON Risk price at fair spread                 (" + (i+1) + "): " + p1.toFixed(4));
-	am((p1.toFixed(3)==="100.000"), "Fair spread derivation for amortising bonds (" + (i+1) + ").");
+	am((p1.toFixed(3)==="100.000"), "Fair spread derivation for amortising float rate bonds (" + (i+1) + ").");
 }
 
 /*

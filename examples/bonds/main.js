@@ -36,8 +36,10 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		$scope.errors=[];
 
 		//curves
-		var dc=null;
-		var fc=null;
+		var dc=null; //discount
+		var fc=null; //forward
+		var sc=null; //valuation spread
+		var rc=null; //refinancing spread
 		if (!$scope.params.curves){
 			$scope.errors.push("no curves available, must load valid parameter set");
 			return ;
@@ -45,6 +47,8 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 		dc=$scope.params.curves[$scope.instrument.discount_curve] || null;
 		fc=$scope.params.curves[$scope.instrument.forward_curve] || null;
+		sc=$scope.params.curves[$scope.instrument.spread_curve] || null;
+		rc=$scope.params.curves[$scope.instrument.refinancing_spread_curve] || null;
 		if (!dc){
 			$scope.errors.push("discount curve not available, must load valid parameter set");
 			return ;
@@ -54,6 +58,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 			$scope.errors.push("forward curve not available, must load valid parameter set");
 			return ;
 		}
+
 
 		//chart
 		update_chart_curves(dc, fc);
@@ -78,18 +83,36 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		//analytics
 
 		try{
-			$scope.res.pv=jrinst.present_value(dc, null, fc);
+			$scope.res.pv=jrinst.present_value(dc, sc, fc);
 
 			var dc_up=JsonRisk.add_curves(dc, {times: [1], zcs: [0.00005]});
 			var dc_down=JsonRisk.add_curves(dc, {times: [1], zcs: [-0.00005]});
 			var fc_up=JsonRisk.add_curves(fc, {times: [1], zcs: [0.00005]});
 			var fc_down=JsonRisk.add_curves(fc, {times: [1], zcs: [-0.00005]});
 			
-			$scope.res.bpv_ir=jrinst.present_value(dc_up, null, fc_up)-jrinst.present_value(dc_down, null, fc_down);
-			$scope.res.bpv_spr=jrinst.present_value(dc_up, null, fc)-jrinst.present_value(dc_down, null, fc);
+			$scope.res.bpv_ir=jrinst.present_value(dc_up, sc, fc_up)-jrinst.present_value(dc_down, sc, fc_down);
+			$scope.res.bpv_spr=jrinst.present_value(dc_up, sc, fc)-jrinst.present_value(dc_down, sc, fc);
 
 			$scope.res.dur_ir=$scope.res.bpv_ir/$scope.res.pv*10000;
 			$scope.res.dur_spr=$scope.res.bpv_spr/$scope.res.pv*10000;
+
+			//FTP
+			var temp_curve=JsonRisk.get_const_curve(JsonRisk.get_rate(dc, 1/365)); //discounting with short end of the discount curve
+
+			$scope.res.fair_rate=jrinst.fair_rate_or_spread(dc, sc, fc);
+			$scope.res.credit_charge=$scope.res.fair_rate-jrinst.fair_rate_or_spread(dc, rc, fc);
+			$scope.res.liquidity_charge=jrinst.fair_rate_or_spread(dc, rc, fc)-jrinst.fair_rate_or_spread(dc, null, fc);
+			$scope.res.basis_charge=jrinst.fair_rate_or_spread(dc, null, fc)-jrinst.fair_rate_or_spread(dc, null, dc);			
+			$scope.res.maturity_charge=jrinst.fair_rate_or_spread(dc, null, dc)-jrinst.fair_rate_or_spread(temp_curve, null, temp_curve);
+			
+			$scope.res.eq_charge=$scope.res.fair_rate
+					-$scope.res.credit_charge
+					-$scope.res.liquidity_charge
+					-$scope.res.basis_charge
+					-$scope.res.maturity_charge;
+
+			
+			$scope.res.margin= ($scope.instrument.rate_type==='fix' ? $scope.instrument.rate : $scope.instrument.float_spread ) - $scope.res.fair_rate
 
 		}catch(ex){
 			$scope.errors.push(ex.message);
