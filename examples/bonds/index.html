@@ -463,7 +463,7 @@ main app
 				            </tr>
 				          </thead>
 				          <tbody>
-				            <tr ng-repeat="x in cashflows.date_accrual_start">
+				            <tr ng-repeat="x in cashflows.date_accrual_start track by $index">
 					      <td>{{x | date:'yyyy-MM-dd'}}</td>
 					      <td>{{cashflows.date_accrual_end[$index] | date:'yyyy-MM-dd'}}</td>
 					      <td>{{cashflows.date_pmt[$index] | date:'yyyy-MM-dd'}}</td>

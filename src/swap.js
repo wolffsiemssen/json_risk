@@ -5,7 +5,7 @@
                 this.phi=instrument.is_payer ? -1 : 1;
                 
                 this.fixed_rate=instrument.fixed_rate;
-                //the true fixed leg of the swap
+                //the fixed leg of the swap
                 this.fixed_leg=new library.fixed_income({
                         notional: instrument.notional * this.phi,
 			notional_exchange : false,

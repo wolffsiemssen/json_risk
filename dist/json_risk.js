@@ -392,7 +392,7 @@
 		}
 
                 var settlement_days=library.get_safe_natural(instrument.settlement_days) || 0;
-                this.settlement_date=library.add_business_days(library.valuation_date, settlement_days, this.is_holiday_func);
+                this.settlement_date=library.get_safe_date(instrument.settlement_date) || library.add_business_days(library.valuation_date, settlement_days, this.is_holiday_func);
 
                 this.residual_spread=(typeof instrument.residual_spread=='number') ? instrument.residual_spread : 0;
                 var currency=instrument.currency || "";
@@ -472,20 +472,28 @@
 	library.fixed_income.prototype.initialize_cash_flows=function(){
 		library.require_vd(); //valuation date must be set
 
-		var date_accrual_start=new Array(this.schedule.length-1);
-		var date_accrual_end=new Array(this.schedule.length-1);
-		var is_interest_date=new Array(this.schedule.length-1);
-		var is_repay_date=new Array(this.schedule.length-1);
-		var is_fixing_date=new Array(this.schedule.length-1);
-		var is_condition_date=new Array(this.schedule.length-1);
+		var date_accrual_start=new Array(this.schedule.length);
+		var date_accrual_end=new Array(this.schedule.length);
+		var is_interest_date=new Array(this.schedule.length);
+		var is_repay_date=new Array(this.schedule.length);
+		var is_fixing_date=new Array(this.schedule.length);
+		var is_condition_date=new Array(this.schedule.length);
 		/* arrays are possibly longer than schedule
 		   as schedule is just the pure interest payment schedule.
 		   for better performance, generate all other columns later when size is known.
 		 */
 
-		var i=0, i_int=1, i_rep=1, i_fix=1, i_cond=0;
+		//first line corresponds to effective date only and captures notional pay out (if any)
+		date_accrual_start[0]=this.schedule[0];
+		date_accrual_end[0]=this.schedule[0];
+		is_interest_date[0]=false;
+		is_repay_date[0]=false;
+		is_fixing_date[0]=false;
+		is_condition_date[0]=false;
+
+		var i=1, i_int=1, i_rep=1, i_fix=1, i_cond=0;
 		while(true){
-		        date_accrual_start[i]=(i>0) ? date_accrual_end[i-1] : this.schedule[0];
+		        date_accrual_start[i]=date_accrual_end[i-1];
 		        date_accrual_end[i]=new Date(Math.min(this.schedule[i_int],
 		                           this.repay_schedule[i_rep],
 		                           this.fixing_schedule[i_fix],
@@ -553,7 +561,7 @@
                         t_pmt[i]=library.time_from_now(date_pmt[i]);
                         t_accrual_start[i]=library.time_from_now(date_accrual_start[i]);
                         t_accrual_end[i]=library.time_from_now(date_accrual_end[i]);
-			accrual_factor[i]=this.year_fraction_func(date_accrual_start[i],date_accrual_end[i]);
+			accrual_factor[i]=(i===0) ? 0 : this.year_fraction_func(date_accrual_start[i],date_accrual_end[i]);
                 }
 
                 //returns pre-initialized cash flow table object
@@ -647,10 +655,18 @@
 	                }
 		}
                 
+		//initialise first line of cash flow table (notional pay out)
+                current_principal[0]=0;
+                interest_current_period[0]=0;
+                accrued_interest[0]=0;
+                pmt_principal[0]=-this.notional;
+                pmt_interest[0]=0;
+                pmt_total[0]=this.notional_exchange ? -this.notional : 0;
+
 		var i;
-		for(i=0;i<n;i++){
+		for(i=1;i<n;i++){
 			//update principal
-			current_principal[i]=(i>0) ? current_principal[i-1]-pmt_principal[i-1] : this.notional;
+			current_principal[i]=current_principal[i-1]-pmt_principal[i-1];
 
 			//pay principal if repay date
                         if(c.is_repay_date[i]){
@@ -682,7 +698,7 @@
 			}
 
                         pmt_total[i]=pmt_interest[i];
-			if(this.notional_exchange===true){
+			if(this.notional_exchange){
 				pmt_total[i]+=pmt_principal[i];
 			}
 
@@ -1089,6 +1105,7 @@
 		}
 		//recalculate cash flow amounts to account for new fixed rate
 		var cf_obj=swaption.swap.fixed_leg.finalize_cash_flows(null, fixed_rate);		
+		cf_obj.pmt_total[0]-=cf_obj.current_principal[1];
 		cf_obj.pmt_total[cf_obj.pmt_total.length-1]+=cf_obj.current_principal[cf_obj.pmt_total.length-1];
 
 		return cf_obj;
@@ -1644,7 +1661,7 @@
                 this.phi=instrument.is_payer ? -1 : 1;
                 
                 this.fixed_rate=instrument.fixed_rate;
-                //the true fixed leg of the swap
+                //the fixed leg of the swap
                 this.fixed_leg=new library.fixed_income({
                         notional: instrument.notional * this.phi,
 			notional_exchange : false,
@@ -1726,7 +1743,6 @@
 			is_payer: instrument.is_payer,
                         notional: instrument.notional,
 			effective_date: this.expiry,
-			settlement_date: this.expiry,
                         maturity: instrument.maturity,
                         fixed_rate: instrument.fixed_rate,
                         tenor: instrument.tenor,

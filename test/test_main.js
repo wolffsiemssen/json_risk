@@ -1324,7 +1324,7 @@ for (i=0; i<Maturity.length; i++){
                 expiry: Firstcall[i],
                 notional: 100,
                 fixed_rate: 0.01,
-                tenor: 12,
+                tenor: Tenor[i],
                 float_spread: 0.00,
                 float_tenor: 6,
                 float_current_rate: 0.00,
@@ -1346,6 +1346,8 @@ for (i=0; i<Maturity.length; i++){
 	console.log("Difference in BP   ("+(i+1)+"): " + ((result+
 					  JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-
 					  JsonRisk.pricer_bond(bonds[i],curve, null))/bpv).toFixed(1));
+	//console.log(new JsonRisk.callable_fixed_income(bonds[i]).base.get_cash_flows().pmt_total);
+	//console.log(new JsonRisk.swaption(swaptions[i]).swap.fixed_leg.get_cash_flows().pmt_total);
 
 	am(Math.abs((result+
 		     JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-

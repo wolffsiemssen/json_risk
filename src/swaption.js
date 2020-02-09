@@ -19,7 +19,6 @@
 			is_payer: instrument.is_payer,
                         notional: instrument.notional,
 			effective_date: this.expiry,
-			settlement_date: this.expiry,
                         maturity: instrument.maturity,
                         fixed_rate: instrument.fixed_rate,
                         tenor: instrument.tenor,

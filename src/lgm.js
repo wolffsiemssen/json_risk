@@ -202,6 +202,7 @@
 		}
 		//recalculate cash flow amounts to account for new fixed rate
 		var cf_obj=swaption.swap.fixed_leg.finalize_cash_flows(null, fixed_rate);		
+		cf_obj.pmt_total[0]-=cf_obj.current_principal[1];
 		cf_obj.pmt_total[cf_obj.pmt_total.length-1]+=cf_obj.current_principal[cf_obj.pmt_total.length-1];
 
 		return cf_obj;
