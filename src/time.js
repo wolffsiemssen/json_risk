@@ -58,6 +58,23 @@
                 if((d instanceof String) || typeof d === 'string') return library.date_str_to_date(d);
                 throw new Error("get_safe_date: invalid input.");
         };
+
+	library.get_safe_date_vector=function(d){ //vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise
+		if(d instanceof Date) return [d];
+		var res;
+		if(typeof d === 'string'){
+			res=d.split(/\s+/);
+		}else if(Array.isArray(d)){
+			res=d.slice();
+		}else{
+			return null;
+		}
+		for (var i=0;i<res.length;i++){
+			res[i]=library.get_safe_date(res[i]);
+			if (null === res[i]) throw new Error("get_safe_date_vector: invalid input");
+		}
+		return res;
+	};
         
         /*!
         

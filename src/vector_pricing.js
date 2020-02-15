@@ -104,7 +104,6 @@
                 switch (instrument.type.toLowerCase()){
                         case "bond":
                         case "floater":
-			case "irregular_bond":
 			return new library.fixed_income(instrument);
                         case "swap":
                         return new library.swap(instrument);

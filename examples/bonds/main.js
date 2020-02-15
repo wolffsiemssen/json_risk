@@ -5,10 +5,10 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 	$scope.instrument={
 		maturity: "2029-01-22",
-		effective_date: "2019-01-22",
-		notional: 100,
+		effective_date: "2017-01-22",
+		notional: 10000,
 		rate_type: "fix",
-		rate: 0.0875,
+		rate: 0.0275,
 		get fixed_rate() { return (this.rate_type==='fix') ? this.rate : null;},
 		float_current_rate: 0.0123,
 		float_spread: 0,
@@ -110,9 +110,12 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 					-$scope.res.liquidity_charge
 					-$scope.res.basis_charge
 					-$scope.res.maturity_charge;
-
 			
-			$scope.res.margin= ($scope.instrument.rate_type==='fix' ? $scope.instrument.rate : $scope.instrument.float_spread ) - $scope.res.fair_rate
+			//get current rate or spread dependent on condition change dates
+			var current_rate_or_spread=($scope.instrument.rate_type==='fix') ? jrinst.fixed_rate : jrinst.float_spread;
+			var i=0;			
+			while (jrinst.conditions_valid_until[i]<$scope.params.valuation_date) i++;
+			$scope.res.margin=current_rate_or_spread[i]  - $scope.res.fair_rate
 
 		}catch(ex){
 			$scope.errors.push(ex.message);

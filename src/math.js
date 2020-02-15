@@ -20,17 +20,73 @@
         var M6 = 1.75566716318264;
         var M7 = 8.83883476483184e-02;
 
-
-	library.get_safe_positive=function(n){ //returns positive number if a valid positive number is entered and null otherwise
-		if(typeof n !== 'number') return null;
-		if(n <= 0) return null;
-		return n;
+	library.get_safe_number=function(n){
+		if(typeof n === 'number') return n;
+		if(typeof n === 'string'){
+			n=n.trim();
+			var res=parseFloat(n);
+			if (isNaN(res)) return null;
+			if (n.charAt(n.length-1)==='%') res*=0.01;
+			return res;
+		}
+		return null;
 	};
 
-	library.get_safe_natural=function(n){ //returns natural number if a valid natural number is entered and null otherwise
-		if(typeof n !== 'number') return null;
-		if(n < 0 || n!==Math.floor(n)) return null;
-		return n;
+	library.get_safe_positive=function(n){ //returns positive number if a valid positive number is entered and null otherwise
+		var res=library.get_safe_number(n);
+		if (res<=0) return null;
+		return res;
+	};
+
+	library.get_safe_natural=function(n){ //returns natural number, zero allowed, if a valid natural number is entered and null otherwise
+		var res=library.get_safe_number(n);
+		if (res<0 || res!==Math.floor(res)) return null;
+		return res;
+	};
+
+	library.get_safe_number_vector=function(n){ //vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
+		if(typeof n === 'number') return [n];
+		var res;
+		if(typeof n === 'string'){
+			res=n.split(/\s+/);
+		}else if(Array.isArray(n)){
+			res=n.slice();
+		}else{
+			return null;
+		}
+		for (var i=0;i<res.length;i++){
+			res[i]=library.get_safe_number(res[i]);
+			if (null === res[i]) throw new Error("get_safe_number_vector: invalid input");
+		}
+		return res;
+	};
+
+	library.get_safe_bool=function(b){
+		if(typeof b === 'boolean') return b;				
+		if(typeof b === 'number') return b!==0;
+		if(typeof b === 'string'){
+			var s=b.trim().toLowerCase();
+			if(s==='true' || s==='yes' || s==='y') return true;
+			return false;
+		}
+		return false;
+	};
+
+	library.get_safe_bool_vector=function(b){ //returns vector of booleans when input can be converted to booleans. Returns single-entry array [false] otherwise
+		if(typeof b === 'boolean') return [b];
+		if(typeof b === 'number') return [b!==0];
+		var res;
+		if(typeof b === 'string'){
+			res=b.split(/\s+/);
+		}else if(Array.isArray(b)){
+			res=b.slice();
+		}else{
+			return [false];
+		}
+		for (var i=0;i<res.length;i++){
+			res[i]=library.get_safe_bool(res[i]);
+		}
+		return res;
 	};
         
         library.ndf=function(x){

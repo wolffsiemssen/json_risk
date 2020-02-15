@@ -728,7 +728,7 @@ var adj=function(d){
 };
 JsonRisk.valuation_date=adj(new Date(1900,0,1));
 
-var pv=0, pv_reg=0,pv_irreg=0;
+var pv=0, pv_ref=0;
 //brief function to calculate bond pv at 10% discount
 var pv_func=function(mat, kup){
 	m=JsonRisk.get_safe_date(mat);
@@ -783,25 +783,19 @@ for(i=0; i<Kupon.length; i++){
 	};
 
 	//unadjusted periods
-	pv_reg=JsonRisk.pricer_bond(bond,curve, null, null);
-	pv_irreg=JsonRisk.pricer_irregular_bond(bond,curve, null, null);
-	pv=pv_func(Maturity[i],Kupon[i]/100);
-        console.log("Bond without adjusted periods, simple pricer       " + pv_reg.toFixed(8));         
-	console.log("Bond without adjusted periods, irreg pricer        " + pv_irreg.toFixed(8));    
-        console.log("Bond without adjusted periods, reference price     " + pv.toFixed(8));    
-        am(pv.toFixed(8)===pv_reg.toFixed(8), "Bond Valuation against reference price, simple pricer   (" + (i+1) +")");
-        am(pv.toFixed(8)===pv_irreg.toFixed(8), "Bond Valuation against reference price, irregular pricer(" + (i+1) +")");
+	pv=JsonRisk.pricer_bond(bond,curve, null, null);
+	pv_ref=pv_func(Maturity[i],Kupon[i]/100);
+        console.log("Bond without adjusted periods                 " + pv.toFixed(8));         
+        console.log("Bond without adjusted periods, reference price" + pv_ref.toFixed(8));    
+        am(pv.toFixed(8)===pv_ref.toFixed(8), "Bond Valuation against reference price, with unadjusted accrual periods (" + (i+1) +")");
 
 	//adjusted periods
 	bond.adjust_accrual_periods=true;
-	pv_reg=JsonRisk.pricer_bond(bond,curve, null, null);
-	pv_irreg=JsonRisk.pricer_irregular_bond(bond,curve, null, null);
-	pv=pv_func_adj(Maturity[i],Kupon[i]/100);
-        console.log("Bond with adjusted periods, simple pricer       " + pv_reg.toFixed(8));         
-	console.log("Bond with adjusted periods, irreg pricer        " + pv_irreg.toFixed(8));    
-        console.log("Bond with adjusted periods, reference price     " + pv.toFixed(8));    
-        am(pv.toFixed(8)===pv_reg.toFixed(8), "Bond Valuation against reference price, with adjusted periods, simple pricer   (" + (i+1) +")");
-        am(pv.toFixed(8)===pv_irreg.toFixed(8), "Bond Valuation against reference price, with adjusted periods, irregular pricer(" + (i+1) +")");
+	pv=JsonRisk.pricer_bond(bond,curve, null, null);
+	pv_ref=pv_func_adj(Maturity[i],Kupon[i]/100);
+        console.log("Bond with adjusted periods                 " + pv.toFixed(8));         
+        console.log("Bond with adjusted periods, reference price" + pv_ref.toFixed(8));    
+        am(pv.toFixed(8)===pv_ref.toFixed(8), "Bond Valuation against reference price, with adjusted accrual periods (" + (i+1) +")");
 }
  
 
@@ -1047,47 +1041,6 @@ Test irregular bonds
 
 */
 
-//test special case of regular bond, value should always be equal to simple bond
-
-Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
-Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
-              "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
-              "15.08.2046", "15.08.2048"];
-Kurs_Dirty=[109.396, 109.114, 105.367, 101.279, 105.139, 100.490,
-                161.156, 173.187, 144.244, 128.600, 129.562, 98.366];
-
-JsonRisk.valuation_date=new Date(2018,1,23);
-
-bonds=[];
-for (i=0; i<Kupon.length; i++){
-        bonds.push({
-        maturity: Maturity[i],
-	effective_date: new Date(2017,5,5),
-        notional: 100.0,
-        fixed_rate: Kupon[i]/100,
-        tenor: 12,
-        fixing_tenor: 0,
-        bdc: "following",
-        dcc: "act/act",
-        calendar: "TARGET"
-        });
-}
-
-times=[1/12,3/12,6/12,1,2,3,4,5];
-zcs=[0.001,0.002,0.003,0.004,0.005, 0.006, 0.007,0.007];
-curve={times:times,zcs:zcs};
-
-for (i=0; i<Kupon.length; i++){
-        pv_bond=JsonRisk.pricer_bond(bonds[i],curve, null, null);
-        pv_irreg=JsonRisk.pricer_irregular_bond(bonds[i],curve, null, null);
-        
-        
-        console.log("JSON Risk regular bond price                                               : " + pv_bond.toFixed(3));
-        console.log("JSON Risk regular bond price priced with fixed_income instrument : " + pv_irreg.toFixed(3));
-       
-        am(pv_bond===pv_irreg, "Irregular bond valuation consistency with simple bond pricer, (" + (i+1) +")");
-}
-
 //test irregular bonds by checking that, regardless of the amortisation used, a bond with coupon r, when discounted at r, always values at par.
 
 var Repay_Total=[30,70,100];
@@ -1122,6 +1075,41 @@ for (i=0;i<400;i++){
         console.log("JSON Risk irregular bond price discounted at coupon rate plus one basis point (" + (i+1) + "): " + p2.toFixed(3));
 	am((p1>100 && p2<100), "Irregular bond valuation for amortising bonds (" + (i+1) + ").");
 }
+
+// test changing repay amounts
+for (i=0;i<400;i++){
+	//repay amount as string with two space separated entries
+	bonds[i].repay_amount=""+bonds[i].repay_amount + " " + (bonds[i].repay_amount*0.9);
+	//condition array as string with two space separated entries
+	bonds[i].conditions_valid_until="2020/01/01 " + bonds[i].maturity;
+	//discount curves are always annual compounding act/365, so we need to adjust the rate according to the tenor in order to arrive at a par valuation
+	discount_rate=Math.pow(1+(Kupon[i % Kupon.length] / 100*Tenor[i % Tenor.length] / 12),12 / Tenor[i % Tenor.length] ) -1;
+
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
+        p1=bond_internal.present_value({times: [1], zcs: [discount_rate-0.0001]});
+        console.log("JSON Risk irregular bond price discounted at coupon rate minus one basis point (" + (i+1) + "): " + p1.toFixed(3));
+
+        p2=bond_internal.present_value({times: [1], zcs: [discount_rate+0.0001]});
+        console.log("JSON Risk irregular bond price discounted at coupon rate plus one basis point (" + (i+1) + "): " + p2.toFixed(3));
+	am((p1>100 && p2<100), "Irregular bond valuation with changing repay amounts (" + (i+1) + ").");
+}
+
+// additionally, test changing interest rates with different syntaxes
+for (i=0;i<400;i++){
+	//fixed rate as string with two space separated entries, second entry expressed as percentage
+	bonds[i].fixed_rate=""+(bonds[i].fixed_rate-0.0001) + " " + (bonds[i].fixed_rate*100+0.01) + "%" ;
+	//discount curves are always annual compounding act/365, so we need to adjust the rate according to the tenor in order to arrive at a par valuation
+	discount_rate=Math.pow(1+(Kupon[i % Kupon.length] / 100*Tenor[i % Tenor.length] / 12),12 / Tenor[i % Tenor.length] ) -1;
+
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
+        p1=bond_internal.present_value({times: [1], zcs: [discount_rate-0.0001]});
+        console.log("JSON Risk irregular bond price discounted at coupon rate minus one basis point (" + (i+1) + "): " + p1.toFixed(3));
+
+        p2=bond_internal.present_value({times: [1], zcs: [discount_rate+0.0001]});
+        console.log("JSON Risk irregular bond price discounted at coupon rate plus one basis point (" + (i+1) + "): " + p2.toFixed(3));
+	am((p1>100 && p2<100), "Irregular bond valuation with changing repay amounts (" + (i+1) + ").");
+}
+
 
 // test fair rate derivation for all kinds of amortizing bonds
 
@@ -1346,8 +1334,6 @@ for (i=0; i<Maturity.length; i++){
 	console.log("Difference in BP   ("+(i+1)+"): " + ((result+
 					  JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-
 					  JsonRisk.pricer_bond(bonds[i],curve, null))/bpv).toFixed(1));
-	//console.log(new JsonRisk.callable_fixed_income(bonds[i]).base.get_cash_flows().pmt_total);
-	//console.log(new JsonRisk.swaption(swaptions[i]).swap.fixed_leg.get_cash_flows().pmt_total);
 
 	am(Math.abs((result+
 		     JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-
@@ -1450,7 +1436,7 @@ results=JsonRisk.vector_pricer({
 am(check(results), "Vector pricing with swap returns valid vector of numbers");
 
 results=JsonRisk.vector_pricer({
-        type: 'irregular_bond',
+        type: 'bond',
         effective_date: JsonRisk.valuation_date,
         maturity: new Date(2032,1,1),
         notional: 100.0,
@@ -1466,7 +1452,7 @@ results=JsonRisk.vector_pricer({
         spread_curve: "EURO-GOV",
         currency: "USD"
 });
-am(check(results), "Vector pricing with irregular_bond returns valid vector of numbers");
+am(check(results), "Vector pricing with amortizing bond returns valid vector of numbers");
    
 results=JsonRisk.vector_pricer({
         type: 'swaption',

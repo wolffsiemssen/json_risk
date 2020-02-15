@@ -44,10 +44,9 @@
 
                 var linear_amortization = instrument.linear_amortization || false;
 		
-                this.repay_amount = (typeof instrument.repay_amount==='number') ? instrument.repay_amount : 0; //defaults to zero
-		//if (this.repay_amount<0) throw new Error("fixed_income: invalid negative repay_amount");
+                this.repay_amount = library.get_safe_number_vector(instrument.repay_amount) || [0]; //array valued
                 
-		this.interest_capitalization=(true===instrument.interest_capitalization) ? true : false;
+		this.interest_capitalization=library.get_safe_bool_vector(instrument.interest_capitalization);
 
                 var repay_first_date=library.get_safe_date(instrument.repay_first_date) || this.first_date;
                 var repay_next_to_last_date=library.get_safe_date(instrument.repay_next_to_last_date) || this.next_to_last_date;
@@ -55,17 +54,11 @@
 		var repay_stub_long=instrument.stub_long || false;
 
 		//condition arrays
-		var i;
-                if(Array.isArray(instrument.conditions_valid_until)){ 
-			this.conditions_valid_until = new Array(instrument.conditions_valid_until.length-1);
-
-			for(i=0;i<this.conditions_valid_until.length;i++){ 
-				this.conditions_valid_until[i]=library.get_safe_date(instrument.conditions_valid_until[i]);
-				if(!this.conditions_valid_until[i]) throw new Error("fixed_income: invalid set of dates provided under conditions_valid_until.");
-			}
-			if(this.conditions_valid_until[i-1].getTime() !==maturity.getTime()) throw new Error("fixed_income: last date provided under conditions_valid_until must match maturity");
+		this.conditions_valid_until = library.get_safe_date_vector(instrument.conditions_valid_until);
+                if(this.conditions_valid_until){ 
+			if(this.conditions_valid_until[this.conditions_valid_until.length-1].getTime() !==maturity.getTime()) throw new Error("fixed_income: last date provided under conditions_valid_until must match maturity");
 		}else{
-			this.conditions_valid_until=[maturity];
+			this.conditions_valid_until=[maturity]; //by default, conditions do not change until maturity
 		}
 
                 var settlement_days=library.get_safe_natural(instrument.settlement_days) || 0;
@@ -86,10 +79,10 @@
 
 
 		// fixing schedule
-		if(typeof instrument.fixed_rate === 'number'){
+		if(instrument.fixed_rate || instrument.fixed_rate === 0){
                         //fixed rate instrument
                         this.is_float=false;
-                        this.fixed_rate=instrument.fixed_rate; // can be number or array, arrays to be impleented
+                        this.fixed_rate=library.get_safe_number_vector(instrument.fixed_rate); //array valued
 			this.float_spread=0;
 			this.cap_rate=0;
 			this.floor_rate=0;
@@ -98,7 +91,7 @@
                         //floating rate instrument
                         this.is_float=true;
 			this.fixed_rate=null;
-                        this.float_spread=(typeof instrument.float_spread === 'number') ? instrument.float_spread : 0; // can be number or array, arrays to be impleented
+                        this.float_spread=library.get_safe_number_vector(instrument.float_spread) || [0]; // can be number or array, arrays to be impleented
                         if(typeof instrument.float_current_rate !== 'number')
                                 throw new Error("fixed_income: must provide valid float_current_rate.");
                         this.float_current_rate=instrument.float_current_rate;               
@@ -126,7 +119,7 @@
                 }
 
 		// repay schedule
-		if(this.repay_amount===0 && !this.interest_capitalization && !linear_amortization){
+		if(this.repay_amount.reduce(function(a,b){return Math.max(a,b);})===0 && this.repay_amount.reduce(function(a,b){return Math.min(a,b);})===0 && !this.interest_capitalization && !linear_amortization){
 			this.repay_schedule=[this.schedule[0], maturity];
 		}else{
                 	this.repay_schedule = library.schedule(this.schedule[0], 
@@ -138,7 +131,7 @@
 								repay_stub_end,
 								repay_stub_long);
 		}
-		if(linear_amortization) this.repay_amount=this.notional / (this.repay_schedule.length - 1);
+		if(linear_amortization) this.repay_amount=[this.notional / (this.repay_schedule.length - 1)];
 
                 this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
 
@@ -286,32 +279,20 @@
 		var icond=0;
 		while(this.conditions_valid_until[icond] < c.date_accrual_start[0]) icond++;
 
-                var current_repay = (typeof this.repay_amount  === 'number')? this.repay_amount: this.repay_amount[icond];  
-                var current_capitalization = (typeof this.interest_capitalization == "boolean") ? this.interest_capitalization: this.interest_capitalization[icond];
-            	var current_cap_rate = (typeof this.cap_rate  === 'number')? this.cap_rate: this.cap_rate[icond];
-		var current_floor_rate = (typeof this.floor_rate  === 'number')? this.floor_rate: this.floor_rate[icond];
+                var current_repay = this.repay_amount[Math.min(icond,this.repay_amount.length-1)];  
+                var current_capitalization = this.interest_capitalization[Math.min(icond,this.interest_capitalization.length-1)];
+            	var current_cap_rate = this.cap_rate[Math.min(icond,this.cap_rate.length-1)];
+		var current_floor_rate = this.floor_rate[Math.min(icond,this.floor_rate.length-1)];
 
 		//initialize interest rate
-                var current_rate, get_rate_or_spread, j;
-		if(!this.is_float) {
-			var r=this.fixed_rate;
-			if (typeof r === 'number'){
-				get_rate_or_spread=function(){return r;};
-			}else{
-				get_rate_or_spread=function(){return r[icond];};
-			}
-		}else{
-			var s=this.float_spread;
-			if (typeof s === 'number'){
-				get_rate_or_spread=function(){return s;};
-			}else{
-				get_rate_or_spread=function(){return s[icond];};
-			}
-		}
-
+                var current_rate, j;
+		var r=(this.is_float) ? this.float_spread : this.fixed_rate;
+		var get_rate_or_spread;
 		//override rate if needed
 		if (typeof override_rate_or_spread === 'number'){
 			get_rate_or_spread=function(){return override_rate_or_spread;};
+		}else{
+			get_rate_or_spread=function(){return r[Math.min(icond,r.length-1)];};
 		}
 		
 		if(!this.is_float){
@@ -382,10 +363,10 @@
 			//update conditions for next period
 			if(c.is_condition_date[i]){
 				icond++;
-				current_repay = (typeof this.repay_amount == "number")? this.repay_ampount: this.repay_amount[icond];  
-				current_capitalization = (typeof this.interest_capitalization == "boolean") ? this.interest_capitalization: this.interest_capitalization[icond];  
-				current_cap_rate = (typeof this.cap_rate == "number")? this.cap_rate: this.cap_rate[icond];
-				current_floor_rate = (typeof this.floor_rate == "number")? this.floor_rate: this.floor_rate[icond];
+        			current_repay = this.repay_amount[Math.min(icond,this.repay_amount.length-1)];  
+        		        current_capitalization = this.interest_capitalization[Math.min(icond,this.interest_capitalization.length-1)];
+        		    	current_cap_rate = this.cap_rate[Math.min(icond,this.cap_rate.length-1)];
+				current_floor_rate = this.floor_rate[Math.min(icond,this.floor_rate.length-1)];
 			}
 
 			//update interest rate for next period
@@ -458,30 +439,15 @@
 		while (cf.date_pmt[i]<=library.valuation_date) i++;
                 outstanding_principal=cf.current_principal[i];
 		
-		//approximate solution via annuity - will be exact if no interest rate capitalization
 		var guess;		
-		guess=outstanding_principal - library.dcf(cf,
+		guess=outstanding_principal - library.dcf(
+					   this.finalize_cash_flows(fc,0.0), // cash flow with zero interest
 		                           disc_curve,
 		                           spread_curve,
 		                           this.residual_spread,
 		                           this.settlement_date);
 		guess/=this.annuity(disc_curve, spread_curve, fc);
-		guess+=this.is_float ? this.float_spread : this.fixed_rate;
 		return guess;
-		/*
-		var tmp=this;
-		var optfunc=function(rate){
-			cf=tmp.finalize_cash_flows(fc, rate); //use override_rate_or_spread
-
-		        return outstanding_principal - library.dcf(cf,
-		                           disc_curve,
-		                           spread_curve,
-		                           this.residual_spread,
-		                           this.settlement_date);
-		};
-
-		return library.find_root_secant(optfunc, guess, guess+0.0001, 20, 0.0000001);
-		*/
         };
 
         library.fixed_income.prototype.annuity=function(disc_curve, spread_curve, fwd_curve){
@@ -519,12 +485,6 @@
 				library.get_safe_curve(spread_curve),
 				this.residual_spread,
 				this.settlement_date);
-        };
-
-
-        library.pricer_irregular_bond=function(bond, disc_curve, spread_curve, fwd_curve){
-                var bond_internal=new library.fixed_income(bond);
-                return bond_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
        
         library.pricer_bond=function(bond, disc_curve, spread_curve){
