@@ -1,0 +1,7 @@
+id,type,sub_portfolio,notional,quantity,market_value,currency,maturity,tenor,fixed_rate,float_current_rate,float_spread,calendar,dcc,bdc,float_tenor,float_dcc,float_bdc,effective_date,first_call_date,expiry
+1,bond,1,100000,,100000,EUR,30.11.2021,1,0.01,,,TARGET,Act/360,following,,Act/Act,unadjusted,30.06.2016,,
+2,floater,2,100000,,100000,EUR,30.11.2031,6,,0.01,,TARGET,Act/Act,unadjusted,,Act/360,following,30.08.2015,,
+3,bond,3,100000,,100000,EUR,30.11.2031,6,0.01,,,TARGET,Act/Act,unadjusted,,Act/360,following,30.08.2015,,
+4,swap,4,100000,,100000,EUR,30.11.2031,6,0.01,0.01,,TARGET,Act/Act,unadjusted,3,Act/360,following,30.08.2015,,
+5,swaption,5,100000,,100000,EUR,30.11.2031,6,0.01,0.01,,TARGET,Act/Act,unadjusted,3,Act/360,following,30.08.2015,30.11.2021,30.11.2021
+6,callable_bond,6,100000,,100000,EUR,30.11.2031,6,0.01,,,TARGET,Act/Act,unadjusted,,Act/360,following,30.08.2015,30.11.2021,

@@ -10,6 +10,7 @@ var load_params_from_server=function(sc){
 			sc.params=JSON.parse(req.responseText);
 			sc.res=null;
 			sc.errors=null;
+			sc.warnings=null;
                         sc.$apply();
 		}else{
 			alert("Could not load params from server");

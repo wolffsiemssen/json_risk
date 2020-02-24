@@ -1,11 +1,11 @@
 (function(library){        
         var default_yf=null;
 
-        library.get_const_curve=function(value){
+        library.get_const_curve=function(value, type){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
                 if(value <= -1) throw new Error("get_const_curve: invalid input."); 
                 return {
-                                type: "yield", 
+                                type: type || "yield", 
                                 times: [1], 
                                 dfs: [1/(1+value)] //zero rates are act/365 annual compounding
                        };

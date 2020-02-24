@@ -4,22 +4,25 @@ var app = angular.module('riskapp', []);
 app.controller('main_ctrl', ['$scope', function($scope) {
 
 	$scope.portfolio=JSON.parse(JSON.stringify(test_pf));
-	$scope.params=JSON.parse(JSON.stringify(test_params));
 	$scope.available_params={list: null, selection: null}
 	$scope.res=null;
 	$scope.errors=null;
+	$scope.warnings=null;
+
 	wrk=[];
     
 	$scope.load_test_pf=function(){
 		$scope.portfolio=JSON.parse(JSON.stringify(test_pf));
 		$scope.res=null;
 		$scope.errors=null;
+		$scope.warnings=null;
 	}
 
 	$scope.delete_pf=function(){
 		$scope.portfolio=null;
 		$scope.res=null;
 		$scope.errors=null;
+		$scope.warnings=null;
 	}
 	
 	$scope.update_params_list=function(){
@@ -32,14 +35,25 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 	$scope.load_test_params=function(){
 		$scope.params=JSON.parse(JSON.stringify(test_params));
+		$scope.params.curves['EUR_1M_FWD']=$scope.params.curves['EUR_OIS_DISCOUNT'];
+		$scope.params.curves['EUR_3M_FWD']=$scope.params.curves['EUR_OIS_DISCOUNT'];
+		$scope.params.curves['EUR_6M_FWD']=$scope.params.curves['EUR_OIS_DISCOUNT'];
+		$scope.params.curves['USD_OIS_DISCOUNT']=$scope.params.curves['EUR_OIS_DISCOUNT'];
+		$scope.params.curves['USD_1M_FWD']=$scope.params.curves['EUR_OIS_DISCOUNT'];
+		$scope.params.curves['USD_3M_FWD']=$scope.params.curves['EUR_OIS_DISCOUNT'];
+		$scope.params.curves['USD_6M_FWD']=$scope.params.curves['EUR_OIS_DISCOUNT'];
 		$scope.res=null;
 		$scope.errors=null;
+		$scope.warnings=null;
 	}
+
+	$scope.load_test_params();
 
 	$scope.delete_params=function(){
 		$scope.params={valuation_date: $scope.params.valuation_date};
 		$scope.res=null;
 		$scope.errors=null;
+		$scope.warnings=null;
 	}
 
 	$scope.export_params=function(){
@@ -140,6 +154,9 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		$scope.errors=null;
 	}
 
+	$scope.clear_warnings=function(){
+		$scope.warnings=null;
+	}
 
 	$scope.add_error=function(message, id){
 		if(!$scope.errors) $scope.errors=[];  //first error
@@ -152,7 +169,21 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 			j++;
 		}
 		if (j>=$scope.errors.length) $scope.errors.push({msg: message, id: id, count: 1}); //new error
-		$scope.$apply();
+//		$scope.$apply();
+	}
+
+	$scope.add_warning=function(message, id){
+		if(!$scope.warnings) $scope.warnings=[];  //first warning
+		var j=0;
+		while(j<$scope.warnings.length){
+			if ($scope.warnings[j].msg === message){ //same warning has already occured
+				$scope.warnings[j].count++;
+				break;
+			}
+			j++;
+		}
+		if (j>=$scope.warnings.length) $scope.warnings.push({msg: message, id: id, count: 1}); //new warning
+//		$scope.$apply();
 	}
 
 	$scope.calculate=function(){
@@ -183,8 +214,10 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 						}
 				        }
 					incomplete--;
+				}else if(e.data.warning){ //warning
+					$scope.add_warning(e.data.msg, e.data.id);
 				}else{ //error
-					$scope.add_error(e.data.msg, e.data.id);
+					$scope.add_error(e.data.msg || "unknown error", e.data.id || "unknown");
 					incomplete--;
 				}
 
@@ -235,6 +268,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 	$scope.delete_results=function(){
 		$scope.res=null;
 		$scope.errors=null;
+		$scope.warnings=null;
 	}
 	
 	$scope.update_params_list();

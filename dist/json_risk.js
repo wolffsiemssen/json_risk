@@ -48,7 +48,7 @@
 		*/
 		
 		//only fixed rate instruments 
-		if(typeof instrument.fixed_rate !== 'number') throw new Error("callable_fixed_income: must provide valid fixed_rate.");
+		if(!library.get_safe_number_vector(instrument.fixed_rate)) throw new Error("callable_fixed_income: must provide valid fixed_rate.");
 		
 		var fcd=library.get_safe_date(instrument.first_call_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
@@ -140,11 +140,11 @@
 ;(function(library){        
         var default_yf=null;
 
-        library.get_const_curve=function(value){
+        library.get_const_curve=function(value, type){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
                 if(value <= -1) throw new Error("get_const_curve: invalid input."); 
                 return {
-                                type: "yield", 
+                                type: type || "yield", 
                                 times: [1], 
                                 dfs: [1/(1+value)] //zero rates are act/365 annual compounding
                        };
@@ -744,6 +744,7 @@
 	};
     
         library.fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
+		if(this.is_float && (typeof fwd_curve !== 'object' || fwd_curve===null)) throw new Error("fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream");
                 return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
                                    library.get_safe_curve(disc_curve),
                                    library.get_safe_curve(spread_curve),

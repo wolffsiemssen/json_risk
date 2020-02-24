@@ -13,7 +13,7 @@
 		*/
 		
 		//only fixed rate instruments 
-		if(typeof instrument.fixed_rate !== 'number') throw new Error("callable_fixed_income: must provide valid fixed_rate.");
+		if(!library.get_safe_number_vector(instrument.fixed_rate)) throw new Error("callable_fixed_income: must provide valid fixed_rate.");
 		
 		var fcd=library.get_safe_date(instrument.first_call_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");

@@ -98,7 +98,7 @@ main app
                             </tr>
                           </thead>
                           <tbody>
-                            <tr ng-repeat="x in portfolio">
+                            <tr ng-repeat="x in portfolio | limitTo: 250">
                               <th scope="row">{{$index}}</th>
                               <td>{{x.id}}</td>
                               <td><span class="badge badge-primary">{{x.type}}</span></td>
@@ -284,6 +284,16 @@ main app
                     </div>
                   </div>
                 </div>
+
+		<div class="alert alert-warning alert-dismissible" role="alert" ng-if="warnings!==null">
+		  <button type="button" class="close" ng-click="clear_warnings()" aria-label="Close">
+		    <span aria-hidden="true">&times;</span>
+		  </button>
+                  <h4 class="alert-heading">One or more warnings occurred.</h4>
+                  <hr>
+                  <p ng-repeat="x in warnings">Warning on instrument {{x.id}}: {{x.msg}} <span ng-if="x.count>1">[repeats {{x.count}} times]</span> </p>
+                </div>
+
 		<div class="alert alert-danger alert-dismissible" role="alert" ng-if="errors!==null">
 		  <button type="button" class="close" ng-click="clear_errors()" aria-label="Close">
 		    <span aria-hidden="true">&times;</span>
