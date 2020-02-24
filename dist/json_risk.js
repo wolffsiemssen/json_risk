@@ -50,7 +50,7 @@
 		//only fixed rate instruments 
 		if(!library.get_safe_number_vector(instrument.fixed_rate)) throw new Error("callable_fixed_income: must provide valid fixed_rate.");
 		
-		var fcd=library.get_safe_date(instrument.first_call_date);
+		var fcd=library.get_safe_date(instrument.first_exercise_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
 	        this.base=new library.fixed_income(instrument);
 		this.call_schedule=library.schedule(fcd, 
@@ -69,7 +69,7 @@
 			this.basket[i]=new library.swaption({
 		                is_payer: false,
 		                maturity: instrument.maturity,
-		                expiry: this.call_schedule[i],
+		                first_exercise_date: this.call_schedule[i],
 		                notional: instrument.notional,
 		                fixed_rate: instrument.fixed_rate-this.opportunity_spread,
 		                tenor: instrument.tenor,
@@ -1090,8 +1090,8 @@
 			return val-target;
 		};
 		for (i=0; i<basket.length; i++){
-			if (library.time_from_now(basket[i].expiry)>1/512){
-				tte=library.time_from_now(basket[i].expiry);
+			if (library.time_from_now(basket[i].first_exercise_date)>1/512){
+				tte=library.time_from_now(basket[i].first_exercise_date);
 				ttm=library.time_from_now(basket[i].maturity);
 				//first step: derive initial guess based on Hagan formula 5.16c
 				//get swap fixed cash flow adjusted for basis spread
@@ -1750,16 +1750,16 @@
                 if(!this.maturity)
                         throw new Error("swaption: must provide valid maturity date.");
   
-                //expiry of the swaption
-                this.expiry=library.get_safe_date(instrument.expiry);
-                if(!this.expiry)
-                        throw new Error("swaption: must provide valid expiry date.");
+                //first_exercise_date (a.k.a. expiry) of the swaption
+                this.first_exercise_date=library.get_safe_date(instrument.first_exercise_date);
+                if(!this.first_exercise_date)
+                        throw new Error("swaption: must provide valid first_exercise_date date.");
 
                 //underlying swap object
 		this.swap=new library.swap({
 			is_payer: instrument.is_payer,
                         notional: instrument.notional,
-			effective_date: this.expiry,
+			effective_date: this.first_exercise_date,
                         maturity: instrument.maturity,
                         fixed_rate: instrument.fixed_rate,
                         tenor: instrument.tenor,
@@ -1779,8 +1779,8 @@
                 
                 //obtain times
                 var t_maturity=library.time_from_now(this.maturity);
-                var t_expiry=library.time_from_now(this.expiry);
-                var t_term=t_maturity-t_expiry;
+                var t_first_exercise_date=library.time_from_now(this.first_exercise_date);
+                var t_term=t_maturity-t_first_exercise_date;
                 if (t_term<1/512){
                         return 0;
                 }       
@@ -1789,13 +1789,13 @@
                 
                 //obtain time-scaled volatility
 		if(typeof vol_surface!=='object' || vol_surface===null) throw new Error("swaption.present_value: must provide valid surface");
-                var std_dev=library.get_surface_rate(vol_surface, t_expiry, t_term)*Math.sqrt(t_expiry);
+                var std_dev=library.get_surface_rate(vol_surface, t_first_exercise_date, t_term)*Math.sqrt(t_first_exercise_date);
                 
                 var res;
-		if (t_expiry<0){
+		if (t_first_exercise_date<0){
 			//degenerate case where swaption has expired in the past
 			return 0;
-		}else if (t_expiry<1/512 || std_dev<0.0001){
+		}else if (t_first_exercise_date<1/512 || std_dev<0.0001){
                         //degenerate case where swaption is almost expiring or volatility is very low
                         res=Math.max(this.swap.phi*(this.swap.fixed_rate - fair_rate), 0);
                 }else{
@@ -1813,7 +1813,7 @@
                 return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
         };
         
-        library.create_equivalent_regular_swaption=function(cf_obj, expiry, conventions){
+        library.create_equivalent_regular_swaption=function(cf_obj, first_exercise_date, conventions){
                 //sanity checks
                 if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
                 if (cf_obj.t_pmt.length !== cf_obj.pmt_total.length || cf_obj.t_pmt.length !== cf_obj.current_principal.length) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
@@ -1823,15 +1823,15 @@
                 var bdc=conventions.bdc || "unadjusted";
                 var calendar=conventions.calendar || "";
 
-                //retrieve outstanding principal on expiry (corresponds to regular swaption notional)
+                //retrieve outstanding principal on first_exercise_date (corresponds to regular swaption notional)
                 var outstanding_principal=0;
                 var i=0;
-		while (cf_obj.date_pmt[i]<=expiry) i++;
+		while (cf_obj.date_pmt[i]<=first_exercise_date) i++;
                 outstanding_principal=cf_obj.current_principal[i];
 
-                if (outstanding_principal===0) throw new Error("create_equivalent_regular_swaption: invalid cashflow object or expiry, zero outstanding principal");
+                if (outstanding_principal===0) throw new Error("create_equivalent_regular_swaption: invalid cashflow object or first_exercise_date, zero outstanding principal");
                 //compute internal rate of return for remaining cash flow including settlement payment
-                var irr=library.irr(cf_obj, expiry, -outstanding_principal);
+                var irr=library.irr(cf_obj, first_exercise_date, -outstanding_principal);
                 
                 //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
                 irr=12/tenor*(Math.pow(1+irr,tenor/12)-1);
@@ -1839,8 +1839,8 @@
                 //compute effective duration of remaining cash flow
                 var cup=library.get_const_curve(irr+0.0001);
                 var cdown=library.get_const_curve(irr-0.0001);
-                var npv_up=library.dcf(cf_obj, cup, null, null, expiry);
-                var npv_down=library.dcf(cf_obj, cdown, null, null, expiry);
+                var npv_up=library.dcf(cf_obj, cup, null, null, first_exercise_date);
+                var npv_down=library.dcf(cf_obj, cdown, null, null, first_exercise_date);
                 var effective_duration_target=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                 
                 //brief function to compute effective duration
@@ -1858,8 +1858,8 @@
                 var maturity=library.add_days(library.valuation_date, Math.round(t_maturity*365));
                 var bond={
                           maturity: maturity,
-                          effective_date: expiry,
-                          settlement_date: expiry,
+                          effective_date: first_exercise_date,
+                          settlement_date: first_exercise_date,
                           notional: outstanding_principal,
                           fixed_rate: irr,
                           tenor: tenor,
@@ -1881,9 +1881,9 @@
                 return {
                         is_payer: false,
                         maturity: maturity,
-                        expiry: expiry,
-			effective_date: expiry,
-			settlement_date: expiry,
+                        first_exercise_date: first_exercise_date,
+			effective_date: first_exercise_date,
+			settlement_date: first_exercise_date,
                         notional: outstanding_principal,
                         fixed_rate: irr,
                         tenor: tenor,

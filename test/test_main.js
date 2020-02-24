@@ -942,7 +942,7 @@ for (i=0; i<months.length; i++){
                 swaption={
                         is_payer: false,
                         maturity: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]+months[i]),
-                        expiry: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
+                        first_exercise_date: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
                         effective_date: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]),
                         notional: 10000,
                         fixed_rate: 0.02,
@@ -975,11 +975,11 @@ for (i=0; i<months.length; i++){
 Test cashflow equivalent swaption generation
 
 */
-var expiry, swaption, swaption_internal, cfs, bond_internal;
+var first_exercise_date, swaption, swaption_internal, cfs, bond_internal;
 for (i=0; i<months.length; i++){
         for (j=0; j<expiries.length; j++){
 
-                expiry=JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]);
+                first_exercise_date=JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]);
                 bond={
                         maturity: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]+months[i]),
                         notional: 10000,
@@ -992,7 +992,7 @@ for (i=0; i<months.length; i++){
                 p1=bond_internal.present_value(curve,null);
                 console.log("JSON Risk bond price:                           " + p1.toFixed(3)); 
                 cfs=bond_internal.get_cash_flows();
-                swaption=JsonRisk.create_equivalent_regular_swaption(cfs, expiry, bond);
+                swaption=JsonRisk.create_equivalent_regular_swaption(cfs, first_exercise_date, bond);
                 p2=JsonRisk.pricer_swaption(swaption,curve,curve, surface);
                 console.log("JSON Risk bond rate:                            " + bond.fixed_rate.toFixed(8));
                 console.log("JSON Risk equivalent regular swaption strike:   " + swaption.fixed_rate.toFixed(8));
@@ -1242,15 +1242,15 @@ for (i=0;i<expiries.length;i++){
 	//option PVs
 	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
 	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve, lgm_xi);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (equivalent regular vs original), expiry " +(i+1));
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (equivalent regular vs original), first_exercise_date " +(i+1));
 	result=JsonRisk.lgm_bermudan_call_on_cf(cf_obj,[yf(JsonRisk.valuation_date,expiries[i])], curve, [lgm_xi]);
 	console.log("NUMERIC ERROR: " + (result-result_orig)/bpv);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (numeric vs original), expiry " +(i+1));
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price (numeric vs original), first_exercise_date " +(i+1));
 	result_orig=JsonRisk.lgm_european_call_on_cf(cf_obj,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
 	result=JsonRisk.lgm_european_call_on_cf(cf_regular,yf(JsonRisk.valuation_date,expiries[i]), curve_100bp, lgm_xi);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (equivalent regular vs original), expiry " +(i+1));
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (equivalent regular vs original), first_exercise_date " +(i+1));
 	result=JsonRisk.lgm_bermudan_call_on_cf(cf_obj,[yf(JsonRisk.valuation_date,expiries[i])], curve_100bp, [lgm_xi]);
-	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (numeric vs original), expiry " +(i+1));
+	am(Math.abs(result-result_orig)/bpv<1, "LGM option price curve up (numeric vs original), first_exercise_date " +(i+1));
 
 	
 	console.log("--------------------------");
@@ -1285,7 +1285,7 @@ var result_multi;
 for (i=0; i<Maturity.length; i++){
         bonds.push({
 		maturity: Maturity[i],
-		first_call_date: Firstcall[i],
+		first_exercise_date: Firstcall[i],
 		tenor: Tenor[i],
 		call_tenor: 0,
 		notional: 100.0,
@@ -1296,7 +1296,7 @@ for (i=0; i<Maturity.length; i++){
         });
         multi_callable_bonds.push({
 		maturity: Maturity[i],
-		first_call_date: Firstcall[i],
+		first_exercise_date: Firstcall[i],
 		tenor: Tenor[i],
 		call_tenor: Calltenor[i],
 		notional: 100.0,
@@ -1309,7 +1309,7 @@ for (i=0; i<Maturity.length; i++){
 	swaptions.push({
                 is_payer: false,
                 maturity: Maturity[i],
-                expiry: Firstcall[i],
+                first_exercise_date: Firstcall[i],
                 notional: 100,
                 fixed_rate: 0.01,
                 tenor: Tenor[i],
@@ -1458,7 +1458,7 @@ results=JsonRisk.vector_pricer({
         type: 'swaption',
         is_payer: true,
         maturity: new Date(2032,1,1),
-        expiry: new Date(2022,1,1),
+        first_exercise_date: new Date(2022,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
         tenor: 12,
@@ -1479,7 +1479,7 @@ am(check(results), "Vector pricing with swaption returns valid vector of numbers
 results=JsonRisk.vector_pricer({
         type: 'callable_bond',
         maturity: new Date(2032,1,1),
-	first_call_date: new Date(2025,1,1),
+	first_exercise_date: new Date(2025,1,1),
 	call_tenor: 3,
         notional: 100.0,
         fixed_rate: 0.0125,
@@ -1515,7 +1515,7 @@ surface={expiries: [1,2,3,4,5], terms: [1,2,3,4,5], values: values};
 var bond={
 		effective_date: sd,
 		maturity: JsonRisk.add_months(sd,5*12),
-		first_call_date: JsonRisk.add_months(sd, 12),
+		first_exercise_date: JsonRisk.add_months(sd, 12),
 		tenor: 12,
 		notional: 1000.0,
 		fixed_rate: 0.05,
@@ -1546,7 +1546,7 @@ surface={expiries: [1], terms: [1], values: [[0.2*0.02]]};
 bond={
 		effective_date: sd,
 		maturity: new Date(2024, 4, 6),
-		first_call_date: new Date(2015, 4, 6),
+		first_exercise_date: new Date(2015, 4, 6),
 		tenor: 12,
 		notional: 1.0,
 		fixed_rate: 0.04,

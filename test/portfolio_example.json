@@ -217,7 +217,7 @@
   "float_dcc": "30/360",
   "float_bdc": "preceding",
   "effective_date": "30.11.2015",
-  "expiry": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "is_payer": false,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -242,7 +242,7 @@
   "float_dcc": "Act/360",
   "float_bdc": "following",
   "effective_date": "30.06.2015",
-  "expiry": "30.06.2025",
+  "first_exercise_date": "30.06.2025",
   "is_payer": true,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -497,7 +497,7 @@
   "float_dcc": "30/360",
   "float_bdc": "preceding",
   "effective_date": "30.11.2015",
-  "expiry": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "is_payer": false,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -522,7 +522,7 @@
   "float_dcc": "Act/360",
   "float_bdc": "following",
   "effective_date": "30.06.2015",
-  "expiry": "30.06.2025",
+  "first_exercise_date": "30.06.2025",
   "is_payer": true,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -777,7 +777,7 @@
   "float_dcc": "30/360",
   "float_bdc": "preceding",
   "effective_date": "30.11.2015",
-  "expiry": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "is_payer": false,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -802,7 +802,7 @@
   "float_dcc": "Act/360",
   "float_bdc": "following",
   "effective_date": "30.06.2015",
-  "expiry": "30.06.2025",
+  "first_exercise_date": "30.06.2025",
   "is_payer": true,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1057,7 +1057,7 @@
   "float_dcc": "30/360",
   "float_bdc": "preceding",
   "effective_date": "30.11.2015",
-  "expiry": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "is_payer": false,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1082,7 +1082,7 @@
   "float_dcc": "Act/360",
   "float_bdc": "following",
   "effective_date": "30.06.2015",
-  "expiry": "30.06.2025",
+  "first_exercise_date": "30.06.2025",
   "is_payer": true,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1337,7 +1337,7 @@
   "float_dcc": "30/360",
   "float_bdc": "preceding",
   "effective_date": "30.11.2015",
-  "expiry": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "is_payer": false,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1362,7 +1362,7 @@
   "float_dcc": "Act/360",
   "float_bdc": "following",
   "effective_date": "30.06.2015",
-  "expiry": "30.06.2025",
+  "first_exercise_date": "30.06.2025",
   "is_payer": true,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1419,7 +1419,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "call_tenor": 12
  },
  {
@@ -1442,7 +1442,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2021",
+  "first_exercise_date": "30.11.2021",
   "call_tenor": 12
  },
  {
@@ -1465,7 +1465,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2023",
+  "first_exercise_date": "30.11.2023",
   "call_tenor": 12
  },
  {
@@ -1488,7 +1488,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2025",
+  "first_exercise_date": "30.11.2025",
   "call_tenor": 12
  },
  {
@@ -1633,7 +1633,7 @@
   "float_dcc": "30/360",
   "float_bdc": "preceding",
   "effective_date": "30.11.2015",
-  "expiry": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "is_payer": false,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1658,7 +1658,7 @@
   "float_dcc": "Act/360",
   "float_bdc": "following",
   "effective_date": "30.06.2015",
-  "expiry": "30.06.2025",
+  "first_exercise_date": "30.06.2025",
   "is_payer": true,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1715,7 +1715,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "call_tenor": 12
  },
  {
@@ -1738,7 +1738,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2021",
+  "first_exercise_date": "30.11.2021",
   "call_tenor": 12
  },
  {
@@ -1761,7 +1761,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2023",
+  "first_exercise_date": "30.11.2023",
   "call_tenor": 12
  },
  {
@@ -1784,7 +1784,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2025",
+  "first_exercise_date": "30.11.2025",
   "call_tenor": 12
  },
  {
@@ -1929,7 +1929,7 @@
   "float_dcc": "30/360",
   "float_bdc": "preceding",
   "effective_date": "30.11.2015",
-  "expiry": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "is_payer": false,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -1954,7 +1954,7 @@
   "float_dcc": "Act/360",
   "float_bdc": "following",
   "effective_date": "30.06.2015",
-  "expiry": "30.06.2025",
+  "first_exercise_date": "30.06.2025",
   "is_payer": true,
   "is_short": false,
   "disc_curve": "EURO-GOV",
@@ -2011,7 +2011,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2020",
+  "first_exercise_date": "30.11.2020",
   "call_tenor": 12
  },
  {
@@ -2034,7 +2034,7 @@
   "fwd_curve": "EURO-GOV",
   "surface": "EUR-SWPTN",
   "spread_curve": "EURO-GOV",
-  "first_call_date": "30.11.2021",
+  "first_exercise_date": "30.11.2021",
   "call_tenor": 12
  },
  {

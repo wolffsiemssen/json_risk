@@ -15,7 +15,7 @@
 		//only fixed rate instruments 
 		if(!library.get_safe_number_vector(instrument.fixed_rate)) throw new Error("callable_fixed_income: must provide valid fixed_rate.");
 		
-		var fcd=library.get_safe_date(instrument.first_call_date);
+		var fcd=library.get_safe_date(instrument.first_exercise_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
 	        this.base=new library.fixed_income(instrument);
 		this.call_schedule=library.schedule(fcd, 
@@ -34,7 +34,7 @@
 			this.basket[i]=new library.swaption({
 		                is_payer: false,
 		                maturity: instrument.maturity,
-		                expiry: this.call_schedule[i],
+		                first_exercise_date: this.call_schedule[i],
 		                notional: instrument.notional,
 		                fixed_rate: instrument.fixed_rate-this.opportunity_spread,
 		                tenor: instrument.tenor,

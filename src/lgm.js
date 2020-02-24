@@ -226,8 +226,8 @@
 			return val-target;
 		};
 		for (i=0; i<basket.length; i++){
-			if (library.time_from_now(basket[i].expiry)>1/512){
-				tte=library.time_from_now(basket[i].expiry);
+			if (library.time_from_now(basket[i].first_exercise_date)>1/512){
+				tte=library.time_from_now(basket[i].first_exercise_date);
 				ttm=library.time_from_now(basket[i].maturity);
 				//first step: derive initial guess based on Hagan formula 5.16c
 				//get swap fixed cash flow adjusted for basis spread

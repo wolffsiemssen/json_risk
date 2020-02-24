@@ -110,9 +110,8 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 				"floor_rate",
 				"is_payer",
 				"is_short",
-				"expiry",
 				"current_accrued_interest",
-				"first_call_date",
+				"first_exercise_date",
 				"call_tenor",
 				"opportunity_spread"];
 			export_to_csv_file($scope.portfolio, "portfolio.csv", columns);
