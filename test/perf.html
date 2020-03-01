@@ -7,5 +7,119 @@
     
   </body>
   <script src="../dist/json_risk.js"></script>
-  <script src="test_perf.js"></script>
+  <script src="../examples/portfolio_pricing/test_data.js"></script>
+  <script>
+
+
+assign_disc_curve=function(i){
+	p=JsonRisk.get_params();
+	var msg;
+
+	//a valid curve has already been assigned
+	if(i.disc_curve in p.curves) return 0;
+
+	//need assignment
+	cname=(i.currency || "EUR") + "_OIS_DISCOUNT"; //default curve name
+	if(cname in p.curves){
+		//assign default
+
+		msg="Assigning default discount curve " + cname + ".";
+		if (i.disc_curve) msg+=" Originally assigned curve was not found in parameters.";
+		i.disc_curve=cname;
+		postMessage({warning: true, msg: msg, id: i.id})
+	}else{
+		msg="Could not find default discount curve " + cname + " in parameters.";
+		postMessage({warning: true, msg: msg, id: i.id})
+	}
+}
+
+assign_fwd_curve=function(i){
+	p=JsonRisk.get_params();
+	var msg;
+
+	//a valid curve has already been assigned
+	if(i.fwd_curve in p.curves) return 0;
+
+	//need assignment
+	cname=(i.currency || "EUR") + "_";
+	var tenor=i.float_tenor || i.tenor || 6;
+	switch(tenor){
+		case 1:
+			cname+="1M_";
+			break;
+		case 3:
+			cname+="3M_";
+			break;
+		default:
+			cname+="6M_";
+	}
+	cname+="FWD";
+		
+	if(cname in p.curves){
+		//assign default
+
+		msg="Assigning default forward curve " + cname + ".";
+		if (i.fwd_curve) msg+=" Originally assigned curve was not found in parameters.";
+		i.fwd_curve=cname;
+		postMessage({warning: true, msg: msg, id: i.id})
+	}else{
+		msg="Could not find default forward curve " + cname + " in parameters.";
+		postMessage({warning: true, msg: msg, id: i.id})
+	}
+}
+
+assign_surface=function(i){
+	p=JsonRisk.get_params();
+	var msg;
+
+	//a valid curve has already been assigned
+	if(i.surface in p.surfaces) return 0;
+
+	//need assignment
+	cname="CONST_10BP"; //default surface name
+	if(cname in p.surfaces){
+		//assign default
+
+		msg="Assigning default surface " + cname + ".";
+		if (i.surface) msg+=" Originally assigned surface was not found in parameters.";
+		i.surface=cname;
+		postMessage({warning: true, msg: msg, id: i.id})
+	}else{
+		msg="Could not find default surface " + cname + " in parameters.";
+		postMessage({warning: true, msg: msg, id: i.id})
+	}
+}
+
+assign_params=function(i){
+	switch(i.type){
+                case "callable_bond":
+                case "swaption":
+			assign_surface(i);
+                case "floater":
+                case "swap":
+			assign_fwd_curve(i);
+		case "bond":
+                case "fxterm":
+			assign_disc_curve(i);
+	}
+}
+
+JsonRisk.store_params(test_params);
+
+console.log("Start...");
+var n=JsonRisk.vector_pricer(test_pf[0]).length;
+var t0 = new Date().getTime();
+for (j=1;j<test_pf.length;j++){
+	assign_params(test_pf[j]);
+	JsonRisk.vector_pricer(test_pf[j]);
+	console.log(""+ (n*j) + " valuations...");
+}
+
+var t1 = new Date().getTime();
+var m;
+
+console.log("Valuations took " + (t1 - t0)/1000 + " seconds.");
+console.log("1 Mio. instruments with " + n + " Valuations would take " + (1000000*(t1 - t0)/1000/60/60/data.length).toFixed(2) + " hours.");
+
+  </script>
 </html>
