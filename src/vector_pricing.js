@@ -83,6 +83,12 @@
         library.get_params=function(){
                 return stored_params;
         };
+
+        library.set_params=function(params){
+		if (typeof(params) !== 'object') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
+		if (typeof(params.vector_length) !== 'number') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
+                stored_params=params;
+        };
         
         var get_scalar_curve=function(vec_curve, i){
                 if (!vec_curve) return null;
