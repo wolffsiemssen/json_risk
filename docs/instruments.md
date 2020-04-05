@@ -1,185 +1,332 @@
 # JSON Risk instruments guide
+
 JSON Risk supports the instrument types below:
+ 
+- Fixed income instruments
+  - Fixed rate bonds (`bond`)
+  - Floating rate bonds (`floater`)
+  - Interest rate swaps (`swap`)
+  - FX spot and forwards contracts (`fxterm`)
+- Callable fixed income instruments
+  - Plain vanilla swaptions (`swaption`)
+  - Single callable and multicallable bond (`callable_bond`)
 
-- Fixed rate bonds (bond)
-- Floating rate bonds (floater)
-- Interest rate swaps (swap)
-- FX Spot/Forward (fxterm)
-- Irregular bond (irregular_bond)
-- Equity (equity, to be implemented)
+Generally, an instrument is represented by a plain JSON object.
 
-## Single instrument JSON field definitions
-### Bond
+## Fixed and floating rate bonds - the `fixed_income` class.
 
-Fixed rate plain vanilla bond positions. Fields:
+Fixed and floating rate bonds provide a lot of flexibility to model a wide range of both banking book and trading book positons.
 
-- maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
-- notional (number)
-- fixed_rate (number, coupon rate for fixed rate bonds)
-- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+### Schedule generation
 
-Optional (improving pricing accuracy or adding features):
+Within schedule generation, these instruments support
 
-- effective\_date (date string)
-- first\_date (date string)
-- next\_to\_last\_date (date string)
-- stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)
-- stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
-- calendar (string)
-- bdc (string)
-- adjust\_accrual\_periods (boolean)
-- dcc (string)
-- settlement_days (number)
-- residual_spread (number, discounting spread over yield and spread curves)
-- currency
+- long and short implicit stubs (e.g., forward and backward roll out)
+- explicit initial and final stubs
+- completely independent generation of
+  - interest rate schedule
+  - fixing schedule for floating rate instruments
+  - repayment schedule for amortizing instruments
 
+### Amortization features
 
-### Floater
+The amortization features below allow to define various notional profiles:
 
-Floating rate plain vanilla bond positions. Fields:
+- bullet repayment upon maturity
+- step-down or linear amortization (regular repayments)
+- interest capitalization (allowing to define annuity-type profiles)
 
-- maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
-- notional (number)
-- float_spread (number, coupon spread for floater)
-- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+### Pricing and usage
 
-Optional (improving pricing accuracy or adding features):
+        //convenience pricing functions without object instantiation
+        var present_value=JsonRisk.pricer_bond(json_object, disc_curve, spread_curve);
+        var present_value=JsonRisk.pricer_floater(json_object, disc_curve, spread_curve, fwd_curve);
 
-- effective\_date (date string)
-- first\_date (date string)
-- next\_to\_last\_date (date string)
-- calendar (string)
-- bdc (string)
-- adjust\_accrual\_periods (boolean)
-- dcc (string)
-- settlement_days (number)
-- float\_current\_rate (number, current rate for floater)
-- residual_spread (number, discounting spread over yield and spread curves)
-- currency
+        //object instantiation
+        var fi=new JsonRisk.fixed_income(json_object);
+        
+        //pricing
+        present_value=fi.present_value(disc_curve, spread_curve, fwd_curve);
+
+        //access to cash flow table
+        var cfobject=fi.get_cash_flows(fwd_curve /* only needed for floaters */);
+
+        //fair rate derivation - returns fair spread over float for floaters
+        var fair_rate=fi.fair_rate_or_spread(disc_curve, spread_curve, fwd_curve /* only needed for floaters */);
 
 
-### Swap
+### Examples
 
-Plain vanilla swap positions. Fields:
+Fixed rate bullet bond with yearly coupon. This mininal definition below pulls default values e.g., no amortization, `act/365` day count convention and backward rollout of the interest rate schedule.
 
-- is_payer (boolean, true for swap paying fixed rate, false for swap receiving fixed rate)
-- maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
-- notional (number)
-- fixed_rate (number, coupon rate for fixed leg)
-- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
-- float_spread (number, spread above index for float leg)
-- float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+        {
+                notional: 100,
+                tenor: 12,                              //yearly coupon
+                fixed_rate: 0.01,
+                maturity: "2025/01/01"
+        }
 
-Optional (improving pricing accuracy or adding features):
+Fixed rate bullet bond with semi-annual coupon, explicit issuance date and explicit initial and final stubs.
 
-- effective\_date (date string)
-- calendar (string)
-- bdc (string)
-- float_bdc (string)
-- adjust\_accrual\_periods (boolean)
-- dcc (string)
-- float_dcc (string)
-- float\_current\_rate (number, current rate for float leg)
-- residual_spread (number, discounting spread over yield and spread curves)
-- currency
+        {
+                notional: 100,
+                tenor: 6,                               //semiannual coupon
+                fixed_rate: 0.01,
+                dcc: "a/a",                             //explicit day count convention
+                effective_date: "2015/01/01",
+                first_date: "2015/06/15",               //first interest payment date
+                next_to_last_date: "2024/06/15",        //penultimate interest payment date
+                maturity: "2025/01/01"
+        }
 
-### Swaption
+Fixed rate bullet bond with quarterly coupon and yearly amortization.
 
-Vanilla swaption positions. Fields:
+        {
+                notional: 100,
+                tenor: 3,                               //monthly coupon
+                fixed_rate: 0.01,
+                dcc: "a/a",
+                effective_date: "2015/01/01",
+                maturity: "2025/01/01",
+                
+                repay_amount: 5.0,                      //regular amortization amount...
+                repay_tenor: 12,                        //paid every year...
+                repay_next_to_last_date: "2024/06/15"   //on jun 15, remainder is paid at maturity.
+        }
 
-- is_payer (boolean, true if underlying swap pays fixed rate, false if underlying swap receives fixed rate)
-- is_short (boolean, true for short swaption, false for long swaptions which is the default)
-- maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY) representing the final maturity date of the underlying swap)
-- expiry (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY) representing the swaption expiry date, i.e., the settlement-upon-exercise date)
-- notional (number)
-- fixed_rate (number, coupon rate for fixed leg)
-- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
-- float_spread (number, spread above index for float leg)
-- float_tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
+Floating rate bullet bond with semi-annual coupon, current fixing provided
 
-Optional (improving pricing accuracy or adding features):
-
-- effective\_date (date string)
-- calendar (string)
-- bdc (string)
-- float_bdc (string)
-- adjust\_accrual\_periods (boolean)
-- dcc (string)
-- float_dcc (string)
-- float\_current\_rate (number, current rate for float leg)
-- residual_spread (number, discounting spread over yield and spread curves)
-- currency
-
-### FXTerm
-
-OTC FX spot, forward and swap positions, one instrument for each currency. Fields:
-
-- maturity (string (YYYY-MM-DD))
-- notional (number, negative for pay leg)
-
-Optional (adding FX swap feature)
-
-- maturity_2 (string (YYYY-MM-DD))
-- notional_2 (number, negative for pay leg)
-- currency (string)
-
-### Irregular bond
-
-Fixed or floating rate irregular bond positions, supporting amortisation structures. Fields:
-
-- effective\_date (date string)
-- maturity (date string (YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY))
-- notional (number)
-- fixed_rate (number, coupon rate for fixed rate loans, empty for floating rate loans)
-- tenor (number (0 for zerobond, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual interest rate periods. Other positive integers are also interpreted as monthly periods)
-
-Optional (improving pricing accuracy or adding features):
+        {
+                notional: 100,
+                tenor: 6,                               
+                float_current_rate: 0.01,               //currently fixed rate
+                float_spread: 0.025,                    //spread-over-float
+                dcc: "a/a",                             
+                maturity: "2025/01/01"
+        }
 
 
-- repay_tenor (number (0 for bullet repayment, 1 for one month, 3 for quarterly, 6 for semiannual and 12 for annual repayment schedules. Other positive integers are also interpreted as monthly periods)
-- repay_amount (non-negative number representing the amount repaid at each repayment date, defaults to zero)
-- linear_amortization (boolean, defaults to "false". overrides repay\_amount if true)
-- interest_capitalization (boolean, defaults to "false")
-- first\_date (date string representing the first or next interest payment date)
-- next\_to\_last\_date (date string)
-- stub_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)
-- stub_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
-- repay\_first\_date (date string representing the first or next repayment date)
-- repay\_next\_to\_last\_date (date string)
-- repay\_stub\_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e., schedule is rolled out forwards from effective date)
-- repay\_stub\_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
-- fixing\_first\_date (date string representing the first or next fixing date)
-- fixing\_next\_to\_last\_date (date string)
-- fixing\_stub\_end (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is at end, i.e.,schedule is rolled out forwards from effective date)
-- fixing\_stub\_long (boolean, defaults to false, used if no explicit stubs are given and indicates that stub is long)
-- float_spread (number, coupon spread for floater)
-- cap_rate (number)
-- floor_rate (number)
-- current\_accrued\_interest (number)
-- calendar (string)
-- bdc (string)
-- adjust\_accrual\_periods (boolean)
-- dcc (string)
-- residual_spread (number, discounting spread over yield and spread curves)
-- currency
+## Interest rate swaps - the `swap` class
 
-Optionally, this instrument type supports predetermined conditions. This requires an additional field:
+Instead of representing swaps leg-wise with the `fixed_income` class, the `swap` class captures both fixed and floating leg in one class. This is convenient for functionalities that require combining both legs, e.g., fair swap rate derivation.
 
-- conditions\_valid\_until (array of date string representing the dates when conditions change. Last array element must match maturity)
 
-If conditions\_valid\_until is set, the fields below can optionally contain arrays instead of scalars. Length must be one or the length of conditions\_valid\_until:
+### Pricing and usage
 
-- fixed_rate
-- interest_capitalization
-- repay_amount
-- float_spread
-- cap_rate
-- floot_rate
+        //convenience pricing function without object instantiation
+        var present_value=JsonRisk.pricer_swap(json_object, disc_curve, fwd_curve);
 
-### Equity
+        //object instantiation
+        var sw=new JsonRisk.swap(json_object);
+        
+        //pricing
+        present_value=sw.present_value(disc_curve, fwd_curve);
 
-Equity positions. Fields:
+        //access to cash flow tables
+        var cfobject_fix=sw.fixed_leg.get_cash_flows();
+        var cfobject_float=sw.float_leg.get_cash_flows(fwd_curve);
+        var cfobject_both=sw.get_cash_flows(fwd_curve); // returns object of the form {fixed_leg: cfobject_fixed, float_leg: cfobject_float}
 
-- quantity (number, number of pieces)
-- currency
+        //fixed leg annuity
+        var annuity=sw.annuity(disc_curve);
+
+        //determine fair swap rate
+        var fair_rate=sw.fair_rate(disc_curve, fwd_curve);
+
+
+### Examples
+
+Receiver swap:
+
+        {                
+                notional: 100,                          //for both legs
+                effective_date: "2015/01/01",
+                maturity: "2025/01/01",
+                calendar: "TARGET",
+
+                tenor: 12,                              //fixed leg
+                fixed_rate: 0.01,
+                dcc: "act/360",
+                bdc: "following",
+
+                float_tenor: 12,                        //floating leg
+                float_current_rate: 0.01,
+                float_spread: 0.025,
+                float_dcc: "act/360",
+                float_bdc: "following"
+        }
+
+Payer swap:
+
+        {                
+                is_payer: true,
+                notional: 100,                          //for both legs
+                effective_date: "2015/01/01",
+                maturity: "2025/01/01",
+                calendar: "TARGET",
+
+                tenor: 12,                              //fixed leg
+                fixed_rate: 0.01,
+                dcc: "act/360",
+                bdc: "following",
+
+                float_tenor: 12,                        //floating leg
+                float_current_rate: 0.01,
+                float_spread: 0.025,
+                float_dcc: "act/360",
+                float_bdc: "following"
+        }
+
+
+
+### Swaptions - the `swaption` class
+
+Vanilla swaption positions. Swaptions are priced using the bachelier model.
+
+### Pricing and usage
+
+        //convenience pricing function without object instantiation
+        var present_value=JsonRisk.pricer_swaption(json_object, disc_curve, fwd_curve, surface);
+
+        //object instantiation
+        var swptn=new JsonRisk.swaption(json_object);
+        
+        //pricing
+        present_value=swptn.present_value(disc_curve, fwd_curve, surface);
+
+        //access to underlying swap
+        var swap=swptn.base;
+
+## Examples
+
+Long receiver swaption:
+
+        {                
+                notional: 100,
+                first_exercise_date: "2022/01/01",      //expiry date of the swaption
+                maturity: "2025/01/01",
+                calendar: "TARGET",
+
+                tenor: 12,                              //underlying fixed leg
+                fixed_rate: 0.01,
+                dcc: "act/360",
+                bdc: "following",
+
+                float_tenor: 12,                        //underlying floating leg
+                float_current_rate: 0.01,
+                float_spread: 0.025,
+                float_dcc: "act/360",
+                float_bdc: "following"
+        }
+
+Short payer swaption:
+
+        {                
+                is_short: true,
+                is_payer: true,                
+                notional: 100,
+                first_exercise_date: "2022/01/01",      //expiry date of the swaption
+                maturity: "2025/01/01",
+                calendar: "TARGET",
+
+                tenor: 12,                              //underlying fixed leg
+                fixed_rate: 0.01,
+                dcc: "act/360",
+                bdc: "following",
+
+                float_tenor: 12,                        //underlying floating leg
+                float_current_rate: 0.01,
+                float_spread: 0.025,
+                float_dcc: "act/360",
+                float_bdc: "following"
+        }
+
+## FX spot, forward, and swap positions - the `fxterm` class
+
+This class represents a single-currency-side of an fx spot, forward or swap position.
+
+### Pricing and usage
+
+        //convenience pricing function without object instantiation
+        var present_value=JsonRisk.pricer_fxterm(json_object, disc_curve);
+
+        //object instantiation
+        var fxt=new JsonRisk.fxterm(json_object);
+        
+        //pricing
+        present_value=fxt.present_value(disc_curve);
+
+### Examples
+
+FX spot or forward:
+
+        {                
+                notional: 100,
+                maturity: "2025/01/01"
+        }
+
+FX swap:
+
+        {                
+                notional: 100,                  //near leg
+                maturity: "2024/01/01",
+
+                notional_2: 101.76,             //far leg
+                maturity_2: "2027/01/01"
+        }
+
+## Callable bonds - the `callable_fixed_income` class
+
+Callable bonds must be fixed rate bonds. Apart from that, all features from the `fixed_income` class are supported.
+
+Callable bond pricing is implemented with a Linear Gauss Markov (or, equivalently, Hull-White) model in the spirit of Hagan, Patrick; EVALUATING AND HEDGING EXOTIC SWAP INSTRUMENTS VIA LGM (2019). It calibrates to a basket of plain vanilla swaptions automatically generated under the hood.
+
+### Pricing and usage
+
+        //convenience pricing functions without object instantiation
+        var present_value=JsonRisk.pricer_callable_bond(json_object, disc_curve, spread_curve, fwd_curve, surface);
+
+        //object instantiation
+        var cb=new JsonRisk.callable_fixed_income(json_object);
+        
+        //pricing
+        present_value=cb.present_value(disc_curve, spread_curve, fwd_curve, surface);
+
+        //access to underlying cash flow table
+        var cfobject=cb.base.get_cash_flows();
+        
+### Examples
+
+European callable bond:
+
+        {
+                notional: 100,                          //fixed rate bond definition
+                tenor: 6,                               
+                fixed_rate: 0.01,
+                dcc: "a/a",                             
+                effective_date: "2015/01/01",
+                first_date: "2015/06/15",               
+                next_to_last_date: "2024/06/15",        
+                maturity: "2025/01/01",
+
+                first_exercise_date: "2022/01/01",      //call feature definition
+                call_tenor: 0                           //european call - default if no call_tenor given
+        }
+
+
+Multi-callable bond:
+
+        {
+                notional: 100,                          //fixed rate bond definition
+                tenor: 6,                               
+                fixed_rate: 0.01,
+                dcc: "a/a",                             
+                effective_date: "2015/01/01",
+                first_date: "2015/06/15",               
+                next_to_last_date: "2024/06/15",        
+                maturity: "2025/01/01",
+
+                first_exercise_date: "2022/01/01",      //call feature definition
+                call_tenor: 12                          //bermudan style call every 12 Months rolling forward from first exercise date
+        }
 

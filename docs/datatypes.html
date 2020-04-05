@@ -1,0 +1,104 @@
+<h1>JSON Risk instrument data types</h1>
+
+<hr />
+
+<h2><code>Boolean</code></h2>
+
+<p>Indicates true or false. JSON risk accepts</p>
+
+<ul>
+<li>JSON <code>true</code> and <code>false</code> literals</li>
+<li>JSON numbers, while <code>0</code> represents <code>false</code> and any other number represents <code>true</code></li>
+<li>JSON strings while <code>"true"</code>, <code>"yes"</code>, <code>"y"</code> and their uppercase or partial uppercase equivalents represent <code>true</code> and anything else represents <code>false</code>. Leading and trailing whiltespace is ignored.</li>
+</ul>
+
+<hr />
+
+<h2><code>Boolean vector</code></h2>
+
+<p>A vector of <code>Boolean</code> values, as used in, e.g., the attribute <code>interest_capitalization</code>. JSON risk accepts</p>
+
+<ul>
+<li>a single <code>Boolean</code> value as specified above, representing a single-entry vector</li>
+<li>JSON arrays of <code>Boolean</code> values as specified above</li>
+<li>JSON strings containing string representations of <code>Boolean</code> values as specified above, separated by one or more whitespace characters. The string <code>"true FALSE 0 1 yEs y"</code> is a valid example.</li>
+</ul>
+
+<hr />
+
+<h2><code>Date</code></h2>
+
+<p>A value representing a calendar date. JSON risk accepts</p>
+
+<ul>
+<li>Javascript date objects such as the one you get with <code>new Date(2020,0,27)</code></li>
+<li>JSON strings beginning with a DD.MM.YYYY style date such as <code>"27.01.2020"</code></li>
+<li>JSON strings beginning with a YYYY-MM-DD style date such as <code>"2020-01-27</code></li>
+<li>JSON strings beginning with a YYYY/MM/DD style date such as <code>"2020/01/27</code></li>
+</ul>
+
+<p>Consequently, a valid date is created when calling <code>JSON.parse()</code> on a JSON encoded date like <code>"2020-01-01T23:28:56.782Z"</code>. All examples represent January 1st, 2020 obviously.</p>
+
+<hr />
+
+<h2><code>Date vector</code></h2>
+
+<p>A vector of <code>Date</code> values, as used in, e.g., the attribute <code>conditions_valid_until</code>. JSON risk accepts</p>
+
+<ul>
+<li>a single <code>Date</code> value as specified above, representing a single-entry vector</li>
+<li>JSON arrays of <code>Date</code> values as specified above</li>
+<li>JSON strings containing string representations of <code>Date</code> values as specified above, separated by one or more whitespace characters. The string <code>"2020-01-01 2020/02/01 01.03.2020"</code> is a valid example.</li>
+</ul>
+
+<hr />
+
+<h2><code>Natural</code></h2>
+
+<p>A numeric integer with zero or positive value. JSON risk accepts</p>
+
+<ul>
+<li>JSON numbers such as <code>0</code>, <code>1</code>, <code>2</code> et cetera</li>
+<li>JSON strings that the JavaScript <code>parseFloat</code> function converts to a natural number, <code>"0"</code>, <code>"1"</code> or <code>"2.000"</code> are valid examples.</li>
+</ul>
+
+<hr />
+
+<h2><code>Number</code></h2>
+
+<p>A numeric value. JSON risk accepts</p>
+
+<ul>
+<li>JSON numbers such as <code>0.1</code>, <code>1</code>, <code>-10.99</code> et cetera</li>
+<li>JSON strings that can be converted to numbers by calling the JavaScript <code>parseFloat</code> function.</li>
+</ul>
+
+<p>For convenience, any parseable string the last non-whitespace character of which contains the percentage sign is interpreted as a percentage. For example <code>"3.50%"</code>, <code>"3.5 %"</code> and <code>"0.035"</code> all represent the same value.</p>
+
+<hr />
+
+<h2><code>Number vector</code></h2>
+
+<p>A vector of <code>Number</code> values, as used in, e.g., the attribute <code>fixed_rate</code>. JSON risk accepts</p>
+
+<ul>
+<li>a single <code>Number</code> value as specified above, representing a single-entry vector</li>
+<li>JSON arrays of <code>Number</code> values as specified above</li>
+<li>JSON strings containing string representations of <code>Number</code> values as specified above, separated by one or more whitespace characters. The string <code>"0.01 1.5% 2%"</code> is a valid example.</li>
+</ul>
+
+<hr />
+
+<h2><code>Period string</code></h2>
+
+<p>A JSON string representing a period. JSON risk accepts any string that
+ - the JavaScript <code>parseInt()</code> function converts into an integer and
+ - that is ended by <code>"y"</code>, <code>"m"</code>, <code>"w"</code> or <code>"d"</code> or their uppercase equivalents.</p>
+
+<p>The letters represent years, months, weeks and days, respectively.</p>
+
+<hr />
+
+<h2><code>String</code></h2>
+
+<p>A JSON string.</p>

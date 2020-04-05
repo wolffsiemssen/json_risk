@@ -3,22 +3,9 @@
 <p>JSON Risk supports the parameter types below:</p>
 
 <ul>
-<li>Curves
-<ul>
-<li>Yield term structures (yield)</li>
-<li>Spread curves (spread)</li>
-</ul></li>
-<li>Scalars (to be implemented)
-<ul>
-<li>Equity or index prices (equity)</li>
-<li>FX spot prices (fx)</li>
-</ul></li>
-<li>Surfaces
-<ul>
-<li>Bachelier, that is, normal interest rate volatility (bachelier)</li>
-<li>Black-76, that is, log-normal interest rate volatility (black, to be implemented)</li>
-<li>Black-Scholes volatility (bs, to be implemented)</li>
-</ul></li>
+<li>Scalars</li>
+<li>Curves</li>
+<li>Surfaces</li>
 </ul>
 
 <h2>Parameter Field definitions</h2>
@@ -28,69 +15,189 @@
 <p>Fields:</p>
 
 <ul>
-<li>type (string (equity or fx))</li>
-<li>value (number)</li>
+<li>type (JSON string, purely informative)</li>
+<li>value (JSON number or, in the context of vector pricing, JSON array of numbers.)</li>
 </ul>
 
-<p>Optional (e.g., for automatic parameter assignment):</p>
+<p>Regular example:</p>
 
-<ul>
-<li>currency (string)</li>
-<li>tag (string)</li>
-</ul>
+<pre><code>    {
+            type: "FX",
+            value: [1.038]
+    }
+</code></pre>
+
+<p>Vector pricing example with three scenarios:</p>
+
+<pre><code>    {
+            type: "FX",
+            value: [1.038, 1.045, 0.9934]
+    }
+</code></pre>
 
 <h3>Curves</h3>
 
 <p>Fields:</p>
 
 <ul>
-<li>type (string (yield, spread or fxterm))</li>
-<li>times (array of number) Note: If times are not provided, but optional days, dates or labels are provided, times are reconstructed from days (preferrably), dates (if days are not given) or labels (if neither times, days ot dates are given)</li>
-<li>dfs (discount factors, array of number) Note: If discount factors are not provided, but optional zero coupon rates are, then discount factors are calculated from zero coupon rates</li>
+<li>type (JSON string, purely informative)</li>
+<li>times (JSON array of numbers) Note: If times are not provided, but optional days, dates or labels are provided, times are reconstructed from days (preferrably), dates (if days are not given) or labels (if neither times, days ot dates are given)</li>
+<li>dfs (discount factors, JSON array of numbers) Note: If discount factors are not provided, but optional zero coupon rates are, then discount factors are calculated from zero coupon rates</li>
 </ul>
 
 <p>Optional: </p>
 
 <ul>
-<li>days (array of integer)</li>
-<li>dates (array of date string (e.g., 2010-01-15, 2010/01/15, 15.01.2010))</li>
-<li>labels (array of period string (e.g., 1D, 3M, 1Y, 10Y))</li>
-<li>zcs (zero coupon rates, array of number)</li>
-</ul>
-
-<p>Optional (e.g., for automatic parameter assignment):</p>
-
-<ul>
-<li>currency (string)</li>
-<li>tag (string)</li>
-<li>tenor (period string (typically 1D, 3M, 6M))</li>
+<li>days (JSON array of integers)</li>
+<li>dates (JSON array of <code>Date</code>, first date must correspond to valuation date)</li>
+<li>labels (JSON array of <code>Period string</code> values)</li>
+<li>zcs (zero coupon rates, JSON array of number)</li>
 </ul>
 
 <p><em>All arrays must be sorted by times in ascending order</em></p>
+
+<p>Example with times and discount factors:</p>
+
+<pre><code>    {
+            type: "yield",
+            days: [1, 2, 10],
+            dfs: [1.0003, 0.99994, 0.9992]
+
+    }
+</code></pre>
+
+<p>Example with days and discount factors:</p>
+
+<pre><code>    {
+            type: "yield",
+            days: [365, 730, 3650],
+            dfs: [1.0003, 0.99994, 0.9992]
+
+    }
+</code></pre>
+
+<p>Example with dates and discount factors:</p>
+
+<pre><code>    {
+            type: "yield",
+            dates: ["2019/01/01", "2020/01/01", "2021/01/01", "2030/01/01"],
+            dfs: [1, 1.0003, 0.99994, 0.9992]
+
+    }
+</code></pre>
+
+<p>Example with labels and zero coupon rates:</p>
+
+<pre><code>    {
+            type: "yield",
+            labels: ["1Y", "2Y", "10Y"],
+            zcs: [-0.00023, 0.00001, 0.0045]
+
+    }
+</code></pre>
+
+<p>Vector pricing example with four scenarios:</p>
+
+<pre><code>    {
+            type: "yield",
+            days: [1, 2, 10],
+            dfs: [
+                    [-0.00023, 0.00001, 0.0045],
+                    [-0.00024, 0.00001, 0.0045],
+                    [-0.00023, 0.00002, 0.0045],
+                    [-0.00023, 0.00001, 0.0046]
+            ]
+
+    }
+</code></pre>
 
 <h3>Surfaces</h3>
 
 <p>Fields:</p>
 
 <ul>
-<li>type (string (bs, black, bachelier))</li>
-<li>expiries (array of number) Note: If expiries are not provided, but optional labels_expiry are provided, expiries are reconstructed from labels_expiry</li>
-<li>terms (array of number) Note: If terms are not provided, but optional labels_expiry are provided, terms are reconstructed from labels_expiry</li>
-<li>values (array of array of number)</li>
+<li>type (JSON string, purely informative)</li>
+<li>expiries (JSON array of numbers) Note: If expiries are not provided, but optional labels_expiry are provided, expiries are reconstructed from labels_expiry</li>
+<li>terms (JSON array of numbers) Note: If terms are not provided, but optional labels_expiry are provided, terms are reconstructed from labels_expiry</li>
+<li>values (JSON array of arrays of numbers)</li>
 </ul>
 
 <p>Optional: </p>
 
 <ul>
-<li>labels_expiry (array of period string (e.g., 1D, 3M, 1Y, 10Y))</li>
-<li>labels_term (array of period string (e.g., 1D, 3M, 1Y, 10Y))</li>
-</ul>
-
-<p>Optional (e.g., for automatic parameter assignment):</p>
-
-<ul>
-<li>currency (string)</li>
-<li>tag (string used for parameter assignment)</li>
+<li>labels_expiry (JSON array of <code>Period string</code> values)</li>
+<li>labels_term (JSON array of <code>Period string</code> values)</li>
 </ul>
 
 <p><em>All arrays must be sorted by times (expiry, term) in ascending order</em></p>
+
+<p>Example with expiries and terms:</p>
+
+<pre><code>    {
+            type: "swaption",
+            expiries: [1, 2, 5],
+            terms: [0.5, 1],
+            values: [
+                            [0.002, 0.003, 0.004],
+                            [0.0021, 0.0032, 0.0043],
+                            [0.0025, 0.0035, 0.0044],
+            ]
+
+    }
+</code></pre>
+
+<p>Example with labels:</p>
+
+<pre><code>    {
+            type: "swaption",
+            labels_expiry: ["1Y", "2Y", "5Y"],
+            labels_term: ["6M", "1Y"],
+            values: [
+                            [0.002, 0.003, 0.004],
+                            [0.0021, 0.0032, 0.0043],
+                            [0.0025, 0.0035, 0.0044],
+            ]
+
+    }
+</code></pre>
+
+<p>Vector pricing example with two scenarios:</p>
+
+<pre><code>    {
+            type: "swaption",
+            expiries: [1, 2, 5],
+            terms: [0.5, 1],
+            values: [
+                    [
+                            [0.002, 0.003, 0.004],
+                            [0.0021, 0.0032, 0.0043],
+                            [0.0025, 0.0035, 0.0044],
+                    ],
+                    [
+                            [0.0025, 0.0035, 0.0045],
+                            [0.0026, 0.0037, 0.0048],
+                            [0.0030, 0.0040, 0.0049],
+                    ]
+            ]
+
+    }
+</code></pre>
+
+<h2>Conventions and pricing accuracy</h2>
+
+<p>JSON risk interprets zero coupon rates with the convention <code>act/365</code> and annual compounding. That is, discount factors are calculated with the formula</p>
+
+<pre><code>    dfs[i]=Math.pow(1 + zcs[i], -times[i])
+</code></pre>
+
+<p>when converting from zero coupon rates.</p>
+
+<p>Internally, JSON risk always calculates with times. Times represent years. JSON risk converts</p>
+
+<ul>
+<li>days to times by dividing by <code>365</code>, consistent with the <code>act/365</code> day count convention</li>
+<li>dates to times by assigning the first date a value of zero and compute all other dates into times with the <code>act/365</code> day count convention</li>
+<li>labels to times by parsing leading integers and dividing monthly values by <code>12</code>, weekly values by <code>52</code> and daily values by <code>365</code>, consistent with the <code>act/365</code> day count convention. Yearly values are not further converted, e.g., the period string <code>"1Y"</code> just represents one.</li>
+</ul>
+
+<p>When delivering yield curve or surface data from a source system, the easiest way to achieve maximum accuracy is to supply days and either discount factors or zero coupon rates with the convention <code>act/365</code> and annual compounding. Correct delivery of times or dates achieves the same accuracy. Labels are a convenient way for approximate pricing.</p>

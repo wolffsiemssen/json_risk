@@ -1,0 +1,661 @@
+<h1>JSON Risk instrument fields guide</h1>
+
+<hr />
+
+<h2>adjust_accrual_periods <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>If <code>true</code>, interest is calculated on adjusted coupon periods, i.e., from start and end of each accrual period <em>after</em> adjustment according to <code>bdc</code> and <code>calendar</code> attributes. Refer cash flow generation for details.</p>
+
+<hr />
+
+<h2>bdc <code>String</code></h2>
+
+<h3>Domain</h3>
+
+<p>JSON Risk recognizes <code>unadjusted</code>, <code>following</code>, <code>modified following</code>, <code>preceding</code>. For convenience, JSON Risk interprets only the first letter and ignores case. That is, for <code>m</code> and <code>M</code>, JSON Risk assumes the modified folling business day convention.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>This field determines how dates generated within schedule generation are adjusted, dependent on the field <code>calendar</code>. Refer cash flow generation for details.</p>
+
+<hr />
+
+<h2>calendar <code>String</code></h2>
+
+<h3>Domain</h3>
+
+<p>Contains the string <code>target</code>, case insensitive, or the identifier of any calendar previously registered using the <code>library.add_calendar</code> functionality.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Reference to the calendar used to adjust dates generated within cash flow generation.</p>
+
+<hr />
+
+<h2>call_tenor <code>Natural</code></h2>
+
+<h3>Domain</h3>
+
+<p>Any positive integer.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>The exercise dates for the instrument type <code>callable_bond</code> are determined by the attribute <code>first_exercise_date</code> which represents the first date the bond can be called, and the attribute <code>call_tenor</code>.
+If <code>call_tenor</code>is not zero, the bond is callable on the date represented by <code>first_exercise_date</code> and every <code>call_tenor</code> months after that date. If <code>call_tenor</code>is zero, the bond is callable on the date represented by <code>first_exercise_date</code> only.</p>
+
+<hr />
+
+<h2>cap_rate</h2>
+
+<p>This field has no meaning in the current implementation but is reserved for representing a cap rate or cap rate schedule on the interest rate of floating rate instruments.</p>
+
+<hr />
+
+<h2>conditions_valid_until <code>Date vector</code></h2>
+
+<h3>Domain</h3>
+
+<p>Any array of dates or date strings representing the dates when conditions change.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for many cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>callable_bond</code>.</p>
+
+<h3>Meaning</h3>
+
+<p>Specified the dates when conditions, e.g., <code>fixed_rate</code>, <code>float_spread</code> or <code>interest_capitalization</code>, change within a cashflow stream. Refer to cash flow generation for details.</p>
+
+<hr />
+
+<h2>currency <code>String</code></h2>
+
+<h3>Context</h3>
+
+<p>Only relevant in the context of vector pricing.</p>
+
+<h3>Domain</h3>
+
+<p>Any string representing any currency the conversion rate was previously registered in the parameters object for vector pricing.</p>
+
+<hr />
+
+<h2>dcc</h2>
+
+<h3>Domain</h3>
+
+<p>JSON Risk recognizes <code>Act/360</code>, <code>Act/365</code>, <code>30/360</code> and <code>Act/Act</code>. For convenience, JSON Risk ignores case and accepts the string <code>a</code> instead of <code>act</code>. The conventions <code>a/360</code>and <code>a/365</code> have the usual meaning, <code>a/a</code> refers to the Act/Act (ICMA) day count convention and <code>30/360</code> refers to the 30/360 European convention.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Determines how interest amounts are calculated for each accrual period generated within schedule generation.</p>
+
+<hr />
+
+<h2>disc_curve <code>String</code></h2>
+
+<h3>Context</h3>
+
+<p>Only relevant in the context of vector pricing.</p>
+
+<h3>Domain</h3>
+
+<p>Any string representing any curve previously registered in the parameters object for vector pricing.</p>
+
+<h3>Meaning</h3>
+
+<p>The curve referenced by this field is applied for discounting cash flows. For the instruments <code>bond</code>, <code>floater</code> and <code>callable_bond</code>, discounting is additionally affected by <code>spread_curve</code> as well as <code>residual_spread</code>.</p>
+
+<hr />
+
+<h2>effective_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Start date for schedule generation.</p>
+
+<hr />
+
+<h2>first_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an explicit initial stub for the interest schedule. Marks the end date of the initial interest rate period within schedule generation.</p>
+
+<hr />
+
+<h2>first_exercise_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>swaption</code> and <code>callable_bond</code>.</p>
+
+<h3>Meaning</h3>
+
+<p>For <code>swaption</code> instruments, this is the expiry date, i.e., the date when the swaption is exercised. The exercise dates for the instrument type <code>callable_bond</code> are determined by the attribute <code>first_exercise_date</code> which represents the first date the bond can be called, and the attribute <code>call_tenor</code>.</p>
+
+<hr />
+
+<h2>fixed_rate <code>Number</code> or <code>Number vector</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Represents the fixed rate paid on a <code>bond</code> instrument, a <code>callable_bond</code> instrument or the fixed leg of a <code>swap</code> or <code>swaption</code> instrument. For a <code>floater</code> instrument, this must be left empty, otherwise the floater is treated as a fixed rate bond.
+When the field <code>conditions_valid_until</code> is populated with a vector of dates, <code>fixed_rate</code> may contain a vector of numbers of the same length and each entry in <code>fixed_rate</code> is considered the valid interest rate until the corresponding entry in <code>conditions_valid_until</code>.</p>
+
+<hr />
+
+<h2>fixing_first_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an explicit initial stub for the fixing schedule. Marks the end date of the initial fixing period within schedule generation.</p>
+
+<hr />
+
+<h2>fixing_next_to_last_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an explicit final stub for the fixing schedule. Marks the start date of the final fixing period within schedule generation.</p>
+
+<hr />
+
+<h2>fixing_stub_end <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an implicit final stub for the fixing schedule. A value of <code>true</code> causes the fixing schedule to be rolled out forward within schedule generation. Ignored when <code>fixing_next_to_last_date</code> is populated.</p>
+
+<hr />
+
+<h2>fixing_stub_long <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>If start and end dates within fixing schedule generation are not aligned with <code>fixing_tenor</code>, a value of <code>true</code> specifies a long stub to be generated instead of a short stub.</p>
+
+<hr />
+
+<h2>float_bdc <code>String</code></h2>
+
+<h3>Domain</h3>
+
+<p>JSON Risk recognizes <code>unadjusted</code>, <code>following</code>, <code>modified following</code>, <code>preceding</code>. For convenience, JSON Risk interprets only the first letter and ignores case. That is, for <code>m</code> and <code>M</code>, JSON Risk assumes the modified folling business day convention.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>swap</code> and <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>Relevant for the floating rate leg only. This field determines how dates generated within schedule generation are adjusted, dependent on the field <code>calendar</code>. Refer cash flow generation for details.</p>
+
+<hr />
+
+<h2>float_current_rate <code>Number</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>floater</code>, <code>swap</code> and <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>This field specifies the interest rate to be used on floating rate legs for fixing periods starting in the past.</p>
+
+<hr />
+
+<h2>float_dcc <code>String</code></h2>
+
+<h3>Domain</h3>
+
+<p>JSON Risk recognizes <code>Act/360</code>, <code>Act/365</code>, <code>30/360</code> and <code>Act/Act</code>. For convenience, JSON Risk ignores case and accepts the string <code>a</code> instead of <code>act</code>. The conventions <code>a/360</code>and <code>a/365</code> have the usual meaning, <code>a/a</code> refers to the Act/Act (ICMA) day count convention and <code>30/360</code> refers to the 30/360 European convention.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>swap</code> and <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>Relevant for the floating rate leg only. Determines how interest amounts are calculated for each accrual period generated within schedule generation.</p>
+
+<hr />
+
+<h2>float_spread <code>Number</code> or <code>Number vector</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>floater</code>, <code>swap</code> and <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>Relevant for the floating rate leg only. Represents a spread over the floating rate. </p>
+
+<p>When the field <code>conditions_valid_until</code> is populated with a vector of dates, <code>float_spread</code> may contain a vector of numbers of the same length and each entry in <code>float_spread</code> is considered the valid spread over float until the corresponding entry in <code>conditions_valid_until</code>.</p>
+
+<hr />
+
+<h2>float_tenor <code>Natural</code></h2>
+
+<h3>Domain</h3>
+
+<p>Must be zero or positive.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>swap</code> and <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>Only relevant for the floating rate leg. A value of zero indicates interest is paid at maturity. Any other positive value is used within schedule generation for rolling out monthly dates.</p>
+
+<hr />
+
+<h2>floor_rate <code>Number</code></h2>
+
+<p>This field has no meaning in the current implementation but is reserved for representing a cap rate or cap rate schedule on the interest rate of floating rate instruments.</p>
+
+<hr />
+
+<h2>fwd_curve <code>String</code></h2>
+
+<h3>Context</h3>
+
+<p>Only relevant in the context of vector pricing.</p>
+
+<h3>Domain</h3>
+
+<p>Any string representing any curve previously registered in the parameters object for vector pricing.</p>
+
+<hr />
+
+<h2>interest_capitalization <code>Boolean</code> or <code>Boolean vector</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>If true, a notional payment is generated at each interest payment date within cash flow generation. The amount of the generated notional payment is calculated by changing the sign of the interest payment.</p>
+
+<p>When the field <code>conditions_valid_until</code> is populated with a vector of dates, <code>interest_capitalization</code> may contain a vector of booleans of the same length and each entry in <code>interest_capitalization</code> is considered valid until the corresponding entry in <code>conditions_valid_until</code>.</p>
+
+<hr />
+
+<h2>is_payer <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>swap</code>, <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>A value of <code>true</code> marks a <code>swap</code>instrument as a payer swap and marks a <code>swaption</code> instrument as a payer swaption. Defaults to <code>false</code>, implying a receiver swap or, respecitvely, a receiver swaption.</p>
+
+<hr />
+
+<h2>is_short <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>swaption</code></p>
+
+<h3>Meaning</h3>
+
+<p>A value of <code>true</code> marks a swaption as short, that is, the counterparty holds th eexercise right.</p>
+
+<hr />
+
+<h2>linear_amortization <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>If <code>true</code>, the field <code>repay_amount</code> is overriden and the repayment amount is calculated by dividing the <code>notional</code> by the number of repayments implied by the repayment schedule.</p>
+
+<hr />
+
+<h2>market_value</h2>
+
+<p>This field has no meaning in the current implementation but is reserved for representing the market value or, respectively, the dirty price of a position.</p>
+
+<hr />
+
+<h2>maturity <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for all cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code>, <code>fxterm</code></p>
+
+<h3>Meaning</h3>
+
+<p>The date when all remaining notionals are paid back. In case of <code>fxterm</code> instruments, this is the date when <code>notional</code> is paid, as opposed to <code>notional_2</code> which is paid at <code>maturity_2</code>.</p>
+
+<p>For all instruments except <code>fxterm</code>, the final payment date is subject to the business day convention in <code>bdc</code>, whereas the unadjusted maturity is used for schedule generation.</p>
+
+<hr />
+
+<h2>maturity_2 <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Only relevant for <code>fxterm</code></p>
+
+<h3>Meaning</h3>
+
+<p>The date when <code>notional_2</code> is paid, as opposed to <code>notional</code> which is paid at <code>maturity</code>.</p>
+
+<hr />
+
+<h2>next_to_last_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an explicit final stub for the interest schedule. Marks the start date of the final interest accrual period within schedule generation.</p>
+
+<hr />
+
+<h2>notional <code>Number</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for all cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code>, <code>fxterm</code></p>
+
+<h3>Meaning</h3>
+
+<p>The notional of an instrument. In case of amortizing instruments, this is the initial notional. In case of <code>fxterm</code> instruments, this is the near leg notional, i.e., the notional paid at <code>maturity</code> as opposed to <code>maturity_2</code></p>
+
+<hr />
+
+<h2>notional_2 <code>Number</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Only relevant for <code>fxterm</code></p>
+
+<h3>Meaning</h3>
+
+<p>Corresponds to the far leg notional of an <code>fxterm</code> instrument, i.e., the notional paid at <code>maturity_2</code>.</p>
+
+<hr />
+
+<h2>quantity <code>Number</code></h2>
+
+<p>This field has no meaning in the current implementation but is reserved for representing the quantity for, e.g., an equity position.</p>
+
+<hr />
+
+<h2>repay_amount <code>Number</code></h2>
+
+<h3>Domain</h3>
+
+<p>Zero, positive and negative valued accepted.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>The amount repaid at each date implied by the repayment schedule. If <code>notional</code> is positive, a positive value marks cash inflows. If <code>notional</code> is negative, a positive value marks cash outflows. A zero value switsches off amortization.</p>
+
+<p>When the field <code>conditions_valid_until</code> is populated with a vector of dates, <code>repay_amount</code> may contain a vector of numbers of the same length and each entry in <code>repay_amount</code> is considered valid until the corresponding entry in <code>conditions_valid_until</code>.</p>
+
+<hr />
+
+<h2>repay_first_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an explicit initial stub for the repayment schedule. Marks first date when repayments occur within schedule generation.</p>
+
+<hr />
+
+<h2>repay_next_to_last_date <code>Date</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an explicit final stub for the repayment schedule. Marks the last date before maturity where repayment occors within schedule generation.</p>
+
+<hr />
+
+<h2>repay_stub_end <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an implicit final stub for the repayment schedule. A value of <code>true</code> causes the repayment schedule to be rolled out forward within schedule generation. Ignored when <code>repay_next_to_last_date</code> is populated.</p>
+
+<hr />
+
+<h2>repay_stub_long <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>If start and end dates within repayment schedule generation are not aligned with <code>repay_tenor</code>, a value of <code>true</code> specifies a long stub to be generated instead of a short stub.</p>
+
+<hr />
+
+<h2>repay_tenor <code>Natural</code></h2>
+
+<h3>Domain</h3>
+
+<p>Must be zero or positive.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>A value of zero indicates a bullet instrument, i.e., all notional is paid back at maturity. Any other positive value is used within repayment schedule generation for rolling out monthly dates.</p>
+
+<hr />
+
+<h2>residual_spread <code>Number</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Within discounted cash flow valuation, this number is interpreted as an additional spread with day count convention <code>act/365</code> and annual compounding that is added on top of the discount curve and the spread curve.</p>
+
+<hr />
+
+<h2>settlement_days <code>Natural</code></h2>
+
+<h3>Domain</h3>
+
+<p>Must be zero or positive</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h2>Meaning</h2>
+
+<p>Within discounted cash flow valuation, this specifies a number of business days where payments are not included in the present value.</p>
+
+<hr />
+
+<h2>spread_curve <code>String</code></h2>
+
+<h3>Context</h3>
+
+<p>Only relevant in the context of vector pricing</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
+
+<h3>Domain</h3>
+
+<p>Any string representing any curve previously registered in the parameters object for vector pricing.</p>
+
+<h3>Meaning</h3>
+
+<p>The curve referenced by this field is applied for discounting cash flows, in addition to the curve specified under <code>disc_curve</code> as well as the <code>residual_spread</code>.</p>
+
+<hr />
+
+<h2>stub_end <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>Used fo specifying an implicit final stub for the interest schedule. A value of <code>true</code> causes the interest schedule to be rolled out forward within schedule generation. Ignored when <code>next_to_last_date</code> is populated.</p>
+
+<hr />
+
+<h2>stub_long <code>Boolean</code></h2>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>If start and end dates within interest schedule generation are not aligned with <code>tenor</code>, a value of <code>true</code> specifies a long stub to be generated instead of a short stub.</p>
+
+<hr />
+
+<h2>surface <code>String</code></h2>
+
+<h3>Context</h3>
+
+<p>Only relevant in the context of vector pricing.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for <code>swaption</code> and <code>callable_bond</code> instruments.</p>
+
+<h3>Domain</h3>
+
+<p>Any string representing any surface previously registered in the parameters object for vector pricing.</p>
+
+<h3>Meaning</h3>
+
+<p>Bachelier volatility curve object used for valuation.</p>
+
+<hr />
+
+<h2>tenor <code>Natural</code></h2>
+
+<h3>Domain</h3>
+
+<p>Must be zero or positive.</p>
+
+<h3>Instruments</h3>
+
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+
+<h3>Meaning</h3>
+
+<p>A value of zero indicates interest is paid at maturity. Any other positive value is used within schedule generation for rolling out monthly dates.</p>
+
+<hr />
+
+<h2>type <code>String</code></h2>
+
+<h3>Context</h3>
+
+<p>Only relevant in the context of vector pricing.</p>
+
+<h3>Domain</h3>
+
+<p>Either <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code> or <code>fxterm</code></p>
+
+<h3>Meaning</h3>
+
+<p>The vector pricing algorithm uses this field to determine</p>
+
+<ul>
+<li>what internal class to use for pricing;</li>
+<li>what parameters to assign and apply for pricing.</li>
+</ul>
+
+<p>For example, </p>
+
+<ul>
+<li>for a <code>bond</code> type instrument, a <code>fixed_income</code> internal object is created and a discount curve and a spread curve are assigned,</li>
+<li>for a <code>swap</code> type instrument, a <code>swap</code> internal object is created and a discount curve and a forward curve are assigned,</li>
+<li>for a <code>floater</code> type instrument, a <code>fixed_income</code> internal object is created and a discount curve, a spread curve and a forward curve are assigned,</li>
+<li>for a <code>callable_bond</code> type instrument, a <code>callable_fixed_income</code> internal object is created and a discount curve, a forward curve, a spread curve and a surface are assigned.</li>
+</ul>
