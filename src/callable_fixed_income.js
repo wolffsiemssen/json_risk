@@ -18,6 +18,7 @@
 		var fcd=library.get_safe_date(instrument.first_exercise_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
 	        this.base=new library.fixed_income(instrument);
+                if (!this.base.notional_exchange) throw new Error("callable_fixed_income: callable instruments must exchange notionals");
 		this.call_schedule=library.schedule(fcd, 
 						     library.get_safe_date(instrument.maturity), 
 						     instrument.call_tenor || 0, //european call by default

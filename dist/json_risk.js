@@ -53,6 +53,7 @@
 		var fcd=library.get_safe_date(instrument.first_exercise_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
 	        this.base=new library.fixed_income(instrument);
+                if (!this.base.notional_exchange) throw new Error("callable_fixed_income: callable instruments must exchange notionals");
 		this.call_schedule=library.schedule(fcd, 
 						     library.get_safe_date(instrument.maturity), 
 						     instrument.call_tenor || 0, //european call by default
@@ -838,7 +839,7 @@
                 //the far payment of the swap
                 if (typeof(instrument.notional_2) === "number" && library.get_safe_date(instrument.maturity_2)){
                         this.far_leg=new library.fixed_income({
-                                notional: instrument.notional_2, // negative if first leg is pay leg
+                                notional: instrument.notional_2, // negative if second leg is pay leg
                                 maturity: instrument.maturity_2,
                                 fixed_rate: 0,
                                 tenor: 0
@@ -2286,7 +2287,7 @@
 			       scalars: {},
 			       curves: {},
 			       surfaces: {}
-			      };
+	        };
 
                 var keys, i;
                 //valuation date
@@ -2324,6 +2325,12 @@
         
         library.get_params=function(){
                 return stored_params;
+        };
+
+        library.set_params=function(params){
+		if (typeof(params) !== 'object') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
+		if (typeof(params.vector_length) !== 'number') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
+                stored_params=params;
         };
         
         var get_scalar_curve=function(vec_curve, i){

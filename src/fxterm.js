@@ -14,7 +14,7 @@
                 //the far payment of the swap
                 if (typeof(instrument.notional_2) === "number" && library.get_safe_date(instrument.maturity_2)){
                         this.far_leg=new library.fixed_income({
-                                notional: instrument.notional_2, // negative if first leg is pay leg
+                                notional: instrument.notional_2, // negative if second leg is pay leg
                                 maturity: instrument.maturity_2,
                                 fixed_rate: 0,
                                 tenor: 0

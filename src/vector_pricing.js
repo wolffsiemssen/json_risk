@@ -44,7 +44,7 @@
 			       scalars: {},
 			       curves: {},
 			       surfaces: {}
-			      };
+	        };
 
                 var keys, i;
                 //valuation date

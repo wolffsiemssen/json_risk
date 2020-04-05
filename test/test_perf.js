@@ -1,6 +1,7 @@
 var JsonRisk=require('../dist/json_risk.js');
 var data=require('./params_example.json');
 JsonRisk.store_params(data);
+
 data=require('./portfolio_example.json');
 
 console.log("Start...");
