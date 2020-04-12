@@ -3,7 +3,7 @@ A JSON / JavaScript financial risk and pricing library
 ## Why to use a JavaScript financial risk and pricing library
 Here are three reasons for using a financial risk and pricing library in JavaScript.
 
- - As one of the key technologies of the web, JavaScript is ubiquitous, heavily supported by the leading tech companies and supported by a large open source community.
+ - As one of the key technologies of the web, JavaScript is ubiquitous and heavily supported by the leading tech companies and by a large open source community.
  - Web applications required to have access to financial math logic both on the client and on the server side are largely bound to use JavaScript, as JavaScript is the only programming language natively supported in all major web browsers.
  - With JSON being a native subset of JavaScript, data interchange in JavaScript applications is almost as easy as calling the Javascript `JSON.parse` and `JSON.stingify` functions, making any parsing and serialization logic obsolete for most applications.
 
