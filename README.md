@@ -1,8 +1,11 @@
 A JSON / JavaScript financial risk and pricing library
 
-## What is is
-- a JSON data model and data format to describe financial instruments and valuation parameters
-- a JavaScript pricing library that uses the data model for pricing and risk analysis of financial instruments
+## Why to use a JavaScript financial risk and pricing library
+Here are three reasons for using a financial risk and pricing library in JavaScript.
+
+ - As one of the key technologies of the web, JavaScript is ubiquitous, heavily supported by the leading tech companies and supported by a large open source community.
+ - Web applications required to have access to financial math logic both on the client and on the server side are largely bound to use JavaScript, as JavaScript is the only programming language natively supported in all major web browsers.
+ - With JSON being a native subset of JavaScript, data interchange in JavaScript applications is almost as easy as calling the Javascript `JSON.parse` and `JSON.stingify` functions, making any parsing and serialization logic obsolete for most applications.
 
 ## How to include in node.js:
 
@@ -119,5 +122,4 @@ Saturdays and Sundays are considered holidays in all custom calendars.
  - The [Fields guide](https://www.jsonrisk.de/01_Documentation/02_Fields.html) contains a complete list of JSON fields for describing instrument terms and conditions
  - The [Data types guide](https://www.jsonrisk.de/01_Documentation/03_Data_types.html) explains the data types used in the JSON fields
  - The [Parameters guide](https://www.jsonrisk.de/01_Documentation/02_Parameters.html) explains how to represent parameters for valuation, e.g., yield curves and surfaces.
-
-
+ - The [Schedule generation guide](https://www.jsonrisk.de/01_Documentation/05_Schedule_generation.html) explains how JSON risk generates schedules for interest rate instruments.
