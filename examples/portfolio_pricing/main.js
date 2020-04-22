@@ -9,6 +9,9 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 	$scope.errors=null;
 	$scope.warnings=null;
 
+        $scope.filter={text: ""};
+        $scope.editor={json: null,index: -1}
+
 	wrk=[];
     
 	$scope.load_test_pf=function(){
@@ -184,6 +187,52 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		if (j>=$scope.warnings.length) $scope.warnings.push({msg: message, id: id, count: 1}); //new warning
 //		$scope.$apply();
 	}
+
+        $scope.remove=function(item){
+                var i=$scope.portfolio.indexOf(item);
+                $scope.portfolio.splice(i,1);
+        }
+
+        $scope.edit=function(item){
+                $scope.editor.index=$scope.portfolio.indexOf(item);
+                var repl=function(key,value){
+		        if (key==='$$hashKey') return undefined; //exclude angluarJS internal variable
+		        return value;
+	        };
+                $scope.editor.json=JSON.stringify(item, repl, 1);
+        }
+
+
+        function is_unique_id(str){
+                for(j=0; j<$scope.portfolio.length;j++){
+                        if($scope.portfolio[j].id===str) return false;
+                }
+                return true;
+        }
+        $scope.add=function(){
+                if ($scope.editor.json){
+                        var item=JSON.parse($scope.editor.json)
+                        var i=0,id=item.id||'';
+                        while(!is_unique_id(id)){
+                                id=item.id+'_'+i;
+                                i++;
+                        }
+                        item.id=id;
+                        $scope.portfolio.unshift(item);
+                        $scope.editor.index=-1;
+                }
+        }
+
+        $scope.save=function(){
+                if ($scope.editor.json && $scope.editor.index>=0){
+                        $scope.portfolio[$scope.editor.index]=JSON.parse($scope.editor.json);
+                        $scope.editor.index=-1;
+                }
+        }
+
+        $scope.cancel_editor=function(){
+                $scope.editor={json: null,index: -1}
+        }
 
 	$scope.calculate=function(){
 		$scope.busy=true;
