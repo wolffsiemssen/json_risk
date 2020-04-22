@@ -70,7 +70,7 @@
 
 <ul>
 <li>JSON numbers such as <code>0.1</code>, <code>1</code>, <code>-10.99</code> et cetera</li>
-<li>JSON strings that can be converted to numbers by calling the JavaScript <code>parseFloat</code> function.</li>
+<li>JSON strings that can be converted to numbers by calling the JavaScript <code>parseFloat()</code> function.</li>
 </ul>
 
 <p>For convenience, any parseable string the last non-whitespace character of which contains the percentage sign is interpreted as a percentage. For example <code>"3.50%"</code>, <code>"3.5 %"</code> and <code>"0.035"</code> all represent the same value.</p>
@@ -91,11 +91,14 @@
 
 <h2><code>Period string</code></h2>
 
-<p>A JSON string representing a period. JSON risk accepts any string that
- - the JavaScript <code>parseInt()</code> function converts into an integer and
- - that is ended by <code>"y"</code>, <code>"m"</code>, <code>"w"</code> or <code>"d"</code> or their uppercase equivalents.</p>
+<p>A JSON string representing a period. JSON risk accepts any string that</p>
 
-<p>The letters represent years, months, weeks and days, respectively.</p>
+<ul>
+<li>the JavaScript <code>parseInt()</code> function converts into an integer and</li>
+<li>that is ended by <code>"y"</code>, <code>"m"</code>, <code>"w"</code> or <code>"d"</code> or their uppercase equivalents.</li>
+</ul>
+
+<p>The letters represent years, months, weeks and days, respectively. The strings <code>"2d"</code>, <code>"30W"</code> and <code>"16Y"</code> are valid examples.</p>
 
 <hr />
 

@@ -49,7 +49,7 @@ See the [documentation](https://www.jsonrisk.de/01_Documentation.html) for detai
 
 ## Library features
 
-## Supported instruments
+### Supported instruments
 
 JSON Risk supports the instrument types below:
  

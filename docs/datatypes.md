@@ -48,7 +48,7 @@ A numeric integer with zero or positive value. JSON risk accepts
 A numeric value. JSON risk accepts
 
  - JSON numbers such as `0.1`, `1`, `-10.99` et cetera
- - JSON strings that can be converted to numbers by calling the JavaScript `parseFloat` function.
+ - JSON strings that can be converted to numbers by calling the JavaScript `parseFloat()` function.
 
 For convenience, any parseable string the last non-whitespace character of which contains the percentage sign is interpreted as a percentage. For example `"3.50%"`, `"3.5 %"` and `"0.035"` all represent the same value.
 
@@ -63,10 +63,11 @@ A vector of `Number` values, as used in, e.g., the attribute `fixed_rate`. JSON 
 ------------------------------------------------------------------------------
 ## `Period string`
 A JSON string representing a period. JSON risk accepts any string that
+
  - the JavaScript `parseInt()` function converts into an integer and
  - that is ended by `"y"`, `"m"`, `"w"` or `"d"` or their uppercase equivalents.
 
-The letters represent years, months, weeks and days, respectively.
+The letters represent years, months, weeks and days, respectively. The strings `"2d"`, `"30W"` and `"16Y"` are valid examples.
 
 ------------------------------------------------------------------------------
 ## `String`
