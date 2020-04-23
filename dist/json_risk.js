@@ -2349,7 +2349,7 @@
                 };
         };
         
-        var get_internal_object=function(instrument){
+        library.get_internal_object=function(instrument){
                 switch (instrument.type.toLowerCase()){
                         case "bond":
                         case "floater":
@@ -2363,14 +2363,14 @@
                         case "callable_bond":
                         return new library.callable_fixed_income(instrument);
                         default:
-                        throw new Error ("vector_pricer: invalid instrument type");
+                        throw new Error ("get_internal_object: invalid instrument type");
                 }
         };
         
         library.vector_pricer=function(instrument){
                 if (typeof(instrument.type)!== 'string') throw new Error ("vector_pricer: instrument object must contain valid type");
                 library.valuation_date=stored_params.valuation_date;
-                var obj=get_internal_object(instrument);
+                var obj=library.get_internal_object(instrument);
                 var vec_dc=stored_params.curves[instrument.disc_curve || ""] || null;
                 var vec_sc=stored_params.curves[instrument.spread_curve || ""] || null;
                 var vec_fc=stored_params.curves[instrument.fwd_curve || ""] || null;

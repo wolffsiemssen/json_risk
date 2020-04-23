@@ -24,6 +24,11 @@ Papa Parse
 <script src="papaparse.min.js"></script>
 
 <!--
+JSON risk
+-->
+<script src="json_risk.min.js"></script>
+
+<!--
 main app
 -->
 
@@ -64,6 +69,7 @@ main app
                   <hr>
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="create()">Create instrument</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('portfolio')">Import</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_pf()">Load test portfolio</button>
                     </div>
@@ -74,6 +80,7 @@ main app
                   <hr>
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="create()">Create instrument</button>                        
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('portfolio')">Import more</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="delete_pf()">Clear</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_portfolio('json')">Export json</button>
@@ -88,14 +95,17 @@ main app
                 </div>
 
                 <div class="alert alert-success" role="alert" ng-if="editor.json">
-                  <h4 class="alert-heading">Edit</h4>
+                  <h4 class="alert-heading">View and edit</h4>
                   <hr>
                   <textarea ng-model="editor.json" class="form-control input-sm input-outline-secondary" rows="12"></textarea>
+                  <hr ng-if="!editor.valid">
+                  <strong ng-if="!editor.valid">Invalid JSON:</strong>                  
+                  <p ng-if="!editor.valid">{{editor.msg}}</p>
                   <hr>
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="save()" ng-if="editor.index>=0">Save</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="add()">Add as new item</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="save()" ng-if="editor.index>=0 && editor.valid">Save</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="add_as_new()" ng-if="editor.valid">Add as new item</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="cancel_editor()">Cancel</button>
                     </div>
                   </div>
@@ -123,9 +133,11 @@ main app
                             <tr ng-repeat="x in portfolio | filter:filter.text | limitTo: 250">
                               <th scope="row">
                                     <div class="btn-group mr-2">
-                                        <button type="button" class="btn btn-sm btn-secondary" ng-click="edit(x)">Edit</button>
-                                        <button type="button" class="btn btn-sm btn-secondary" ng-click="remove(x)">Remove</button>
+                                        <button type="button" class="btn btn-sm btn-link" ng-click="view(x)">View</button>                                        
+                                        <button type="button" class="btn btn-sm btn-link" ng-click="edit(x)">Edit</button>
+                                        <button type="button" class="btn btn-sm btn-link" ng-click="remove(x)">Remove</button>
                                     </div>
+
                               </th>
                               <th scope="row">{{$index}}</th>
                               <td>{{x.id}}</td>

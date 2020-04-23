@@ -188,18 +188,81 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 //		$scope.$apply();
 	}
 
-        $scope.remove=function(item){
-                var i=$scope.portfolio.indexOf(item);
-                $scope.portfolio.splice(i,1);
+
+        function repl(key,value){
+	        if (key==='$$hashKey') return undefined; //exclude angluarJS internal variable
+	        return value;
+        }
+
+        $scope.view=function(item){
+                $scope.editor.index=-1;
+                $scope.editor.json=JSON.stringify(item, repl, 1);
+                window.scrollTo(0, 0); 
+        }
+
+        $scope.create=function(){
+                $scope.view({
+                        id: 'new_item',
+                        type: 'bond',
+                        sub_portfolio: 'bonds',
+                        notional: 10000,
+                        quantity : null,
+                        market_value : null,
+                        currency : 'EUR',
+                        maturity: '2030-01-01',
+                        tenor : 1,
+                        fixed_rate : 0.01,
+                        float_current_rate : null,
+                        float_spread : null,
+                        calendar : null,
+                        dcc : null,
+                        bdc : null,
+                        float_tenor : null,
+                        float_dcc : null,
+                        float_bdc : null,
+                        effective_date : null,
+                        first_date : null,
+                        next_to_last_date : null,
+                        stub_end : null,
+                        stub_long : null,
+                        repay_amount : null, 
+                        repay_tenor : null,
+                        repay_first_date : null,
+                        repay_next_to_last_date : null,
+                        repay_stub_end : null,
+                        repay_stub_long : null,
+                        interest_capitalization : null,
+                        linear_amortization : null,
+                        fixing_first_date : null,
+                        fixing_next_to_last_date : null,
+                        fixing_stub_end : null,
+                        fixing_stub_long : null,
+                        conditions_valid_until : null,
+                        residual_spread : null,
+                        disc_curve : null,
+                        fwd_curve : null,
+                        surface : null,
+                        spread_curve : null,
+                        settlement_days : null,
+                        cap_rate : null,
+                        floor_rate : null,
+                        is_payer : null,
+                        is_short : null,
+                        first_exercise_date : null,
+                        call_tenor : null,
+                        opportunity_spread : null
+                });
         }
 
         $scope.edit=function(item){
                 $scope.editor.index=$scope.portfolio.indexOf(item);
-                var repl=function(key,value){
-		        if (key==='$$hashKey') return undefined; //exclude angluarJS internal variable
-		        return value;
-	        };
                 $scope.editor.json=JSON.stringify(item, repl, 1);
+                window.scrollTo(0, 0);
+        }
+
+        $scope.remove=function(item){
+                var i=$scope.portfolio.indexOf(item);
+                $scope.portfolio.splice(i,1);
         }
 
 
@@ -209,8 +272,11 @@ app.controller('main_ctrl', ['$scope', function($scope) {
                 }
                 return true;
         }
-        $scope.add=function(){
+
+
+        $scope.add_as_new=function(){
                 if ($scope.editor.json){
+                        if($scope.portfolio===null) $scope.portfolio=[];
                         var item=JSON.parse($scope.editor.json)
                         var i=0,id=item.id||'';
                         while(!is_unique_id(id)){
@@ -233,6 +299,22 @@ app.controller('main_ctrl', ['$scope', function($scope) {
         $scope.cancel_editor=function(){
                 $scope.editor={json: null,index: -1}
         }
+
+
+        $scope.$watch('editor.json', function(){
+
+                $scope.editor.valid=false;
+                $scope.editor.msg="";
+                try{
+                        JsonRisk.valuation_date=new Date(2000,0,1);
+                        JsonRisk.get_internal_object(JSON.parse($scope.editor.json)); //test if JSON is valid at all and if instrument is valid
+
+                }catch(e){
+                        $scope.editor.msg=e.message;
+                        return 0;
+                }
+                $scope.editor.valid=true;
+        }, true);
 
 	$scope.calculate=function(){
 		$scope.busy=true;
