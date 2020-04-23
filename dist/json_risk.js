@@ -416,10 +416,10 @@
                         this.is_float=true;
 			this.fixed_rate=null;
                         this.float_spread=library.get_safe_number_vector(instrument.float_spread) || [0]; // can be number or array, arrays to be impleented
-                        if(typeof instrument.float_current_rate !== 'number')
+                        
+                        this.float_current_rate=library.get_safe_number(instrument.float_current_rate);               
+                        if(this.float_current_rate === null)
                                 throw new Error("fixed_income: must provide valid float_current_rate.");
-                        this.float_current_rate=instrument.float_current_rate;               
-
 
 			//fixing schedule related fields
 
@@ -1514,7 +1514,7 @@
                         if (!(next_to_last_dt instanceof Date) && stub_end) throw new Error("schedule: if next to last date is not provided and stub in the end is specified, effective date must be provided");
                 }
                 if ((eff_dt instanceof Date && maturity<eff_dt) || (library.valuation_date instanceof Date && maturity < library.valuation_date)) 
-                        throw new Error("schedule: maturity is before valution or effective date.");
+                        throw new Error("schedule: maturity is before valuation date or effective date.");
                 if(typeof tenor !== "number")
                         throw new Error("schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
                 if(tenor<0 || Math.floor(tenor) !== tenor)

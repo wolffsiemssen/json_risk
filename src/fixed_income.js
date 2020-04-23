@@ -92,10 +92,10 @@
                         this.is_float=true;
 			this.fixed_rate=null;
                         this.float_spread=library.get_safe_number_vector(instrument.float_spread) || [0]; // can be number or array, arrays to be impleented
-                        if(typeof instrument.float_current_rate !== 'number')
+                        
+                        this.float_current_rate=library.get_safe_number(instrument.float_current_rate);               
+                        if(this.float_current_rate === null)
                                 throw new Error("fixed_income: must provide valid float_current_rate.");
-                        this.float_current_rate=instrument.float_current_rate;               
-
 
 			//fixing schedule related fields
 

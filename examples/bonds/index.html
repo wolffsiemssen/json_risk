@@ -167,13 +167,13 @@ main app
 				</div>
 		
 			        <input type="text" class="form-control" ng-model="instrument.rate" ng-if="'fix'===instrument.rate_type">
-			        <input type="number" step=0.000001 class="form-control" ng-model="instrument.current_rate" ng-if="'float'===instrument.rate_type">
+			        <input type="text" class="form-control" ng-model="instrument.float_current_rate" ng-if="'float'===instrument.rate_type">
 
 
 				<div class="input-group-prepend" ng-if="'float'===instrument.rate_type">
 				 <label class="input-group-text">Flt sprd</label>
 				</div>
-			        <input type="number" step=0.000001 class="form-control" ng-model="instrument.float_spread" ng-if="'float'===instrument.rate_type">
+			        <input type="text" class="form-control" ng-model="instrument.float_spread" ng-if="'float'===instrument.rate_type">
 
 			        <select class="custom-select" ng-model="instrument.dcc">
   				  <option selected>Act/365</option>

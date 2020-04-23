@@ -10,7 +10,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		rate_type: "fix",
 		rate: 0.0275,
 		get fixed_rate() { return (this.rate_type==='fix') ? this.rate : null;},
-		float_current_rate: 0.0123,
+		float_current_rate: 0,
 		float_spread: 0,
 		dcc: "Act/365",
 		bdc: "unadjusted",
