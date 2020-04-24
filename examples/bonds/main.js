@@ -205,7 +205,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 	}
 
 	$scope.export_curve=function(curve_name){
-		export_curve_to_csv($scope.params.curves[curve_name],curve_name,'curve.csv');
+		export_curve_to_csv($scope.params.curves[curve_name],curve_name,curve_name+'.csv');
 	}
 
 	//watch selected_params only once
