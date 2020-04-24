@@ -42,7 +42,7 @@ main app
 	</a>
 
 	<form class="form-inline">
-		<div class="input-group">
+		<div class="input-group mr-2">
 			<div class="input-group-prepend">
 				<label class="input-group-text">Valuation date</button>
 			</div>
@@ -53,9 +53,20 @@ main app
 			<div class="input-group-append">
 				<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_params()">Load</button>
 			</div>
-		</div>		
+		</div>
+
+                <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
+                        <div class="btn-group" role="group">
+                                <button id="btnGroupDrop1" type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Export curves
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+                                        <a class="dropdown-item" href="#" ng-repeat="(key, value) in params.curves" ng-click="export_curve(key)">{{key}}</a>
+                                </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary" ng-click="import_file('curve')">Import curve</button>
+                </div>
 	</form>
-	
 </nav>
 
 <br/>
@@ -256,7 +267,7 @@ main app
 						<option value="" selected>Choose discount curve...</option>
 					</select>
 			    </div>
-			  </div>
+                          </div>
 
 			  <div class="form-group row">
 			    <label class="col-sm-3 col-form-label col-form-label-sm">Forward Curve</label>

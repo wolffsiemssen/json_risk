@@ -131,15 +131,7 @@ var import_data=function(fil, kind, sc){
                 
                         for (j=1;j<results.data[0].length;j++){
                                 labels.push(results.data[0][j]);
-                        }
-                        
-                        for (i=1; i<results.data.length;i++){
-                                if (results.data[i].length!==results.data[0].length) continue;
-                                row=new Array(results.data[0].length-1);
-                                for (j=0;j<row.length;j++){
-                                        row[j]=results.data[i][j+1]/100;
-                                }
-                                zcs.push(row);
+                                zcs.push(results.data[1][j]/100);
                         }
                         
                         if (!sc.params) sc.params={};
