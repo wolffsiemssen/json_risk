@@ -76,7 +76,7 @@ When `stub_end` is true and `stub_long` is true, the generated date just before 
 
 when `next_to_last_date` is set, JSON risk rolls out backward from `next_to_last_date` in regular monthly periods the length of which is determined by `term` until `effective_date` is reached or preceded.
 
-Like in the case without `next_to_last_date´ set, the field `stub_long` determines the length of the initial period.
+Like in the case without `next_to_last_date` set, the field `stub_long` determines the length of the initial period.
 
 ![Next to last date](../pics/schedule_nexttolastdate.png)
 
@@ -84,7 +84,7 @@ Like in the case without `next_to_last_date´ set, the field `stub_long` determi
 
 When `first_date` is set, JSON risk rolls out forward from `first_date` in regular monthly periods the length of which is determined by `term` until `maturity` is reached or preceded.
 
-Like in the standard forward rollout case, that is, when `stub_end`is true, but `first_date´ is unset, the field `stub_long` determines the length of the final period.
+Like in the standard forward rollout case, that is, when `stub_end` is true, but `first_date` is unset, the field `stub_long` determines the length of the final period.
 
 ![First date](../pics/schedule_firstdate.png)
 
@@ -106,5 +106,5 @@ If any of these conditions are violated, JSON risk will throw an error. Otherwis
 
 In the special case where `tenor` is zero, the resulting schedule consists of the valuation date and `maturity` only.
 
-If fixing or repayment schedules are required, these are rolled out with `effective_date` substituted by the first date in the interest rate schedule.
+If fixing or repayment schedules are required, these are rolled out with `effective_date` substituted by the first date in the interest rate schedule. Consequently, all three schedules start and end at the same dates.
 
