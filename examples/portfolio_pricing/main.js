@@ -359,7 +359,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 				        $scope.busy=false;            
 				        $scope.$apply();
 				}
-				if(incomplete % 100 === 0 || incomplete<100){ //every now and then, update display and stats
+				if(incomplete % 100 === 0){ //every now and then, update display and stats
 				        t1 = new Date().getTime();
 				        $scope.calctime=(t1 - t0)/1000;
 				        $scope.remaining=incomplete;
@@ -379,6 +379,10 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 			//send params to worker
 			wrk[i].postMessage({params: $scope.params});
 			
+			//post initial instrument
+			wrk[i].postMessage({instrument: $scope.portfolio[unsent-1]});
+			unsent--;
+
 			//post initial instrument
 			wrk[i].postMessage({instrument: $scope.portfolio[unsent-1]});
 			unsent--;

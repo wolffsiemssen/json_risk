@@ -22,7 +22,7 @@ var load_params_from_server=function(sc){
 		alert("Could not load params from server");
 	});
 
-	req.open('GET', '../jrparams/' + sc.available_params.selection);
+	req.open('GET', 'https://www.jsonrisk.de/jrparams/' + sc.available_params.selection);
 	req.send();
 }
 
@@ -46,7 +46,7 @@ var load_params_list=function(sc){
 		console.log("Could not load list of available params from server");
 	});
 
-	req.open('GET', '../jrparams/');
+	req.open('GET', 'https://www.jsonrisk.de/jrparams/');
 	req.send();
 }
 

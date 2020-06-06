@@ -111,7 +111,7 @@ main app
                   </div>
                 </div>
                 <div class="table-responsive">
-                        <table ng-if="portfolio!==null" class="table table-responsive table-hover table-sm table-bordered">
+                        <table ng-if="portfolio!==null && !busy" class="table table-responsive table-hover table-sm table-bordered">
                           <thead class="thead-light">
                             <tr>
                               <th scope="col">Actions</th>
@@ -130,7 +130,7 @@ main app
                             </tr>
                           </thead>
                           <tbody>
-                            <tr ng-repeat="x in portfolio | filter:filter.text | limitTo: 250">
+                            <tr ng-repeat="x in portfolio | filter:filter.text | limitTo: 250 track by $index">
                               <th scope="row">
                                     <div class="btn-group mr-2">
                                         <button type="button" class="btn btn-sm btn-link" ng-click="view(x)">View</button>                                        
