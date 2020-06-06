@@ -17,7 +17,9 @@
 		
 		var fcd=library.get_safe_date(instrument.first_exercise_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
+
 	        this.base=new library.fixed_income(instrument);
+                if(fcd.getTime()<= this.base.schedule[0].getTime()) throw new Error("callable_fixed_income: first call date before issue date");
                 if (!this.base.notional_exchange) throw new Error("callable_fixed_income: callable instruments must exchange notionals");
 		this.call_schedule=library.schedule(fcd, 
 						     library.get_safe_date(instrument.maturity), 
@@ -25,29 +27,45 @@
 						     this.base.adj);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
 		this.opportunity_spread=(typeof instrument.opportunity_spread==='number' ) ? instrument.opportunity_spread : 0;
-
-		var i;
+                this.exclude_base=library.get_safe_bool(instrument.exclude_base);
 
 		//basket generation
+		var i;
 		this.basket=new Array(this.call_schedule.length);
 		for (i=0; i<this.call_schedule.length; i++){
-			//basket instruments are co-terminal swaptions with standard conditions
-			this.basket[i]=new library.swaption({
-		                is_payer: false,
-		                maturity: instrument.maturity,
-		                first_exercise_date: this.call_schedule[i],
-		                notional: instrument.notional,
-		                fixed_rate: instrument.fixed_rate-this.opportunity_spread,
-		                tenor: instrument.tenor,
-		                float_spread: 0.00,
-		                float_tenor: 6,
-		                float_current_rate: 0.00,
-		                calendar: instrument.calendar,
-		                bdc: instrument.bdc,
-		                float_bdc: instrument.bdc,
-		                dcc: instrument.dcc,
-		                float_dcc: instrument.dcc
-		        });
+                        if(!this.base.is_amortizing){
+			        //basket instruments are co-terminal swaptions with standard conditions
+			        this.basket[i]=new library.swaption({
+		                        is_payer: false,
+		                        maturity: instrument.maturity,
+		                        first_exercise_date: this.call_schedule[i],
+		                        notional: instrument.notional,
+		                        fixed_rate: instrument.fixed_rate-this.opportunity_spread,
+		                        tenor: instrument.tenor,
+		                        float_spread: 0.00,
+		                        float_tenor: instrument.float_tenor || 6,
+		                        float_current_rate: 0.00,
+		                        calendar: instrument.calendar,
+		                        bdc: instrument.bdc,
+		                        float_bdc: instrument.bdc,
+		                        dcc: instrument.dcc,
+		                        float_dcc: instrument.dcc
+		                });
+                        }else{
+        		        //basket instruments are equivalent regular swaptions with standard conditions
+			        this.basket[i]=new library.swaption(
+                                        library.create_equivalent_regular_swaption(
+                                                this.base.get_cash_flows(),
+                                                this.call_schedule[i],
+                                                {
+	                                                tenor: instrument.tenor,
+	                                                float_spread: 0.00,
+	                                                float_tenor: instrument.float_tenor || 6,
+	                                                calendar: instrument.calendar,
+	                                                bdc: instrument.bdc
+                                                })
+		                );
+                        }
 		}
         };
         
@@ -80,7 +98,6 @@
 							     this.opportunity_spread);
 		}else if (1<xi_vec.length){
 			//bermudan call, use numeric integration
-
 			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
 								t_exercise,
 								disc_curve,
@@ -90,8 +107,8 @@
 								this.opportunity_spread);
 		} //if xi_vec.length===0 all calls are expired, no value subtracted
 		
-		//add bond base price
-		res+=this.base.present_value(disc_curve, spread_curve, null);
+		//add bond base price if not explicitly excluded
+		if(!this.exclude_base) res+=this.base.present_value(disc_curve, spread_curve, null);
                 return res;
         };
          

@@ -119,7 +119,11 @@
                 }
 
 		// repay schedule
-		if(this.repay_amount.reduce(function(a,b){return Math.max(a,b);})===0 && this.repay_amount.reduce(function(a,b){return Math.min(a,b);})===0 && !this.interest_capitalization && !linear_amortization){
+                this.is_amortizing=(this.repay_amount.reduce(function(a,b){ return Math.max(a*a,b*b);},0)>0 || 
+                                   this.interest_capitalization.reduce(function(a,b){ return a || b;},false) ||
+                                   linear_amortization);
+
+		if(!this.is_amortizing){
 			this.repay_schedule=[this.schedule[0], maturity];
 		}else{
                 	this.repay_schedule = library.schedule(this.schedule[0], 

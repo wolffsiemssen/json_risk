@@ -95,43 +95,49 @@
                 //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
                 irr=12/tenor*(Math.pow(1+irr,tenor/12)-1);
                 
-                //compute effective duration of remaining cash flow
+                //compute forward effective duration of remaining cash flow
+                var tte=library.time_from_now(first_exercise_date);
                 var cup=library.get_const_curve(irr+0.0001);
                 var cdown=library.get_const_curve(irr-0.0001);
                 var npv_up=library.dcf(cf_obj, cup, null, null, first_exercise_date);
+                npv_up/=library.get_df(cup,tte);
                 var npv_down=library.dcf(cf_obj, cdown, null, null, first_exercise_date);
+                npv_down/=library.get_df(cdown,tte);
                 var effective_duration_target=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                 
-                //brief function to compute effective duration
+                //brief function to compute forward effective duration
                 var ed=function(bond){   
                         var bond_internal=new library.fixed_income(bond);  
                         npv_up=bond_internal.present_value(cup);
+                        npv_up/=library.get_df(cup,tte);
                         npv_down=bond_internal.present_value(cdown);
+                        npv_down/=library.get_df(cdown,tte);
                         var res=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                         return res;
                 };
                 
                 //find bullet bond maturity that has approximately the same effective duration               
-                // start with analytic best estimate
-                var t_maturity=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
-                var maturity=library.add_days(library.valuation_date, Math.round(t_maturity*365));
+                //start with analytic best estimate
+                var ttm=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
+                var maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
+
                 var bond={
                           maturity: maturity,
                           effective_date: first_exercise_date,
-                          settlement_date: first_exercise_date,
+                          settlement_date: library.adjust(first_exercise_date,bdc,library.is_holiday_factory(calendar)), //exclude initial disboursement cashflow from valuation
                           notional: outstanding_principal,
                           fixed_rate: irr,
                           tenor: tenor,
                           calendar: calendar,
-                          bdc: bdc,
-                          dcc: "act/365",
-                        };
+                          bdc: bdc
+                };
                 var effective_duration=ed(bond);
                 var iter=10;
+
                 //alter maturity until we obtain effective duration target value
                 while (Math.abs(effective_duration-effective_duration_target)>1/512 && iter>0){
-                        t_maturity=t_maturity*effective_duration_target/effective_duration;
-                        maturity=library.add_days(library.valuation_date, Math.round(t_maturity*365));
+                        ttm=ttm*effective_duration_target/effective_duration;
+                        maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
                         bond.maturity=maturity;
                         effective_duration=ed(bond);
                         iter--;
@@ -147,13 +153,11 @@
                         fixed_rate: irr,
                         tenor: tenor,
                         float_spread: 0.00,
-                        float_tenor: 6,
+                        float_tenor: conventions.float_tenor || 6,
                         float_current_rate: 0.00,
                         calendar: calendar,
                         bdc: bdc,
-                        float_bdc: bdc,
-                        dcc: "act/365",
-                        float_dcc: "act/365"
+                        float_bdc: bdc
                 }; 
         };
 

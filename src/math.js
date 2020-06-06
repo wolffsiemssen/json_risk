@@ -122,6 +122,21 @@
 		}
                 return x<=0.0 ? c : 1-c;
         };
+
+        var D1=0.0498673470;
+        var D2=0.0211410061;
+        var D3=0.0032776263;
+        var D4=0.0000380036;
+        var D5=0.0000488906;
+        var D6=0.0000053830;
+
+        library.fast_cndf=function(x){
+                var z=Math.abs(x);
+                var f=1+z*(D1+z*(D2+z*(D3+z*(D4+z*(D5+z*D6)))));
+                f*=f;f*=f;f*=f;f*=f; // raise to the power of -16
+                f=0.5/f;
+                return (x>=0) ? 1-f : f;
+        };
         
         library.find_root_secant=function(func, start, next, max_iter, threshold){
                 var x=start, xnext=next, temp=0, iter=max_iter||20, t=threshold||0.00000001;
@@ -166,6 +181,7 @@
                 while (iter>0){
                         iter--;
 			z=(x+y)*0.5;			
+                        if(Math.abs(x-y)<1E-15) return z;
 			fz=func(z);
 			if(Math.abs(fz)<t) return z;
 			r=Math.sqrt((fz*fz)-(fy*fx));

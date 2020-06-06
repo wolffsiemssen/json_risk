@@ -52,7 +52,9 @@
 		
 		var fcd=library.get_safe_date(instrument.first_exercise_date);
 		if (null===fcd) throw new Error("callable_fixed_income: must provide first call date");
+
 	        this.base=new library.fixed_income(instrument);
+                if(fcd.getTime()<= this.base.schedule[0].getTime()) throw new Error("callable_fixed_income: first call date before issue date");
                 if (!this.base.notional_exchange) throw new Error("callable_fixed_income: callable instruments must exchange notionals");
 		this.call_schedule=library.schedule(fcd, 
 						     library.get_safe_date(instrument.maturity), 
@@ -60,29 +62,45 @@
 						     this.base.adj);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
 		this.opportunity_spread=(typeof instrument.opportunity_spread==='number' ) ? instrument.opportunity_spread : 0;
-
-		var i;
+                this.exclude_base=library.get_safe_bool(instrument.exclude_base);
 
 		//basket generation
+		var i;
 		this.basket=new Array(this.call_schedule.length);
 		for (i=0; i<this.call_schedule.length; i++){
-			//basket instruments are co-terminal swaptions with standard conditions
-			this.basket[i]=new library.swaption({
-		                is_payer: false,
-		                maturity: instrument.maturity,
-		                first_exercise_date: this.call_schedule[i],
-		                notional: instrument.notional,
-		                fixed_rate: instrument.fixed_rate-this.opportunity_spread,
-		                tenor: instrument.tenor,
-		                float_spread: 0.00,
-		                float_tenor: 6,
-		                float_current_rate: 0.00,
-		                calendar: instrument.calendar,
-		                bdc: instrument.bdc,
-		                float_bdc: instrument.bdc,
-		                dcc: instrument.dcc,
-		                float_dcc: instrument.dcc
-		        });
+                        if(!this.base.is_amortizing){
+			        //basket instruments are co-terminal swaptions with standard conditions
+			        this.basket[i]=new library.swaption({
+		                        is_payer: false,
+		                        maturity: instrument.maturity,
+		                        first_exercise_date: this.call_schedule[i],
+		                        notional: instrument.notional,
+		                        fixed_rate: instrument.fixed_rate-this.opportunity_spread,
+		                        tenor: instrument.tenor,
+		                        float_spread: 0.00,
+		                        float_tenor: instrument.float_tenor || 6,
+		                        float_current_rate: 0.00,
+		                        calendar: instrument.calendar,
+		                        bdc: instrument.bdc,
+		                        float_bdc: instrument.bdc,
+		                        dcc: instrument.dcc,
+		                        float_dcc: instrument.dcc
+		                });
+                        }else{
+        		        //basket instruments are equivalent regular swaptions with standard conditions
+			        this.basket[i]=new library.swaption(
+                                        library.create_equivalent_regular_swaption(
+                                                this.base.get_cash_flows(),
+                                                this.call_schedule[i],
+                                                {
+	                                                tenor: instrument.tenor,
+	                                                float_spread: 0.00,
+	                                                float_tenor: instrument.float_tenor || 6,
+	                                                calendar: instrument.calendar,
+	                                                bdc: instrument.bdc
+                                                })
+		                );
+                        }
 		}
         };
         
@@ -115,7 +133,6 @@
 							     this.opportunity_spread);
 		}else if (1<xi_vec.length){
 			//bermudan call, use numeric integration
-
 			res=-library.lgm_bermudan_call_on_cf(this.base.get_cash_flows(),
 								t_exercise,
 								disc_curve,
@@ -125,8 +142,8 @@
 								this.opportunity_spread);
 		} //if xi_vec.length===0 all calls are expired, no value subtracted
 		
-		//add bond base price
-		res+=this.base.present_value(disc_curve, spread_curve, null);
+		//add bond base price if not explicitly excluded
+		if(!this.exclude_base) res+=this.base.present_value(disc_curve, spread_curve, null);
                 return res;
         };
          
@@ -443,7 +460,11 @@
                 }
 
 		// repay schedule
-		if(this.repay_amount.reduce(function(a,b){return Math.max(a,b);})===0 && this.repay_amount.reduce(function(a,b){return Math.min(a,b);})===0 && !this.interest_capitalization && !linear_amortization){
+                this.is_amortizing=(this.repay_amount.reduce(function(a,b){ return Math.max(a*a,b*b);},0)>0 || 
+                                   this.interest_capitalization.reduce(function(a,b){ return a || b;},false) ||
+                                   linear_amortization);
+
+		if(!this.is_amortizing){
 			this.repay_schedule=[this.schedule[0], maturity];
 		}else{
                 	this.repay_schedule = library.schedule(this.schedule[0], 
@@ -881,7 +902,38 @@
 
 	function h(t){ return t;}
 
-	var strike_adjustment=function(cf_obj, t_exercise, disc_curve, opportunity_spread){
+        function get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread){
+                /*
+                
+                precalculates discount factors for each cash flow and for t_exercise
+
+        
+                */
+                var res=new Array(cf_obj.t_pmt.length+1); //last item holds discount factor for t_exercise
+                var i=0, df;
+
+		// move forward to first line after exercise date
+                while(cf_obj.t_pmt[i]<=0) i++;
+        
+                //discount factors for cash flows after t_exercise
+                while (i<cf_obj.t_pmt.length){
+			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
+			if(spread_curve) df*=library.get_df(spread_curve, cf_obj.t_pmt[i]);
+			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
+			res[i]=df;
+                        i++;
+                }
+
+                //discount factor for t_exercise
+                df=library.get_df(disc_curve, t_exercise);
+		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
+		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
+		
+                res[i]=df;
+                return res;
+        }
+	
+	function strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread){
 		if(!opportunity_spread) return 0;                
 		var i=0, df;
 		var res=0;
@@ -891,40 +943,16 @@
                 // include all payments after exercise date
 
                 while (i<cf_obj.t_pmt.length){
-			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
-			if(spread_curve) df*=library.get_df(spread_curve, -cf_obj.t_pmt[i]);
-			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
-		        res+=cf_obj.current_principal[i] * df * opportunity_spread * (cf_obj.t_pmt[i]-Math.max(cf_obj.t_pmt[i-1], t_exercise));
+			res+=cf_obj.current_principal[i] * discount_factors[i] * opportunity_spread * (cf_obj.t_pmt[i]-Math.max(cf_obj.t_pmt[i-1], t_exercise));
 			i++;
                 }
 
-		df=library.get_df(disc_curve, t_exercise);
-		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
-		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
+		df=discount_factors[discount_factors.length-1];
                 res/=df;
 		return res;
-	};
-	
-	/*
-	strike_adjustment=function(cf_obj, t_exercise, disc_curve, opportunity_spread){
-		if(!opportunity_spread) return 0;                
-		var i=0, df;
-		var add=0, subtract=0;
-		// move forward to first line after exercise date
-                while(cf_obj.t_pmt[i]<=t_exercise) i++;
+	}
 
-                // include all payments after exercise date
-                while (i<cf_obj.t_pmt.length){
-			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
-		        add+=cf_obj.pmt_principal[i] * df;
-		        subtract+=cf_obj.pmt_principal[i] * df * Math.pow(1+opportunity_spread, -(cf_obj.t_pmt[i]-t_exercise));
-			i++;
-                }
-                return add-subtract;
-	};
-	*/
-
-	library.lgm_dcf=function(cf_obj,t_exercise, disc_curve, xi, state, spread_curve, residual_spread, opportunity_spread){
+	library.lgm_dcf=function(cf_obj,t_exercise, discount_factors, xi, state, opportunity_spread){
                 /*
 
 		Calculates the discounted cash flow present value for a given vector of states (reduced value according to formula 4.14b)
@@ -942,7 +970,7 @@
                 */
 		if(!Array.isArray(state)) throw new Error("lgm_dcf: state variable must be an array of numbers");                
 
-                var i=0, j, df, dh;
+                var i=0, j, dh;
 		var res=new Array(state.length);
 		// move forward to first line after exercise date
                 while(cf_obj.t_pmt[i]<=t_exercise) i++;
@@ -952,30 +980,24 @@
 		if (cf_obj.pmt_interest){
 			accrued_interest=(i===0) ? 0 : cf_obj.pmt_interest[i]*(t_exercise-cf_obj.t_pmt[i-1])/(cf_obj.t_pmt[i]-cf_obj.t_pmt[i-1]);
 		}
-		// include principal payment on exercise date
-		df=library.get_df(disc_curve, t_exercise);
-		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
-		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
-		var sadj=strike_adjustment(cf_obj, t_exercise, disc_curve, opportunity_spread);
+		// include principal payment on exercise date  
+		var sadj=strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread);
 		for (j=0; j<state.length; j++){
-			res[j] = - (cf_obj.current_principal[i]+accrued_interest+sadj) * df;
+			res[j] = - (cf_obj.current_principal[i]+accrued_interest+sadj) * discount_factors[discount_factors.length-1];
 		}
 
                 // include all payments after exercise date
                 while (i<cf_obj.t_pmt.length){
-			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
-			if(spread_curve) df*=library.get_df(spread_curve, cf_obj.t_pmt[i]);
-			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
 			dh=h(cf_obj.t_pmt[i])-h(t_exercise);
 			for (j=0; j<state.length; j++){
-        	                res[j]+=(cf_obj.pmt_total[i]) * df * Math.exp(-dh*state[j]-dh*dh*xi*0.5);
+        	                res[j]+=(cf_obj.pmt_total[i]) * discount_factors[i] * Math.exp(-dh*state[j]-dh*dh*xi*0.5);
 			}
                         i++;
                 }
                 return res;
 	};
 
-	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread, opportunity_spread){
+	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread, opportunity_spread, discount_factors_precalc){
                 /*
 
 		Calculates the european call option price on a cash flow (closed formula 5.7b).
@@ -989,42 +1011,61 @@
                 }
 		
                 */
-		if(t_exercise<0) return 0; //expired option		
-		if(t_exercise<1/512 || xi<1e-15) return Math.max(0,library.lgm_dcf(cf_obj,t_exercise, disc_curve, 0, [0], spread_curve, residual_spread, opportunity_spread)[0]);
-		function func(x){
-			return library.lgm_dcf(cf_obj,t_exercise, disc_curve, xi, [x], spread_curve, residual_spread, opportunity_spread)[0];
-		}
+                
+                var discount_factors=discount_factors_precalc || get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread); // if discount factors are not provided, get them
+
+		if(t_exercise<0) return 0; //expired option
+		if(t_exercise<1/512 || xi<1e-10) return Math.max(0,library.lgm_dcf(cf_obj,t_exercise, discount_factors, 0, [0], opportunity_spread)[0]); //very low volatility
+
 		var std_dev=Math.sqrt(xi);
-		var one_std_dev=1/std_dev;
-	
-		//find break even point and good initial guess for it
-		var t_maturity=cf_obj.t_pmt[cf_obj.t_pmt.length-1];
-		var break_even, dh, guess, lower, upper;
-		dh=h(cf_obj.t_pmt[cf_obj.t_pmt.length-1])-h(t_exercise);
-		guess=-0.5*xi*dh;
-		guess-=Math.log(library.get_df(disc_curve,t_exercise))/dh;
-		guess+=Math.log(library.get_df(disc_curve,t_maturity))/dh;
-		if(spread_curve){
-			guess-=Math.log(library.get_df(spread_curve,t_exercise))/dh;
-			guess+=Math.log(library.get_df(spread_curve,t_maturity))/dh;
-		}
-		if(residual_spread){
-			guess+=t_exercise*residual_spread;
-			guess-=t_maturity*residual_spread;
-		}
-		if (guess>-1E-10) guess=-std_dev; //do not want very small or positive guess
-		if(func(guess)>0){
-			upper=guess;
-			lower=0.9*guess;
-			while(func(lower)>0) lower=upper-2*lower;
-		}else{
-			lower=guess;
-			upper=2*guess;
-			while(func(lower)<0) upper=2*upper;
-		}
-		break_even=library.find_root_ridders(func, upper, lower, 100);
+                var dh=h(t_exercise+1/365) - h(t_exercise);
+                var break_even;
+
+	        function func(x){
+		        return library.lgm_dcf(cf_obj, t_exercise, discount_factors, xi, [x], opportunity_spread)[0];
+	        }
+
+                // if std_dev is very large, break_even/std_dev tends to -infinity and break_even/std_dev + dh*std_dev tends to +infinity for all possible values of dh.
+                // cumulative normal distribution is practically zero if quantile is outside of -10 and +10.
+                // in order for break_even/std_dev < -10 and break_even/std_dev + dh+std_dev > 10, dh*std_dev must be larger than 20
+                // larger values for std_dev do not make any sense
+                if (std_dev>20/dh){
+                        std_dev=20/dh;
+                        break_even=-10*std_dev;
+                }else{
+
+                        // 
+		        //find break even point and good initial guess for it
+		        //
+
+		        var lower, upper;
+
+                        if ( func(0) >= 0 ){
+                                lower=0;
+                                upper=std_dev*STD_DEV_RANGE;
+                                if(func(upper)>0){
+                                        //special case where payoff is always positive, return expectation                                        
+                                        return library.lgm_dcf(cf_obj,t_exercise, discount_factors, 0, [0], opportunity_spread)[0];
+                                }
+                        }else{
+                                upper=0;
+                                lower=-std_dev*STD_DEV_RANGE;
+                                if (func(lower) < 0) {
+                                        // special case where payoff value is always negative, return zero
+                                        return 0;
+                                }
+                        }
+
+                        try{
+                		break_even=library.find_root_ridders(func, upper, lower, 20);
+                        }catch(e){
+                                //fall back to numeric price
+                                return library.lgm_bermudan_call_on_cf(cf_obj,[t_exercise], disc_curve, [xi], spread_curve, residual_spread, opportunity_spread);
+                        }
+                }
 
                 var i=0, df;
+		var one_std_dev=1/std_dev;
 		
 		// move forward to first line after exercise date
                 while(cf_obj.t_pmt[i]<=t_exercise) i++;
@@ -1036,19 +1077,13 @@
 		}
 
 		// include principal payment on or before exercise date
-		df=library.get_df(disc_curve, t_exercise);
-		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
-		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
-		var sadj=strike_adjustment(cf_obj, t_exercise, disc_curve, opportunity_spread);
-		var res = - (cf_obj.current_principal[i]+accrued_interest+sadj) * df * library.cndf(break_even*one_std_dev);
+		var sadj=strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread);
+		var res = - (cf_obj.current_principal[i]+accrued_interest+sadj) * discount_factors[discount_factors.length-1] * library.cndf(break_even*one_std_dev);
 
 		// include all payments after exercise date
                 while (i<cf_obj.t_pmt.length){
-			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
-			if(spread_curve) df*=library.get_df(spread_curve, cf_obj.t_pmt[i]);
-			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
 			dh=h(cf_obj.t_pmt[i])-h(t_exercise);
-	                res+=(cf_obj.pmt_total[i]) * df * library.cndf((break_even*one_std_dev)+(dh*std_dev));
+	                res+=(cf_obj.pmt_total[i]) * discount_factors[i] * library.cndf((break_even*one_std_dev)+(dh*std_dev));
                         i++;
                 }
                 return res;
@@ -1084,10 +1119,10 @@
 	library.lgm_calibrate=function(basket, disc_curve, fwd_curve, surface){
 		library.require_vd();
 		var xi, xi_vec=[];
-		var cf_obj, std_dev_bachelier, tte, ttm, deno, target, root, i, j, min_value, max_value;
+		var cf_obj, discount_factors, std_dev_bachelier, tte, ttm, deno, target, approx, i, j, min_value, max_value, accuracy;
 
-		var func=function(rt_xi){
-			var val=library.lgm_european_call_on_cf(cf_obj,tte, disc_curve, rt_xi*rt_xi, null, null, null);
+		var func=function(xi){
+			var val=library.lgm_european_call_on_cf(cf_obj, tte, disc_curve, xi, null, null, null, discount_factors);
 			return val-target;
 		};
 		for (i=0; i<basket.length; i++){
@@ -1097,34 +1132,52 @@
 				//first step: derive initial guess based on Hagan formula 5.16c
 				//get swap fixed cash flow adjusted for basis spread
 				cf_obj=library.lgm_european_swaption_adjusted_cashflow(basket[i],disc_curve, fwd_curve, false);
+                                discount_factors=get_discount_factors(cf_obj, tte, disc_curve, null, null);
 				deno=0;
 				for (j=0;j<cf_obj.t_pmt.length;j++){
 					deno+=cf_obj.pmt_total[j]*
-					      library.get_df(disc_curve, cf_obj.t_pmt[j])*
+					      discount_factors[j]*
 					      (h(cf_obj.t_pmt[j])-h(tte));
 				}
 				std_dev_bachelier=library.get_surface_rate(surface, tte, ttm-tte)*Math.sqrt(tte);
+                                //initial guess
 				xi=Math.pow(std_dev_bachelier*basket[i].swap.annuity(disc_curve)/deno,2);
 
 				//second step: calibrate, but be careful with infeasible bachelier prices below min and max
-				min_value=library.lgm_dcf(cf_obj, tte, disc_curve, 0, [0], null, null, null)[0];
+				min_value=library.lgm_dcf(cf_obj,
+                                                                tte,
+                                                                discount_factors,
+                                                                0,
+                                                                [0],
+                                                                null)[0];
+
 				//max value is value of the payoff without redemption payment
-				max_value=min_value+basket[i].swap.fixed_leg.notional*library.get_df(disc_curve, tte);
+				max_value=min_value+basket[i].swap.fixed_leg.notional*discount_factors[discount_factors.length-1];
 				//min value (attained at vola=0) is maximum of zero and current value of the payoff
 				if(min_value<0) min_value=0;
 
 				target=basket[i].present_value(disc_curve, fwd_curve, surface);
-				if(target<min_value) target=min_value;
-				if(target>max_value) target=max_value;
+                                accuracy=target*1E-7+1E-7;
 
-				try{
-					root=library.find_root_secant(func, Math.sqrt(xi), Math.sqrt(xi*0.9), 100);
-					//throws error if secant method fails
-					xi = root*root; //if secant method was successful
-				}catch(e){
-						
-				}
+				if(target<=min_value+accuracy || 0===xi){
+                                        xi=0;
+                                }else{
+                                        if(target>max_value) target=max_value;
+                                        approx=func(xi);
+                                        j=10;
+                                        while(approx<0 && j>0){
+                                                j--;
+                                                xi*=2;
+                                                approx=func(xi);
+                                        }
+                                        try{
+                                                xi=library.find_root_ridders(func, 0, xi, 20, accuracy);
 
+				        }catch(e){
+                                                //use initial guess or zero as fallback, whichever is better
+                                                if(Math.abs(target-min_value) < Math.abs(approx)) xi=0;  
+                                        }
+                                }
 				if(xi_vec.length>0 && xi_vec[xi_vec.length-1]>xi) xi=xi_vec[xi_vec.length-1]; //fallback if monotonicity is violated
 				xi_vec.push(xi);
 			}
@@ -1154,13 +1207,12 @@
 
 		if(t_exercise_vec[t_exercise_vec.length-1]<0) return 0; //expired option		
 		if(t_exercise_vec[t_exercise_vec.length-1]<1/512){
-			return Math.max(0,library.lgm_dcf(cf_obj,
+			return library.lgm_european_call_on_cf(cf_obj,
 							t_exercise_vec[t_exercise_vec.length-1],
 							disc_curve,
 							0,
-							[0],
 							spread_curve,
-							residual_spread, opportunity_spread)[0]); //expiring option
+							residual_spread, opportunity_spread); //expiring option
 		}
 
 
@@ -1198,7 +1250,7 @@
 			if(xi_last-xi<1E-15) return value[j];
 		        var temp=0, dp_lo=0, dp_hi, norm_scale=1/Math.sqrt(xi_last-xi);
 			for (i=0; i<n; i++){
-				dp_hi= (i===n-1) ? 1 : library.cndf((state_last[i]-state[j]+0.5*ds)*norm_scale);	
+				dp_hi= (i===n-1) ? 1 : library.fast_cndf((state_last[i]-state[j]+0.5*ds)*norm_scale);	
 				temp+=value[i]*(dp_hi-dp_lo);
 				dp_lo=dp_hi; // for next iteration
 			}
@@ -1213,8 +1265,7 @@
 		var payoff;
 		var value=new Array(n);
 		var hold=new Array(n);
-	
-
+                var discount_factors;
 
 		//n_ex starts at last exercise date
 		n_ex=xi_vec.length-1;		
@@ -1228,13 +1279,12 @@
 			state=make_state_vector();
 
 			//payoff is what option holder obtains when exercising
+                        discount_factors=get_discount_factors(cf_obj, t_exercise_vec[n_ex], disc_curve, spread_curve, residual_spread);
 			payoff=library.lgm_dcf(cf_obj,
 						   t_exercise_vec[n_ex],
-	 					   disc_curve,
+	 					   discount_factors,
 						   xi,
 						   state,
-						   spread_curve,
-						   residual_spread,
 						   opportunity_spread);
 			
 			//hold is what option holder obtains when not exercising
@@ -1391,6 +1441,21 @@
 		}
                 return x<=0.0 ? c : 1-c;
         };
+
+        var D1=0.0498673470;
+        var D2=0.0211410061;
+        var D3=0.0032776263;
+        var D4=0.0000380036;
+        var D5=0.0000488906;
+        var D6=0.0000053830;
+
+        library.fast_cndf=function(x){
+                var z=Math.abs(x);
+                var f=1+z*(D1+z*(D2+z*(D3+z*(D4+z*(D5+z*D6)))));
+                f*=f;f*=f;f*=f;f*=f; // raise to the power of -16
+                f=0.5/f;
+                return (x>=0) ? 1-f : f;
+        };
         
         library.find_root_secant=function(func, start, next, max_iter, threshold){
                 var x=start, xnext=next, temp=0, iter=max_iter||20, t=threshold||0.00000001;
@@ -1435,6 +1500,7 @@
                 while (iter>0){
                         iter--;
 			z=(x+y)*0.5;			
+                        if(Math.abs(x-y)<1E-15) return z;
 			fz=func(z);
 			if(Math.abs(fz)<t) return z;
 			r=Math.sqrt((fz*fz)-(fy*fx));
@@ -1837,43 +1903,49 @@
                 //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
                 irr=12/tenor*(Math.pow(1+irr,tenor/12)-1);
                 
-                //compute effective duration of remaining cash flow
+                //compute forward effective duration of remaining cash flow
+                var tte=library.time_from_now(first_exercise_date);
                 var cup=library.get_const_curve(irr+0.0001);
                 var cdown=library.get_const_curve(irr-0.0001);
                 var npv_up=library.dcf(cf_obj, cup, null, null, first_exercise_date);
+                npv_up/=library.get_df(cup,tte);
                 var npv_down=library.dcf(cf_obj, cdown, null, null, first_exercise_date);
+                npv_down/=library.get_df(cdown,tte);
                 var effective_duration_target=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                 
-                //brief function to compute effective duration
+                //brief function to compute forward effective duration
                 var ed=function(bond){   
                         var bond_internal=new library.fixed_income(bond);  
                         npv_up=bond_internal.present_value(cup);
+                        npv_up/=library.get_df(cup,tte);
                         npv_down=bond_internal.present_value(cdown);
+                        npv_down/=library.get_df(cdown,tte);
                         var res=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                         return res;
                 };
                 
                 //find bullet bond maturity that has approximately the same effective duration               
-                // start with analytic best estimate
-                var t_maturity=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
-                var maturity=library.add_days(library.valuation_date, Math.round(t_maturity*365));
+                //start with analytic best estimate
+                var ttm=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
+                var maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
+
                 var bond={
                           maturity: maturity,
                           effective_date: first_exercise_date,
-                          settlement_date: first_exercise_date,
+                          settlement_date: library.adjust(first_exercise_date,bdc,library.is_holiday_factory(calendar)), //exclude initial disboursement cashflow from valuation
                           notional: outstanding_principal,
                           fixed_rate: irr,
                           tenor: tenor,
                           calendar: calendar,
-                          bdc: bdc,
-                          dcc: "act/365",
-                        };
+                          bdc: bdc
+                };
                 var effective_duration=ed(bond);
                 var iter=10;
+
                 //alter maturity until we obtain effective duration target value
                 while (Math.abs(effective_duration-effective_duration_target)>1/512 && iter>0){
-                        t_maturity=t_maturity*effective_duration_target/effective_duration;
-                        maturity=library.add_days(library.valuation_date, Math.round(t_maturity*365));
+                        ttm=ttm*effective_duration_target/effective_duration;
+                        maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
                         bond.maturity=maturity;
                         effective_duration=ed(bond);
                         iter--;
@@ -1889,13 +1961,11 @@
                         fixed_rate: irr,
                         tenor: tenor,
                         float_spread: 0.00,
-                        float_tenor: 6,
+                        float_tenor: conventions.float_tenor || 6,
                         float_current_rate: 0.00,
                         calendar: calendar,
                         bdc: bdc,
-                        float_bdc: bdc,
-                        dcc: "act/365",
-                        float_dcc: "act/365"
+                        float_bdc: bdc
                 }; 
         };
 
