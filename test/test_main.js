@@ -1284,12 +1284,12 @@ var Firstcall=["15.02.2020", "22.05.2010", "15.08.2015", "15.02.2000", "15.08.20
 var Tenor=[3,3,6,6,3,3,6,6,12,12,12,12,12,1,3];
 var Calltenor=[1,3,6,12,3,3,6,6,12,12,12,12,12,12,12];
 
-bonds=[];
 swaptions=[];
-multi_callable_bonds=[];
-var result_multi;
+var european_options=[];
+var bermudan_options=[];
+var result_european, result_bermudan, result_swaption;
 for (i=0; i<Maturity.length; i++){
-        bonds.push({
+        european_options.push({
 		maturity: Maturity[i],
 		first_exercise_date: Firstcall[i],
 		tenor: Tenor[i],
@@ -1298,9 +1298,10 @@ for (i=0; i<Maturity.length; i++){
 		fixed_rate: 0.01,
 		bdc: "m",
 		dcc: "act/365",
-		calendar: "TARGET"
+		calendar: "TARGET",
+                exclude_base: true
         });
-        multi_callable_bonds.push({
+        bermudan_options.push({
 		maturity: Maturity[i],
 		first_exercise_date: Firstcall[i],
 		tenor: Tenor[i],
@@ -1309,11 +1310,12 @@ for (i=0; i<Maturity.length; i++){
 		fixed_rate: 0.01,
 		bdc: "m",
 		dcc: "act/365",
-		calendar: "TARGET"
+		calendar: "TARGET",
+                exclude_base: true
         });
-
 	swaptions.push({
                 is_payer: false,
+                is_short: true,
                 maturity: Maturity[i],
                 first_exercise_date: Firstcall[i],
                 notional: 100,
@@ -1329,22 +1331,19 @@ for (i=0; i<Maturity.length; i++){
                 float_dcc: "act/365"
         });
 
-	result=JsonRisk.pricer_callable_bond(bonds[i],curve, null, curve, surface);
-	result_multi=JsonRisk.pricer_callable_bond(multi_callable_bonds[i],curve, null, curve, surface);
-	bpv=JsonRisk.pricer_bond(bonds[i],curve_up, null)-JsonRisk.pricer_bond(bonds[i],curve, null);
-	console.log("Non-callable bond price : " + JsonRisk.pricer_bond(bonds[i],curve, null));
-	console.log("Embedded swaption price : " + JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface));
-	console.log("Callable bond price     : " + result);
-	console.log("Multi-callable bond price: " + result_multi);
+	result_european=JsonRisk.pricer_callable_bond(european_options[i],curve, null, curve, surface);
+	result_bermudan=JsonRisk.pricer_callable_bond(bermudan_options[i],curve, null, curve, surface);
+        result_swaption=JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface);
+	bpv=JsonRisk.pricer_bond(european_options[i],curve_up, null)-JsonRisk.pricer_bond(european_options[i],curve, null);
+	console.log("Non-callable bond price : " + JsonRisk.pricer_bond(european_options[i],curve, null));
+	console.log("Explicit swaption price : " + result_swaption);
+	console.log("Embedded bond option price     : " + result_european);
+	console.log("Multi-callable bond option price: " + result_bermudan);
 	console.log("Basis point value        : " + bpv);
-	console.log("Difference in BP   ("+(i+1)+"): " + ((result+
-					  JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-
-					  JsonRisk.pricer_bond(bonds[i],curve, null))/bpv).toFixed(1));
+	console.log("Difference in BP   ("+(i+1)+"): " + ((result_european-result_swaption)/bpv).toFixed(1));
 
-	am(Math.abs((result+
-		     JsonRisk.pricer_swaption(swaptions[i],curve, curve, surface)-
-		     JsonRisk.pricer_bond(bonds[i],curve, null))/bpv)<1, "Callable bond consistency check (" +(i+1)+")");
-	am(result>=result_multi, "Multi-callable bond consistency check (" +(i+1)+")");
+	am(Math.abs((result_european-result_swaption)/bpv)<1, "Callable bond consistency check (" +(i+1)+")");
+	am(result_european>=result_bermudan, "Multi-callable bond consistency check (" +(i+1)+")");
 }
 
 /* 

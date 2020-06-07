@@ -82,6 +82,14 @@ Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `sw
 ### Meaning
 Start date for schedule generation.
 
+
+------------------------------------------------------------------------------
+##exclude\_base `Boolean`
+### Instruments
+Relevant for `callable_bond`
+### Meaning
+If `true`, present value returns only the embedded option price. Defaults to false.
+
 ------------------------------------------------------------------------------
 ##first\_date `Date`
 ### Instruments
