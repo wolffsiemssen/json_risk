@@ -1,5 +1,24 @@
 importScripts('./json_risk.min.js');
 
+/*
+associated scripts: index.html, main.js, export.js, import.js, worker.js, testdata.js
+
+structure of worker.js
+
+I.   main logic called by main.js                   calculate present value for an instrument
+
+II.  assignment functions called by main logic
+      assign_disc_curve(instrument)                 assign discount curve to given instrument
+      assign_fwd_curve(instrument)                  assign forward curve to given instrument
+      assign_surface(instrument)                    assign surface to given instrument
+      assign_params(instrument)                     invoke the other 3 assignment functions
+ 
+*/
+
+
+/* I. main logic called by main.js */
+
+
 onmessage = function(e) {
 	var d=e.data;
 	if (d.params){
@@ -13,7 +32,7 @@ onmessage = function(e) {
 		try{
 			//default curve assignment
 			assign_params(d.instrument);
-			var res=JsonRisk.vector_pricer(d.instrument);
+			var res=JsonRisk.vector_pricer(d.instrument); 
 			postMessage({res: res, sub_portfolio: d.instrument.sub_portfolio});
 		}catch(ex){
 			postMessage({error: true, msg: ex.message, id: d.instrument.id});
@@ -21,13 +40,15 @@ onmessage = function(e) {
 	}
 }
 
+/* II. assignment functions called by main logic */
+
 assign_disc_curve=function(i){
 	p=JsonRisk.get_params();
 	var msg;
 
 	//a valid curve has already been assigned
 	if(i.disc_curve in p.curves) return 0;
-
+    
 	//need assignment
 	cname=(i.currency || "EUR") + "_OIS_DISCOUNT"; //default curve name
 	if(cname in p.curves){
@@ -113,3 +134,4 @@ assign_params=function(i){
 			assign_disc_curve(i);
 	}
 }
+

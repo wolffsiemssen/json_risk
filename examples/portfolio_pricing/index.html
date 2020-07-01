@@ -29,6 +29,11 @@ JSON risk
 <script src="json_risk.min.js"></script>
 
 <!--
+PAKO
+-->
+<script src="pako.min.js"></script>
+
+<!--
 main app
 -->
 
@@ -111,7 +116,7 @@ main app
                   </div>
                 </div>
                 <div class="table-responsive">
-                        <table ng-if="portfolio!==null && !busy" class="table table-responsive table-hover table-sm table-bordered">
+                        <table ng-if="portfolio!==null" class="table table-responsive table-hover table-sm table-bordered">
                           <thead class="thead-light">
                             <tr>
                               <th scope="col">Actions</th>
@@ -130,7 +135,7 @@ main app
                             </tr>
                           </thead>
                           <tbody>
-                            <tr ng-repeat="x in portfolio | filter:filter.text | limitTo: 250 track by $index">
+                            <tr ng-repeat="x in portfolio | filter:filter.text | limitTo: 250">
                               <th scope="row">
                                     <div class="btn-group mr-2">
                                         <button type="button" class="btn btn-sm btn-link" ng-click="view(x)">View</button>                                        
@@ -319,7 +324,14 @@ main app
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate()">Calculate</button>
-                    </div>
+                    
+                        </div class="input-group">
+                            <div class="input-group-prepend">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate_lambda()">Calculate Lambda</button> 
+                            <div>
+                            <input type="text" class="form-control" placeholder="API-key" aria-label="" aria-describedby="" ng-model="options_aws.apikey">                          
+                        </div>
+                      </div>  
                   </div>
                 </div>
 
@@ -369,14 +381,14 @@ main app
                             <tr>
 				<th scope="col">Index</th> 
 				<th scope="col">Total</th>                              
-				<th ng-repeat="(key, value) in res[0]" ng-if="key!=='TOTAL'" scope="col">{{key}}</th>
+				<th ng-repeat="(key, value) in res[0] track by $index" ng-if="key!=='TOTAL'" scope="col">{{key}}</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr ng-repeat="x in res track by $index">
 				<th scope="row">{{$index}}</th>
 				<th scope="row">{{x.TOTAL | number:2}}</th>                              
-				<td ng-repeat="(key, value) in x" ng-if="key!=='TOTAL'" scope="row">{{value | number:2}}</td>
+				<td ng-repeat="(key, value) in x track by $index" ng-if="key!=='TOTAL'" scope="row">{{value | number:2}}</td>
                             </tr>
 
                           </tbody>
@@ -395,4 +407,5 @@ main app
 
 </body>
 </html>
+
 

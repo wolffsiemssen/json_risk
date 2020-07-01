@@ -1,3 +1,19 @@
+/*
+associated scripts: index.html, main.js, export.js, worker.js, testdata.js (aws lambda function jr_portfoliopricer, aws api jr_portfoliopricer)
+
+structure of export.js
+
+I. functions called by main.js
+    load_params_from_server(sc)     imports selected params from jsonrisk-Server
+    load_params_list(sc)            loads available params list from jsonrisk-Server
+    import_data(fil, kind, sc)      imports data to scope (portfolio, curves, ...)
+ 
+*/
+
+
+/* I. functions called by main.js */
+
+
 var load_params_from_server=function(sc){
 	if (!sc.available_params.selection){
 		alert("No parameter set selected");
@@ -167,3 +183,4 @@ var import_data=function(fil, kind, sc){
                 Papa.parse(fil,pp_config)
         }
 }
+
