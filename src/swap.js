@@ -1,6 +1,11 @@
-
 (function(library){
 
+		/**
+		 	* creates an internal swap object (including bonds fpr fixed leg and float leg) from input data
+			* @param {object} instrument instrument (swap)
+			* @memberof library
+			* @public
+		*/   
        library.swap=function(instrument){
                 this.phi=instrument.is_payer ? -1 : 1;
                 
@@ -32,25 +37,51 @@
                         float_current_rate: instrument.float_current_rate
                 });
         };
-        
+ 		/**
+		 	* ...
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} fair rate
+			* @memberof library
+			* @public
+		*/         
         library.swap.prototype.fair_rate=function(disc_curve, fwd_curve){
                 //returns fair rate, that is, rate such that swap has zero present value
                 var pv_float=this.float_leg.present_value(disc_curve, null, fwd_curve);
                 return - this.phi * pv_float / this.annuity(disc_curve);
         };
-        
+ 		/**
+		 	* ...
+			* @param {object} disc_curve discount curve
+			* @returns {number} annuity
+			* @memberof library
+			* @public
+		*/         
         library.swap.prototype.annuity=function(disc_curve){
                 //returns always positive annuity regardless of payer/receiver flag
 		return this.fixed_leg.annuity(disc_curve) * this.phi;
         };
-        
+		/**
+		 	* calculates the present value for internal swap (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/          
         library.swap.prototype.present_value=function(disc_curve, fwd_curve){
                 var res=0;
                 res+=this.fixed_leg.present_value(disc_curve, null, null);
                 res+=this.float_leg.present_value(disc_curve, null, fwd_curve);
                 return res;
         };
-        
+		/**
+		 	* ...
+			* @param {object} fwd_curve forward curve
+			* @returns {object} cash flows
+			* @memberof library
+			* @public
+		*/          
         library.swap.prototype.get_cash_flows=function(fwd_curve){
                 return{
                         fixed_leg: this.fixed_leg.get_cash_flows(),
@@ -58,7 +89,15 @@
                 };
         };
          
-        
+		/**
+		 	* ...
+			* @param {object} swap Instrument 
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/           
         library.pricer_swap=function(swap, disc_curve, fwd_curve){
                 var swap_internal=new library.swap(swap);
                 return swap_internal.present_value(disc_curve, fwd_curve);

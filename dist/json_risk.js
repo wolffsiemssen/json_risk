@@ -4,6 +4,8 @@
 	https://github.com/tilwolff/json_risk
 	License: MIT
 */
+
+
 (function(root, factory)
 {
         if (typeof module === 'object' && typeof exports !== 'undefined')
@@ -35,6 +37,15 @@
 }));
 ;
 (function(library){
+
+
+
+		/**
+		 	* creates an internal callable bond object (including swaption and baskets) from input data
+			* @param {object} instrument a callable bond
+			* @memberof library
+			* @public
+		*/
 
        library.callable_fixed_income=function(instrument){
        		/*
@@ -103,7 +114,18 @@
                         }
 		}
         };
-        
+ 
+
+		/**
+		 	* calculates the present value for internal callable bond (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} surface surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/       
         library.callable_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve, surface){
                 var res=0;
                 var i;
@@ -147,7 +169,17 @@
                 return res;
         };
          
-        
+		/**
+		 	* calculates the present value for callable bonds
+			* @param {object} bond instrument of type bond
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} surface surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/           
         library.pricer_callable_bond=function(bond, disc_curve, spread_curve, fwd_curve, surface){
                 var cb_internal=new library.callable_fixed_income(bond);
                 return cb_internal.present_value(disc_curve, spread_curve, fwd_curve, surface);
@@ -155,9 +187,20 @@
         
 
 }(this.JsonRisk || module.exports));
-;(function(library){        
-        var default_yf=null;
+;(function(library){   
 
+/**
+ 	* @memberof library
+*/     
+        var default_yf=null;
+		/**
+		 	* converts rate of a curve to zero rates
+			* @param {number} value rate of curve 
+			* @param {string} type type of curve e.g. yield
+			* @returns {object} constant curve with discount factors {type, times, dfs}
+			* @memberof library
+			* @public
+		*/  
         library.get_const_curve=function(value, type){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
                 if(value <= -1) throw new Error("get_const_curve: invalid input."); 
@@ -167,7 +210,16 @@
                                 dfs: [1/(1+value)] //zero rates are act/365 annual compounding
                        };
         };
-        
+
+
+		/**
+		 	* get i-th time entry of a curve 
+			* @param {object} curve curve
+			* @param {number} i time
+			* @returns {number} time
+			* @memberof library
+			* @private
+		*/      
         function get_time_at(curve, i){
                 if (!curve.times){
                         //construct times from other parameters in order of preference
@@ -182,7 +234,13 @@
                 }
                 return curve.times[i];
         }
-        
+		/**
+		 	* get time-array of a curve
+			* @param {object} curve curve
+			* @returns {array} times in days of given curve
+			* @memberof library
+			* @public
+		*/        
         library.get_curve_times=function(curve){
                 var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
                 if (!i) throw new Error("get_curve_times: invalid curve, need to provide valid times, days, dates, or labels");
@@ -194,12 +252,26 @@
                 return times;
         };
         
+		/**
+		 	* get i-th dfs/zcs entry of a curve 
+			* @param {object} curve curve
+			* @param {number} dfs/zcs
+			* @memberof library
+			* @private
+		*/
         function get_df_at(curve, i){
                 if (Array.isArray(curve.dfs)) return curve.dfs[i];
                 if (Array.isArray(curve.zcs)) return Math.pow(1+curve.zcs[i],-get_time_at(curve,i));
                 throw new Error("get_df: invalid curve, must provide dfs or zcs");
         }
         
+		/**
+		 	* get dfs/zcs-array of a curve
+			* @param {object} curve curve
+			* @returns {array} dfs/zcs
+			* @memberof library
+			* @private
+		*/   
         function get_curve_dfs(curve){
                 var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
                 if (!i) throw new Error("get_curve_dfs: invalid curve, need to provide valid times, days, dates, or labels");
@@ -217,6 +289,13 @@
                 return dfs;
         }
         
+		/**
+		 	* converts curve in a curve with format {type, times, dfs}
+			* @param {object} curve curve
+			* @returns {object} curve
+			* @memberof library
+			* @public
+		*/   
         library.get_safe_curve=function(curve){
                 //if valid curve is given, returns validated curve in most efficient form {type, times, dfs}, 
                 //if null or other falsy argument is given, returns constant zero curve
@@ -228,7 +307,17 @@
                         };
         };
 
-        
+
+		/**
+		 	* TODO
+			* @param {object} curve curve
+			* @param {number} t 
+			* @param {number} imin
+			* @param {number} imax
+			* @returns {number} discount factor
+			* @memberof library
+			* @public
+		*/          
         library.get_df=function(curve,t,imin,imax){
                 if (undefined===imin) imin=0;
                 if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
@@ -252,17 +341,44 @@
                 return library.get_df(curve,t,imin,imed);
         };
 
+
+		/**
+		 	* TODO
+			* @param {object} curve curve
+			* @param {number} t 
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/  
         library.get_rate=function(curve,t){
                 if (t<1/512) return 0.0;
                 return Math.pow(library.get_df(curve,t),-1/t)-1;
         };
 
+		/**
+		 	* TODO
+			* @param {object} curve curve
+			* @param {number} tstart
+			* @param {number} tend
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/  
         library.get_fwd_rate=function(curve,tstart,tend){
                 if (tend-tstart<1/512) return 0.0;
                 return Math.pow(library.get_df(curve,tend) / library.get_df(curve,tstart),-1/(tend-tstart))-1;
         };
 
 
+
+		/**
+		 	* adds two curves (times of curves can be different)
+			* @param {object} c1 curve
+			* @param {object} c2 curve
+			* @returns {object} curve {times:times, zcs: zcs}
+			* @memberof library
+			* @public
+		*/ 
 	library.add_curves=function(c1, c2){
 		var t1=library.get_curve_times(c1);
 		var t2=library.get_curve_times(c2);
@@ -283,9 +399,19 @@
 
 
 }(this.JsonRisk || module.exports));
-;
-(function(library){
-        
+;(function(library){
+
+		/**
+		 	* discounts a cash flow
+			* @param {object} cf_obj cash flow 
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {number} residual_spread residual spread
+			* @param {date} settlement_date settlement date
+			* @returns {object} discounted cash flow
+			* @memberof library
+			* @public
+		*/   
         library.dcf=function(cf_obj, disc_curve, spread_curve, residual_spread, settlement_date){
                 /*
                 requires cf_obj of type
@@ -324,7 +450,16 @@
                 }
                 return res;
         };
-        
+    
+		/**
+		 	* TODO
+			* @param {object} cf_obj cash flow
+			* @param {date} settlement_date
+			* @param {date} payment_on_settlement_date
+			* @returns {object} ...
+			* @memberof library
+			* @public
+		*/      
         library.irr=function(cf_obj, settlement_date, payment_on_settlement_date){
 		library.require_vd(); //valuation date must be set
                 if (!payment_on_settlement_date) payment_on_settlement_date=0;
@@ -340,6 +475,13 @@
         };
 }(this.JsonRisk || module.exports));
 ;(function(library){
+
+		/**
+		 	* creates an internal fixed income object from input data
+			* @param {object} instrument Instrument
+			* @memberof library
+			* @public
+		*/   
         library.fixed_income=function(instrument){
 
                 var maturity=library.get_safe_date(instrument.maturity);       
@@ -484,6 +626,17 @@
         };
 
 
+
+
+
+		/**
+		 	* initialize a cash flow for internal fixed income instrument
+			* @returns {object} initialized cash flow
+			* @memberof library
+			* @public
+		*/  
+
+
 	library.fixed_income.prototype.initialize_cash_flows=function(){
 		library.require_vd(); //valuation date must be set
 
@@ -605,6 +758,15 @@
 	 };
 
 
+
+		/**
+		 	* finalizes cash flow for internal fixed income instrument
+			* @param {object} fwd_curve forward curve
+			* @param {number} override_rate_or_spread
+			* @returns {object} finalized cash flow
+			* @memberof library
+			* @public
+		*/  
         library.fixed_income.prototype.finalize_cash_flows=function(fwd_curve, override_rate_or_spread){
 		library.require_vd(); //valuation date must be set
 
@@ -757,6 +919,16 @@
                 };
 	};
 
+
+
+		/**
+		 	* returns the cash flow of the internal instrument
+			* @param {object} fwd_curve forward curve
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/  
+
 	library.fixed_income.prototype.get_cash_flows=function(fwd_curve){
 		if(this.is_float){
 			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
@@ -764,7 +936,17 @@
 		}
 		return this.cash_flows;
 	};
-    
+  
+
+		/**
+		 	* calculates the present value for internal fixed income instrument (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/    
         library.fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
 		if(this.is_float && (typeof fwd_curve !== 'object' || fwd_curve===null)) throw new Error("fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream");
                 return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
@@ -773,7 +955,15 @@
                                    this.residual_spread,
                                    this.settlement_date);
         };
-
+		/**
+		 	* TODO
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} fair rate or spread
+			* @memberof library
+			* @public
+		*/  
         library.fixed_income.prototype.fair_rate_or_spread=function(disc_curve, spread_curve, fwd_curve){
 		library.require_vd(); //valuation date must be set
 		var fc=library.get_safe_curve(fwd_curve) || library.get_const_curve(0);
@@ -795,17 +985,16 @@
 		guess/=this.annuity(disc_curve, spread_curve, fc);
 		return guess;
         };
-
+		/**
+		 	* returns the annuity of the fixed income stream, that is, the present value of all interest payments assuming the interest rate is 100%. In case of interest capitalizing instruments, this function uses the notional structure implied by the original fixed rate or, for floaters, uses the supplied forward curve plus spread
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} annuity
+			* @memberof library
+			* @public
+		*/  
         library.fixed_income.prototype.annuity=function(disc_curve, spread_curve, fwd_curve){
-		/*
-			returns the annuity of the fixed income stream,
-			that is, the present value of all interest payments assuming
-			the interest rate is 100%.
-			In case of interest capitalizing instruments, this function
-			uses the notional structure implied by the original fixed rate
-			or, for floaters, uses the supplied forward curve plus spread
-		*/
-		
                 var c=this.get_cash_flows(library.get_safe_curve(fwd_curve) || library.get_const_curve(0));
 		var pmt=new Array(c.pmt_total.length);
 		var accrued=0;		
@@ -833,11 +1022,31 @@
 				this.settlement_date);
         };
        
+
+
+
+		/**
+		 	* calculates the present value for bonds
+			* @param {object} bond instrument of type bond
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/  
         library.pricer_bond=function(bond, disc_curve, spread_curve){
                 var bond_internal=new library.fixed_income(bond);
                 return bond_internal.present_value(disc_curve, spread_curve, null);
         };
-        
+		/**
+		 	* calculates the present value for floaters
+			* @param {object} floater instrument of type floater
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/          
         library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
                 var floater_internal=new library.fixed_income(floater);
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
@@ -847,6 +1056,12 @@
 ;
 (function(library){
 
+		/**
+		 	* creates an internal fxterm object (including swap resp. bonds) from input data
+			* @param {object} instrument instrument of type fxterm
+			* @memberof library
+			* @public
+		*/  
        library.fxterm=function(instrument){
                 
                 //the near payment of the swap
@@ -869,14 +1084,28 @@
                         this.far_leg=null;
                 }
         };
-        
+		/**
+		 	* calculates the present value for internal fxterm (object)
+			* @param {object} disc_curve discount curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/          
         library.fxterm.prototype.present_value=function(disc_curve){
                 var res=0;
                 res+=this.near_leg.present_value(disc_curve, null, null);
                 if(this.far_leg) res+=this.far_leg.present_value(disc_curve, null, null);
                 return res;
         };
-        
+
+		/**
+		 	* calculates the present value for fxterm
+			* @param {object} fxterm instrument of type fxterm
+			* @param {object} disc_curve discount curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/           
         library.pricer_fxterm=function(fxterm, disc_curve){
                 var fxterm_internal=new library.fxterm(fxterm);
                 return fxterm_internal.present_value(disc_curve);
@@ -885,6 +1114,8 @@
 
 }(this.JsonRisk || module.exports));
 ;(function(library){
+
+
 
         /*
         
@@ -895,20 +1126,42 @@
 
 	'use strict';
 
+		/**
+		 	* TODO
+			* @param {} mean_rev
+			* @returns {} ...
+			* @memberof library
+			* @private
+		*/   
+
 	function h_factory(mean_rev){
 		if (mean_rev===0) return function(t){return t;};
 		return function(t){return (1-Math.exp(-mean_rev*t))/mean_rev;};		
 	}
 
+
+		/**
+		 	* TODO
+			* @param {} t
+			* @returns {} ...
+			* @memberof library
+			* @private
+		*/   
 	function h(t){ return t;}
 
-        function get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread){
-                /*
-                
-                precalculates discount factors for each cash flow and for t_exercise
 
-        
-                */
+		/**
+		 	* precalculates discount factors for each cash flow and for t_exercise
+			* @param {object} cf_obj cash flow 
+			* @param {object} t_exercise TODO
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {} residual_spread residual spread
+			* @returns {object} discount factors
+			* @memberof library
+			* @private
+		*/   
+        function get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread){
                 var res=new Array(cf_obj.t_pmt.length+1); //last item holds discount factor for t_exercise
                 var i=0, df;
 
@@ -932,7 +1185,18 @@
                 res[i]=df;
                 return res;
         }
-	
+
+
+		/**
+		 	* TODO
+			* @param {object} cf_obj
+			* @param {} t_exercise
+			* @param {object} discount_factors
+			* @param {} opportunity_spread
+			* @returns {object} ...
+			* @memberof library
+			* @private
+		*/   	
 	function strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread){
 		if(!opportunity_spread) return 0;                
 		var i=0, df;
@@ -952,6 +1216,19 @@
 		return res;
 	}
 
+
+		/**
+		 	* TODO calculates the discounted cash flow present value for a given vector of states 
+			* @param {object} cf_obj
+			* @param {} t_exercise
+			* @param {object} discount_factors
+			* @param {} xi
+			* @param {} state
+			* @param {} opportunity_spread
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_dcf=function(cf_obj,t_exercise, discount_factors, xi, state, opportunity_spread){
                 /*
 
@@ -997,6 +1274,21 @@
                 return res;
 	};
 
+
+		/**
+		 	* TODO calculates the european call option price on a cash flow
+			* @param {object} cf_obj
+			* @param {} t_exercise
+			* @param {object} disc_curve
+			* @param {} xi
+			* @param {object} spread_curve spread curve
+			* @param {} residual_spread residual spread
+			* @param {} opportunity_spread opportunity spread
+			* @param {object} discount_factors_precalc
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread, opportunity_spread, discount_factors_precalc){
                 /*
 
@@ -1089,6 +1381,17 @@
                 return res;
 	};
 
+
+		/**
+		 	* TODO
+			* @param {object} swaption Instrument
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {} fair_rate fair rate
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_european_swaption_adjusted_cashflow=function(swaption,disc_curve, fwd_curve, fair_rate){
 		//correction for multi curve valuation - move basis spread to fixed leg
 		var swap_rate_singlecurve=swaption.swap.fair_rate(disc_curve, disc_curve);
@@ -1108,6 +1411,18 @@
 		return cf_obj;
 	};
 
+
+		/**
+		 	* TODO
+			* @param {object} swaption Instrument
+			* @param {} t_exercise
+			* @param {object} disc_curve discount curve
+			* @param {} xi
+			* @param {object} fwd_curve forward curve
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_european_swaption=function(swaption,t_exercise, disc_curve, xi, fwd_curve){
 		//retrieve adjusted cash flows
 		var cf_obj=library.lgm_european_swaption_adjusted_cashflow(swaption,disc_curve, fwd_curve);
@@ -1116,6 +1431,17 @@
 		return library.lgm_european_call_on_cf(cf_obj,t_exercise, disc_curve, xi, null, null, null);
 	};
 
+
+		/**
+		 	* TODO
+			* @param {object} basket basket
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} surface surface
+			* @returns {} xi_vec
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_calibrate=function(basket, disc_curve, fwd_curve, surface){
 		library.require_vd();
 		var xi, xi_vec=[];
@@ -1189,6 +1515,20 @@
 	var STD_DEV_RANGE=4;
 	var RESOLUTION=15;
 
+
+		/**
+		 	* ...
+			* @param {object} cf_obj
+			* @param {} exercise_vec
+			* @param {object} disc_curve discount curve
+			* @param {} xi_vec
+			* @param {object} spread_curve spread curve
+			* @param {} residual_spread
+			* @param {} opportunity_spread
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_bermudan_call_on_cf=function(cf_obj,t_exercise_vec, disc_curve, xi_vec, spread_curve, residual_spread, opportunity_spread){
                 /*
 
@@ -1215,7 +1555,12 @@
 							residual_spread, opportunity_spread); //expiring option
 		}
 
-
+		/**
+		 	* TODO
+			* @returns {number} ...
+			* @memberof library
+			* @private
+		*/   
 		function make_state_vector(){ //repopulates state vector and ds measure
 			var res=new Array(n);			
 			res[0]=-STD_DEV_RANGE*std_dev;
@@ -1224,7 +1569,11 @@
 			}
 			return res;
 		}
-
+		/**
+		 	* TODO
+			* @memberof library
+			* @private
+		*/   
 		function update_value(){ //take maximum of payoff and hold values
 			var i_d=0;
 			for (i=0; i<n; i++){
@@ -1246,6 +1595,13 @@
 			}
 		}
 
+		/**
+		 	* TODO
+			* @param {} j
+			* @returns {} ...
+			* @memberof library
+			* @private
+		*/   
 		function numeric_integration(j){ //simple implementation of lgm martingale formula
 			if(xi_last-xi<1E-15) return value[j];
 		        var temp=0, dp_lo=0, dp_hi, norm_scale=1/Math.sqrt(xi_last-xi);
@@ -1319,6 +1675,7 @@
 }(this.JsonRisk || module.exports));
 ;
 (function(library){
+
 	'use strict';
         
         var RT2PI = Math.sqrt(4.0*Math.acos(0.0));
@@ -1338,7 +1695,13 @@
         var M5 = 16.064177579207;
         var M6 = 1.75566716318264;
         var M7 = 8.83883476483184e-02;
-
+		/**
+		 	* TODO
+			* @param {number} n
+			* @returns {number} number
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_number=function(n){
 		if(typeof n === 'number') return n;
 		if(typeof n === 'string'){
@@ -1350,19 +1713,37 @@
 		}
 		return null;
 	};
-
+		/**
+		 	* TODO
+			* @param {number} n
+			* @returns {number} number
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_positive=function(n){ //returns positive number if a valid positive number is entered and null otherwise
 		var res=library.get_safe_number(n);
 		if (res<=0) return null;
 		return res;
 	};
-
+		/**
+		 	* TODO
+			* @param {natural} n
+			* @returns {natural} natural vector
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_natural=function(n){ //returns natural number, zero allowed, if a valid natural number is entered and null otherwise
 		var res=library.get_safe_number(n);
 		if (res<0 || res!==Math.floor(res)) return null;
 		return res;
 	};
-
+		/**
+		 	* TODO
+			* @param {number} n
+			* @returns {number} number vector
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_number_vector=function(n){ //vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
 		if(typeof n === 'number') return [n];
 		var res;
@@ -1379,7 +1760,13 @@
 		}
 		return res;
 	};
-
+		/**
+		 	* TODO
+			* @param {boolean} b
+			* @returns {boolean} boolean vector
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_bool=function(b){
 		if(typeof b === 'boolean') return b;				
 		if(typeof b === 'number') return b!==0;
@@ -1390,7 +1777,13 @@
 		}
 		return false;
 	};
-
+		/**
+		 	* TODO
+			* @param {boolean} b
+			* @returns {boolean} boolean vector
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_bool_vector=function(b){ //returns vector of booleans when input can be converted to booleans. Returns single-entry array [false] otherwise
 		if(typeof b === 'boolean') return [b];
 		if(typeof b === 'number') return [b!==0];
@@ -1407,17 +1800,24 @@
 		}
 		return res;
 	};
-        
+		/**
+		 	* ...
+			* @param {number} x
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/           
         library.ndf=function(x){
           return Math.exp(-x*x/2.0)/RT2PI;
         };
-        
-        
-        /*
-                Cumulative normal distribution function with double precision
-                according to
-                Graeme West, BETTER APPROXIMATIONS TO CUMULATIVE NORMAL FUNCTIONS, 2004
-        */         
+          
+		/**
+		 	* cumulative normal distribution function with double precision according to Graeme West, BETTER APPROXIMATIONS TO CUMULATIVE NORMAL FUNCTIONS, 2004
+			* @param {number} x
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/         
         library.cndf=function(x){
                 var z = Math.abs(x);
                 var c;
@@ -1449,6 +1849,13 @@
         var D5=0.0000488906;
         var D6=0.0000053830;
 
+		/**
+		 	* fast cumulative normal distribution function
+			* @param {number} x
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/   
         library.fast_cndf=function(x){
                 var z=Math.abs(x);
                 var f=1+z*(D1+z*(D2+z*(D3+z*(D4+z*(D5+z*D6)))));
@@ -1456,7 +1863,17 @@
                 f=0.5/f;
                 return (x>=0) ? 1-f : f;
         };
-        
+		/**
+		 	* TODO
+			* @param {} func
+			* @param {number} start
+			* @param {number} next
+			* @param {number} max_iter
+			* @param {number} threshold
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/           
         library.find_root_secant=function(func, start, next, max_iter, threshold){
                 var x=start, xnext=next, temp=0, iter=max_iter||20, t=threshold||0.00000001;
                 var f=func(x), fnext=func(xnext);
@@ -1484,13 +1901,29 @@
 		}
 		return xnext;      
         };
-
+		/**
+		 	* signum function
+			* @param {number} x
+			* @returns {number} signum
+			* @memberof library
+			* @private
+		*/   
 	function signum(x){
 		if (x>0) return 1;
 		if (x<0) return -1;
 		return 0;
 	}
-
+		/**
+		 	* TODO
+			* @param {} func
+			* @param {number} start
+			* @param {number} next
+			* @param {number} max_iter
+			* @param {number} threshold
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/   
         library.find_root_ridders=function(func, start, next, max_iter, threshold){
                 var x=start, y=next, z=0, w=0, r=0, iter=max_iter||20, t=threshold||0.00000001;
                 var fx=func(x), fy=func(y), fz, fw;
@@ -1533,15 +1966,25 @@
 }(this.JsonRisk || module.exports));
 ;
 (function(library){
+
+
 	'use strict';
 	/*
         
         Schedule functions used by simple and irregular fixed income instruments.
         
         */
-
+		/**
+		 	* creates a forward schedule from start up to but excluding end, using tenor as frequency
+			* @param {date} start start date
+			* @param {date} end end date
+			* @param {number} tenor tenor
+			* @param {} adjust_func
+			* @returns {object} schedule
+			* @memberof library
+			* @private
+		*/   
 	var forward_rollout=function(start, end, tenor, adjust_func){
-		//creates a forward schedule from start up to but excluding end, using tenor as frequency
 		var res=[start];
 		var i=1, dt=library.add_months(start, tenor);
 		while(dt.getTime()<end.getTime()){
@@ -1552,9 +1995,17 @@
 		if(adjust_func(end).getTime() <= adjust_func(res[res.length-1]).getTime()) res.pop(); //make sure end is excluded after adjustments
 		return res;
 	};
-
+		/**
+		 	* creates a backward schedule from end down to but excluding start, using tenor as frequency
+			* @param {date} start start date
+			* @param {date} end end date
+			* @param {number} tenor tenor
+			* @param {} adjust_func
+			* @returns {object} schedule
+			* @memberof library
+			* @private
+		*/   
 	var backward_rollout=function(start, end, tenor, adjust_func){
-		//creates a backward schedule from end down to but excluding start, using tenor as frequency
 		var res=[end];
 		var i=1, dt=library.add_months(end, -tenor);
 		while(dt.getTime()>start.getTime()){
@@ -1567,7 +2018,20 @@
 
 	};
 
-
+		/**
+		 	* TODO
+			* @param {date} eff_dt effective date
+			* @param {date} maturity maturity
+			* @param {number} tenor tenor
+			* @param {} adjust_func
+			* @param {date} first_dt first date
+			* @param {date} next_to_last_dt next to last date
+			* @param {} stub_end
+			* @param {} stub_long
+			* @returns {} ...
+			* @memberof library
+			* @public
+		*/   
         library.schedule=function(eff_dt, maturity, tenor, adjust_func, first_dt, next_to_last_dt, stub_end, stub_long){
                 if(!(maturity instanceof Date)) throw new Error ("schedule: maturity must be provided");
 	
@@ -1636,6 +2100,14 @@
 }(this.JsonRisk || module.exports));
 ;(function(library){
 
+		/**
+		 	* ...
+			* @param {number} value
+			* @param {string} type
+			* @returns {object} surface
+			* @memberof library
+			* @public
+		*/   
         library.get_const_surface=function(value, type){
                 if(typeof value !== 'number') throw new Error("get_const_surface: input must be number."); 
                 return {
@@ -1645,21 +2117,41 @@
                                 values: [[value]]
                        };
         };
-        
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @param {number} i
+			* @returns {number} term at time i
+			* @memberof library
+			* @private
+		*/           
         function get_term_at(surface, i){
                 //construct terms from labels_term if terms are not defined
                 if (surface.terms) return surface.terms[i];
                 if (surface.labels_term) return library.period_str_to_time(surface.labels_term[i]);
                 throw new Error("get_term_at: invalid surface, cannot derive terms");
         }
-        
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @param {number} i
+			* @returns {number} expiry at time i
+			* @memberof library
+			* @private
+		*/           
         function get_expiry_at(surface, i){
                 //construct expiries from labels_expiry if expiries are not defined
                 if (surface.expiries) return surface.expiries[i];
                 if (surface.labels_expiry) return library.period_str_to_time(surface.labels_expiry[i]);
                 throw new Error("get_expiry_at: invalid surface, cannot derive expiries");
         }
-        
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @returns {object} terms
+			* @memberof library
+			* @private
+		*/           
         function get_terms(surface){
                 var i=(surface.terms || surface.labels_term || []).length;
                 if (!i) throw new Error("get_surface_terms: invalid surface, need to provide valid terms or labels_term");
@@ -1670,7 +2162,13 @@
                 }
                 return terms;
         }
-        
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @returns {object} experies
+			* @memberof library
+			* @private
+		*/           
         function get_expiries(surface){
                 var i=(surface.expiries || surface.labels_expiry || []).length;
                 if (!i) throw new Error("get_surface_terms: invalid surface, need to provide valid expiries or labels_expiry");
@@ -1681,7 +2179,13 @@
                 }
                 return expiries;
         }
-        
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @returns {object} surface
+			* @memberof library
+			* @public
+		*/           
         library.get_safe_surface=function(surface){
                 //if valid surface is given, returns surface in initialised form {type, expiries, terms, values}
                 //if null or other falsy argument is given, returns constant zero surface
@@ -1693,7 +2197,17 @@
                                 values: surface.values
                         };
         };
-        
+		/**
+		 	* ...
+			* @param {object} surface
+			* @param {date} i_expiry
+			* @param {} t_term
+			* @param {} imin
+			* @param {} imax
+			* @returns {number} slice rate
+			* @memberof library
+			* @privat
+		*/            
         function get_slice_rate(surface,i_expiry,t_term,imin,imax){
                 imin=imin || 0;
                 imax=imax || (surface.terms || surface.labels_term || []).length-1;
@@ -1715,7 +2229,17 @@
                 if (t_term>get_term_at(surface,imed)) return get_slice_rate(surface,i_expiry,t_term,imed,imax);
                 return get_slice_rate(surface,i_expiry, t_term,imin,imed);
         }
-
+		/**
+		 	* ...
+			* @param {object} surface
+			* @param {date} t_expiry
+			* @param {} t_term
+			* @param {} imin
+			* @param {} imax
+			* @returns {number} surface rate
+			* @memberof library
+			* @public
+		*/   
         library.get_surface_rate=function(surface,t_expiry,t_term,imin,imax){
                 imin=imin || 0;
                 imax=imax || (surface.expiries || surface.labels_expiry || []).length-1;
@@ -1738,9 +2262,178 @@
 
 
 }(this.JsonRisk || module.exports));
-;
-(function(library){
+;(function(library){
 
+		/**
+		 	* ...
+			* @param {number} value
+			* @param {string} type
+			* @returns {object} surface
+			* @memberof library
+			* @public
+		*/   
+        library.get_const_surface=function(value, type){
+                if(typeof value !== 'number') throw new Error("get_const_surface: input must be number."); 
+                return {
+                                type: type || "", 
+                                expiries: [1],
+                                terms: [1],
+                                values: [[value]]
+                       };
+        };
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @param {number} i
+			* @returns {number} term at time i
+			* @memberof library
+			* @private
+		*/           
+        function get_term_at(surface, i){
+                //construct terms from labels_term if terms are not defined
+                if (surface.terms) return surface.terms[i];
+                if (surface.labels_term) return library.period_str_to_time(surface.labels_term[i]);
+                throw new Error("get_term_at: invalid surface, cannot derive terms");
+        }
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @param {number} i
+			* @returns {number} expiry at time i
+			* @memberof library
+			* @private
+		*/           
+        function get_expiry_at(surface, i){
+                //construct expiries from labels_expiry if expiries are not defined
+                if (surface.expiries) return surface.expiries[i];
+                if (surface.labels_expiry) return library.period_str_to_time(surface.labels_expiry[i]);
+                throw new Error("get_expiry_at: invalid surface, cannot derive expiries");
+        }
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @returns {object} terms
+			* @memberof library
+			* @private
+		*/           
+        function get_terms(surface){
+                var i=(surface.terms || surface.labels_term || []).length;
+                if (!i) throw new Error("get_surface_terms: invalid surface, need to provide valid terms or labels_term");
+                var terms=new Array(i);
+                while (i>0){
+                        i--;
+                        terms[i]=get_term_at(surface, i);
+                }
+                return terms;
+        }
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @returns {object} experies
+			* @memberof library
+			* @private
+		*/           
+        function get_expiries(surface){
+                var i=(surface.expiries || surface.labels_expiry || []).length;
+                if (!i) throw new Error("get_surface_terms: invalid surface, need to provide valid expiries or labels_expiry");
+                var expiries=new Array(i);
+                while (i>0){
+                        i--;
+                        expiries[i]=get_expiry_at(surface, i);
+                }
+                return expiries;
+        }
+		/**
+		 	* ...
+			* @param {object} surface surface
+			* @returns {object} surface
+			* @memberof library
+			* @public
+		*/           
+        library.get_safe_surface=function(surface){
+                //if valid surface is given, returns surface in initialised form {type, expiries, terms, values}
+                //if null or other falsy argument is given, returns constant zero surface
+                if (!surface) return library.get_const_surface(0.0);
+                return {
+                                type: surface.type || "", 
+                                expiries: get_expiries(surface),
+                                terms: get_terms(surface),
+                                values: surface.values
+                        };
+        };
+		/**
+		 	* ...
+			* @param {object} surface
+			* @param {date} i_expiry
+			* @param {} t_term
+			* @param {} imin
+			* @param {} imax
+			* @returns {number} slice rate
+			* @memberof library
+			* @privat
+		*/            
+        function get_slice_rate(surface,i_expiry,t_term,imin,imax){
+                imin=imin || 0;
+                imax=imax || (surface.terms || surface.labels_term || []).length-1;
+                
+                var sl=surface.values[i_expiry];
+		if (!Array.isArray(sl)) throw new Error("get_slice_rate: invalid surface, values property must be an array of arrays");
+                //slice only has one value left
+                if (imin===imax) return sl[imin];
+                //extrapolation (constant)
+                if (t_term<get_term_at(surface, imin)) return sl[imin];
+                if (t_term>get_term_at(surface, imax)) return sl[imax];
+                //interpolation (linear)
+                if (imin+1===imax){
+                        return sl[imin]*(get_term_at(surface, imax)-t_term)/(get_term_at(surface, imax)-get_term_at(surface, imin))+
+                               sl[imax]*(t_term-get_term_at(surface, imin))/(get_term_at(surface, imax)-get_term_at(surface, imin));
+                }
+                //binary search and recursion
+                imed=Math.ceil((imin+imax)/2.0);
+                if (t_term>get_term_at(surface,imed)) return get_slice_rate(surface,i_expiry,t_term,imed,imax);
+                return get_slice_rate(surface,i_expiry, t_term,imin,imed);
+        }
+		/**
+		 	* ...
+			* @param {object} surface
+			* @param {date} t_expiry
+			* @param {} t_term
+			* @param {} imin
+			* @param {} imax
+			* @returns {number} surface rate
+			* @memberof library
+			* @public
+		*/   
+        library.get_surface_rate=function(surface,t_expiry,t_term,imin,imax){
+                imin=imin || 0;
+                imax=imax || (surface.expiries || surface.labels_expiry || []).length-1;
+
+                //surface only has one slice left
+                if (imin===imax) return get_slice_rate(surface, imin, t_term);
+                //extrapolation (constant)
+                if (t_expiry<get_expiry_at(surface, imin)) return get_slice_rate(surface, imin, t_term);
+                if (t_expiry>get_expiry_at(surface, imax)) return get_slice_rate(surface, imax, t_term);
+                //interpolation (linear)
+                if (imin+1===imax){
+                        return get_slice_rate(surface, imin, t_term)*(get_expiry_at(surface, imax)-t_expiry)/(get_expiry_at(surface, imax)-get_expiry_at(surface, imin))+
+                               get_slice_rate(surface, imax, t_term)*(t_expiry-get_expiry_at(surface, imin))/(get_expiry_at(surface, imax)-get_expiry_at(surface, imin));
+                }
+                //binary search and recursion
+                imed=Math.ceil((imin+imax)/2.0);
+                if (t_expiry>get_expiry_at(surface,imed)) return library.get_surface_rate(surface,t_expiry,t_term,imed,imax);
+                return library.get_surface_rate(surface,t_expiry,t_term,imin,imed);
+        };
+
+
+}(this.JsonRisk || module.exports));
+;(function(library){
+
+		/**
+		 	* creates an internal swap object (including bonds fpr fixed leg and float leg) from input data
+			* @param {object} instrument instrument (swap)
+			* @memberof library
+			* @public
+		*/   
        library.swap=function(instrument){
                 this.phi=instrument.is_payer ? -1 : 1;
                 
@@ -1772,25 +2465,51 @@
                         float_current_rate: instrument.float_current_rate
                 });
         };
-        
+ 		/**
+		 	* ...
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} fair rate
+			* @memberof library
+			* @public
+		*/         
         library.swap.prototype.fair_rate=function(disc_curve, fwd_curve){
                 //returns fair rate, that is, rate such that swap has zero present value
                 var pv_float=this.float_leg.present_value(disc_curve, null, fwd_curve);
                 return - this.phi * pv_float / this.annuity(disc_curve);
         };
-        
+ 		/**
+		 	* ...
+			* @param {object} disc_curve discount curve
+			* @returns {number} annuity
+			* @memberof library
+			* @public
+		*/         
         library.swap.prototype.annuity=function(disc_curve){
                 //returns always positive annuity regardless of payer/receiver flag
 		return this.fixed_leg.annuity(disc_curve) * this.phi;
         };
-        
+		/**
+		 	* calculates the present value for internal swap (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/          
         library.swap.prototype.present_value=function(disc_curve, fwd_curve){
                 var res=0;
                 res+=this.fixed_leg.present_value(disc_curve, null, null);
                 res+=this.float_leg.present_value(disc_curve, null, fwd_curve);
                 return res;
         };
-        
+		/**
+		 	* ...
+			* @param {object} fwd_curve forward curve
+			* @returns {object} cash flows
+			* @memberof library
+			* @public
+		*/          
         library.swap.prototype.get_cash_flows=function(fwd_curve){
                 return{
                         fixed_leg: this.fixed_leg.get_cash_flows(),
@@ -1798,7 +2517,15 @@
                 };
         };
          
-        
+		/**
+		 	* ...
+			* @param {object} swap Instrument 
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/           
         library.pricer_swap=function(swap, disc_curve, fwd_curve){
                 var swap_internal=new library.swap(swap);
                 return swap_internal.present_value(disc_curve, fwd_curve);
@@ -1806,9 +2533,14 @@
         
 
 }(this.JsonRisk || module.exports));
-;
-(function(library){
+;(function(library){
 
+		/**
+		 	* creates an internal swaption object (including swap) from input data
+			* @param {object} instrument instrument
+			* @memberof library
+			* @public
+		*/   
         library.swaption=function(instrument){
                 this.sign=instrument.is_short ? -1 : 1;
                 
@@ -1840,7 +2572,15 @@
                         float_current_rate: instrument.float_current_rate
 		});
         };
-
+		/**
+		 	* calculates the present value for internal swaption (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} vol_surface volatility surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/  
         library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
                 library.require_vd();
                 
@@ -1874,12 +2614,29 @@
                 res*=this.sign;
                 return res;
         };
- 
+		/**
+		 	* ...
+			* @param {object} swaption Instrument
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} vol_surface volatility surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/    
         library.pricer_swaption=function(swaption, disc_curve, fwd_curve, vol_surface){
                 var swaption_internal=new library.swaption(swaption);
                 return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
         };
-        
+		/**
+		 	* ...
+			* @param {object} cf_obj cash flow object
+			* @param {date} first_exercise_date first exercise date
+			* @param {object} conventions conventions
+			* @returns {object} ...
+			* @memberof library
+			* @public
+		*/           
         library.create_equivalent_regular_swaption=function(cf_obj, first_exercise_date, conventions){
                 //sanity checks
                 if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
@@ -1972,6 +2729,10 @@
 }(this.JsonRisk || module.exports));
 ;(function(library){
 
+/**
+ 	* @memberof library
+*/ 
+
         /*
         
                 JsonRisk date and time functions
@@ -1984,17 +2745,36 @@
 
         var dl=1000*60*60*24; // length of one day in milliseconds
         var one_over_dl=1.0/dl;
-
+		/**
+		 	* ...
+			* @param {number} y year
+			* @returns {boolean} true, if leap year
+			* @memberof library
+			* @private
+		*/   
         function is_leap_year(y){
                 if(y%4!==0) return false;
                 if(y===2000) return true;
                 return (y%100!==0);
         }
-
+		/**
+		 	* ...
+			* @param {number} y year
+			* @param {number} m month
+			* @returns {number} days in month
+			* @memberof library
+			* @private
+		*/   
         function days_in_month(y,m){
                 return new Date(y,m+1,0).getDate();
         }
-        
+		/**
+		 	* ...
+			* @param {string} str time string (xY, xM, xW, xD)
+			* @returns {number} string in days
+			* @memberof library
+			* @public
+		*/           
         library.period_str_to_time=function(str){
                 var num=parseInt(str, 10);
 		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
@@ -2005,7 +2785,13 @@
                 if( unit === 'D' || unit === 'd') return num/365;
                 throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
         };
-        
+		/**
+		 	* ...
+			* @param {string} str date string
+			* @returns {date} javascript date object
+			* @memberof library
+			* @public
+		*/           
         library.date_str_to_date=function(str){
                 var rr=null,d,m,y;
                 if ((rr = /^([1-2][0-9]{3})[\/-]([0-9]{1,2})[\/-]([0-9]{1,2})/.exec(str)) !== null) { // YYYY/MM/DD or YYYY-MM-DD
@@ -2022,15 +2808,26 @@
                 if (d<0 || d>days_in_month(y,m)) throw new Error('date_str_to_time(str) - Invalid day in date string: ' + str);
                 return new Date(y,m,d);
         };
-        
+		/**
+		 	* takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
+			* @param {date} d
+			* @returns {date} javascript date object
+			* @memberof library
+			* @public
+		*/           
         library.get_safe_date=function(d){
-                //takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
                 if(!d) return null;
                 if(d instanceof Date) return d;
                 if((d instanceof String) || typeof d === 'string') return library.date_str_to_date(d);
                 throw new Error("get_safe_date: invalid input.");
         };
-
+		/**
+		 	* ...
+			* @param {date} d
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_date_vector=function(d){ //vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise
 		if(d instanceof Date) return [d];
 		var res;
@@ -2053,25 +2850,61 @@
                 Year Fractions
         
         */
+		/**
+		 	* counts days between to dates
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date 
+			* @memberof library
+			* @private
+		*/   
         function days_between(from, to){
                 return Math.round((to-from)  * one_over_dl);
         }
-
+		/**
+		 	* year fraction act365
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (act365)
+			* @memberof library
+			* @private
+		*/   
         function yf_act365(from,to){
                 return days_between(from,to)  / 365;
         }
         
-        
+		/**
+		 	* year fraction act360
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (act360)
+			* @memberof library
+			* @private
+		*/           
         function yf_act360(from,to){
                 return days_between(from,to)  / 360;
         }
-        
+		/**
+		 	* year fraction 30E360
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (30E360)
+			* @memberof library
+			* @private
+		*/           
         function yf_30E360(from,to){
                 return ((to.getFullYear()-from.getFullYear())*360 + 
                         (to.getMonth()-from.getMonth()) * 30 + 
                         (Math.min(to.getDate(),30)-Math.min(from.getDate(),30)))  / 360;
         }
-        
+		/**
+		 	* year fraction act/act
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (act/act)
+			* @memberof library
+			* @private
+		*/           
         function yf_actact(from,to){
                 if (from-to===0) return 0;
                 if (from>to) return -yf_actact(to, from);
@@ -2083,7 +2916,13 @@
                 res+=days_between(new Date(yto,0,1), to)/((is_leap_year(yto))? 366 : 365);
                 return res;
         }
-        
+		/**
+		 	* returns day count convention of param (multiple possibilities to deliver day count conventions)
+			* @param {string} str
+			* @returns {number} day count convention in library format 
+			* @memberof library
+			* @public
+		*/           
         library.year_fraction_factory=function(str){
                 if(!(str instanceof String) && typeof(str)!== 'string') return yf_act365; //default dcc
                 var sl=str.toLowerCase();
@@ -2107,7 +2946,13 @@
                 //Fallback to default dcc
                 return yf_act365;
         };
-
+		/**
+		 	* TODO
+			* @param {date} d
+			* @returns {date} ...
+			* @memberof library
+			* @public
+		*/   
 	library.time_from_now=function(d){
 		library.require_vd();
 		return yf_act365(library.valuation_date, d); 
@@ -2119,14 +2964,29 @@
                 Date rolling
         
         */
-        
+		/**
+		 	* adds days
+			* @param {date} from from date
+			* @param {number} ndays days to be added
+			* @returns {date} from date plus ndays
+			* @memberof library
+			* @public
+		*/           
         library.add_days=function(from, ndays){
                 return new Date(from.getFullYear(),
 				from.getMonth(),
 				from.getDate()+ndays);
         };
         
-        
+		/**
+		 	* TODO adds months
+			* @param {date} from from date
+			* @param {number} nmonths number of months to be added
+			* @param {object} roll_day
+			* @returns {date} ...
+			* @memberof library
+			* @public
+		*/           
         library.add_months=function(from, nmonths, roll_day){ 
                 var y=from.getFullYear(), m=from.getMonth()+nmonths, d;
                 while (m>=12){
@@ -2144,7 +3004,14 @@
                 }
                 return new Date(y,m,Math.min(d, days_in_month(y,m)));
         };
-
+		/**
+		 	* add period (like Years, Months, Days, Weeks) 
+			* @param {date} from
+			* @param {string} str
+			* @returns {date} from date plus str
+			* @memberof library
+			* @public
+		*/   
         library.add_period=function(from, str){
                 var num=parseInt(str, 10);
 		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
@@ -2162,7 +3029,13 @@
                 Calendars
         
         */
-        
+		/**
+		 	* determine easter sunday for a year
+			* @param {number} y year
+			* @returns {date} easter sunday for given year
+			* @memberof library
+			* @private
+		*/           
         function easter_sunday(y) {
                 var f=Math.floor,
                     c = f(y/100),
@@ -2178,7 +3051,13 @@
                     d = l + 28 - 31*f(m/4);
                 return new Date(y,m-1,d);
         }
-        
+		/**
+		 	* determine, if a date is a saturday or sunday
+			* @param {date} dt
+			* @returns {boolean} true, if saturday or sunday
+			* @memberof library
+			* @private
+		*/           
         function is_holiday_default(dt){
                 var wd=dt.getDay();
                 if(0===wd) return true;
@@ -2186,6 +3065,13 @@
                 return false;
         }
         
+		/**
+		 	* determine, if date is a holiday day (saturday, sunday, new year, christmas, 12/31, labour, goodwill, good friday, easter monday
+			* @param {date} dt
+			* @returns {boolean} true, if holiday
+			* @memberof library
+			* @private
+		*/   
         function is_holiday_target(dt){
                 if (is_holiday_default(dt)) return true;             
                                 
@@ -2209,6 +3095,14 @@
         
         var calendars={};
         
+		/**
+		 	* TODO add additional holidays that are no default holidays, i.e., weekend days
+			* @param {string} name
+			* @param {object} dates
+			* @returns {object} ...
+			* @memberof library
+			* @public
+		*/   
         library.add_calendar=function(name, dates){
                 if(!(name instanceof String || typeof name === 'string')) throw new Error("add_calendar: invalid input.");
                 if(!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
@@ -2252,7 +3146,16 @@
                 return ht_size;
         };
         
-        library.is_holiday_factory=function(str){
+
+
+		/**
+		 	* TODO 
+			* @param {string} str
+			* @returns {number} default holiday days
+			* @memberof library
+			* @public
+		*/          
+		library.is_holiday_factory=function(str){
                 var sl=str.toLowerCase();
                 //builtin target calendar
                 if(sl==="target") return is_holiday_target;
@@ -2279,7 +3182,17 @@
                 Business Day Conventions
         
         */
-        
+
+
+		/**
+		 	* TODO
+			* @param {date} dt
+			* @param {string} bdc business day count convention
+			* @param {object} is_holiday_function
+			* @returns {date} adjusted date
+			* @memberof library
+			* @public
+		*/           
         library.adjust=function(dt,bdc,is_holiday_function){
                 var s=(bdc || "u").charAt(0).toLowerCase();
                 var adj=new Date(dt);
@@ -2297,6 +3210,16 @@
                 return adj;
         };
 
+
+		/**
+		 	* add business days
+			* @param {date} from from date
+			* @param {number} n days to be added
+			* @param {boolean} is_holiday_function
+			* @returns {date} date + n business days
+			* @memberof library
+			* @public
+		*/   
 	library.add_business_days=function(from, n, is_holiday_function){
 		var res=from, i=n;
 		while (i>0){
@@ -2309,9 +3232,9 @@
         
 
 }(this.JsonRisk || module.exports));
-
-
 ;(function(library){
+
+
 
         /*
         
@@ -2321,11 +3244,25 @@
         */
         
         var stored_params=null; //hidden variable for parameter storage
-        
+
+		/**
+		 	* ...
+			* @param {object} obj
+			* @returns {number} scalar
+			* @memberof library
+			* @private
+		*/           
         var normalise_scalar=function(obj){ //makes value an array of length one if it is not an array
                 return (Array.isArray(obj.value)) ? {value: obj.value} : {value: [obj.value]};
         };
-        
+
+		/**
+		 	* ...
+			* @param {object} obj
+			* @returns {object} curve
+			* @memberof library
+			* @private
+		*/           
         var normalise_curve=function(obj){ // constructs times from days, dates or labels and makes dfs and zcs an array of length one if it is not an array
                 return {
                         times: library.get_curve_times(obj),
@@ -2333,7 +3270,15 @@
                         zcs: obj.zcs ? ((Array.isArray(obj.zcs[0])) ? obj.zcs : [obj.zcs]) : null
                 };
         };
-        
+
+
+		/**
+		 	* ...
+			* @param {object} obj 
+			* @returns {object} surface
+			* @memberof library
+			* @private
+		*/           
         var normalise_surface=function(obj){ // constructs terms from labels_term, expiries from labels_expiry and makes value an array of length one if it is not an array
                 var safe_surface=library.get_safe_surface(obj); //has terms and expiries
                 return {
@@ -2342,7 +3287,15 @@
                         values: (Array.isArray(obj.values[0][0])) ? obj.values : [obj.values]
                 };
         };
-        
+
+
+		/**
+		 	* ...
+			* @param {object} len length
+			* @returns {number} ...
+			* @memberof library
+			* @private
+		*/           
         var update_vector_length=function(len){
                 if (1===len) return;
                 if (1===stored_params.vector_length){
@@ -2351,7 +3304,13 @@
                 }
                 if (len !== stored_params.vector_length) throw new Error("vector_pricing: parameters need to have the same length or length one");
         };
-        
+
+		/**
+		 	* ...
+			* @param {object} params parameter
+			* @memberof library
+			* @public
+		*/           
         library.store_params=function(params){
                 stored_params={vector_length: 1,
 			       scalars: {},
@@ -2392,17 +3351,37 @@
                 }
         
         };
-        
+
+		/**
+		 	* ...
+			* @returns {object} parameter
+			* @memberof library
+			* @public
+		*/           
         library.get_params=function(){
                 return stored_params;
         };
 
+		/**
+		 	* ...
+			* @param {object} params parameter
+			* @returns {object} ...
+			* @memberof library
+			* @public
+		*/   
         library.set_params=function(params){
 		if (typeof(params) !== 'object') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
 		if (typeof(params.vector_length) !== 'number') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
                 stored_params=params;
         };
-        
+		/**
+		 	* ...
+			* @param {object} vec_curve
+			* @param {object} i
+			* @returns {object} curve
+			* @memberof library
+			* @private
+		*/           
         var get_scalar_curve=function(vec_curve, i){
                 if (!vec_curve) return null;
                 return { times: vec_curve.times,
@@ -2410,7 +3389,14 @@
                         zcs: vec_curve.zcs ? (vec_curve.zcs[vec_curve.zcs.length>1 ? i : 0]) : null
                 };
         };
-        
+		/**
+		 	* ...
+			* @param {object} vec_surface
+			* @param {object} i
+			* @returns {object} surface
+			* @memberof library
+			* @private
+		*/         
         var get_scalar_surface=function(vec_surface, i){
                 if (!vec_surface) return null;
                 return { expiries: vec_surface.expiries,
@@ -2418,7 +3404,14 @@
                          values: vec_surface.values[vec_surface.values.length>1 ? i : 0]
                 };
         };
-        
+
+		/**
+		 	* read instrument type for given instrument and create internal instrument
+			* @param {object} instrument any instrument
+			* @returns {object} internal instrument
+			* @memberof library
+			* @public
+		*/           
         library.get_internal_object=function(instrument){
                 switch (instrument.type.toLowerCase()){
                         case "bond":
@@ -2436,7 +3429,14 @@
                         throw new Error ("get_internal_object: invalid instrument type");
                 }
         };
-        
+ 
+		/**
+		 	* calculates the present value for any given supported instrument (bond, floater, fxterm, swap, swaption, callable_bond)
+			* @param {object} instrument any instrument
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/          
         library.vector_pricer=function(instrument){
                 if (typeof(instrument.type)!== 'string') throw new Error ("vector_pricer: instrument object must contain valid type");
                 library.valuation_date=stored_params.valuation_date;
@@ -2474,5 +3474,3 @@
         };
         
 }(this.JsonRisk || module.exports));
-
-

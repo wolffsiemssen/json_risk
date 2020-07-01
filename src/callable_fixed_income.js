@@ -1,6 +1,15 @@
 
 (function(library){
 
+
+
+		/**
+		 	* creates an internal callable bond object (including swaption and baskets) from input data
+			* @param {object} instrument a callable bond
+			* @memberof library
+			* @public
+		*/
+
        library.callable_fixed_income=function(instrument){
        		/*
 		
@@ -68,7 +77,18 @@
                         }
 		}
         };
-        
+ 
+
+		/**
+		 	* calculates the present value for internal callable bond (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} surface surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/       
         library.callable_fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve, surface){
                 var res=0;
                 var i;
@@ -112,7 +132,17 @@
                 return res;
         };
          
-        
+		/**
+		 	* calculates the present value for callable bonds
+			* @param {object} bond instrument of type bond
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} surface surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/           
         library.pricer_callable_bond=function(bond, disc_curve, spread_curve, fwd_curve, surface){
                 var cb_internal=new library.callable_fixed_income(bond);
                 return cb_internal.present_value(disc_curve, spread_curve, fwd_curve, surface);

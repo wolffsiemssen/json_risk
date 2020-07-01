@@ -1,6 +1,11 @@
-
 (function(library){
 
+		/**
+		 	* creates an internal swaption object (including swap) from input data
+			* @param {object} instrument instrument
+			* @memberof library
+			* @public
+		*/   
         library.swaption=function(instrument){
                 this.sign=instrument.is_short ? -1 : 1;
                 
@@ -32,7 +37,15 @@
                         float_current_rate: instrument.float_current_rate
 		});
         };
-
+		/**
+		 	* calculates the present value for internal swaption (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} vol_surface volatility surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/  
         library.swaption.prototype.present_value=function(disc_curve, fwd_curve, vol_surface){
                 library.require_vd();
                 
@@ -66,12 +79,29 @@
                 res*=this.sign;
                 return res;
         };
- 
+		/**
+		 	* ...
+			* @param {object} swaption Instrument
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} vol_surface volatility surface
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/    
         library.pricer_swaption=function(swaption, disc_curve, fwd_curve, vol_surface){
                 var swaption_internal=new library.swaption(swaption);
                 return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
         };
-        
+		/**
+		 	* ...
+			* @param {object} cf_obj cash flow object
+			* @param {date} first_exercise_date first exercise date
+			* @param {object} conventions conventions
+			* @returns {object} ...
+			* @memberof library
+			* @public
+		*/           
         library.create_equivalent_regular_swaption=function(cf_obj, first_exercise_date, conventions){
                 //sanity checks
                 if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
