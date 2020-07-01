@@ -2,6 +2,10 @@
 (function(library){
 
 
+        /**
+         	* @name library
+	        * @namespace functions
+         */
 
 		/**
 		 	* creates an internal callable bond object (including swaption and baskets) from input data
