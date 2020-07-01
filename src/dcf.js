@@ -1,6 +1,16 @@
-
 (function(library){
-        
+
+		/**
+		 	* discounts a cash flow
+			* @param {object} cf_obj cash flow 
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {number} residual_spread residual spread
+			* @param {date} settlement_date settlement date
+			* @returns {object} discounted cash flow
+			* @memberof library
+			* @public
+		*/   
         library.dcf=function(cf_obj, disc_curve, spread_curve, residual_spread, settlement_date){
                 /*
                 requires cf_obj of type
@@ -39,7 +49,16 @@
                 }
                 return res;
         };
-        
+    
+		/**
+		 	* TODO
+			* @param {object} cf_obj cash flow
+			* @param {date} settlement_date
+			* @param {date} payment_on_settlement_date
+			* @returns {object} ...
+			* @memberof library
+			* @public
+		*/      
         library.irr=function(cf_obj, settlement_date, payment_on_settlement_date){
 		library.require_vd(); //valuation date must be set
                 if (!payment_on_settlement_date) payment_on_settlement_date=0;

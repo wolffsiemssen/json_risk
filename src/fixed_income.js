@@ -1,4 +1,11 @@
 (function(library){
+
+		/**
+		 	* creates an internal fixed income object from input data
+			* @param {object} instrument Instrument
+			* @memberof library
+			* @public
+		*/   
         library.fixed_income=function(instrument){
 
                 var maturity=library.get_safe_date(instrument.maturity);       
@@ -143,6 +150,17 @@
         };
 
 
+
+
+
+		/**
+		 	* initialize a cash flow for internal fixed income instrument
+			* @returns {object} initialized cash flow
+			* @memberof library
+			* @public
+		*/  
+
+
 	library.fixed_income.prototype.initialize_cash_flows=function(){
 		library.require_vd(); //valuation date must be set
 
@@ -264,6 +282,15 @@
 	 };
 
 
+
+		/**
+		 	* finalizes cash flow for internal fixed income instrument
+			* @param {object} fwd_curve forward curve
+			* @param {number} override_rate_or_spread
+			* @returns {object} finalized cash flow
+			* @memberof library
+			* @public
+		*/  
         library.fixed_income.prototype.finalize_cash_flows=function(fwd_curve, override_rate_or_spread){
 		library.require_vd(); //valuation date must be set
 
@@ -416,6 +443,16 @@
                 };
 	};
 
+
+
+		/**
+		 	* returns the cash flow of the internal instrument
+			* @param {object} fwd_curve forward curve
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/  
+
 	library.fixed_income.prototype.get_cash_flows=function(fwd_curve){
 		if(this.is_float){
 			if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
@@ -423,7 +460,17 @@
 		}
 		return this.cash_flows;
 	};
-    
+  
+
+		/**
+		 	* calculates the present value for internal fixed income instrument (object)
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/    
         library.fixed_income.prototype.present_value=function(disc_curve, spread_curve, fwd_curve){
 		if(this.is_float && (typeof fwd_curve !== 'object' || fwd_curve===null)) throw new Error("fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream");
                 return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
@@ -432,7 +479,15 @@
                                    this.residual_spread,
                                    this.settlement_date);
         };
-
+		/**
+		 	* TODO
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} fair rate or spread
+			* @memberof library
+			* @public
+		*/  
         library.fixed_income.prototype.fair_rate_or_spread=function(disc_curve, spread_curve, fwd_curve){
 		library.require_vd(); //valuation date must be set
 		var fc=library.get_safe_curve(fwd_curve) || library.get_const_curve(0);
@@ -454,17 +509,16 @@
 		guess/=this.annuity(disc_curve, spread_curve, fc);
 		return guess;
         };
-
+		/**
+		 	* returns the annuity of the fixed income stream, that is, the present value of all interest payments assuming the interest rate is 100%. In case of interest capitalizing instruments, this function uses the notional structure implied by the original fixed rate or, for floaters, uses the supplied forward curve plus spread
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {object} fwd_curve forward curve
+			* @returns {number} annuity
+			* @memberof library
+			* @public
+		*/  
         library.fixed_income.prototype.annuity=function(disc_curve, spread_curve, fwd_curve){
-		/*
-			returns the annuity of the fixed income stream,
-			that is, the present value of all interest payments assuming
-			the interest rate is 100%.
-			In case of interest capitalizing instruments, this function
-			uses the notional structure implied by the original fixed rate
-			or, for floaters, uses the supplied forward curve plus spread
-		*/
-		
                 var c=this.get_cash_flows(library.get_safe_curve(fwd_curve) || library.get_const_curve(0));
 		var pmt=new Array(c.pmt_total.length);
 		var accrued=0;		
@@ -492,11 +546,31 @@
 				this.settlement_date);
         };
        
+
+
+
+		/**
+		 	* calculates the present value for bonds
+			* @param {object} bond instrument of type bond
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/  
         library.pricer_bond=function(bond, disc_curve, spread_curve){
                 var bond_internal=new library.fixed_income(bond);
                 return bond_internal.present_value(disc_curve, spread_curve, null);
         };
-        
+		/**
+		 	* calculates the present value for floaters
+			* @param {object} floater instrument of type floater
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/          
         library.pricer_floater=function(floater, disc_curve, spread_curve, fwd_curve){
                 var floater_internal=new library.fixed_income(floater);
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);

@@ -4,6 +4,8 @@
 	https://github.com/tilwolff/json_risk
 	License: MIT
 */
+
+
 (function(root, factory)
 {
         if (typeof module === 'object' && typeof exports !== 'undefined')

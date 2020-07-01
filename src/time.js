@@ -1,5 +1,9 @@
 (function(library){
 
+/**
+ 	* @memberof library
+*/ 
+
         /*
         
                 JsonRisk date and time functions
@@ -12,17 +16,36 @@
 
         var dl=1000*60*60*24; // length of one day in milliseconds
         var one_over_dl=1.0/dl;
-
+		/**
+		 	* ...
+			* @param {number} y year
+			* @returns {boolean} true, if leap year
+			* @memberof library
+			* @private
+		*/   
         function is_leap_year(y){
                 if(y%4!==0) return false;
                 if(y===2000) return true;
                 return (y%100!==0);
         }
-
+		/**
+		 	* ...
+			* @param {number} y year
+			* @param {number} m month
+			* @returns {number} days in month
+			* @memberof library
+			* @private
+		*/   
         function days_in_month(y,m){
                 return new Date(y,m+1,0).getDate();
         }
-        
+		/**
+		 	* ...
+			* @param {string} str time string (xY, xM, xW, xD)
+			* @returns {number} string in days
+			* @memberof library
+			* @public
+		*/           
         library.period_str_to_time=function(str){
                 var num=parseInt(str, 10);
 		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
@@ -33,7 +56,13 @@
                 if( unit === 'D' || unit === 'd') return num/365;
                 throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
         };
-        
+		/**
+		 	* ...
+			* @param {string} str date string
+			* @returns {date} javascript date object
+			* @memberof library
+			* @public
+		*/           
         library.date_str_to_date=function(str){
                 var rr=null,d,m,y;
                 if ((rr = /^([1-2][0-9]{3})[\/-]([0-9]{1,2})[\/-]([0-9]{1,2})/.exec(str)) !== null) { // YYYY/MM/DD or YYYY-MM-DD
@@ -50,15 +79,26 @@
                 if (d<0 || d>days_in_month(y,m)) throw new Error('date_str_to_time(str) - Invalid day in date string: ' + str);
                 return new Date(y,m,d);
         };
-        
+		/**
+		 	* takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
+			* @param {date} d
+			* @returns {date} javascript date object
+			* @memberof library
+			* @public
+		*/           
         library.get_safe_date=function(d){
-                //takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
                 if(!d) return null;
                 if(d instanceof Date) return d;
                 if((d instanceof String) || typeof d === 'string') return library.date_str_to_date(d);
                 throw new Error("get_safe_date: invalid input.");
         };
-
+		/**
+		 	* ...
+			* @param {date} d
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/   
 	library.get_safe_date_vector=function(d){ //vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise
 		if(d instanceof Date) return [d];
 		var res;
@@ -81,25 +121,61 @@
                 Year Fractions
         
         */
+		/**
+		 	* counts days between to dates
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date 
+			* @memberof library
+			* @private
+		*/   
         function days_between(from, to){
                 return Math.round((to-from)  * one_over_dl);
         }
-
+		/**
+		 	* year fraction act365
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (act365)
+			* @memberof library
+			* @private
+		*/   
         function yf_act365(from,to){
                 return days_between(from,to)  / 365;
         }
         
-        
+		/**
+		 	* year fraction act360
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (act360)
+			* @memberof library
+			* @private
+		*/           
         function yf_act360(from,to){
                 return days_between(from,to)  / 360;
         }
-        
+		/**
+		 	* year fraction 30E360
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (30E360)
+			* @memberof library
+			* @private
+		*/           
         function yf_30E360(from,to){
                 return ((to.getFullYear()-from.getFullYear())*360 + 
                         (to.getMonth()-from.getMonth()) * 30 + 
                         (Math.min(to.getDate(),30)-Math.min(from.getDate(),30)))  / 360;
         }
-        
+		/**
+		 	* year fraction act/act
+			* @param {date} from from date
+			* @param {date} to to date
+			* @returns {number} days between from and to date (act/act)
+			* @memberof library
+			* @private
+		*/           
         function yf_actact(from,to){
                 if (from-to===0) return 0;
                 if (from>to) return -yf_actact(to, from);
@@ -111,7 +187,13 @@
                 res+=days_between(new Date(yto,0,1), to)/((is_leap_year(yto))? 366 : 365);
                 return res;
         }
-        
+		/**
+		 	* returns day count convention of param (multiple possibilities to deliver day count conventions)
+			* @param {string} str
+			* @returns {number} day count convention in library format 
+			* @memberof library
+			* @public
+		*/           
         library.year_fraction_factory=function(str){
                 if(!(str instanceof String) && typeof(str)!== 'string') return yf_act365; //default dcc
                 var sl=str.toLowerCase();
@@ -135,7 +217,13 @@
                 //Fallback to default dcc
                 return yf_act365;
         };
-
+		/**
+		 	* TODO
+			* @param {date} d
+			* @returns {date} ...
+			* @memberof library
+			* @public
+		*/   
 	library.time_from_now=function(d){
 		library.require_vd();
 		return yf_act365(library.valuation_date, d); 
@@ -147,14 +235,29 @@
                 Date rolling
         
         */
-        
+		/**
+		 	* adds days
+			* @param {date} from from date
+			* @param {number} ndays days to be added
+			* @returns {date} from date plus ndays
+			* @memberof library
+			* @public
+		*/           
         library.add_days=function(from, ndays){
                 return new Date(from.getFullYear(),
 				from.getMonth(),
 				from.getDate()+ndays);
         };
         
-        
+		/**
+		 	* TODO adds months
+			* @param {date} from from date
+			* @param {number} nmonths number of months to be added
+			* @param {object} roll_day
+			* @returns {date} ...
+			* @memberof library
+			* @public
+		*/           
         library.add_months=function(from, nmonths, roll_day){ 
                 var y=from.getFullYear(), m=from.getMonth()+nmonths, d;
                 while (m>=12){
@@ -172,7 +275,14 @@
                 }
                 return new Date(y,m,Math.min(d, days_in_month(y,m)));
         };
-
+		/**
+		 	* add period (like Years, Months, Days, Weeks) 
+			* @param {date} from
+			* @param {string} str
+			* @returns {date} from date plus str
+			* @memberof library
+			* @public
+		*/   
         library.add_period=function(from, str){
                 var num=parseInt(str, 10);
 		if(isNaN(num)) throw new Error('period_str_to_time(str) - Invalid time period string: ' + str);
@@ -190,7 +300,13 @@
                 Calendars
         
         */
-        
+		/**
+		 	* determine easter sunday for a year
+			* @param {number} y year
+			* @returns {date} easter sunday for given year
+			* @memberof library
+			* @private
+		*/           
         function easter_sunday(y) {
                 var f=Math.floor,
                     c = f(y/100),
@@ -206,7 +322,13 @@
                     d = l + 28 - 31*f(m/4);
                 return new Date(y,m-1,d);
         }
-        
+		/**
+		 	* determine, if a date is a saturday or sunday
+			* @param {date} dt
+			* @returns {boolean} true, if saturday or sunday
+			* @memberof library
+			* @private
+		*/           
         function is_holiday_default(dt){
                 var wd=dt.getDay();
                 if(0===wd) return true;
@@ -214,6 +336,13 @@
                 return false;
         }
         
+		/**
+		 	* determine, if date is a holiday day (saturday, sunday, new year, christmas, 12/31, labour, goodwill, good friday, easter monday
+			* @param {date} dt
+			* @returns {boolean} true, if holiday
+			* @memberof library
+			* @private
+		*/   
         function is_holiday_target(dt){
                 if (is_holiday_default(dt)) return true;             
                                 
@@ -237,6 +366,14 @@
         
         var calendars={};
         
+		/**
+		 	* TODO add additional holidays that are no default holidays, i.e., weekend days
+			* @param {string} name
+			* @param {object} dates
+			* @returns {object} ...
+			* @memberof library
+			* @public
+		*/   
         library.add_calendar=function(name, dates){
                 if(!(name instanceof String || typeof name === 'string')) throw new Error("add_calendar: invalid input.");
                 if(!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
@@ -280,7 +417,16 @@
                 return ht_size;
         };
         
-        library.is_holiday_factory=function(str){
+
+
+		/**
+		 	* TODO 
+			* @param {string} str
+			* @returns {number} default holiday days
+			* @memberof library
+			* @public
+		*/          
+		library.is_holiday_factory=function(str){
                 var sl=str.toLowerCase();
                 //builtin target calendar
                 if(sl==="target") return is_holiday_target;
@@ -307,7 +453,17 @@
                 Business Day Conventions
         
         */
-        
+
+
+		/**
+		 	* TODO
+			* @param {date} dt
+			* @param {string} bdc business day count convention
+			* @param {object} is_holiday_function
+			* @returns {date} adjusted date
+			* @memberof library
+			* @public
+		*/           
         library.adjust=function(dt,bdc,is_holiday_function){
                 var s=(bdc || "u").charAt(0).toLowerCase();
                 var adj=new Date(dt);
@@ -325,6 +481,16 @@
                 return adj;
         };
 
+
+		/**
+		 	* add business days
+			* @param {date} from from date
+			* @param {number} n days to be added
+			* @param {boolean} is_holiday_function
+			* @returns {date} date + n business days
+			* @memberof library
+			* @public
+		*/   
 	library.add_business_days=function(from, n, is_holiday_function){
 		var res=from, i=n;
 		while (i>0){
@@ -337,5 +503,3 @@
         
 
 }(this.JsonRisk || module.exports));
-
-

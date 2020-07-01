@@ -1,6 +1,17 @@
-(function(library){        
-        var default_yf=null;
+(function(library){   
 
+/**
+ 	* @memberof library
+*/     
+        var default_yf=null;
+		/**
+		 	* converts rate of a curve to zero rates
+			* @param {number} value rate of curve 
+			* @param {string} type type of curve e.g. yield
+			* @returns {object} constant curve with discount factors {type, times, dfs}
+			* @memberof library
+			* @public
+		*/  
         library.get_const_curve=function(value, type){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
                 if(value <= -1) throw new Error("get_const_curve: invalid input."); 
@@ -10,7 +21,16 @@
                                 dfs: [1/(1+value)] //zero rates are act/365 annual compounding
                        };
         };
-        
+
+
+		/**
+		 	* get i-th time entry of a curve 
+			* @param {object} curve curve
+			* @param {number} i time
+			* @returns {number} time
+			* @memberof library
+			* @private
+		*/      
         function get_time_at(curve, i){
                 if (!curve.times){
                         //construct times from other parameters in order of preference
@@ -25,7 +45,13 @@
                 }
                 return curve.times[i];
         }
-        
+		/**
+		 	* get time-array of a curve
+			* @param {object} curve curve
+			* @returns {array} times in days of given curve
+			* @memberof library
+			* @public
+		*/        
         library.get_curve_times=function(curve){
                 var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
                 if (!i) throw new Error("get_curve_times: invalid curve, need to provide valid times, days, dates, or labels");
@@ -37,12 +63,26 @@
                 return times;
         };
         
+		/**
+		 	* get i-th dfs/zcs entry of a curve 
+			* @param {object} curve curve
+			* @param {number} dfs/zcs
+			* @memberof library
+			* @private
+		*/
         function get_df_at(curve, i){
                 if (Array.isArray(curve.dfs)) return curve.dfs[i];
                 if (Array.isArray(curve.zcs)) return Math.pow(1+curve.zcs[i],-get_time_at(curve,i));
                 throw new Error("get_df: invalid curve, must provide dfs or zcs");
         }
         
+		/**
+		 	* get dfs/zcs-array of a curve
+			* @param {object} curve curve
+			* @returns {array} dfs/zcs
+			* @memberof library
+			* @private
+		*/   
         function get_curve_dfs(curve){
                 var i=(curve.times || curve.days || curve.dates || curve.labels || []).length;
                 if (!i) throw new Error("get_curve_dfs: invalid curve, need to provide valid times, days, dates, or labels");
@@ -60,6 +100,13 @@
                 return dfs;
         }
         
+		/**
+		 	* converts curve in a curve with format {type, times, dfs}
+			* @param {object} curve curve
+			* @returns {object} curve
+			* @memberof library
+			* @public
+		*/   
         library.get_safe_curve=function(curve){
                 //if valid curve is given, returns validated curve in most efficient form {type, times, dfs}, 
                 //if null or other falsy argument is given, returns constant zero curve
@@ -71,7 +118,17 @@
                         };
         };
 
-        
+
+		/**
+		 	* TODO
+			* @param {object} curve curve
+			* @param {number} t 
+			* @param {number} imin
+			* @param {number} imax
+			* @returns {number} discount factor
+			* @memberof library
+			* @public
+		*/          
         library.get_df=function(curve,t,imin,imax){
                 if (undefined===imin) imin=0;
                 if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
@@ -95,17 +152,44 @@
                 return library.get_df(curve,t,imin,imed);
         };
 
+
+		/**
+		 	* TODO
+			* @param {object} curve curve
+			* @param {number} t 
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/  
         library.get_rate=function(curve,t){
                 if (t<1/512) return 0.0;
                 return Math.pow(library.get_df(curve,t),-1/t)-1;
         };
 
+		/**
+		 	* TODO
+			* @param {object} curve curve
+			* @param {number} tstart
+			* @param {number} tend
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/  
         library.get_fwd_rate=function(curve,tstart,tend){
                 if (tend-tstart<1/512) return 0.0;
                 return Math.pow(library.get_df(curve,tend) / library.get_df(curve,tstart),-1/(tend-tstart))-1;
         };
 
 
+
+		/**
+		 	* adds two curves (times of curves can be different)
+			* @param {object} c1 curve
+			* @param {object} c2 curve
+			* @returns {object} curve {times:times, zcs: zcs}
+			* @memberof library
+			* @public
+		*/ 
 	library.add_curves=function(c1, c2){
 		var t1=library.get_curve_times(c1);
 		var t2=library.get_curve_times(c2);

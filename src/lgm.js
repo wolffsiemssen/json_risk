@@ -1,5 +1,7 @@
 (function(library){
 
+
+
         /*
         
                 JsonRisk LGM (a.k.a. Hull-White) model
@@ -9,20 +11,42 @@
 
 	'use strict';
 
+		/**
+		 	* TODO
+			* @param {} mean_rev
+			* @returns {} ...
+			* @memberof library
+			* @private
+		*/   
+
 	function h_factory(mean_rev){
 		if (mean_rev===0) return function(t){return t;};
 		return function(t){return (1-Math.exp(-mean_rev*t))/mean_rev;};		
 	}
 
+
+		/**
+		 	* TODO
+			* @param {} t
+			* @returns {} ...
+			* @memberof library
+			* @private
+		*/   
 	function h(t){ return t;}
 
-        function get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread){
-                /*
-                
-                precalculates discount factors for each cash flow and for t_exercise
 
-        
-                */
+		/**
+		 	* precalculates discount factors for each cash flow and for t_exercise
+			* @param {object} cf_obj cash flow 
+			* @param {object} t_exercise TODO
+			* @param {object} disc_curve discount curve
+			* @param {object} spread_curve spread curve
+			* @param {} residual_spread residual spread
+			* @returns {object} discount factors
+			* @memberof library
+			* @private
+		*/   
+        function get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread){
                 var res=new Array(cf_obj.t_pmt.length+1); //last item holds discount factor for t_exercise
                 var i=0, df;
 
@@ -46,7 +70,18 @@
                 res[i]=df;
                 return res;
         }
-	
+
+
+		/**
+		 	* TODO
+			* @param {object} cf_obj
+			* @param {} t_exercise
+			* @param {object} discount_factors
+			* @param {} opportunity_spread
+			* @returns {object} ...
+			* @memberof library
+			* @private
+		*/   	
 	function strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread){
 		if(!opportunity_spread) return 0;                
 		var i=0, df;
@@ -66,6 +101,19 @@
 		return res;
 	}
 
+
+		/**
+		 	* TODO calculates the discounted cash flow present value for a given vector of states 
+			* @param {object} cf_obj
+			* @param {} t_exercise
+			* @param {object} discount_factors
+			* @param {} xi
+			* @param {} state
+			* @param {} opportunity_spread
+			* @returns {number} present value
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_dcf=function(cf_obj,t_exercise, discount_factors, xi, state, opportunity_spread){
                 /*
 
@@ -111,6 +159,21 @@
                 return res;
 	};
 
+
+		/**
+		 	* TODO calculates the european call option price on a cash flow
+			* @param {object} cf_obj
+			* @param {} t_exercise
+			* @param {object} disc_curve
+			* @param {} xi
+			* @param {object} spread_curve spread curve
+			* @param {} residual_spread residual spread
+			* @param {} opportunity_spread opportunity spread
+			* @param {object} discount_factors_precalc
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_european_call_on_cf=function(cf_obj,t_exercise, disc_curve, xi, spread_curve, residual_spread, opportunity_spread, discount_factors_precalc){
                 /*
 
@@ -203,6 +266,17 @@
                 return res;
 	};
 
+
+		/**
+		 	* TODO
+			* @param {object} swaption Instrument
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {} fair_rate fair rate
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_european_swaption_adjusted_cashflow=function(swaption,disc_curve, fwd_curve, fair_rate){
 		//correction for multi curve valuation - move basis spread to fixed leg
 		var swap_rate_singlecurve=swaption.swap.fair_rate(disc_curve, disc_curve);
@@ -222,6 +296,18 @@
 		return cf_obj;
 	};
 
+
+		/**
+		 	* TODO
+			* @param {object} swaption Instrument
+			* @param {} t_exercise
+			* @param {object} disc_curve discount curve
+			* @param {} xi
+			* @param {object} fwd_curve forward curve
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_european_swaption=function(swaption,t_exercise, disc_curve, xi, fwd_curve){
 		//retrieve adjusted cash flows
 		var cf_obj=library.lgm_european_swaption_adjusted_cashflow(swaption,disc_curve, fwd_curve);
@@ -230,6 +316,17 @@
 		return library.lgm_european_call_on_cf(cf_obj,t_exercise, disc_curve, xi, null, null, null);
 	};
 
+
+		/**
+		 	* TODO
+			* @param {object} basket basket
+			* @param {object} disc_curve discount curve
+			* @param {object} fwd_curve forward curve
+			* @param {object} surface surface
+			* @returns {} xi_vec
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_calibrate=function(basket, disc_curve, fwd_curve, surface){
 		library.require_vd();
 		var xi, xi_vec=[];
@@ -303,6 +400,20 @@
 	var STD_DEV_RANGE=4;
 	var RESOLUTION=15;
 
+
+		/**
+		 	* ...
+			* @param {object} cf_obj
+			* @param {} exercise_vec
+			* @param {object} disc_curve discount curve
+			* @param {} xi_vec
+			* @param {object} spread_curve spread curve
+			* @param {} residual_spread
+			* @param {} opportunity_spread
+			* @returns {object} cash flow
+			* @memberof library
+			* @public
+		*/   
 	library.lgm_bermudan_call_on_cf=function(cf_obj,t_exercise_vec, disc_curve, xi_vec, spread_curve, residual_spread, opportunity_spread){
                 /*
 
@@ -329,7 +440,12 @@
 							residual_spread, opportunity_spread); //expiring option
 		}
 
-
+		/**
+		 	* TODO
+			* @returns {number} ...
+			* @memberof library
+			* @private
+		*/   
 		function make_state_vector(){ //repopulates state vector and ds measure
 			var res=new Array(n);			
 			res[0]=-STD_DEV_RANGE*std_dev;
@@ -338,7 +454,11 @@
 			}
 			return res;
 		}
-
+		/**
+		 	* TODO
+			* @memberof library
+			* @private
+		*/   
 		function update_value(){ //take maximum of payoff and hold values
 			var i_d=0;
 			for (i=0; i<n; i++){
@@ -360,6 +480,13 @@
 			}
 		}
 
+		/**
+		 	* TODO
+			* @param {} j
+			* @returns {} ...
+			* @memberof library
+			* @private
+		*/   
 		function numeric_integration(j){ //simple implementation of lgm martingale formula
 			if(xi_last-xi<1E-15) return value[j];
 		        var temp=0, dp_lo=0, dp_hi, norm_scale=1/Math.sqrt(xi_last-xi);
