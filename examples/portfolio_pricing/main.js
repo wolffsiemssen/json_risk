@@ -396,7 +396,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
 		    $scope.busy=true;
 		    $scope.conc=navigator.hardwareConcurrency;
-		    var t0 = new Date().getTime(), t1, t1_last;
+		    var t0 = new Date().getTime(), t1, t1_last=0;
 		    var i,j;
 		    var sub_portfolio;
 		    var unsent=$scope.portfolio.length;
@@ -443,7 +443,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                                             t1 = new Date().getTime();
 				            $scope.calctime=(t1 - t0)/1000;
 				            $scope.remaining=incomplete;
-                                            if( t1-t1_last > 5000 && t1_last>0){
+                                            if( t1-t1_last > 500){
                                                 $scope.$apply();
                                                 t1_last=t1;
                                             }
@@ -547,10 +547,10 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
                     // progress informations
                     t1 = new Date().getTime();
-		    $scope.calctime=(t1 - t0)/1000;
+		                $scope.calctime=(t1 - t0)/1000;
                     $scope.remaining=remaining;
                     if (t1_last===0) t1_last=t1;
-                    if( t1-t1_last > 5000 && t1_last>0){
+                    if( t1-t1_last > 500){
                         $scope.$apply();
                         t1_last=t1;
                     }
@@ -641,55 +641,55 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             $scope.calctime=0;
 
 
-                var xmlhttp_aws_test = new XMLHttpRequest(); //sending a OPTIONS requests to aws to see if settings are correct
-                xmlhttp_aws_test.open($scope.options_aws.method_test, $scope.options_aws.hostname + $scope.options_aws.path);
-                for (m=0;m<options_aws_header.reqheader_count;m++) xmlhttp_aws_test.setRequestHeader(options_aws_header.reqheader[m][0], options_aws_header.reqheader[m][1]); //Header setzen
+            var xmlhttp_aws_test = new XMLHttpRequest(); //sending a OPTIONS requests to aws to see if settings are correct
+            xmlhttp_aws_test.open($scope.options_aws.method_test, $scope.options_aws.hostname + $scope.options_aws.path);
+            for (m=0;m<options_aws_header.reqheader_count;m++) xmlhttp_aws_test.setRequestHeader(options_aws_header.reqheader[m][0], options_aws_header.reqheader[m][1]); //Header setzen
 
-                xmlhttp_aws_test.addEventListener('load', function(evt){
-                    if(xmlhttp_aws_test.status===200){
+            xmlhttp_aws_test.addEventListener('load', function(evt){
+                if(xmlhttp_aws_test.status===200){
 
-                        var xmlhttp_params=new XMLHttpRequest();
-                        var form_params = new FormData();
-                        var params_blob=new Blob([JSON.stringify($scope.params)], {type : 'application/json'}) ;
-                        form_params.append("file",params_blob);
-                        form_params.append("temp","true");
+                    var xmlhttp_params=new XMLHttpRequest();
+                    var form_params = new FormData();
+                    var params_blob=new Blob([JSON.stringify($scope.params)], {type : 'application/json'}) ;
+                    form_params.append("file",params_blob);
+                    form_params.append("temp","true");
 
-                        xmlhttp_params.addEventListener('load', function(evt){
-                            if(xmlhttp_params.status===200){  //response status 200
-                                var data=JSON.parse(xmlhttp_params.responseText);
-                                if (data.path){
-                                    paramsurl='https://' + options_jrparams.hostname + options_jrparams.path + data.path;
-                                    console.log("INFO: params made available under " + paramsurl);
-                                    while (portfolio_in.length>0 && (running<2*config.max_requests)){                        
-                                        new_request_lambda();
-                                    };
-                                    
-                                }else{ // error handling analog cmdline_lambda
-                                    console.error("ERROR: Could not upload params, jrparams returns: " +data.message);
-			                        process.exit(1);
-                                }
-                            }else if(xmlhttp_params.status===400){
-                                    console.log("Error: an error occurred, but the error message could not be retrieved.");
-                            }else{
-                                    console.log("Error: an unexpected error ocurred.");
+                    xmlhttp_params.addEventListener('load', function(evt){
+                        if(xmlhttp_params.status===200){  //response status 200
+                            var data=JSON.parse(xmlhttp_params.responseText);
+                            if (data.path){
+                                paramsurl='https://' + options_jrparams.hostname + options_jrparams.path + data.path;
+                                console.log("INFO: params made available under " + paramsurl);
+                                while (portfolio_in.length>0 && (running<2*config.max_requests)){                        
+                                    new_request_lambda();
+                                };
+                                
+                            }else{ // error handling analog cmdline_lambda
+                                console.error("ERROR: Could not upload params, jrparams returns: " +data.message);
+	                        process.exit(1);
                             }
-                        });
-                        xmlhttp_params.addEventListener('error', function(evt){
-                                console.log("Error: could not send data to server.");
+                        }else if(xmlhttp_params.status===400){
+                                console.log("Error: an error occurred, but the error message could not be retrieved.");
+                        }else{
+                                console.log("Error: an unexpected error ocurred.");
+                        }
+                    });
+                    xmlhttp_params.addEventListener('error', function(evt){
+                            console.log("Error: could not send data to server.");
 
-                        });
-                        xmlhttp_params.open(options_jrparams.method, 'https://' + options_jrparams.hostname + options_jrparams.path);
-                        xmlhttp_params.send(form_params);                                        
-                                };
+                    });
+                    xmlhttp_params.open(options_jrparams.method, 'https://' + options_jrparams.hostname + options_jrparams.path);
+                    xmlhttp_params.send(form_params);                                        
+                            };
 
-                                if(xmlhttp_aws_test.status===403){ //response status 403 (invalid apikey)
-                                    if (JSON.parse(this.responseText).type ==='invalid apikey') {
-                                        $scope.add_error({ msg: "Please use a valid apikey.", id: "", count: 1});
-                                        $scope.$apply();
-                                    };
+                            if(xmlhttp_aws_test.status===403){ //response status 403 (invalid apikey)
+                                if (JSON.parse(this.responseText).type ==='invalid apikey') {
+                                    $scope.add_error({ msg: "Please use a valid apikey.", id: "", count: 1});
+                                    $scope.$apply();
                                 };
-                            });
-                xmlhttp_aws_test.send(); 
+                            };
+                        });
+            xmlhttp_aws_test.send(); 
 
 //
 

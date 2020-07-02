@@ -115,8 +115,12 @@ main app
                     </div>
                   </div>
                 </div>
+
+                <div class="alert alert-success" role="alert" ng-if="busy">
+                 <h4 class="alert-heading" >Calculations running...</h4>   
+                </div>
                 <div class="table-responsive">
-                        <table ng-if="portfolio!==null" class="table table-responsive table-hover table-sm table-bordered">
+                        <table ng-if="portfolio!==null && !busy" class="table table-responsive table-hover table-sm table-bordered">
                           <thead class="thead-light">
                             <tr>
                               <th scope="col">Actions</th>
@@ -306,34 +310,34 @@ main app
           
           -->
           <div class="tab-pane fade" id="pills-res" role="tabpanel" aria-labelledby="pills-res-tab">
-                <div class="alert alert-warning" role="alert" ng-if="portfolio===null">
-                  <h4 class="alert-heading">No Portfolio present.</h4>
-                  <p> Import portfolio from file or load test portfolio.</p>
-                  <hr>
-                  <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group mr-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('portfolio')">Import</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_pf()">Load test portfolio</button>
-                    </div>
-                  </div>
+            <div class="alert alert-warning" role="alert" ng-if="portfolio===null">
+              <h4 class="alert-heading">No Portfolio present.</h4>
+              <p> Import portfolio from file or load test portfolio.</p>
+              <hr>
+              <div class="btn-toolbar mb-2 mb-md-0">
+                <div class="btn-group mr-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('portfolio')">Import</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_pf()">Load test portfolio</button>
                 </div>
-                <div class="alert alert-warning" role="alert" ng-if="res===null && portfolio!==null && !busy">
-                  <h4 class="alert-heading">No Results yet.</h4>
-                  <p> Perform calculations to obtain results.</p>
-                  <hr>
-                  <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group mr-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate()">Calculate</button>
-                    
-                        </div class="input-group">
-                            <div class="input-group-prepend">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate_lambda()">Calculate Lambda</button> 
-                            <div>
-                            <input type="text" class="form-control" placeholder="API-key" aria-label="" aria-describedby="" ng-model="options_aws.apikey">                          
-                        </div>
-                      </div>  
-                  </div>
+              </div>
+            </div>
+            <div class="alert alert-warning" role="alert" ng-if="res===null && portfolio!==null && !busy">
+              <h4 class="alert-heading">No Results yet.</h4>
+              <p> Perform calculations to obtain results.</p>
+              <hr>
+              <div class="btn-toolbar mb-2 mb-md-0">
+                <div class="btn-group mr-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate()">Calculate</button>
                 </div>
+                <div class="input-group">
+                  <div class="input-group-prepend">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate_lambda()">Calculate Lambda</button> 
+                  </div>
+                  <input type="text" class="form-control" placeholder="API-key" aria-label="" aria-describedby="" ng-model="options_aws.apikey">                          
+                </div>
+            </div>  
+          </div>
+
 
 		<div class="alert alert-warning alert-dismissible" role="alert" ng-if="warnings!==null">
 		  <button type="button" class="close" ng-click="clear_warnings()" aria-label="Close">
