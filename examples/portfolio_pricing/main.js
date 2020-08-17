@@ -435,7 +435,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 				                    wrk[0].terminate();
 				                    wrk.shift();
 				            }
-
+                    $scope.remaining=0;
 				            $scope.busy=false;            
 				            $scope.$apply();
 				    }
@@ -463,8 +463,17 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 			    wrk[i].postMessage({params: $scope.params});
 			
 			    //post initial instrument
-			    wrk[i].postMessage({instrument: $scope.portfolio[unsent-1]});
-			    unsent--;
+          if(unsent>0){			    
+            wrk[i].postMessage({instrument: $scope.portfolio[unsent-1]});
+			      unsent--;
+          }
+
+			    //post one more instrument to keep workers busy
+          if(unsent>0){			    
+            wrk[i].postMessage({instrument: $scope.portfolio[unsent-1]});
+			      unsent--;
+          }
+
 		    }
 
 	    }
@@ -492,7 +501,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             $scope.busy=true;  
 
             const config={
-	          chunk_size: 50,       // max. number of instruments send in one aws request
+	          chunk_size: 250,       // max. number of instruments send in one aws request
 	          max_requests: 1000,   // max. number of aws requests, i.e. a portfolio may have max. max_requests*chunk_size instruments
 	          max_retries: 2        // max. number of retries sending a chunk to aws
             };
@@ -519,7 +528,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             	if (undefined===data.res || undefined===data.errors || undefined===data.warnings || undefined===data.times){
                     $scope.add_error({ msg: `Request with ${chunk.length} instruments does not return any valid data`, id: chunk[0].id || "", count: chunk.length});
                 }else{
-                    console.log(`INFO: Response with ${chunk.length} instruments received, ${portfolio_in.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running}   requests currently running`);
+                    console.log(`INFO: Response with ${chunk.length} instruments received, ${portfolio_tmp.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running}   requests currently running`);
                     //$scope.$apply();    	    	
                     // write aws response to $scope.res    
                     var keys=Object.keys(data.res);
@@ -564,7 +573,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                     $scope.calctime=(t1 - t0)/1000;            
                     $scope.busy=false;  
                     $scope.$apply();
-                }else if(portfolio_in.length){
+                }else if(portfolio_tmp.length){
 	            	    new_request_lambda();
 	            }
             };
@@ -573,11 +582,11 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                 j=config.chunk_size;
                 var instrument;
                 let chunk=[];
-                while(portfolio_in.length && j>0){
-                	instrument=portfolio_in.shift();
+                while(portfolio_tmp.length && j>0){
+                	instrument=portfolio_tmp.pop();
                 	chunk.push(instrument);          
                 	if(instrument.type==="callable_bond"){
-                		j-=25;
+                		j-=10;
                 	}else{
                 		j--;
                 	}
@@ -588,7 +597,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
             var new_request_with_chunk_lambda=function(chunk, num_retries){
                 running++;
-	            console.log(`INFO: Request  with ${chunk.length} instruments sent, ${portfolio_in.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running} requests currently running`);
+	            console.log(`INFO: Request  with ${chunk.length} instruments sent, ${portfolio_tmp.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running} requests currently running`);
 	
                 var data='';
                 var xmlhttp_aws = new XMLHttpRequest();
@@ -610,7 +619,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             		}
                 };
 
-                xmlhttp_aws.send(pako.gzip(JSON.stringify({paramsurl: {url: paramsurl},portfolio: chunk}, {level:9})));  // Senden des Requests
+                xmlhttp_aws.send(pako.gzip(JSON.stringify({paramsurl: {url: paramsurl},portfolio: chunk}, repl),{level:9}));  // Senden des Requests
            }
 
 
@@ -623,17 +632,16 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	            times:{'calc':0.00000,'exec':0.00000}
             };
 
-            var portfolio_in=$scope.portfolio.slice(); 
             var end = 0;
-            var tmp=[];
-            for (j=0;j<portfolio_in.length;j++){
-	            if (portfolio_in[j].type==='callable_bond') tmp.push(portfolio_in[j]);
+            var portfolio_tmp=[];
+            for (j=0;j<$scope.portfolio.length;j++){
+	            if ($scope.portfolio[j].type!=='callable_bond') portfolio_tmp.push($scope.portfolio[j]);
             }
 
-            for (j=0;j<portfolio_in.length;j++){
-	            if (portfolio_in[j].type!=='callable_bond') tmp.push(portfolio_in[j]);
+            for (j=0;j<$scope.portfolio.length;j++){
+	            if ($scope.portfolio[j].type==='callable_bond') portfolio_tmp.push($scope.portfolio[j]);
             }
-            var remaining=portfolio_in.length;
+            var remaining=portfolio_tmp.length;
             var running=0;
             var paramsurl;            
 
@@ -660,7 +668,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                             if (data.path){
                                 paramsurl='https://' + options_jrparams.hostname + options_jrparams.path + data.path;
                                 console.log("INFO: params made available under " + paramsurl);
-                                while (portfolio_in.length>0 && (running<2*config.max_requests)){                        
+                                while (portfolio_tmp.length>0 && (running<2*config.max_requests)){                        
                                     new_request_lambda();
                                 };
                                 

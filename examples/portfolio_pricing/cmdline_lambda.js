@@ -2,7 +2,7 @@
 
 //configuration
 const config={
-	chunk_size: 50,
+	chunk_size: 250,
 	max_requests: 1000,
 	max_retries: 2,
 	api_key: 'tMU4FEJGIG1EgKkCaD92J27nwdDq6kM61PXdnZ1u'
@@ -148,10 +148,10 @@ var new_request=function(){
 	var instrument;
 	let chunk=[];
 	while(portfolio.length && j>0){
-		instrument=portfolio.shift();
+		instrument=portfolio.pop();
 		chunk.push(instrument);
 		if(instrument.type==="callable_bond"){
-			j-=25;
+			j-=10;
 		}else{
 			j--;
 		}
@@ -220,11 +220,11 @@ output.times['params_max']=0;
 output.times['params']=0.000000;
 var tmp=[];
 for (j=0;j<portfolio.length;j++){
-	if (portfolio[j].type==='callable_bond') tmp.push(portfolio[j]);
+	if (portfolio[j].type!=='callable_bond') tmp.push(portfolio[j]);
 }
 
 for (j=0;j<portfolio.length;j++){
-	if (portfolio[j].type!=='callable_bond') tmp.push(portfolio[j]);
+	if (portfolio[j].type==='callable_bond') tmp.push(portfolio[j]);
 }
 portfolio=tmp;
 var remaining=portfolio.length;
