@@ -816,7 +816,7 @@ for (i=0; i<Kupon.length; i++){
         maturity: Maturity[i],
         notional: 100.0,
         float_spread: Kupon[i]/100,
-        float_current_rate: Kupon[i]/100,
+        float_current_rate: 0,
         tenor: 12,
         bdc: "following",
         dcc: "act/act",
@@ -842,6 +842,7 @@ for (i=0; i<Kupon.length; i++){
 
 for (i=0; i<Kupon.length; i++){
         floaters[i].float_spread=0;
+        floaters[i].float_current_rate=Kupon[i]/100;
         fwd_curve=JsonRisk.get_const_curve(Kupon[i]/100);
         r=Rendite[i]/100;
         curve_down=JsonRisk.get_const_curve(r-0.0001);
@@ -1161,7 +1162,6 @@ for (i=0;i<400;i++){
 	r=bond_internal.fair_rate_or_spread(curve, spread_curve, curve);
 
 	bonds[i].float_spread=r;
-	bonds[i].float_current_rate=r;
 	bond_internal=new JsonRisk.fixed_income(bonds[i]);
         p1=bond_internal.present_value(curve, spread_curve, curve);
 	console.log("JSON Risk irregular floater fair spread        (" + (i+1) + "): " + (100*r).toFixed(4) + "%");
