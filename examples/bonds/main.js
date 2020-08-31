@@ -15,25 +15,39 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		dcc: "Act/365",
 		bdc: "unadjusted",
 		calendar: "TARGET",
+
 		tenor_string: "12",
 		get tenor() { return parseInt(this.tenor_string);},
+
 		repay_tenor_string: "12",
 		get repay_tenor() { return parseInt(this.repay_tenor_string);},
+
 		interest_capitalization_string: "No",
 		get interest_capitalization() { return this.interest_capitalization_string==='Yes';},
+
+    call_tenor_string: "-1",
+		get call_tenor() { return parseInt(this.call_tenor_string);},
+
+    get type() { return (this.call_tenor<0) ? "bond" : "callable_bond" ;},
+
+    opportunity_spread_string: "0.0",
+    get opportunity_spread() { return parseFloat(this.opportunity_spread_string) || 0.0;},
+
 		discount_curve: "EUR_OIS_DISCOUNT",
-		forward_curve: "EUR_6M_FWD"
+		forward_curve: "EUR_6M_FWD",
+    surface: "CONST_10BP"
 	}
 	$scope.params={valuation_date: "2019-01-01"};
 	$scope.available_params={list: null, selection: null};
 	$scope.cashflows=null;
 	$scope.res={};
 	$scope.errors=[];
-
+  
 	
 	function update(){
 		JsonRisk.valuation_date=JsonRisk.get_safe_date($scope.params.valuation_date);
 		$scope.errors=[];
+    $scope.json=JSON.stringify($scope.instrument,null,'  ');
 
 		//curves
 		var dc=null; //discount
@@ -69,8 +83,20 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 
 		var jrinst;
 		try{
-			jrinst=new JsonRisk.fixed_income($scope.instrument)
-			$scope.cashflows = jrinst.get_cash_flows(fc);
+      if($scope.instrument.type==='bond'){
+  			jrinst=new JsonRisk.fixed_income($scope.instrument);
+        base=jrinst;
+        su=null;
+      }else{
+        jrinst=new JsonRisk.callable_fixed_income($scope.instrument);
+        base=jrinst.base;
+        su=$scope.params.surfaces[$scope.instrument.surface] || null;
+        if (!su){
+    			$scope.errors.push("volatility surface not available, must load valid parameter set");
+		    	return ;
+		    }
+      }
+      $scope.cashflows = base.get_cash_flows(fc);
 			update_chart_cashflows($scope.cashflows);
 
 			$scope.res.ttm=JsonRisk.time_from_now($scope.cashflows.date_pmt[$scope.cashflows.date_pmt.length-1]);
@@ -83,39 +109,66 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		//analytics
 
 		try{
-			$scope.res.pv=jrinst.present_value(dc, sc, fc);
+			$scope.res.pv=jrinst.present_value(dc, sc, fc, su);
+      $scope.res.pv_opt=$scope.res.pv-base.present_value(dc,sc,fc);
 
 			var dc_up=JsonRisk.add_curves(dc, {times: [1], zcs: [0.00005]});
 			var dc_down=JsonRisk.add_curves(dc, {times: [1], zcs: [-0.00005]});
 			var fc_up=JsonRisk.add_curves(fc, {times: [1], zcs: [0.00005]});
 			var fc_down=JsonRisk.add_curves(fc, {times: [1], zcs: [-0.00005]});
 			
-			$scope.res.bpv_ir=jrinst.present_value(dc_up, sc, fc_up)-jrinst.present_value(dc_down, sc, fc_down);
-			$scope.res.bpv_spr=jrinst.present_value(dc_up, sc, fc)-jrinst.present_value(dc_down, sc, fc);
+			$scope.res.bpv_ir=jrinst.present_value(dc_up, sc, fc_up, su)-jrinst.present_value(dc_down, sc, fc_down, su);
+			$scope.res.bpv_spr=jrinst.present_value(dc_up, sc, fc, su)-jrinst.present_value(dc_down, sc, fc, su);
+      $scope.res.bpv_ir_opt=$scope.res.bpv_ir-base.present_value(dc_up, sc, fc_up)+base.present_value(dc_down, sc, fc_down)
+      $scope.res.bpv_spr_opt=$scope.res.bpv_spr-base.present_value(dc_up, sc, fc)+base.present_value(dc_down, sc, fc);
 
-			$scope.res.dur_ir=$scope.res.bpv_ir/$scope.res.pv*10000;
-			$scope.res.dur_spr=$scope.res.bpv_spr/$scope.res.pv*10000;
+			$scope.res.dur_ir=-$scope.res.bpv_ir/$scope.res.pv*10000;
+			$scope.res.dur_spr=-$scope.res.bpv_spr/$scope.res.pv*10000;
 
-			//FTP
-			var temp_curve=JsonRisk.get_const_curve(JsonRisk.get_rate(dc, 1/365)); //discounting with short end of the discount curve
+      //
+			//FTP Analysis
+      //
 
-			$scope.res.fair_rate=jrinst.fair_rate_or_spread(dc, sc, fc);
-			$scope.res.credit_charge=$scope.res.fair_rate-jrinst.fair_rate_or_spread(dc, rc, fc);
-			$scope.res.liquidity_charge=jrinst.fair_rate_or_spread(dc, rc, fc)-jrinst.fair_rate_or_spread(dc, null, fc);
-			$scope.res.basis_charge=jrinst.fair_rate_or_spread(dc, null, fc)-jrinst.fair_rate_or_spread(dc, null, dc);			
-			$scope.res.maturity_charge=jrinst.fair_rate_or_spread(dc, null, dc)-jrinst.fair_rate_or_spread(temp_curve, null, temp_curve);
-			
-			$scope.res.eq_charge=$scope.res.fair_rate
-					-$scope.res.credit_charge
-					-$scope.res.liquidity_charge
-					-$scope.res.basis_charge
-					-$scope.res.maturity_charge;
+      
+		  var overnight=new JsonRisk.fixed_income({
+                  notional: 100,
+                  effective_date: $scope.params.valuation_date,
+                  maturity: JsonRisk.add_days(JsonRisk.get_safe_date($scope.params.valuation_date), 1),
+                  tenor: 1,
+                  fixed_rate: 0.0,
+                  calendar: $scope.instrument.calendar,
+                  bdc: "f",
+                  dcc: $scope.instrument.dcc,
+                  adjust_accrual_periods: true
+              });
+      var e1=overnight.fair_rate_or_spread(dc, null, null);
+      
+      var fixing=0;
+      var fixing_overnight=0;
+
+      if (base.is_float){
+        fixing=base.float_current_rate || 0.0;
+        fixing_overnight=e1;
+      }     
+
+      var e2=base.fair_rate_or_spread(dc, null, dc)+fixing_overnight;
+      var e2b=base.fair_rate_or_spread(dc, null, fc)+fixing;
+      var e3=base.fair_rate_or_spread(dc, rc, fc)+fixing;
+      var e4=base.fair_rate_or_spread(dc, sc, fc)+fixing;
+
+			$scope.res.eq_charge=e1;
+			$scope.res.maturity_charge=e2-e1;
+			$scope.res.basis_charge=e2b-e2;			
+			$scope.res.liquidity_charge=e3-e2b;
+			$scope.res.credit_charge=e4-e3;
+			$scope.res.fair_rate=e4-fixing;
+
 			
 			//get current rate or spread dependent on condition change dates
-			var current_rate_or_spread=($scope.instrument.rate_type==='fix') ? jrinst.fixed_rate : jrinst.float_spread;
+			var current_rate_or_spread=($scope.instrument.rate_type==='fix') ? base.fixed_rate : base.float_spread;
 			var i=0;			
-			while (jrinst.conditions_valid_until[i]<$scope.params.valuation_date) i++;
-			$scope.res.margin=current_rate_or_spread[i]  - $scope.res.fair_rate
+			while (base.conditions_valid_until[i]<$scope.params.valuation_date) i++;
+			$scope.res.margin=current_rate_or_spread[i]  - $scope.res.fair_rate;
 
 		}catch(ex){
 			$scope.errors.push(ex.message);
@@ -159,12 +212,12 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 			var fc_steepener=JsonRisk.add_curves(fc, curve_steepener);
 			var fc_flattener=JsonRisk.add_curves(fc, curve_flattener);
 
-			$scope.res.pv_up=jrinst.present_value(dc_up, null, fc_up);
-			$scope.res.pv_down=jrinst.present_value(dc_down, null, fc_down);
-			$scope.res.pv_shortup=jrinst.present_value(dc_shortup, null, fc_shortup);
-			$scope.res.pv_shortdown=jrinst.present_value(dc_shortdown, null, fc_shortdown);
-			$scope.res.pv_steepener=jrinst.present_value(dc_steepener, null, fc_steepener);
-			$scope.res.pv_flattener=jrinst.present_value(dc_flattener, null, fc_flattener);
+			$scope.res.pv_up=jrinst.present_value(dc_up, sc, fc_up, su);
+			$scope.res.pv_down=jrinst.present_value(dc_down, sc, fc_down, su);
+			$scope.res.pv_shortup=jrinst.present_value(dc_shortup, sc, fc_shortup, su);
+			$scope.res.pv_shortdown=jrinst.present_value(dc_shortdown, sc, fc_shortdown, su);
+			$scope.res.pv_steepener=jrinst.present_value(dc_steepener, sc, fc_steepener, su);
+			$scope.res.pv_flattener=jrinst.present_value(dc_flattener, sc, fc_flattener, su);
 	
 			update_chart_scenarios($scope.res);
 		}catch(ex){

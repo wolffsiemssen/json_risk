@@ -65,6 +65,7 @@ main app
                                 </div>
                         </div>
                         <button type="button" class="btn btn-outline-secondary" ng-click="import_file('curve')">Import curve</button>
+                        <button type="button" class="btn btn-outline-secondary" ng-click="import_file('surface')">Import surface</button>
                 </div>
 	</form>
 </nav>
@@ -170,12 +171,12 @@ main app
 			    <div class="col-sm-9">
 
 			      <div class="input-group input-group-sm mb-3">
-				<div class="input-group-prepend" ng-if="'fix'===instrument.rate_type">
-				 <label class="input-group-text">Rate</label>
-				</div>
-				<div class="input-group-prepend" ng-if="'float'===instrument.rate_type">
-				 <label class="input-group-text input-group-text-sm">Curr fixing</label>
-				</div>
+				      <div class="input-group-prepend" ng-if="'fix'===instrument.rate_type">
+				       <label class="input-group-text">Rate</label>
+				      </div>
+				      <div class="input-group-prepend" ng-if="'float'===instrument.rate_type">
+				       <label class="input-group-text input-group-text-sm">Curr fixing</label>
+				      </div>
 		
 			        <input type="text" class="form-control" ng-model="instrument.rate" ng-if="'fix'===instrument.rate_type">
 			        <input type="text" class="form-control" ng-model="instrument.float_current_rate" ng-if="'float'===instrument.rate_type">
@@ -207,20 +208,20 @@ main app
 			    <div class="col-sm-9">
 
 			      <div class="input-group input-group-sm mb-3">
-				<div class="input-group-prepend">
-				 <label class="input-group-text">Repay amount</label>
-				</div>
-				<select class="custom-select" ng-model="instrument.repay_tenor_string">
-				<option value="12" selected>yearly</option>
-				<option value="6">semi-annual</option>
-				<option value="3">quarterly</option>
-				<option value="1">monthly</option>
-				</select>
-				
+				      <div class="input-group-prepend">
+				       <label class="input-group-text">Tenor</label>
+				      </div>
+				      <select class="custom-select" ng-model="instrument.repay_tenor_string">
+				      <option value="12" selected>yearly</option>
+				      <option value="6">semi-annual</option>
+				      <option value="3">quarterly</option>
+				      <option value="1">monthly</option>
+				      </select>
+				      
 
-				<div class="input-group-prepend">
-				 <label class="input-group-text">Int capitalization</label>
-				</div>
+				      <div class="input-group-prepend">
+				       <label class="input-group-text">Int capitalization</label>
+				      </div>
 		
 			        <select class="custom-select" ng-model="instrument.interest_capitalization_string">
   				  <option selected>No</option>
@@ -236,24 +237,50 @@ main app
 			  <div class="form-group row">
 			    <label class="col-sm-3 col-form-label col-form-label-sm">Amounts</label>
 			    <div class="col-sm-9">
-				<input type="text" pattern="\d*(\.\d+)?(\s+\d*(\.\d+)?)*" class="form-control" ng-model="instrument.repay_amount" placeholder="xxx.xx yyy.yy">  
+				<input type="text" pattern="\-?\d*(\.\d+)?(\s+\-*?\d*(\.\d+)?)*" class="form-control" ng-model="instrument.repay_amount" placeholder="xxx.xx yyy.yy">  
 			    </div>
 			  </div>
 
 
 			<p class="lead">
-	  			Advanced
+	  			Optionality
 			</p>
 
 
-			  <!-- CONDITION CHANGE DATES -->
+				<!-- CALL FEATURE -->
 			  <div class="form-group row">
-			    <label class="col-sm-3 col-form-label col-form-label-sm">Conditions valid until</label>
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Call Option</label>
 			    <div class="col-sm-9">
-			      <input type="text" pattern="\d{4}-\d{2}-\d{2}(\s+\d{4}-\d{2}-\d{2})*" class="form-control form-control-sm" ng-model="instrument.conditions_valid_until" placeholder="yyyy-mm-dd yyyy-mm-dd">
+
+			      <div class="input-group input-group-sm mb-3">
+				      <div class="input-group-prepend">
+				       <label class="input-group-text">Type</label>
+				      </div>
+				      <select class="custom-select" ng-model="instrument.call_tenor_string">
+				        <option value="-1" selected>none</option>
+				        <option value="0">european</option>
+				        <option value="12">bermudan yearly</option>
+				        <option value="6">bermudan semi</option>
+				        <option value="3">bermudan quarterly</option>
+				        <option value="1">bermudan monthly</option>
+				      </select>
+				      
+
+				      <div class="input-group-prepend">
+				       <label class="input-group-text">First Call Date</label>
+				      </div>
+		          <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.first_exercise_date" ng-disabled="instrument.call_tenor_string<0" placeholder="yyyy-mm-dd">
+			      </div>
+
 			    </div>
 			  </div>
 
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Opportunity Spread</label>
+			    <div class="col-sm-9">
+				<input type="text" class="form-control" ng-model="instrument.opportunity_spread_string">  
+			    </div>
+			  </div>
 
 			<!-- VALUATION -->
 			<p class="lead">
@@ -279,6 +306,15 @@ main app
 			  </div>
 
 			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Refinancing Spread Curve</label>
+			    <div class="col-sm-9">
+					<select class="custom-select" ng-options="key as key for (key, value) in params.curves" ng-model="instrument.refinancing_spread_curve">
+						<option value="" selected>Choose spread curve...</option>
+					</select>
+			    </div>
+			  </div>
+
+			  <div class="form-group row">
 			    <label class="col-sm-3 col-form-label col-form-label-sm">Valuation Spread Curve</label>
 			    <div class="col-sm-9">
 					<select class="custom-select" ng-options="key as key for (key, value) in params.curves" ng-model="instrument.spread_curve">
@@ -287,14 +323,69 @@ main app
 			    </div>
 			  </div>
 
-			  <div class="form-group row">
-			    <label class="col-sm-3 col-form-label col-form-label-sm">Refinancing Spread Curve</label>
+			  <div class="form-group row" ng-if="instrument.call_tenor_string>=0">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Volatility Surface</label>
 			    <div class="col-sm-9">
-					<select class="custom-select" ng-options="key as key for (key, value) in params.curves" ng-model="instrument.refinancing_spread_curve">
-						<option value="" selected>Choose spread curve...</option>
+					<select class="custom-select" ng-options="key as key for (key, value) in params.surfaces" ng-model="instrument.surface">
+						<option value="" selected>Choose volatility surface...</option>
 					</select>
 			    </div>
 			  </div>
+
+
+			<p class="lead">
+	  			Advanced Cash Flow Generation
+			</p>
+
+
+			  <!-- CONDITION CHANGE DATES -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Conditions valid until</label>
+			    <div class="col-sm-9">
+			      <input type="text" pattern="\d{4}-\d{2}-\d{2}(\s+\d{4}-\d{2}-\d{2})*" class="form-control form-control-sm" ng-model="instrument.conditions_valid_until" placeholder="yyyy-mm-dd yyyy-mm-dd">
+			    </div>
+			  </div>
+
+			  <!-- FIRST INTEREST DATE -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">First Interest Date</label>
+			    <div class="col-sm-9">
+			      <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.first_date" placeholder="yyyy-mm-dd">
+			    </div>
+			  </div>
+
+
+			  <!-- NEXT TO LAST INTEREST DATE -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Next-to-Last Interest Date</label>
+			    <div class="col-sm-9">
+			      <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.next_to_last_date" placeholder="yyyy-mm-dd">
+			    </div>
+			  </div>
+
+
+			  <!-- FIRST REPAYMENT DATE -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">First Repay Date</label>
+			    <div class="col-sm-9">
+			      <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.repay_first_date" placeholder="yyyy-mm-dd">
+			    </div>
+			  </div>
+
+
+			  <!-- NEXT TO LAST REPAYMENT DATE -->
+			  <div class="form-group row">
+			    <label class="col-sm-3 col-form-label col-form-label-sm">Next-to-Last Repay Date</label>
+			    <div class="col-sm-9">
+			      <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.repay_next_to_last_date" placeholder="yyyy-mm-dd">
+			    </div>
+			  </div>
+
+			<p class="lead">
+	  			JSON
+			</p>
+
+      <p><pre>{{json}}</pre></p>
 
 			</form>
 
@@ -331,35 +422,42 @@ main app
 						    <tr>
 						      <th scope="col">Description</th>
 						      <th scope="col">Value</th>
+                  <th scope="col">Emb. Option</th>
 						    </tr>
 						  </thead>
 						  <tbody>
 						    <tr>
 						      <th scope="row">Present value</th>
-						      <td class="text-right">{{res.pv | number:2}}</td> 
+						      <td class="text-right">{{res.pv | number:2}}</td>
+                  <td class="text-right">{{res.pv_opt | number:2}}</td> 
 						    </tr>
 
 						    <tr>
 						      <th scope="row">Time to maturity</th>
 						      <td class="text-right">{{res.ttm | number:2}}</td> 
+						      <td class="text-right"></td> 
 						    </tr>
 						    <tr>
 						      <th scope="row">Interest rate basis point value</th>
 						      <td class="text-right">{{res.bpv_ir | number:2}}</td> 
+						      <td class="text-right">{{res.bpv_ir_opt | number:2}}</td> 
 						    </tr>
 						    <tr>
 						      <th scope="row">Spread basis point value</th>
 						      <td class="text-right">{{res.bpv_spr | number:2}}</td> 
+						      <td class="text-right">{{res.bpv_spr_opt | number:2}}</td> 
 						    </tr>
 
 						    <tr>
 						      <th scope="row">Effective interest rate duration</th>
 						      <td class="text-right">{{res.dur_ir | number:2}}</td> 
+						      <td class="text-right"></td> 
 						    </tr>
 
 						    <tr>
 						      <th scope="row">Effective spread duration</th>
 						      <td class="text-right">{{res.dur_spr | number:2}}</td> 
+						      <td class="text-right"></td> 
 						    </tr>
 
 						  </tbody>
@@ -385,11 +483,6 @@ main app
 						      <td class="text-right">{{res.fair_rate * 100 | number:4}}%</td> 
 						    </tr>
 						    <tr>
-						      <th scope="row">--Basis Transformation Charge</th>
-						      <td class="text-right">{{res.basis_charge * 100 | number:4}}%</td> 
-						    </tr>
-
-						    <tr>
 						      <th scope="row">--Credit Transformation Charge</th>
 						      <td class="text-right">{{res.credit_charge * 100 | number:4}}%</td> 
 						    </tr>
@@ -398,12 +491,14 @@ main app
 						      <th scope="row">--Liquidity Transformation Charge</th>
 						      <td class="text-right">{{res.liquidity_charge * 100 | number:4}}%</td> 
 						    </tr>
-
+						    <tr>
+						      <th scope="row">--Basis Transformation Charge</th>
+						      <td class="text-right">{{res.basis_charge * 100 | number:4}}%</td> 
+						    </tr>
 						    <tr>
 						      <th scope="row">--Maturity Transformation Charge</th>
 						      <td class="text-right">{{res.maturity_charge * 100 | number:4}}%</td> 
 						    </tr>
-
 						    <tr>
 						      <th scope="row">--Equity IR Charge</th>
 						      <td class="text-right">{{res.eq_charge * 100 | number:4}}%</td> 

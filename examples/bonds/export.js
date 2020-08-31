@@ -6,7 +6,7 @@ function export_curve_to_csv(curve, curve_name, file_name){
                 header+=';'+Math.round(365*c.times[i])+"D";
                 line+=';'+(100*JsonRisk.get_rate(c,c.times[i])).toFixed(8)
         }
-	var export_data=header+'\n'+line;
+	      var export_data=header+'\n'+line;
         
         var a = document.createElement('a');
         a.href = 'data:text/json;charset=utf-8,'+encodeURIComponent(export_data);

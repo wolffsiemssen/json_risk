@@ -21,41 +21,61 @@ var load_params_from_server=function(sc){
 			     0.00803145,
 			     0.00912026
 			    ]},
-			EUR_3M_FWD: {
-			   type: "yield",
-			   labels: [
-			    "1Y","2Y","3Y","4Y","5Y","7Y","10Y","15Y","20Y","25Y"
-			   ],
-			   zcs: [
-			     -0.00695291,
-			     -0.0067878800000000005,
-			     -0.00599913,
-			     -0.00469703,
-			     -0.00313626,
-			     -0.00009492,
-			     0.00368452,
-			     0.00720335,
-			     0.00903145,
-			     0.01012026
-			    ]},
-			EUR_6M_FWD: {
-			   type: "yield",
-			   labels: [
-			    "1Y","2Y","3Y","4Y","5Y","7Y","10Y","15Y","20Y","25Y"
-			   ],
-			   zcs: [
-			     -0.00595291,
-			     -0.0057878800000000005,
-			     -0.00499913,
-			     -0.00369703,
-			     -0.00213626,
-			     -0.00000492,
-			     0.00468452,
-			     0.00820335,
-			     0.01003145,
-			     0.01112026
-			    ]}
-			}
+			  EUR_3M_FWD: {
+			     type: "yield",
+			     labels: [
+			      "1Y","2Y","3Y","4Y","5Y","7Y","10Y","15Y","20Y","25Y"
+			     ],
+			     zcs: [
+			       -0.00695291,
+			       -0.0067878800000000005,
+			       -0.00599913,
+			       -0.00469703,
+			       -0.00313626,
+			       -0.00009492,
+			       0.00368452,
+			       0.00720335,
+			       0.00903145,
+			       0.01012026
+			      ]},
+			  EUR_6M_FWD: {
+			     type: "yield",
+			     labels: [
+			      "1Y","2Y","3Y","4Y","5Y","7Y","10Y","15Y","20Y","25Y"
+			     ],
+			     zcs: [
+			       -0.00595291,
+			       -0.0057878800000000005,
+			       -0.00499913,
+			       -0.00369703,
+			       -0.00213626,
+			       -0.00000492,
+			       0.00468452,
+			       0.00820335,
+			       0.01003145,
+			       0.01112026
+			      ]}
+			  },
+    surfaces: {
+      CONST_0BP: {
+        type: "bachelier",
+        labels_term: ["1Y"],
+        labels_expiry: ["1Y"],
+        values: [[0.0]]
+      },
+      CONST_10BP: {
+        type: "bachelier",
+        labels_term: ["1Y"],
+        labels_expiry: ["1Y"],
+        values: [[0.001]]
+      },
+      CONST_20BP: {
+        type: "bachelier",
+        labels_term: ["1Y"],
+        labels_expiry: ["1Y"],
+        values: [[0.002]]
+      }
+     }    
 		};
 		return 0;
 	}
@@ -77,7 +97,7 @@ var load_params_from_server=function(sc){
 		alert("Could not load params from server");
 	});
 
-	req.open('GET', '../jrparams/' + sc.available_params.selection);
+	req.open('GET', 'https://www.jsonrisk.de/jrparams/' + sc.available_params.selection);
 	req.send();
 }
 
@@ -111,7 +131,7 @@ var load_params_list=function(sc){
 	
 	req.addEventListener('error', err_handler);
 
-	req.open('GET', '../jrparams/');
+	req.open('GET', 'https://www.jsonrisk.de/jrparams/');
 	req.send();
 }
 
@@ -122,7 +142,7 @@ var import_data=function(fil, kind, sc){
 	        worker: false,
         };
         
-	if (kind==="curve"){
+	      if (kind==="curve"){
                 pp_config.complete=function(results,file){
                         var i,j;
                         var labels=[];
