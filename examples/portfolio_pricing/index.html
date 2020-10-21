@@ -9,6 +9,7 @@
 bootstrap
 -->
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<link rel="stylesheet" href="expanded_own_bootstrap_css.css">
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
@@ -34,10 +35,15 @@ PAKO
 <script src="pako.min.js"></script>
 
 <!--
+Chart
+-->
+<script src="Chart.min.js"></script>
+
+<!--
 main app
 -->
 
-<body ng-app="riskapp">
+<body ng-app="riskapp" ng-controller="main_ctrl">
 
 <nav class="navbar navbar-light bg-light">
   <a class="navbar-brand" href="#">
@@ -51,16 +57,17 @@ main app
 
         <ul class="nav nav-tabs mb-3" id="pills-tab" role="tablist">
           <li class="nav-item">
-            <a class="nav-link active" id="pills-pf-tab" data-toggle="pill" href="#pills-pf" role="tab" aria-controls="pills-pf" aria-selected="true">Portfolio</a>
+            <a class="nav-link active" id="pills-pf-tab" data-toggle="pill" href="#pills-pf" role="tab" aria-controls="pills-pf" aria-selected="true">Portfolio <span class="badge badge-primary">{{portfolio.length}}</span></a>
+
           </li>
           <li class="nav-item">
-            <a class="nav-link" id="pills-params-tab" data-toggle="pill" href="#pills-params" role="tab" aria-controls="pills-params" aria-selected="false">Parameters</a>
+            <a class="nav-link" id="pills-params-tab" data-toggle="pill" href="#pills-params" role="tab" aria-controls="pills-params" aria-selected="false">Parameters <span class="badge badge-primary" >{{params_count}}</span></a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" id="pills-res-tab" data-toggle="pill" href="#pills-res" role="tab" aria-controls="pills-res" aria-selected="false">Results</a>
+            <a class="nav-link" id="pills-res-tab" data-toggle="pill" href="#pills-res" role="tab" aria-controls="pills-res" aria-selected="false">Results  <span class="badge badge-primary" ng-if="busy">running</span><span class="badge badge-primary" ng-if="!busy && res">completed</span></a>
           </li>
         </ul>
-        <div class="tab-content" id="pills-tabContent" ng-controller="main_ctrl">
+        <div class="tab-content" id="pills-tabContent" >
         
         
           <!--
@@ -68,6 +75,8 @@ main app
           
           -->
           <div class="tab-pane fade show active" id="pills-pf" role="tabpanel" aria-labelledby="pills-pf-tab">
+
+
                 <div class="alert alert-warning" role="alert" ng-if="portfolio===null">
                   <h4 class="alert-heading">No Portfolio present.</h4>
                   <p> Import portfolio from file or load test portfolio.</p>
@@ -81,7 +90,8 @@ main app
                   </div>
                 </div>
                 <div class="alert alert-success" role="alert" ng-if="portfolio!==null && editor.json===null">
-                  <h4 class="alert-heading">Portfolio loaded.</h4>
+
+                  <h4 class="alert-heading">Portfolio</span></h4>
                   <hr>
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
@@ -123,24 +133,24 @@ main app
                         <table ng-if="portfolio!==null && !busy" class="table table-responsive table-hover table-sm table-bordered">
                           <thead class="thead-light">
                             <tr>
-                              <th scope="col">Actions</th>
-                              <th scope="col">index</th>
-                              <th scope="col">id</th>
-                              <th scope="col">type</th>
-                              <th scope="col">sub_portfolio</th>
-                              <th scope="col">notional</th>
-                              <th scope="col">quantity</th>
-                              <th scope="col">market_value</th>
-                              <th scope="col">currency</th>
-                              <th scope="col">maturity</th>
-                              <th scope="col">tenor</th>
-                              <th scope="col">fixed_rate</th>
-
+                                <th scope="col">Actions</th>
+                              <th scope="col">Index</th>
+                              <th scope="col">ID</th>
+                              <th scope="col">Type</th>
+                              <th scope="col">Sub portfolio</th>
+                              <th scope="col">Notional</th>
+                              <th scope="col">Quantity</th>
+                              <th scope="col">Market value</th>
+                              <th scope="col">Currency</th>
+                              <th scope="col">Maturity</th>
+                              <th scope="col">Tenor</th>
+                              <th scope="col">Fixed rate</th>
+                             
                             </tr>
                           </thead>
                           <tbody>
                             <tr ng-repeat="x in portfolio | filter:filter.text | limitTo: 250">
-                              <th scope="row">
+                               <th scope="row">
                                     <div class="btn-group mr-2">
                                         <button type="button" class="btn btn-sm btn-link" ng-click="view(x)">View</button>                                        
                                         <button type="button" class="btn btn-sm btn-link" ng-click="edit(x)">Edit</button>
@@ -159,6 +169,7 @@ main app
                               <td>{{x.maturity | date:'dd.MM.yyyy'}}</td>
                               <td>{{x.tenor}}</td>
                               <td>{{x.fixed_rate * 100 | number:4}}{{x.fixed_rate ? "%" : ""}}</td>
+                              
                             </tr>
 
                           </tbody>
@@ -184,12 +195,9 @@ main app
 					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_params()">Export</button>
 				</div>
 				<div class="input-group" ng-if="available_params.list!==null">
-					<select class="custom-select" ng-options="value group by value.substring(0,10) for value in available_params.list" ng-model="available_params.selection">
+					<select class="custom-select" ng-options="value group by value.substring(0,10) for value in available_params.list" ng-model="available_params.selection" ng-change="load_params()">
 						<option value="" selected>Choose param set...</option>
 					</select>
-					<div class="input-group-append">
-						<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_params()">Load</button>
-					</div>
 				</div>
 			</div>	
 
@@ -321,6 +329,55 @@ main app
                 </div>
               </div>
             </div>
+                <div class="alert alert-success" role="alert" ng-if="res || busy">
+                 <h4 class="alert-heading" ng-if="busy">Calculations running on {{conc | number:0}} parallel execution threads...</h4>
+                 <h4 class="alert-heading" ng-if="!busy">Calculations completed for {{portfolio.length - analytics.error_count}} of {{portfolio.length}} instruments.</h4>
+                  <hr>
+                  <p ng-if="busy">{{portfolio.length-remaining}} of {{portfolio.length}} instruments ({{(remaining/portfolio.length*100) |number:0}}% remaining), Elapsed time: {{calctime | number:2}} seconds.</p>
+                  <p ng-if="!busy">Present values for {{portfolio.length - analytics.error_count}} instruments were calculated in {{calctime | number:2}} seconds.</p>
+                  <p ng-if="analytics.error_count>0">{{analytics.error_count}} instruments couldn't be rated (ids: {{analytics.errors_ids}}). For more details, see errors. </p>
+                  <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group mr-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-if="busy" ng-click="cancel()">Cancel</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-if="!busy" ng-click="delete_results()">Clear results</button>
+                    </div>
+                  </div>        
+                </div>
+
+
+                <!-- CHARTS -->
+                <div class="charts  " ng-show="res">
+                <div class="row">
+                    <div class="col mb-5 mx-4 chart" >
+                        <h1 class="h2 ml-2 mb-4">P&L and Present Values for each scenario</h1>
+                      				        
+					        <canvas id="canvas-scenarios"></canvas>	
+                            <div class="input-group">
+
+					        <select class="custom-select mr-2" ng-options="value for value in available_subportfolios.list" ng-model="available_subportfolios.selection" ng-change="load_subportfolio()">
+						    <option value="" selected>Choose subportfolio...</option>
+					        </select>
+
+                            <!--Radio buttons-->
+                            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                              <label class="btn btn-outline-secondary active form-check-label" ng-click="load_scenarios('pnl')">
+                                <input class="form-check-input" type="radio" checked autocomplete="off" style="display: none" > P&L
+                              </label>
+                              <label class="btn btn-outline-secondary form-check-label" ng-click="load_scenarios('pv')">
+                                <input class="form-check-input" type="radio" autocomplete="off" style="display: none"> Present Values
+                             </label>
+                            </div>
+			            </div>		
+				    </div>
+ 				    <div class="col mb-5 mx-4 chart" >
+                        <h1 class="h2 mb-4">Present values of scenario 0</h1>
+					    <canvas id="canvas-scenario-subportfolio"></canvas>			
+				    </div>
+                    
+                </div>
+            </div>
+
+                    
             <div class="alert alert-warning" role="alert" ng-if="res===null && portfolio!==null && !busy">
               <h4 class="alert-heading">No Results yet.</h4>
               <p> Perform calculations to obtain results.</p>
@@ -329,9 +386,9 @@ main app
                 <div class="btn-group mr-2">
                   <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate()">Calculate</button>
                 </div>
-                <div class="input-group">
+                <div class="btn-group mr-2">
                   <div class="input-group-prepend">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="calculate_lambda()">Calculate Lambda</button> 
+                    <button type="button" class="btn btn-sm btn-outline-secondary mr-2" ng-click="calculate_lambda()">Calculate Lambda</button> 
                   </div>
                   <input type="text" class="form-control" placeholder="API-key" aria-label="" aria-describedby="" ng-model="options_aws.apikey">                          
                 </div>
@@ -343,7 +400,7 @@ main app
 		  <button type="button" class="close" ng-click="clear_warnings()" aria-label="Close">
 		    <span aria-hidden="true">&times;</span>
 		  </button>
-                  <h4 class="alert-heading">One or more warnings occurred.</h4>
+                  <h4 class="alert-heading">Warnings <span class="badge badge-primary" ng-if="analytics.warning_count>0">{{analytics.warning_count}}</span></h4>
                   <hr>
                   <p ng-repeat="x in warnings">Warning on instrument {{x.id}}: {{x.msg}} <span ng-if="x.count>1">[repeats {{x.count}} times]</span> </p>
                 </div>
@@ -352,23 +409,14 @@ main app
 		  <button type="button" class="close" ng-click="clear_errors()" aria-label="Close">
 		    <span aria-hidden="true">&times;</span>
 		  </button>
-                  <h4 class="alert-heading">One or more errors occurred.</h4>
+                  <h4 class="alert-heading">Errors <span class="badge badge-primary" ng-if="analytics.error_count>0">{{analytics.error_count}}</span></h4>
                   <hr>
                   <p ng-repeat="x in errors">Error pricing instrument {{x.id}}: {{x.msg}} <span ng-if="x.count>1">[repeats {{x.count}} times]</span> </p>
                 </div>
 
-                <div class="alert alert-success" role="alert" ng-if="res || busy">
-                 <h4 class="alert-heading" ng-if="busy">Calculations running on {{conc | number:0}} parallel execution threads...</h4>
-                 <h4 class="alert-heading" ng-if="!busy">Calculations completed.</h4>
-                  <hr>
-                  <p>{{portfolio.length-remaining}} of {{portfolio.length}} instruments ({{(remaining/portfolio.length*100) |number:0}}% remaining), Elapsed time: {{calctime | number:2}} seconds.</p>
-                  <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group mr-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-if="busy" ng-click="cancel()">Cancel</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-if="!busy" ng-click="delete_results()">Clear results</button>
-                    </div>
-                  </div>        
-                </div>
+
+
+                
         
        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" ng-if="!busy && res">
                 <h1 class="h2">Present value vector by sub-portfolios</h1>
@@ -399,12 +447,16 @@ main app
                         </table>                
                 </div>
           </div>
-        </div>
+
+                    
+				
+
         
 </div>
 
 <script src="test_data.js"></script>
 <script src="main.js"></script>
+<script src="charts.js"></script>
 <script src="import.js"></script>
 <script src="export.js"></script>
 

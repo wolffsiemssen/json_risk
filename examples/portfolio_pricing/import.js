@@ -23,11 +23,20 @@ var load_params_from_server=function(sc){
 	
 	req.addEventListener('load', function(evt){
 		if(req.status===200){
+            sc.params_count=0;
 			sc.params=JSON.parse(req.responseText);
 			sc.res=null;
 			sc.errors=null;
 			sc.warnings=null;
-                        sc.$apply();
+            var keys=Object.keys(sc.params);
+            for (j=1;j<keys.length;j++){
+                var key=keys[j];
+                if (key === 'curves' || key === 'scalars' || key === 'surfaces'){
+	                sc.params_count=sc.params_count + (Object.keys(sc.params[key]).length || 0)  ;
+                }
+            }            
+            sc.$apply();
+
 		}else{
 			alert("Could not load params from server");
 		}
@@ -72,7 +81,7 @@ var import_data=function(fil, kind, sc){
         	dynamicTyping: true,
 	        worker: false,
         };
-        
+    
         if (kind==="scalar"){
                 pp_config.complete=function(results,file){
                         var i,j;
@@ -82,6 +91,7 @@ var import_data=function(fil, kind, sc){
                         if (!sc.params.scalars) sc.params.scalars={};
                 
                         for (j=1;j<results.data[0].length;j++){
+                                sc.params_count=sc.params_count+1;
                                 column=[];
                                 for (i=1; i<results.data.length;i++){
                                         if (results.data[i].length!==results.data[0].length) continue;
@@ -92,6 +102,7 @@ var import_data=function(fil, kind, sc){
                                         value: column
                                 };
                         }
+                        sc.params_count=sc.params_count + 1;
                         sc.$apply();
                 }        
         }else if (kind==="curve"){
@@ -100,15 +111,15 @@ var import_data=function(fil, kind, sc){
                         var labels=[];
                         var zcs=[];
                         var row;
-                
                         for (j=1;j<results.data[0].length;j++){
                                 labels.push(results.data[0][j]);
                         }
                         
-                        for (i=1; i<results.data.length;i++){
+                        for (i=1; i<results.data.length;i++){                               
                                 if (results.data[i].length!==results.data[0].length) continue;
                                 row=new Array(results.data[0].length-1);
                                 for (j=0;j<row.length;j++){
+
                                         row[j]=results.data[i][j+1]/100;
                                 }
                                 zcs.push(row);
@@ -121,6 +132,7 @@ var import_data=function(fil, kind, sc){
                                 labels: labels,
                                 zcs: zcs
                         }
+                        sc.params_count=sc.params_count + 1;
                         sc.$apply();
                 }
         
@@ -133,6 +145,7 @@ var import_data=function(fil, kind, sc){
                         var row;
                 
                         for (j=1;j<results.data[0].length;j++){
+
                                 labels_term.push(results.data[0][j]);
                         }
                         
@@ -154,6 +167,7 @@ var import_data=function(fil, kind, sc){
                                 labels_term: labels_term,
                                 values: values
                         }
+                        sc.params_count=sc.params_count + 1;
                         sc.$apply();
                 }
         }else if (kind==="portfolio"){

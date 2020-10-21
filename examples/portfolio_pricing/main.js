@@ -33,6 +33,9 @@ I. functions called by index.html orderd by tabs (portfolio, parameters, results
 	    $scope.count_scenarios_surface(surface)     count scenarios given by params-surfaces (surfaces)  
 	    $scope.count_scenarios_scalar(scalar)       count scenarios given by params-scalars (scalar)  
     iii. tab results
+        $scope.load_scenarios(type)                 update scenario chart after choosing a chart type
+        $scope.load_subportfolio()                  update scenario chart after choosing a subportfolio
+        $scope.fill_charts()                        fill initially charts after calculation       
         $scope.export_results()                     export results (csv)
 	    $scope.clear_errors()                       delete errors from calulation ($scope.errors is null)
 	    $scope.clear_warnings()                     delete warnings from calulation ($scope.warnings is null) 
@@ -54,23 +57,27 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
     /* definition of scope und worker (worker.js) */
 	$scope.portfolio=JSON.parse(JSON.stringify(test_pf));  // Portfolio, was der Berechnung auf Reiter results zu grunde liegt
-	$scope.available_params={list: null, selection: null}
+	$scope.available_params={list: null, selection: null};
+    $scope.available_subportfolios={list:null,selection:null};
 	$scope.res=null;
 	$scope.errors=null;
 	$scope.warnings=null;
-
     $scope.options_aws = {  // xmlhttprequest options for aws (amazon web services)
         hostname: 'https://vflj5ognch.execute-api.eu-central-1.amazonaws.com',  // hostname aws API
         path: '/test/test',                                                     // path
         method: 'POST',                                                         // request method
         method_test: 'GET',                                                    // request method to test the apikey
-        apikey: 'tMU4FEJGIG1EgKkCaD92J27nwdDq6kM61PXdnZ1u'                
+        apikey: ''                
         //apikey:'your API-key for aws'                                                        // API-key
      };  
     $scope.filter={text: ""};
-    $scope.editor={json: null,index: -1}
-
+    $scope.editor={json: null,index: -1};
 	wrk=[]; 
+    $scope.analytics={
+        error_count:0,
+        warning_count:0,
+        errors_ids: null};
+    $scope.scenarios_type=null;
 
     /* I. functions called by index.html orderd by tabs (portfolio, parameters, results) and corresponding functions */
 
@@ -87,7 +94,8 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    $scope.res=null;
 		    $scope.errors=null;
 		    $scope.warnings=null;
-	    }
+	    };
+
 
         $scope.export_portfolio=function(format){ 
 		        if(format==='json'){
@@ -275,6 +283,8 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
 
         /*  I.ii. tab parameters  */
+        $scope.params_count=null;
+        
 
 	    $scope.update_params_list=function(){ 
 		    load_params_list($scope);  // function in import.js
@@ -283,7 +293,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	    $scope.update_params_list();
 
 	    $scope.load_params=function(){ 
-		    load_params_from_server($scope);    // function in import.js
+		    load_params_from_server($scope);    // function in import.js            
 	    }
 
 	    $scope.load_test_params=function(){ 
@@ -298,6 +308,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    $scope.res=null;
 		    $scope.errors=null;
 		    $scope.warnings=null;
+            $scope.params_count=(Object.keys($scope.params.curves).length || 0) + (Object.keys($scope.params.scalars).length || 0) + (Object.keys($scope.params.surfaces).length || 0);
 	    }
 
 	    $scope.load_test_params();
@@ -307,6 +318,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    $scope.res=null;
 		    $scope.errors=null;
 		    $scope.warnings=null;
+            $scope.params_count=null;
 	    }
 
 	    $scope.export_params=function(){ 
@@ -327,7 +339,26 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
 	
         /*  I.ii. tab results  */
-
+        $scope.load_scenarios=function(type){ 
+		    update_chart_scenarios($scope.res, $scope.available_subportfolios.selection,type);    // function in charts.js   
+            $scope.scenarios_type=type;         
+	    }
+        $scope.load_subportfolio=function(){ 
+		    update_chart_scenarios($scope.res, $scope.available_subportfolios.selection,$scope.scenarios_type);    // function in charts.js            
+	    }
+        $scope.fill_charts=function(){ 
+            var keys=Object.keys($scope.res[0]);
+            $scope.available_subportfolios.list=[];
+            $scope.available_subportfolios.selection=null;
+            for(var i=0;i<keys.length;i++) { 
+                key=keys[i];
+                if (key != 'TOTAL') $scope.available_subportfolios.list.push(key);                                
+            };
+            $scope.$apply();
+            update_chart_scenario_subportfolio($scope.res[0]);
+            update_chart_scenarios($scope.res,$scope.available_subportfolios.selection,'pnl');
+            $scope.scenarios_type='pnl';
+         }
 
 	    $scope.export_results=function(){ 
 		    var columns=Object.keys($scope.res[0]);
@@ -361,6 +392,9 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    $scope.res=null;
 		    $scope.errors=null;
 		    $scope.warnings=null;
+            $scope.analytics.error_count=null;
+            $scope.analytics.warning_count=null;
+            $scope.analytics.error_ids=null
 	    }
 
 	    $scope.add_error=function(obj){ 
@@ -376,6 +410,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    if (j>=$scope.errors.length) {
                    $scope.errors.push(obj); //new error           
             }
+            
         }
 
         $scope.add_warning=function(obj){ 
@@ -389,10 +424,16 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		        j++;
 	        }
 	        if (j>=$scope.warnings.length) $scope.warnings.push(obj); //new warning
+
         }
 
+        
 
 	    $scope.calculate=function(){ 
+            
+            $scope.analytics.error_count=0;
+            $scope.analytics.warning_count=0;
+            $scope.analytics.errors_ids=[];
 
 		    $scope.busy=true;
 		    $scope.conc=navigator.hardwareConcurrency;
@@ -425,8 +466,11 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 				    }else if(e.data.warning){ //warning
 					    
                         $scope.add_warning({msg: e.data.msg, id: e.data.id, count: 1});
+                        $scope.analytics.warning_count=$scope.analytics.warning_count +1;
 				    }else{ //error
 					    $scope.add_error({msg: e.data.msg || "unknown error", id: e.data.id || "unknown", count:1});
+                        $scope.analytics.error_count=$scope.analytics.error_count + 1;
+                        $scope.analytics.errors_ids.push(e.data.id || "unknown");
 					    incomplete--;
 				    }
 
@@ -436,8 +480,8 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 				                    wrk.shift();
 				            }
                     $scope.remaining=0;
-				            $scope.busy=false;            
-				            $scope.$apply();
+				    $scope.busy=false; 
+                    $scope.fill_charts();    
 				    }
 				    if(incomplete % 100 === 0 ){ //every now and then, update display and stats
                                             t1 = new Date().getTime();
@@ -501,7 +545,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             $scope.busy=true;  
 
             const config={
-	          chunk_size: 250,       // max. number of instruments send in one aws request
+	          chunk_size: 50,       // max. number of instruments send in one aws request
 	          max_requests: 1000,   // max. number of aws requests, i.e. a portfolio may have max. max_requests*chunk_size instruments
 	          max_retries: 2        // max. number of retries sending a chunk to aws
             };
@@ -528,7 +572,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             	if (undefined===data.res || undefined===data.errors || undefined===data.warnings || undefined===data.times){
                     $scope.add_error({ msg: `Request with ${chunk.length} instruments does not return any valid data`, id: chunk[0].id || "", count: chunk.length});
                 }else{
-                    console.log(`INFO: Response with ${chunk.length} instruments received, ${portfolio_tmp.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running}   requests currently running`);
+                    console.log(`INFO: Response with ${chunk.length} instruments received, ${portfolio_in.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running}   requests currently running`);
                     //$scope.$apply();    	    	
                     // write aws response to $scope.res    
                     var keys=Object.keys(data.res);
@@ -548,7 +592,11 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		            aws_analysis.times['calc']=aws_analysis.times['calc']+data.times['calc'];
                     aws_analysis.times['exec']=aws_analysis.times['exec']+data.times['exec'];
 
-	
+                    // aggregate errors and warnings
+	                $scope.analytics.error_count=$scope.analytics.error_count+data.error_count;
+                    $scope.analytics.warning_count=$scope.analytics.warning_count+data.warning_count;
+                    for (n=0;n<data.errors_ids.length;n++) $scope.analytics.errors_ids.push(data.errors_ids[n]);
+
                     // warnings and errors
                     for (n=0;n<data.warnings.length;n++) $scope.add_warning(data.warnings[n]);
                     for (n=0;n<data.errors.length;n++) $scope.add_error(data.errors[n]);          
@@ -568,12 +616,12 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	            if(0===remaining){
 	                //program ends here
                     console.log('aws-times: ');
-                    console.log(aws_analysis.times);  
+                    console.log(aws_analysis.times); 
 	            t1 = new Date().getTime();
                     $scope.calctime=(t1 - t0)/1000;            
                     $scope.busy=false;  
-                    $scope.$apply();
-                }else if(portfolio_tmp.length){
+                    $scope.fill_charts(); 
+                }else if(portfolio_in.length){
 	            	    new_request_lambda();
 	            }
             };
@@ -582,11 +630,11 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                 j=config.chunk_size;
                 var instrument;
                 let chunk=[];
-                while(portfolio_tmp.length && j>0){
-                	instrument=portfolio_tmp.pop();
+                while(portfolio_in.length && j>0){
+                	instrument=portfolio_in.shift();
                 	chunk.push(instrument);          
                 	if(instrument.type==="callable_bond"){
-                		j-=10;
+                		j-=25;
                 	}else{
                 		j--;
                 	}
@@ -597,7 +645,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
             var new_request_with_chunk_lambda=function(chunk, num_retries){
                 running++;
-	            console.log(`INFO: Request  with ${chunk.length} instruments sent, ${portfolio_tmp.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running} requests currently running`);
+	            console.log(`INFO: Request  with ${chunk.length} instruments sent, ${portfolio_in.length} instruments remaining to send, ${remaining} instruments remaining to receive, ${running} requests currently running`);
 	
                 var data='';
                 var xmlhttp_aws = new XMLHttpRequest();
@@ -632,21 +680,25 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	            times:{'calc':0.00000,'exec':0.00000}
             };
 
+            var portfolio_in=$scope.portfolio.slice(); 
             var end = 0;
-            var portfolio_tmp=[];
-            for (j=0;j<$scope.portfolio.length;j++){
-	            if ($scope.portfolio[j].type!=='callable_bond') portfolio_tmp.push($scope.portfolio[j]);
+            var tmp=[];
+            for (j=0;j<portfolio_in.length;j++){
+	            if (portfolio_in[j].type==='callable_bond') tmp.push(portfolio_in[j]);
             }
 
-            for (j=0;j<$scope.portfolio.length;j++){
-	            if ($scope.portfolio[j].type==='callable_bond') portfolio_tmp.push($scope.portfolio[j]);
+            for (j=0;j<portfolio_in.length;j++){
+	            if (portfolio_in[j].type!=='callable_bond') tmp.push(portfolio_in[j]);
             }
-            var remaining=portfolio_tmp.length;
+            var remaining=portfolio_in.length;
             var running=0;
             var paramsurl;            
 
             $scope.remaining=remaining;
             $scope.calctime=0;
+            $scope.analytics.error_count=0;
+            $scope.analytics.warning_count=0;
+            $scope.analytics.errors_ids=[];
 
 
             var xmlhttp_aws_test = new XMLHttpRequest(); //sending a OPTIONS requests to aws to see if settings are correct
@@ -668,7 +720,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                             if (data.path){
                                 paramsurl='https://' + options_jrparams.hostname + options_jrparams.path + data.path;
                                 console.log("INFO: params made available under " + paramsurl);
-                                while (portfolio_tmp.length>0 && (running<2*config.max_requests)){                        
+                                while (portfolio_in.length>0 && (running<2*config.max_requests)){                        
                                     new_request_lambda();
                                 };
                                 
@@ -719,6 +771,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		f.click();
 		return 0;
 	}
+
 
 
 
