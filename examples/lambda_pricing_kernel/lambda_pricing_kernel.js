@@ -13,7 +13,10 @@ var output={
 	res:{},
 	warnings: [],
 	errors: [],
-	times:{}
+	times:{},
+	error_count: 0,
+	warning_count: 0,
+	errors_ids:[]
 };
 
 
@@ -22,18 +25,24 @@ var output={
 	///////////////////////////// error and warning functions //////////////////////////////////////////////////////////////
 	var add_error=function(msg, id){
 		var j=0;
+		output.errors_ids.push(id);
+		output.error_count=output.error_count+1;
 		while(j<output.errors.length){
+				
 			if (output.errors[j].msg === msg){ //same error has already occured
 				output.errors[j].count++;
 				break;
 			}
+
 			j++;
 		}
 		if (j>=output.errors.length) output.errors.push({msg: msg, id: id, count: 1}); //new error
+		
 		};
 
 	var add_warning=function(msg, id){
 		var j=0;
+		output.warning_count=output.warning_count+1;
 		while(j<output.warnings.length){
 			if (output.warnings[j].msg === msg){ //same warning has already occured
 				output.warnings[j].count++;
@@ -42,6 +51,7 @@ var output={
 			j++;
 		}
 		if (j>=output.warnings.length) output.warnings.push({msg: msg, id: id, count: 1}); //new warning
+
 	};
 
 	///////////////////////////////////////////////////Main logic///////////////////////////////////////////////////////////
