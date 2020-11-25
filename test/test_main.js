@@ -636,6 +636,7 @@ for (i=0; i<Kupon.length; i++){
 
 
 var pu,pd,i,r;
+var null_curve=JsonRisk.get_const_curve(0.0);
 //evaluate with yield curve
 for (i=0; i<Kupon.length; i++){
         r=Rendite[i]/100;
@@ -654,8 +655,8 @@ for (i=0; i<Kupon.length; i++){
         r=Rendite[i]/100;
         curve_down=JsonRisk.get_const_curve(r-0.0001);
         curve_up=JsonRisk.get_const_curve(r+0.0001);
-        pu=JsonRisk.pricer_bond(bonds[i],null, curve_up, null);
-        pd=JsonRisk.pricer_bond(bonds[i],null, curve_down, null);
+        pu=JsonRisk.pricer_bond(bonds[i],null_curve, curve_up, null);
+        pd=JsonRisk.pricer_bond(bonds[i],null_curve, curve_down, null);
         am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Bond Valuation (Real BUND Bonds using spread curve, " + (i+1) +")");
 }
 

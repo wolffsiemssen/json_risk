@@ -141,6 +141,7 @@
 			if(tte>1/512) t_exercise.push(tte);  //non-expired call date
 		}
 
+        if(typeof disc_curve !== 'object' || disc_curve===null) throw new Error("callable_fixed_income.present_value: must provide discount curve");
 		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: must provide forward curve for calibration");
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
@@ -953,7 +954,8 @@
    * @public
    */
   library.fixed_income.prototype.present_value = function(disc_curve, spread_curve, fwd_curve) {
-    if (this.is_float && (typeof fwd_curve !== 'object' || fwd_curve === null)) throw new Error("fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream");
+    if (typeof disc_curve !== 'object' || disc_curve === null) throw new Error("fixed_income.present value: Must provide discount curve when evaluating interest stream");    
+    if (this.is_float && (typeof fwd_curve !== 'object' || fwd_curve === null)) throw new Error("fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream");    
     return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
       library.get_safe_curve(disc_curve),
       library.get_safe_curve(spread_curve),
@@ -3325,7 +3327,7 @@
                         stored_params.vector_length = len;
                         return;
                 }
-                if (len !== stored_params.vector_length) throw new Error("vector_pricing: parameters need to have the same length or length one");
+                if (len !== stored_params.vector_length) throw new Error("vector_pricing: provided parameters need to have the same length or length one");
         };
 
 		/**
@@ -3480,18 +3482,22 @@
                                 case "bond":
                                 case "floater":
                                 case "fxterm":
-				case "irregular_bond":
+				                case "irregular_bond":
                                 res[i]=obj.present_value(dc,sc,fc);
                                 break;
                                 case "swap":
                                 case "swaption":
                                 res[i]=obj.present_value(dc,fc,su);
-				break;
+				                break;
                                 case "callable_bond":
                                 res[i]=obj.present_value(dc,sc,fc,su);
                                 break;
                         }
-                        if (vec_fx) res[i]/=vec_fx.value[vec_fx.value.length>1 ? i : 0];
+                        // if currency is provided and not EUR, convert or throw error
+                        if (!instrument.currency) continue;
+                        if (instrument.currency === 'EUR') continue;
+                        if (!vec_fx) throw new Error ('vector_pricer: cannot convert currency, scalar parameter not provided');
+                        res[i]/=vec_fx.value[vec_fx.value.length>1 ? i : 0];  
                 }
                 return res;
         };

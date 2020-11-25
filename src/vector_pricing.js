@@ -68,7 +68,7 @@
                         stored_params.vector_length = len;
                         return;
                 }
-                if (len !== stored_params.vector_length) throw new Error("vector_pricing: parameters need to have the same length or length one");
+                if (len !== stored_params.vector_length) throw new Error("vector_pricing: provided parameters need to have the same length or length one");
         };
 
 		/**
@@ -223,18 +223,22 @@
                                 case "bond":
                                 case "floater":
                                 case "fxterm":
-				case "irregular_bond":
+				                case "irregular_bond":
                                 res[i]=obj.present_value(dc,sc,fc);
                                 break;
                                 case "swap":
                                 case "swaption":
                                 res[i]=obj.present_value(dc,fc,su);
-				break;
+				                break;
                                 case "callable_bond":
                                 res[i]=obj.present_value(dc,sc,fc,su);
                                 break;
                         }
-                        if (vec_fx) res[i]/=vec_fx.value[vec_fx.value.length>1 ? i : 0];
+                        // if currency is provided and not EUR, convert or throw error
+                        if (!instrument.currency) continue;
+                        if (instrument.currency === 'EUR') continue;
+                        if (!vec_fx) throw new Error ('vector_pricer: cannot convert currency, scalar parameter not provided');
+                        res[i]/=vec_fx.value[vec_fx.value.length>1 ? i : 0];  
                 }
                 return res;
         };

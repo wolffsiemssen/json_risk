@@ -104,6 +104,7 @@
 			if(tte>1/512) t_exercise.push(tte);  //non-expired call date
 		}
 
+        if(typeof disc_curve !== 'object' || disc_curve===null) throw new Error("callable_fixed_income.present_value: must provide discount curve");
 		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: must provide forward curve for calibration");
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
