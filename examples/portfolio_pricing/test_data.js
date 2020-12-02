@@ -3097,22 +3097,6 @@ var test_params={
    ]
   }
  },
- "scenario_names": [
-  "Base",
-  "IR Sensitivity 1W",
-  "IR Sensitivity 3M",
-  "IR Sensitivity 6M",
-  "IR Sensitivity 1Y",
-  "IR Sensitivity 2Y",
-  "IR Sensitivity 3Y",
-  "IR Sensitivity 5Y",
-  "IR Sensitivity 7Y",
-  "IR Sensitivity 10Y",
-  "IR Sensitivity 15Y",
-  "IR Sensitivity 20Y",
-  "IR Sensitivity 25Y",
-  "IR Sensitivity 30Y"
- ],
  "scalars": {
   "USD": {
    "type": "equity / fx",

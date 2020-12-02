@@ -140,14 +140,19 @@ I. functions/charts called by main.js/index.html
 		    responsive: true
 	    }
     );
-    var update_chart_scenarios=function(result, subportfolio, type){	
+    var update_chart_scenarios=function(result, subportfolio, type, scenario_names){	
         chart_scenarios.data.labels=[]; 
         if(subportfolio != null) chart_scenarios.data.datasets[1].label=subportfolio;    
         if(subportfolio === null) chart_scenarios.data.datasets[1].label="Subportfolio";    
         var keys=Object.keys(result);
         for(var i=0;i<keys.length;i++) { 
             key=keys[i];
-            chart_scenarios.data.labels[i]=key;	
+if(undefined===scenario_names) scenario_names=[];
+            if (keys.length === scenario_names.length){
+                chart_scenarios.data.labels[i]=scenario_names[i];
+            }else{
+               chart_scenarios.data.labels[i]=key; 
+            };	
             if(type === 'pnl')  {
                 chart_scenarios.data.datasets[0].data[i]=result[key]['TOTAL'] - result[0]['TOTAL'];                    
                 chart_scenarios.data.datasets[1].data[i]=result[key][subportfolio] - result[0][subportfolio];   

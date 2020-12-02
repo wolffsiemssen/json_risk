@@ -67,7 +67,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
         path: '/test/test',                                                     // path
         method: 'POST',                                                         // request method
         method_test: 'GET',                                                    // request method to test the apikey
-        apikey: ''                
+        apikey: 'tMU4FEJGIG1EgKkCaD92J27nwdDq6kM61PXdnZ1u'                
         //apikey:'your API-key for aws'                                                        // API-key
      };  
     $scope.filter={text: ""};
@@ -78,6 +78,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
         warning_count:0,
         errors_ids: null};
     $scope.scenarios_type=null;
+    $scope.upload_error=null;
 
     /* I. functions called by index.html orderd by tabs (portfolio, parameters, results) and corresponding functions */
 
@@ -319,6 +320,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    $scope.errors=null;
 		    $scope.warnings=null;
             $scope.params_count=null;
+            $scope.upload_error=null;
 	    }
 
 	    $scope.export_params=function(){ 
@@ -332,7 +334,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	    $scope.count_scenarios_surface=function(surface){  
 		    return Array.isArray(surface.values[0][0]) ? surface.values.length : 1;
 	    }
-
+ 
 	    $scope.count_scenarios_scalar=function(scalar){ 
 		    return Array.isArray(scalar.value) ? scalar.value.length : 1;
 	    }
@@ -340,13 +342,16 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	
         /*  I.ii. tab results  */
         $scope.load_scenarios=function(type){ 
-		    update_chart_scenarios($scope.res, $scope.available_subportfolios.selection,type);    // function in charts.js   
+		    update_chart_scenarios($scope.res, $scope.available_subportfolios.selection,type, $scope.params.scenario_names);    // function in charts.js   
             $scope.scenarios_type=type;         
 	    }
         $scope.load_subportfolio=function(){ 
-		    update_chart_scenarios($scope.res, $scope.available_subportfolios.selection,$scope.scenarios_type);    // function in charts.js            
+		    update_chart_scenarios($scope.res, $scope.available_subportfolios.selection,$scope.scenarios_type, $scope.params.scenario_names);    // function in charts.js            
 	    }
         $scope.fill_charts=function(){ 
+            if (!$scope.res) return 0;
+            if (undefined === $scope.res[0]) return 0;
+            if (null === $scope.res[0]) return 0;
             var keys=Object.keys($scope.res[0]);
             $scope.available_subportfolios.list=[];
             $scope.available_subportfolios.selection=null;
@@ -356,7 +361,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             };
             $scope.$apply();
             update_chart_scenario_subportfolio($scope.res[0]);
-            update_chart_scenarios($scope.res,$scope.available_subportfolios.selection,'pnl');
+            update_chart_scenarios($scope.res,$scope.available_subportfolios.selection,'pnl', $scope.params.scenario_names);
             $scope.scenarios_type='pnl';
          }
 
@@ -394,7 +399,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    $scope.warnings=null;
             $scope.analytics.error_count=null;
             $scope.analytics.warning_count=null;
-            $scope.analytics.error_ids=null
+            $scope.analytics.error_ids=null;
 	    }
 
 	    $scope.add_error=function(obj){ 
@@ -434,7 +439,6 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             $scope.analytics.error_count=0;
             $scope.analytics.warning_count=0;
             $scope.analytics.errors_ids=[];
-
 		    $scope.busy=true;
 		    $scope.conc=navigator.hardwareConcurrency;
 		    var t0 = new Date().getTime(), t1, t1_last=0;
@@ -464,7 +468,6 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 				            }
 					    incomplete--;
 				    }else if(e.data.warning){ //warning
-					    
                         $scope.add_warning({msg: e.data.msg, id: e.data.id, count: 1});
                         $scope.analytics.warning_count=$scope.analytics.warning_count +1;
 				    }else{ //error
@@ -472,16 +475,21 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                         $scope.analytics.error_count=$scope.analytics.error_count + 1;
                         $scope.analytics.errors_ids.push(e.data.id || "unknown");
 					    incomplete--;
+                        
 				    }
 
 				    if (0===incomplete){ //all done, terminate workers and exit
-				            while (wrk.length){
-				                    wrk[0].terminate();
-				                    wrk.shift();
-				            }
-                    $scope.remaining=0;
-				    $scope.busy=false; 
-                    $scope.fill_charts();    
+				        while (wrk.length){
+				            wrk[0].terminate();
+				            wrk.shift();
+				        } 
+                        $scope.remaining=0;
+				        $scope.busy=false; 
+                        if(!$scope.res) {
+                            $scope.res=new Object;
+                            $scope.$apply();
+                        };
+                        $scope.fill_charts();                         
 				    }
 				    if(incomplete % 100 === 0 ){ //every now and then, update display and stats
                                             t1 = new Date().getTime();
@@ -490,6 +498,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                                             if( t1-t1_last > 500){
                                                 $scope.$apply();
                                                 t1_last=t1;
+
                                             }
 				    }
 				    if(unsent > 0){ // queue next instrument while not done
@@ -620,6 +629,10 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	            t1 = new Date().getTime();
                     $scope.calctime=(t1 - t0)/1000;            
                     $scope.busy=false;  
+                     if(!$scope.res) {
+                            $scope.res=new Object;
+                            $scope.$apply();
+                        };
                     $scope.fill_charts(); 
                 }else if(portfolio_in.length){
 	            	    new_request_lambda();
@@ -763,14 +776,25 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
 
     /* II. general functions */
-	$scope.import_file=function(kind, url){
-		if (url) return import_data(url, kind, $scope);
-		var f = document.createElement('input');
-		f.setAttribute('type', 'file');
-		f.addEventListener('change', function(evt){import_data(evt.target.files[0], kind, $scope);}, false);
-		f.click();
-		return 0;
-	}
+	$scope.import_file=function(type, kind, url){
+
+        if (type==='csv'){
+		    if (url) return import_data(url, kind, $scope);
+		    var f = document.createElement('input');
+		    f.setAttribute('type', 'file');
+		    f.addEventListener('change', function(evt){import_data_csv(evt.target.files[0], kind, $scope);}, false);
+		    f.click();
+		    return 0;
+        }else if(type==='json'){
+            var uploadDatei;
+            var f = document.createElement('input');
+		    f.setAttribute('type', 'file');
+            f.addEventListener('change', function(evt){import_data_json(evt.target.files[0], kind, $scope);}, false);		    
+		    f.click();
+            return 0; 
+        }
+    }
+
 
 
 

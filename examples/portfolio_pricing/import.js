@@ -6,7 +6,8 @@ structure of export.js
 I. functions called by main.js
     load_params_from_server(sc)     imports selected params from jsonrisk-Server
     load_params_list(sc)            loads available params list from jsonrisk-Server
-    import_data(fil, kind, sc)      imports data to scope (portfolio, curves, ...)
+    import_data_csv(fil, kind, sc)  imports data to scope (portfolio, curves, ...)
+    import_data_json(fil, kind, sc) imports data to scope (portfolio, curves, ...)
  
 */
 
@@ -75,26 +76,30 @@ var load_params_list=function(sc){
 	req.send();
 }
 
-var import_data=function(fil, kind, sc){
+var import_data_csv=function(fil, kind, sc){
         var pp_config={
 	        header: false,
         	dynamicTyping: true,
-	        worker: false,
+	        worker: false
         };
     
-        if (kind==="scalar"){
+        if (kind==="params"){
+
+
+
+        }else if (kind==="scalar"){
                 pp_config.complete=function(results,file){
                         var i,j;
                         var column;
-                        
+                        var scenarios=[];
                         if (!sc.params) sc.params={};
-                        if (!sc.params.scalars) sc.params.scalars={};
-                
-                        for (j=1;j<results.data[0].length;j++){
+                        if (!sc.params.scalars) sc.params.scalars={};         
+                        for (j=1;j<results.data[0].length;j++){ 
                                 sc.params_count=sc.params_count+1;
                                 column=[];
                                 for (i=1; i<results.data.length;i++){
                                         if (results.data[i].length!==results.data[0].length) continue;
+                                        scenarios.push(results.data[i][0]);
                                         column.push(results.data[i][j]);
                                 }
                                 sc.params.scalars[results.data[0][j]]={
@@ -102,6 +107,13 @@ var import_data=function(fil, kind, sc){
                                         value: column
                                 };
                         }
+                        if (!sc.params.scenario_names) {
+                            sc.params.scenario_names=scenarios;
+                        }else{
+                            if (scenarios.length > sc.params.scenario_names) sc.params.scenario_names=scenarios;
+
+                        };
+
                         sc.params_count=sc.params_count + 1;
                         sc.$apply();
                 }        
@@ -111,12 +123,13 @@ var import_data=function(fil, kind, sc){
                         var labels=[];
                         var zcs=[];
                         var row;
-                        for (j=1;j<results.data[0].length;j++){
+                        var scenarios=[];
+                        for (j=1;j<results.data[0].length;j++){  //Zeile
                                 labels.push(results.data[0][j]);
-                        }
-                        
-                        for (i=1; i<results.data.length;i++){                               
+                        }                     
+                        for (i=1; i<results.data.length;i++){    //Spalte 
                                 if (results.data[i].length!==results.data[0].length) continue;
+                                scenarios.push(results.data[i][0]);
                                 row=new Array(results.data[0].length-1);
                                 for (j=0;j<row.length;j++){
 
@@ -127,6 +140,12 @@ var import_data=function(fil, kind, sc){
                         
                         if (!sc.params) sc.params={};
                         if (!sc.params.curves) sc.params.curves={};
+                        if (!sc.params.scenario_names) {
+                            sc.params.scenario_names=scenarios;
+                        }else{
+                            if (scenarios.length > sc.params.scenario_names) sc.params.scenario_names=scenarios;
+
+                        };
                         sc.params.curves[results.data[0][0]]={
                                 type: "yield / spread",
                                 labels: labels,
@@ -143,22 +162,54 @@ var import_data=function(fil, kind, sc){
                         var labels_term=[];
                         var values=[];
                         var row;
-                
+
                         for (j=1;j<results.data[0].length;j++){
 
                                 labels_term.push(results.data[0][j]);
                         }
-                        
-                        for (i=1; i<results.data.length;i++){
-                                if (results.data[i].length!==results.data[0].length) continue;
-                                row=new Array(results.data[0].length-1);
-                                labels_expiry.push(results.data[i][0]);
-                                for (j=0;j<row.length;j++){
-                                        row[j]=results.data[i][j+1]/10000;
-                                }
-                                values.push(row);
+
+                        var tmpexpiry=[];
+                        for (i=1; i<results.data.length;i++){  
+
+                                    if (results.data[i].length!==results.data[0].length) continue; 
+                                    tmpexpiry.push(results.data[i][0]);
+                                    labels_expiry = tmpexpiry.filter((v, i, a) => a.indexOf(v) === i);   
                         }
-                        
+
+                        if (Math.round(tmpexpiry.length / labels_expiry.length)!=tmpexpiry.length / labels_expiry.length) {
+                                    sc.upload_error="Could not upload surfaces " + results.data[0][0] + ": please check columns and rows.";
+                                    sc.$apply();
+                                    return 
+                        };
+                        scenario=new Array(tmpexpiry.length / labels_expiry.length);
+                        for (n=0;n<labels_expiry.length;n++) {
+                                if (tmpexpiry.filter(x => x === labels_expiry[0]).length!=tmpexpiry.filter(x => x === labels_expiry[n]).length){  // Errorhandling   
+                                    sc.upload_error="Could not upload surfaces " + results.data[0][0] + ": different sceanrio count for expiries.";
+                                    sc.$apply();
+                                    return   
+                                }  
+                            var k=0;                        
+                            for (i=1; i<results.data.length;i++){ 
+                                    if (undefined===results.data[i]) continue;
+                                    if (results.data[i][0]!==labels_expiry[n]) continue;
+                                    if (results.data[i].length!==results.data[0].length){ 
+                                        sc.upload_error="Could not upload surfaces " + results.data[0][0] + ": different term count for expiries.";
+                                        sc.$apply();
+                                        return 
+                                    }
+                                    if(undefined===scenario[k]) scenario[k]=[];
+                                    row=new Array(results.data[0].length-1);  
+                                    for (j=0;j<row.length;j++){    
+                                            row[j]=results.data[i][j+1]/10000; 
+                                    }
+                                    scenario[k].push(row); 
+                                    delete results.data[i];
+                                    k=k+1;
+                            }                       
+                        }
+                        values=scenario;
+
+
                         if (!sc.params) sc.params={};
                         if (!sc.params.surfaces) sc.params.surfaces={};
                         sc.params.surfaces[results.data[0][0]]={
@@ -167,6 +218,7 @@ var import_data=function(fil, kind, sc){
                                 labels_term: labels_term,
                                 values: values
                         }
+
                         sc.params_count=sc.params_count + 1;
                         sc.$apply();
                 }
@@ -197,4 +249,25 @@ var import_data=function(fil, kind, sc){
                 Papa.parse(fil,pp_config)
         }
 }
+
+
+
+var import_data_json=function(fil, kind, sc){   
+    fil.text().then(text => {
+        if (kind==="params"){
+            sc.params=JSON.parse(text);	
+            var keys=['curves','scalars','surfaces'];
+            for (j=0;j<keys.length;j++){
+                if (undefined===sc.params[keys[j]]) continue;
+                key=Object.keys(sc.params[keys[j]]);
+                sc.params_count=sc.params_count + key.length;
+            }	    
+        }else if (kind==="portfolio"){
+            sc.portfolio=JSON.parse(text);                      
+        }
+        sc.$apply();
+    });
+}
+
+
 

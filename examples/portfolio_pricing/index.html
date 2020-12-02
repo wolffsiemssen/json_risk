@@ -84,7 +84,8 @@ main app
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="create()">Create instrument</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('portfolio')">Import</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','portfolio')">Import (csv)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('json','portfolio')">Import (json)</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_pf()">Load test portfolio</button>
                     </div>
                   </div>
@@ -96,7 +97,8 @@ main app
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="create()">Create instrument</button>                        
-                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('portfolio')">Import more</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','portfolio')">Import more (csv)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('json','portfolio')">Import more (json)</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="delete_pf()">Clear</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_portfolio('json')">Export json</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_portfolio('csv')">Export csv</button>
@@ -192,6 +194,7 @@ main app
 				<div class="btn-group mr-2">
 					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="delete_params()">Clear all</button>
 					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_params()">Clear and load test params</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('json','params')">Import (json)</button>
 					<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="export_params()">Export</button>
 				</div>
 				<div class="input-group" ng-if="available_params.list!==null">
@@ -218,7 +221,7 @@ main app
                 <h1 class="h2">Scalars</h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
                   <div class="btn-group mr-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('scalar')">Import new</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','scalar')">Import new</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.scalars={};">Clear all</button>
                   </div>
                 </div>
@@ -248,7 +251,7 @@ main app
                 <h1 class="h2">Curves</h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
                   <div class="btn-group mr-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('curve')">Import new</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','curve')">Import new</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.curves={};">Clear all</button>
                   </div>
                 </div>
@@ -278,11 +281,11 @@ main app
                         
             
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Surfaces</h1>
+                <h1 class="h2">Surfaces  <span class="badge badge-danger">{{upload_error}}</span></h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
                   <div class="btn-group mr-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('surface')">Import new</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.surfaces={};">Clear all</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','surface');upload_error=null">Import new</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.surfaces={};upload_error=null">Clear all</button>
                   </div>
                 </div>
         </div>
@@ -324,7 +327,8 @@ main app
               <hr>
               <div class="btn-toolbar mb-2 mb-md-0">
                 <div class="btn-group mr-2">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('portfolio')">Import</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','portfolio')">Import (csv)</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('json','portfolio')">Import (json)</button>
                   <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="load_test_pf()">Load test portfolio</button>
                 </div>
               </div>
@@ -335,7 +339,7 @@ main app
                   <hr>
                   <p ng-if="busy">{{portfolio.length-remaining}} of {{portfolio.length}} instruments ({{(remaining/portfolio.length*100) |number:0}}% remaining), Elapsed time: {{calctime | number:2}} seconds.</p>
                   <p ng-if="!busy">Present values for {{portfolio.length - analytics.error_count}} instruments were calculated in {{calctime | number:2}} seconds.</p>
-                  <p ng-if="analytics.error_count>0">{{analytics.error_count}} instruments couldn't be rated (ids: {{analytics.errors_ids}}). For more details, see errors. </p>
+                  <p ng-if="analytics.error_count>0">{{analytics.error_count}} instruments couldn't be rated. IDs: {{analytics.errors_ids.slice(0, 30)}} (max. 30 ids displayed). For more details, see errors. </p>
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-if="busy" ng-click="cancel()">Cancel</button>
@@ -346,7 +350,7 @@ main app
 
 
                 <!-- CHARTS -->
-                <div class="charts  " ng-show="res">
+                <div class="charts  " ng-show="res[0]!=undefined">
                 <div class="row">
                     <div class="col mb-5 mx-4 chart" >
                         <h1 class="h2 ml-2 mb-4">P&L and Present Values for each scenario</h1>
@@ -418,7 +422,7 @@ main app
 
                 
         
-       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" ng-if="!busy && res">
+       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" ng-if="!busy && res[0]!=undefined">
                 <h1 class="h2">Present value vector by sub-portfolios</h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
                   <div class="btn-group mr-2">
@@ -427,11 +431,12 @@ main app
                 </div>
         </div>
          
-                  <div class="table-responsive" ng-if="!busy && res">
+                  <div class="table-responsive" ng-if="!busy && res[0]!=undefined">
                         <table class="table table-responsive table-hover table-sm table-bordered">
                           <thead class="thead-light">
                             <tr>
 				<th scope="col">Index</th> 
+                <th scope="col">Scenario</th> 
 				<th scope="col">Total</th>                              
 				<th ng-repeat="(key, value) in res[0] track by $index" ng-if="key!=='TOTAL'" scope="col">{{key}}</th>
                             </tr>
@@ -439,7 +444,8 @@ main app
                           <tbody>
                             <tr ng-repeat="x in res track by $index">
 				<th scope="row">{{$index}}</th>
-				<th scope="row">{{x.TOTAL | number:2}}</th>                              
+                <th scope="row"> {{params.scenario_names[$index]}}</th>  
+				<th scope="row">{{x.TOTAL | number:2}}</th>                               
 				<td ng-repeat="(key, value) in x track by $index" ng-if="key!=='TOTAL'" scope="row">{{value | number:2}}</td>
                             </tr>
 
