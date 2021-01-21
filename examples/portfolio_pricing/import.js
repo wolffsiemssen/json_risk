@@ -263,7 +263,14 @@ var import_data_json=function(fil, kind, sc){
                 sc.params_count=sc.params_count + key.length;
             }	    
         }else if (kind==="portfolio"){
-            sc.portfolio=JSON.parse(text);                      
+        if (!sc.portfolio) sc.portfolio=[];
+        var portfolio_in;
+        portfolio_in=JSON.parse(text);
+        console.log('länge' + portfolio_in.length);
+	for (j=0; j<portfolio_in.length;j++){
+		sc.portfolio.push(portfolio_in[j]);
+	}
+            	                      
         }
         sc.$apply();
     });

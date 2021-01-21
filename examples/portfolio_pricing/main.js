@@ -338,6 +338,32 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	    $scope.count_scenarios_scalar=function(scalar){ 
 		    return Array.isArray(scalar.value) ? scalar.value.length : 1;
 	    }
+	    
+	    
+	    
+	    $scope.remove_parameter=function(key,value,kind){  
+	    	if (kind==='scalars'){	    
+		    delete $scope.params.scalars[key];
+		    if (Object.keys($scope.params.scalars).length === 0) delete $scope.params.scalars;
+	    	}
+	    	if (kind==='curves'){	    
+		    delete $scope.params.curves[key];
+		    if (Object.keys($scope.params.curves).length === 0) delete $scope.params.curves;
+	    	}
+	    	if (kind==='surfaces'){	    
+		    delete $scope.params.surfaces[key];
+		    if (Object.keys($scope.params.surfaces).length === 0) delete $scope.params.surfaces;
+	    	}
+	    	$scope.res=null;
+		$scope.errors=null;
+		$scope.warnings=null;
+		if($scope.params_count===1) {
+			$scope.params_count=null;
+			$scope.params={valuation_date: $scope.params.valuation_date};
+		}else{			
+		    	$scope.params_count=$scope.params_count -1;
+            	}
+            }
 
 	
         /*  I.ii. tab results  */
@@ -366,13 +392,23 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
          }
 
 	    $scope.export_results=function(){ 
-		    var columns=Object.keys($scope.res[0]);
+	    	var result=$scope.res.slice();
+		for (i=0; i<$scope.res.length;i++){   
+			    if ($scope.params.scenario_names){
+			    	result[i].scenario=$scope.params.scenario_names[i];
+			    }else{
+			    	result[i].scenario=i;
+			    }		    
+		    }
+	  
+	   
+		    var columns=Object.keys(result[0]);
 		    for (var i=0;i<columns.length;i++){
 			    if(columns[i]==='TOTAL') columns.splice(i,1)
 		    }
 		    columns.sort();
-		    columns.unshift('TOTAL');
-		    export_to_csv_file($scope.res, "results.csv", columns); // function in export.js
+		    columns.unshift('scenario','TOTAL');
+		    export_to_csv_file(result, "results.csv", columns); // function in export.js
 	    }
 
 	    $scope.clear_errors=function(){ 
