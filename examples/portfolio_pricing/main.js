@@ -31,13 +31,15 @@ I. functions called by index.html orderd by tabs (portfolio, parameters, results
 	    $scope.export_params()                      export params (json format)	    
 	    $scope.count_scenarios_curve(curve)         count scenarios given by params-curves (curves)    
 	    $scope.count_scenarios_surface(surface)     count scenarios given by params-surfaces (surfaces)  
-	    $scope.count_scenarios_scalar(scalar)       count scenarios given by params-scalars (scalar)  
+	    $scope.count_scenarios_scalar(scalar)       count scenarios given by params-scalars (scalar)
+	    $scope.remove_parameter(key,value,kind)	remove single parameters  
     iii. tab results
         $scope.load_scenarios(type)                 update scenario chart after choosing a chart type
         $scope.load_subportfolio()                  update scenario chart after choosing a subportfolio
         $scope.fill_charts()                        fill initially charts after calculation       
         $scope.export_results()                     export results (csv)
 	    $scope.clear_errors()                       delete errors from calulation ($scope.errors is null)
+	    $scope.clear_errors_ids			delete error IDs from calculation ($scope.analytics.errors_ids is null)
 	    $scope.clear_warnings()                     delete warnings from calulation ($scope.warnings is null) 
 	    $scope.cancel()                             cancel calculation
 	    $scope.delete_results()                     delete results ($scope.res is null)
@@ -414,6 +416,9 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 	    $scope.clear_errors=function(){ 
 		    $scope.errors=null;
 	    }
+	    $scope.clear_errors_ids=function(){ 
+		    $scope.analytics.errors_ids=null;
+	    }
 
 	    $scope.clear_warnings=function(){ 
 		    $scope.warnings=null;
@@ -435,7 +440,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    $scope.warnings=null;
             $scope.analytics.error_count=null;
             $scope.analytics.warning_count=null;
-            $scope.analytics.error_ids=null;
+            $scope.analytics.errors_ids=null;
 	    }
 
 	    $scope.add_error=function(obj){ 
@@ -474,7 +479,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             
             $scope.analytics.error_count=0;
             $scope.analytics.warning_count=0;
-            $scope.analytics.errors_ids=[];
+            $scope.analytics.errors_ids;
 		    $scope.busy=true;
 		    $scope.conc=navigator.hardwareConcurrency;
 		    var t0 = new Date().getTime(), t1, t1_last=0;
@@ -509,7 +514,11 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 				    }else{ //error
 					    $scope.add_error({msg: e.data.msg || "unknown error", id: e.data.id || "unknown", count:1});
                         $scope.analytics.error_count=$scope.analytics.error_count + 1;
-                        $scope.analytics.errors_ids.push(e.data.id || "unknown");
+                        if($scope.analytics.errors_ids===null){
+                        	$scope.analytics.errors_ids=e.data.id;
+                        }else{
+                        	$scope.analytics.errors_ids=$scope.analytics.errors_ids + ", " + e.data.id;
+                        }
 					    incomplete--;
                         
 				    }
@@ -640,7 +649,13 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
                     // aggregate errors and warnings
 	                $scope.analytics.error_count=$scope.analytics.error_count+data.error_count;
                     $scope.analytics.warning_count=$scope.analytics.warning_count+data.warning_count;
-                    for (n=0;n<data.errors_ids.length;n++) $scope.analytics.errors_ids.push(data.errors_ids[n]);
+                    for (n=0;n<data.errors_ids.length;n++) {
+                    if($scope.analytics.errors_ids===null){
+                        	$scope.analytics.errors_ids=data.errors_ids[n];
+                        }else{
+                        	$scope.analytics.errors_ids=$scope.analytics.errors_ids + ", " + data.errors_ids[n];
+                        }
+                    }
 
                     // warnings and errors
                     for (n=0;n<data.warnings.length;n++) $scope.add_warning(data.warnings[n]);
@@ -747,7 +762,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
             $scope.calctime=0;
             $scope.analytics.error_count=0;
             $scope.analytics.warning_count=0;
-            $scope.analytics.errors_ids=[];
+            $scope.analytics.errors_ids;
 
 
             var xmlhttp_aws_test = new XMLHttpRequest(); //sending a OPTIONS requests to aws to see if settings are correct

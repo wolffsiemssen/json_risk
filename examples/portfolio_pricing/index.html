@@ -363,7 +363,7 @@ main app
                   <hr>
                   <p ng-if="busy">{{portfolio.length-remaining}} of {{portfolio.length}} instruments ({{(remaining/portfolio.length*100) |number:0}}% remaining), Elapsed time: {{calctime | number:2}} seconds.</p>
                   <p ng-if="!busy">Present values for {{portfolio.length - analytics.error_count}} instruments were calculated in {{calctime | number:2}} seconds.</p>
-                  <p ng-if="analytics.error_count>0">{{analytics.error_count}} instruments couldn't be rated. IDs: {{analytics.errors_ids.slice(0, 30)}} (max. 30 ids displayed). For more details, see errors. </p>
+                  <p ng-if="analytics.error_count>0">Could not price {{analytics.error_count}} instruments due to errors. For more details, see errors box below.</p>
                   <div class="btn-toolbar mb-2 mb-md-0">
                     <div class="btn-group mr-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary" ng-if="busy" ng-click="cancel()">Cancel</button>
@@ -440,6 +440,15 @@ main app
                   <h4 class="alert-heading">Errors <span class="badge badge-primary" ng-if="analytics.error_count>0">{{analytics.error_count}}</span></h4>
                   <hr>
                   <p ng-repeat="x in errors">Error pricing instrument {{x.id}}: {{x.msg}} <span ng-if="x.count>1">[repeats {{x.count}} times]</span> </p>
+                </div>
+                
+                <div class="alert alert-danger alert-dismissible" role="alert" ng-if="analytics.errors_ids!==null">
+		  <button type="button" class="close" ng-click="clear_errors_ids()" aria-label="Close">
+		    <span aria-hidden="true">&times;</span>
+		  </button>
+                  <h4 class="alert-heading">IDs with Errors <span class="badge badge-primary" ng-if="analytics.error_count>0">{{analytics.error_count}}</span></h4>
+                  <hr>
+                  <p>{{analytics.errors_ids}} </p>
                 </div>
 
 
