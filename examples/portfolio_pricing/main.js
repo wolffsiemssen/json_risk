@@ -67,7 +67,7 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
         path: '/test/test',                                                     // path
         method: 'POST',                                                         // request method
         method_test: 'GET',                                                    // request method to test the apikey
-        apikey: 'tMU4FEJGIG1EgKkCaD92J27nwdDq6kM61PXdnZ1u'                
+        apikey: ''                
         //apikey:'your API-key for aws'                                                        // API-key
      };  
     $scope.filter={text: ""};
