@@ -80,7 +80,9 @@ var import_data_csv=function(fil, kind, sc){
         var pp_config={
 	        header: false,
         	dynamicTyping: true,
-	        worker: false
+	        worker: false,
+	        delimiter: "",
+	        skipEmptyLines: true
         };
     
         if (kind==="params"){
