@@ -223,7 +223,7 @@ main app
                 <div class="btn-toolbar mb-2 mb-md-0">
                   <div class="btn-group mr-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','scalar')">Import new</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.scalars={};">Clear all</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.scalars={};count_params();">Clear all</button>
                   </div>
                 </div>
                 
@@ -260,7 +260,7 @@ main app
                 <div class="btn-toolbar mb-2 mb-md-0">
                   <div class="btn-group mr-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','curve')">Import new</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.curves={};">Clear all</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.curves={};count_params();">Clear all</button>
                   </div>
                 </div>
                 
@@ -300,7 +300,7 @@ main app
                 <div class="btn-toolbar mb-2 mb-md-0">
                   <div class="btn-group mr-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','surface');upload_error=null">Import new</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.surfaces={};upload_error=null">Clear all</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.surfaces={};upload_error=null;count_params();">Clear all</button>
                   </div>
                 </div>
         </div>

@@ -93,8 +93,8 @@ var import_data_csv=function(fil, kind, sc){
                         var column;
                         var scenarios=[];
                         if (!sc.params) sc.params={};
-                        if (!sc.params.scalars) sc.params.scalars={};         
-                        for (j=1;j<results.data[0].length;j++){ 
+                        if (!sc.params.scalars) sc.params.scalars={};    
+                        for (j=1;j<results.data[0].length;j++){
                                 sc.params_count=sc.params_count+1;
                                 column=[];
                                 for (i=1; i<results.data.length;i++){
@@ -114,7 +114,7 @@ var import_data_csv=function(fil, kind, sc){
 
                         };
 
-                        sc.params_count=sc.params_count + 1;
+                       if (results.data[0].length===1) sc.params_count=sc.params_count+1;
                         sc.$apply();
                 }        
         }else if (kind==="curve"){
@@ -133,7 +133,7 @@ var import_data_csv=function(fil, kind, sc){
                                 row=new Array(results.data[0].length-1);
                                 for (j=0;j<row.length;j++){
 
-                                        row[j]=results.data[i][j+1]/100;
+                                        row[j]=results.data[i][j+1];
                                 }
                                 zcs.push(row);
                         }
@@ -200,7 +200,7 @@ var import_data_csv=function(fil, kind, sc){
                                     if(undefined===scenario[k]) scenario[k]=[];
                                     row=new Array(results.data[0].length-1);  
                                     for (j=0;j<row.length;j++){    
-                                            row[j]=results.data[i][j+1]/10000; 
+                                            row[j]=results.data[i][j+1]; 
                                     }
                                     scenario[k].push(row); 
                                     delete results.data[i];

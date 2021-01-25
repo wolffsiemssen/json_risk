@@ -287,6 +287,21 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 
         /*  I.ii. tab parameters  */
         $scope.params_count=null;
+        $scope.count_params=function(){
+        	var kinds=[];
+        	var count=null;
+        	if ($scope.params.curves) kinds.push('curves');
+        	if ($scope.params.surfaces) kinds.push('surfaces');
+        	if ($scope.params.scalars) kinds.push('scalars');
+
+        	for (j=0;j<kinds.length;j++){
+        		var keys =Object.keys($scope.params[kinds[j]]);
+        		count=count + keys.length;
+        	};
+        	$scope.params_count=count;
+        	if(count===0) $scope.params_count=null;
+
+        }
         
 
 	    $scope.update_params_list=function(){ 
