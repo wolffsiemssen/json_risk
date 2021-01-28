@@ -146,7 +146,7 @@
         repay_stub_end,
         repay_stub_long);
     }
-    if (linear_amortization) this.repay_amount = [this.notional / (this.repay_schedule.length - 1)];
+    if (linear_amortization) this.repay_amount = [Math.abs(this.notional) / (this.repay_schedule.length - 1)];
 
     this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
 
