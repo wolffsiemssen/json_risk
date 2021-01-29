@@ -2,3 +2,5 @@ README.md~
 node_modules
 examples/portfolio_pricing/data/instruments_large.csv
 examples/portfolio_pricing/data/instruments_huge.csv
+examples/rorac/downloads
+examples/rorac/params

@@ -18,10 +18,14 @@ params/scenarios.json: params/curves.json config/config.json
 params/curves.csv: downloads/bbk.csv
 	sh scripts/convert.sh $< $@ # SANITIZE BUNDESBANK DOWNLOAD, CONVERT TO NICE CSV
 
-download: downloads/bbk.csv
-
 downloads/bbk.csv:
-	sh scripts/download.sh $@ # DOWNLOAD BUNDESBANK DATA (NOT DONE EACH TIME, NEED TO ISSUE make download TO TRIGGER THIS
+	sh scripts/download.sh $@ # DOWNLOAD BUNDESBANK DATA
 
+clean:
+	rm -rf params/* downloads/* performance.csv
 
 .DELETE_ON_ERROR: all
+
+.PHONY: clean
+
+
