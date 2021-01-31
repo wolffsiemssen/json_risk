@@ -1,0 +1,14 @@
+[
+{
+  "months": 120,
+  "notional": 10000,
+  "fixed_rate": 0.0,
+  "bdc": "unadjusted",
+  "tenor": 1,
+  "repay_tenor": 1,
+  "interest_capitalization": false,
+  "type": "bond",
+  "linear_amortization": true,
+  "sub_portfolio": "BENCHMARK"
+}
+]

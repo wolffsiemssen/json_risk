@@ -1,18 +1,15 @@
 
 
-all: performance.csv
+all: performance.json
 
-performance.csv: params/curves.json params/scenarios.json config/portfolio_template.json config/config.json
+performance.json: params/curves.json config/portfolio_template.json config/config.json
 	node scripts/performance.js 	# MAIN SCRIPT, LOOP THROUGH EACH MONTHLY DATE
 						#    GET CURVE FROM curves.json, 
 						#    APPLY SCENARIOS FROM sceanrios.json,
 						#    BUILD PORTFOLIO FROM TEMPLATE
 						#    EVALUATE RISK AND RETURN FOR PORTFOLIO
 
-params/curves.json: params/curves.csv
-	sh scripts/make_curves.sh $< $@ # CONVERT CSV TO JSON
-
-params/scenarios.json: params/curves.json config/config.json
+params/curves.json: params/curves.csv config/config.json
 	node scripts/make_scenarios.js # GET SCENARIOS FROM CURVES
 
 params/curves.csv: downloads/bbk.csv
