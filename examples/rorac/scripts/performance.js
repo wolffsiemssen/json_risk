@@ -58,7 +58,7 @@ var update_scenarios=function(timeindex){
 	for(k=0;k<curves.zcs_scen.length;k++){
 		z[k+1]=new Array(z[0].length);
 		for (j=0;j<z[0].length;j++){
-			z[k+1][j]=curves.zcs_hist[timeindex][j]+curves.zcs_scen[k][j];
+			z[k+1][j]=curves.zcs_hist[timeindex][j]+(Math.sqrt(12)*curves.zcs_scen[k][j]);
 	
 		}
 	}	
@@ -129,12 +129,23 @@ for (i=0;i<curves.dates.length-1;i++){
 	update_scenarios(i+1);
 	// price
 	tmp=price();
+	res[i]["RISKLESS"].pv_end_new=tmp["RISKLESS"][0];
+	res[i]["RISKLESS"].pnl_market_effect=res[i]["RISKLESS"].pv_end_new-res[i]["RISKLESS"].pv_end_old;
+	res[i]["RISKLESS"].pnl=res[i]["RISKLESS"].pv_end_new-res[i]["RISKLESS"].pv_start;
+	res[i]["RISKLESS"].units=100/res[i]["RISKLESS"].pv_start;
+	res[i]["RISKLESS"].pnl_leveraged=res[i]["RISKLESS"].pnl*res[i]["RISKLESS"].units;
+	res[i]["RISKLESS"].pnl_leveraged_cumulative=res[i]["RISKLESS"].pnl_leveraged+( (i>0) ? res[i-1]["RISKLESS"].pnl_leveraged_cumulative : 0 );
+	res[i]["RISKLESS"].pnl_leveraged_annualized=res[i]["RISKLESS"].pnl_leveraged_cumulative*0.12/(i+1);
 	for (x in tmp){
+		if (x==="RISKLESS") continue;
 		res[i][x].pv_end_new=tmp[x][0];
 		res[i][x].pnl_market_effect=res[i][x].pv_end_new-res[i][x].pv_end_old;
 		res[i][x].pnl=res[i][x].pv_end_new-res[i][x].pv_start;
-		res[i][x].pnl_normalized=res[i][x].pnl/res[i][x].risk * 100;
-		res[i][x].pnl_normalized_cumulative=res[i][x].pnl_normalized+( (i>0) ? res[i-1][x].pnl_normalized_cumulative : 0 );
+		res[i][x].units=100 / res[i][x].risk;
+		res[i][x].units_riskless=(100 - (res[i][x].units*res[i][x].pv_start))/res[i]["RISKLESS"].pv_start;
+		res[i][x].pnl_leveraged=res[i][x].pnl*res[i][x].units + res[i]["RISKLESS"].pnl*res[i][x].units_riskless ;
+		res[i][x].pnl_leveraged_cumulative=res[i][x].pnl_leveraged+( (i>0) ? res[i-1][x].pnl_leveraged_cumulative : 0 );
+		res[i][x].pnl_leveraged_annualized=res[i][x].pnl_leveraged_cumulative*0.12/(i+1);
 	}
 }
 	
