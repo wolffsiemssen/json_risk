@@ -1,14 +1,4 @@
 /*
-associated scripts: index.html, main.js, export.js, worker.js, testdata.js, import.js (aws lambda function jr_portfoliopricer, aws api jr_portfoliopricer)
-
-structure of export.js
-
-I. functions/charts called by main.js/index.html
-    chart_scenario_subportfolio                             chart with subportfolios and corresponding present values from scenario 0
-    update_chart_scenario_subportfolio(result)              updates values for chart_scenario_subportfolio 
-    chart_scenarios                                         chart with all given scenarios and one selected subportfolio
-    update_chart_scenarios(result, subportfolio, type)      updates chart_scenarios
-*/
 
 
 /*I. functions/charts called by main.js/index.html*/

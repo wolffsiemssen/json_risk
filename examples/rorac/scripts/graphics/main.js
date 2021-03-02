@@ -1,10 +1,9 @@
 
 var app = angular.module('riskapp', []); 
 
-app.controller('main_ctrl', ['$scope', function($scope) { // Controller für index.html
+app.controller('main_ctrl', ['$scope', function($scope) {
 
-    /* definition of scope und worker (worker.js) */
-	$scope.portfolio=JSON.parse(JSON.stringify(test));  // Portfolio, was der Berechnung auf Reiter results zu grunde liegt
+	$scope.portfolio=JSON.parse(JSON.stringify(test)); 
 	$scope.value_names={list: null, selection: null};;
 	
 	$scope.load_all_data=function(){ 	
