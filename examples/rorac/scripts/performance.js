@@ -10,7 +10,7 @@ console.log("performance.js: Read portfolio template");
 var pf=fs.readFileSync('config/portfolio_template.json', 'utf8');
 pf=JSON.parse(pf);
 
-var i,j,k,d,pv_vector,res,tmp,n;
+var i,j,k,d,pv_vector,res,tmp,n,annualized_riskless_yield;
 var z=new Array(curves.zcs_hist.length);
 var params={
 	curves: {
@@ -20,6 +20,8 @@ var params={
 		}
 	}
 }
+
+var equity = 1000*1000; // read from config.json later
 
 //set curves for portfolio
 for (j=0;j<pf.length;j++){
@@ -64,20 +66,20 @@ var update_scenarios=function(timeindex){
 	}	
 }
 
-var price=function(){
+var price=function(){  // Für jedes subportfolio gibt es einen eigenen pv_vector zu dem aktuellen Szenario.
 	// set params
 	jr.store_params(params);
 	var tmp={};
-	for (j=0;j<pf.length;j++){
+	for (j=0;j<pf.length;j++){   //Länge Portfolio, d.h. # Instrumente
 		//price
-		pv_vector=jr.vector_pricer(pf[j]);
-		sub_portfolio=pf[j].sub_portfolio || "sub_portfolio NOT SET";
-		if(tmp.hasOwnProperty(sub_portfolio)){
-			for (k=0;k<z.length;k++){
-				tmp[sub_portfolio][k]+=pv_vector[k];
+		pv_vector=jr.vector_pricer(pf[j]);// Preise für ein Szenario für ein Instrument, d.h. ein Vektor
+		sub_portfolio=pf[j].sub_portfolio || "sub_portfolio NOT SET"; 
+		if(tmp.hasOwnProperty(sub_portfolio)){ // Wenn subportfolio schon vorhanden dann aufsummieren
+			for (k=0;k<z.length;k++){  //Szenariolänge
+				tmp[sub_portfolio][k]+=pv_vector[k]; //Aufsummieren für jede einzelne Stützstelle
 			}
 		}else{
-			tmp[sub_portfolio]=pv_vector;
+			tmp[sub_portfolio]=pv_vector; //subportfolio noch nicht in tmp vorhanden
 		}
 	}
 	return tmp;
@@ -91,10 +93,14 @@ params.valuation_date=d;
 
 //update curve and hist scenarios
 update_scenarios(0);
+var rows=[];
 
 
-for (i=0;i<curves.dates.length-1;i++){
+for (i=0;i<curves.dates.length-1;i++){ //Anzahl Szenarien
 	console.log("performance.js: Calculation date is " + d);
+	const date_options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+
+	rows[i]=d.toLocaleDateString('de-DE', date_options);
 	
 	//update maturity and effective date for portfolio, and price
 	for (j=0;j<pf.length;j++){
@@ -103,51 +109,85 @@ for (i=0;i<curves.dates.length-1;i++){
 	}
 	
 	//price
-	tmp=price();
+	tmp=price();   //Pricing mit curvesdata i
 
 	res[i]={};
-	for (x in tmp){
-		res[i][x]={
-				pv_start: tmp[x][0],
+	for (x in tmp){  // für jedes subportfolio in tmp (=jedes subportfolio hat pv_vector zum aktuellen Szenario
+		res[i][x]={  // Für jedes Szenario einen Eintrag pro Subportfolio
+				pv_start: tmp[x][0], //Start Barwert (erste Stützstelle Szenario)
 				mean: mean(tmp[x]),
-				risk: -quantile(tmp[x],0.01)+mean(tmp[x])
+				risk: -(quantile(tmp[x],0.01)-mean(tmp[x])) * Math.sqrt(1)/ 2.32 * 3.09  //Ist Betrag
 			  };
 	}
+	
+	annualized_riskless_yield=jr.get_rate(jr.get_safe_curve({
+		labels: params.curves.ZINSKURVE.labels,
+		zcs: params.curves.ZINSKURVE.zcs[0]}),1/365);
 
 	//update time only and reprice for end price
 	//convert date string into date object
 	d=jr.get_safe_date(curves.dates[i+1]);
 	params.valuation_date=d;
-	tmp=price();
+	tmp=price();  //Neues pricing mit nächstem Szenario (i+1)
 	for (x in tmp){
-		res[i][x].pv_end_old=tmp[x][0];
-		res[i][x].pnl_time_effect=res[i][x].pv_end_old-res[i][x].pv_start;
+		res[i][x].pv_end=tmp[x][0]; 
+		res[i][x].pnl=res[i][x].pv_end-res[i][x].pv_start; 
+		res[i][x].annualized_yield=res[i][x].pnl/res[i][x].pv_start*12;
+ 		res[i][x].annualized_excess_yield=res[i][x].annualized_yield - annualized_riskless_yield;
+		res[i][x].pnl_riskless=res[i][x].pnl*(res[i][x].annualized__excess_yield);
+		res[i][x].pnl_risky=res[i][x].pnl*(annualized_riskless_yield);
+		res[i][x].rorac=res[i][x].annualized_excess_yield/res[i][x].risk;
+		res[i][x].rorac_betrag=res[i][x].pnl_riskless/res[i][x].risk;
+		res[i][x].units=equity/res[i][x].risk;
+		res[i][x].amount_risky=res[i][x].units*res[i][x].pv_start;
+		res[i][x].amount_riskless=-res[i][x].amount_risky+equity;
+		res[i][x].leverage=res[i][x].amount_risky/equity;
+		res[i][x].leveraged_pnl_annualized=res[i][x].amount_risky*res[i][x].annualized_yield + res[i][x].amount_riskless*annualized_riskless_yield;
+		res[i][x].annualized_riskless_yield=annualized_riskless_yield;
+		res[i][x].annualized_leveraged_yield=res[i][x].leveraged_pnl_annualized/equity;
+		res[i][x].annualized_leveraged_excess_yield=res[i][x].annualized_leveraged_yield-annualized_riskless_yield;
+		res[i][x].leveraged_rorac=res[i][x].annualized_leveraged_excess_yield/equity;		
 	}
 
 	//update market data and reprice for new price under new market data
 	//update curve and hist scenarios
 	update_scenarios(i+1);
 	// price
-	tmp=price();
-	res[i]["RISKLESS"].pv_end_new=tmp["RISKLESS"][0];
-	res[i]["RISKLESS"].pnl_market_effect=res[i]["RISKLESS"].pv_end_new-res[i]["RISKLESS"].pv_end_old;
-	res[i]["RISKLESS"].pnl=res[i]["RISKLESS"].pv_end_new-res[i]["RISKLESS"].pv_start;
-	res[i]["RISKLESS"].units=100/res[i]["RISKLESS"].pv_start;
-	res[i]["RISKLESS"].pnl_leveraged=res[i]["RISKLESS"].pnl*res[i]["RISKLESS"].units;
-	res[i]["RISKLESS"].pnl_leveraged_cumulative=res[i]["RISKLESS"].pnl_leveraged+( (i>0) ? res[i-1]["RISKLESS"].pnl_leveraged_cumulative : 0 );
-	res[i]["RISKLESS"].pnl_leveraged_annualized=res[i]["RISKLESS"].pnl_leveraged_cumulative*0.12/(i+1);
+	tmp=price();  //Pricing mit curvedata i+1
 	for (x in tmp){
-		if (x==="RISKLESS") continue;
+
 		res[i][x].pv_end_new=tmp[x][0];
-		res[i][x].pnl_market_effect=res[i][x].pv_end_new-res[i][x].pv_end_old;
-		res[i][x].pnl=res[i][x].pv_end_new-res[i][x].pv_start;
-		res[i][x].units=100 / res[i][x].risk;
-		res[i][x].units_riskless=(100 - (res[i][x].units*res[i][x].pv_start))/res[i]["RISKLESS"].pv_start;
-		res[i][x].pnl_leveraged=res[i][x].pnl*res[i][x].units + res[i]["RISKLESS"].pnl*res[i][x].units_riskless ;
-		res[i][x].pnl_leveraged_cumulative=res[i][x].pnl_leveraged+( (i>0) ? res[i-1][x].pnl_leveraged_cumulative : 0 );
-		res[i][x].pnl_leveraged_annualized=res[i][x].pnl_leveraged_cumulative*0.12/(i+1);
+		res[i][x].pnl_market_effect=res[i][x].pv_end_new-res[i][x].pv_end;
 	}
 }
 	
 fs.writeFileSync('performance.json', JSON.stringify(res));
+
+// generate rorac.js for graphics
+
+	let keys=Object.keys(res);
+	let subportfolio=Object.keys(res[0]);
+	var export_data={};
+	export_data['dates']=rows;
+	export_data['values_names']=Object.keys(res[0][subportfolio[0]]);
+	export_data['values']=[];
+	export_data['subportfolio']=subportfolio;
+	for (j=0;j<subportfolio.length;j++){
+		var data={};
+		var tmp_data_2=[];	
+		for (i=0;i<export_data.values_names.length;i++){
+		var tmp_data_1=[];
+			for(k=0;k<keys.length;k++){
+				tmp_data_1[k]=res[k][subportfolio[j]][export_data.values_names[i]];
+			};
+			tmp_data_2[i]=tmp_data_1;
+		};
+		data=tmp_data_2;
+		export_data['values'][j]=data;
+	
+	
+	
+}
+fs.writeFileSync('rorac.json', JSON.stringify(export_data));
+fs.writeFileSync('rorac.js', 'var test=' +JSON.stringify(export_data));
 
