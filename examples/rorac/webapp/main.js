@@ -8,16 +8,16 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 			$scope.initial_data=function(){ 
 		   		$scope.value_names.list=$scope.rorac.values_names;
 		   		$scope.value_names.selection="rorac";
-		   		update_data($scope.value_names.selection);
+		   		update_data();
 	    	}
 	    	
 	   		$scope.initial_data();	 
 	   	  		
 			$scope.update=function(){
-				update_data($scope.value_names.selection)				
+				update_data()				
 			}
 				
-			function update_data(value_name){
+			function update_data(){
 				var index_value=$scope.rorac.values_names.indexOf($scope.value_names.selection);
 				update_chart_scenarios($scope.rorac,index_value);
 				update_table(index_value);
@@ -36,7 +36,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 				$("#table").bootstrapTable('destroy');
     			$("#table thead tr").html('');    	
     			var tr = $('<th data-field="Datum">'+ $scope.value_names.selection + '<br>Datum</th>');
-      				$("#table thead tr").append(tr);
+      			$("#table thead tr").append(tr);
     			for (i=0;i<$scope.rorac.subportfolio.length;i++){
       				var tr = $('<th data-field="' + $scope.rorac.subportfolio[i] +'">'+ $scope.rorac.subportfolio[i] +'</th>');
       				$("#table thead tr").append(tr);
