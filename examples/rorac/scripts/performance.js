@@ -189,5 +189,6 @@ fs.writeFileSync('performance.json', JSON.stringify(res));
 	
 }
 fs.writeFileSync('rorac.json', JSON.stringify(export_data));
-fs.writeFileSync('rorac.js', 'var test=' +JSON.stringify(export_data));
+fs.writeFileSync('rorac.js', 'var rorac=' +JSON.stringify(export_data));
+
 
