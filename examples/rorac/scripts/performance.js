@@ -66,20 +66,20 @@ var update_scenarios=function(timeindex){
 	}	
 }
 
-var price=function(){  // Für jedes subportfolio gibt es einen eigenen pv_vector zu dem aktuellen Szenario.
+var price=function(){
 	// set params
 	jr.store_params(params);
 	var tmp={};
-	for (j=0;j<pf.length;j++){   //Länge Portfolio, d.h. # Instrumente
+	for (j=0;j<pf.length;j++){
 		//price
-		pv_vector=jr.vector_pricer(pf[j]);// Preise für ein Szenario für ein Instrument, d.h. ein Vektor
+		pv_vector=jr.vector_pricer(pf[j]);
 		sub_portfolio=pf[j].sub_portfolio || "sub_portfolio NOT SET"; 
-		if(tmp.hasOwnProperty(sub_portfolio)){ // Wenn subportfolio schon vorhanden dann aufsummieren
-			for (k=0;k<z.length;k++){  //Szenariolänge
-				tmp[sub_portfolio][k]+=pv_vector[k]; //Aufsummieren für jede einzelne Stützstelle
+		if(tmp.hasOwnProperty(sub_portfolio)){
+			for (k=0;k<z.length;k++){ 
+				tmp[sub_portfolio][k]+=pv_vector[k];
 			}
 		}else{
-			tmp[sub_portfolio]=pv_vector; //subportfolio noch nicht in tmp vorhanden
+			tmp[sub_portfolio]=pv_vector;
 		}
 	}
 	return tmp;
@@ -96,7 +96,7 @@ update_scenarios(0);
 var rows=[];
 
 
-for (i=0;i<curves.dates.length-1;i++){ //Anzahl Szenarien
+for (i=0;i<curves.dates.length-1;i++){ 
 	console.log("performance.js: Calculation date is " + d);
 	const date_options = { year: 'numeric', month: 'numeric', day: 'numeric' };
 
@@ -109,14 +109,14 @@ for (i=0;i<curves.dates.length-1;i++){ //Anzahl Szenarien
 	}
 	
 	//price
-	tmp=price();   //Pricing mit curvesdata i
+	tmp=price(); 
 
 	res[i]={};
-	for (x in tmp){  // für jedes subportfolio in tmp (=jedes subportfolio hat pv_vector zum aktuellen Szenario
-		res[i][x]={  // Für jedes Szenario einen Eintrag pro Subportfolio
-				pv_start: tmp[x][0], //Start Barwert (erste Stützstelle Szenario)
+	for (x in tmp){ 
+		res[i][x]={  
+				pv_start: tmp[x][0], 
 				mean: mean(tmp[x]),
-				risk: -(quantile(tmp[x],0.01)-mean(tmp[x])) * Math.sqrt(1)/ 2.32 * 3.09  //Ist Betrag
+				risk: -(quantile(tmp[x],0.01)-mean(tmp[x])) * Math.sqrt(1)/ 2.32 * 3.09 
 			  };
 	}
 	
@@ -128,7 +128,7 @@ for (i=0;i<curves.dates.length-1;i++){ //Anzahl Szenarien
 	//convert date string into date object
 	d=jr.get_safe_date(curves.dates[i+1]);
 	params.valuation_date=d;
-	tmp=price();  //Neues pricing mit nächstem Szenario (i+1)
+	tmp=price();  
 	for (x in tmp){
 		res[i][x].pv_end=tmp[x][0]; 
 		res[i][x].pnl=res[i][x].pv_end-res[i][x].pv_start; 
@@ -153,7 +153,7 @@ for (i=0;i<curves.dates.length-1;i++){ //Anzahl Szenarien
 	//update curve and hist scenarios
 	update_scenarios(i+1);
 	// price
-	tmp=price();  //Pricing mit curvedata i+1
+	tmp=price(); 
 	for (x in tmp){
 
 		res[i][x].pv_end_new=tmp[x][0];
