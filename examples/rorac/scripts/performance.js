@@ -1,4 +1,5 @@
 #!/usr/bin/env node   //path to the interpreter
+
 const fs=require('fs');
 const jr=require('../lib/json_risk.min.js');
 
@@ -10,7 +11,7 @@ console.log("performance.js: Read portfolio template");
 var pf=fs.readFileSync('config/portfolio_template.json', 'utf8');
 pf=JSON.parse(pf);
 
-var i,j,k,d,pv_vector,res,tmp,n,annualized_riskless_yield;
+var i,j,k,d,pv_vector,res,tmp,n,annualized_yield_riskless;
 var z=new Array(curves.zcs_hist.length);
 var params={
 	curves: {
@@ -97,10 +98,12 @@ var rows=[];
 
 
 for (i=0;i<curves.dates.length-1;i++){ 
+//for (i=0;i<10;i++){ 
 	console.log("performance.js: Calculation date is " + d);
 	const date_options = { year: 'numeric', month: 'numeric', day: 'numeric' };
 
 	rows[i]=d.toLocaleDateString('de-DE', date_options);
+	rows[i]=(d.getDate() < 10 ? "0" : "") + d.getDate() + "." + (d.getMonth()<9 ? "0" : "") + (d.getMonth()+1) + "." + d.getFullYear();
 	
 	//update maturity and effective date for portfolio, and price
 	for (j=0;j<pf.length;j++){
@@ -116,11 +119,11 @@ for (i=0;i<curves.dates.length-1;i++){
 		res[i][x]={  
 				pv_start: tmp[x][0], 
 				mean: mean(tmp[x]),
-				risk: -(quantile(tmp[x],0.01)-mean(tmp[x])) * Math.sqrt(1)/ 2.32 * 3.09 
+				risk: -(quantile(tmp[x],0.01)-mean(tmp[x])) * Math.sqrt(1)/ 2.32 * 3.09,
 			  };
 	}
 	
-	annualized_riskless_yield=jr.get_rate(jr.get_safe_curve({
+	yield_riskless=jr.get_rate(jr.get_safe_curve({
 		labels: params.curves.ZINSKURVE.labels,
 		zcs: params.curves.ZINSKURVE.zcs[0]}),1/365);
 
@@ -131,22 +134,30 @@ for (i=0;i<curves.dates.length-1;i++){
 	tmp=price();  
 	for (x in tmp){
 		res[i][x].pv_end=tmp[x][0]; 
-		res[i][x].pnl=res[i][x].pv_end-res[i][x].pv_start; 
-		res[i][x].annualized_yield=res[i][x].pnl/res[i][x].pv_start*12;
- 		res[i][x].annualized_excess_yield=res[i][x].annualized_yield - annualized_riskless_yield;
-		res[i][x].pnl_riskless=res[i][x].pnl*(res[i][x].annualized__excess_yield);
-		res[i][x].pnl_risky=res[i][x].pnl*(annualized_riskless_yield);
-		res[i][x].rorac=res[i][x].annualized_excess_yield/res[i][x].risk;
-		res[i][x].rorac_betrag=res[i][x].pnl_riskless/res[i][x].risk;
+		//res[i][x].pnl_monthly=res[i][x].pv_end-res[i][x].pv_start; 
+		res[i][x].yield=(res[i][x].pv_end-res[i][x].pv_start)/res[i][x].pv_start*12;
+ 		res[i][x].yield_excess=res[i][x].yield - yield_riskless;
+ 		res[i][x].yield_riskless=yield_riskless;
+		
+		res[i][x].pnl_riskless=res[i][x].pv_start*yield_riskless;
+		res[i][x].pnl=12*(res[i][x].pv_end-res[i][x].pv_start);
+		res[i][x].pnl_excess=res[i][x].pnl-res[i][x].pnl_riskless;
+				
+		res[i][x].rorac=res[i][x].pnl_excess/res[i][x].risk;
+		
+		//leverage
 		res[i][x].units=equity/res[i][x].risk;
-		res[i][x].amount_risky=res[i][x].units*res[i][x].pv_start;
-		res[i][x].amount_riskless=-res[i][x].amount_risky+equity;
-		res[i][x].leverage=res[i][x].amount_risky/equity;
-		res[i][x].leveraged_pnl_annualized=res[i][x].amount_risky*res[i][x].annualized_yield + res[i][x].amount_riskless*annualized_riskless_yield;
-		res[i][x].annualized_riskless_yield=annualized_riskless_yield;
-		res[i][x].annualized_leveraged_yield=res[i][x].leveraged_pnl_annualized/equity;
-		res[i][x].annualized_leveraged_excess_yield=res[i][x].annualized_leveraged_yield-annualized_riskless_yield;
-		res[i][x].leveraged_rorac=res[i][x].annualized_leveraged_excess_yield/equity;		
+		
+		res[i][x].amount=res[i][x].units*res[i][x].pv_start;
+		res[i][x].amount_riskless=-res[i][x].amount+equity;
+		
+		res[i][x].leverage=res[i][x].amount/equity;
+		res[i][x].leveraged_pnl=res[i][x].amount*res[i][x].yield + res[i][x].amount_riskless*yield_riskless;
+		res[i][x].leveraged_pnl_excess=res[i][x].leveraged_pnl - equity*yield_riskless;
+		res[i][x].leveraged_yield=res[i][x].leveraged_pnl/equity;
+		res[i][x].leveraged_yield_excess=res[i][x].leveraged_yield-yield_riskless;
+		
+		res[i][x].leveraged_rorac=res[i][x].leveraged_pnl_excess/equity;
 	}
 
 	//update market data and reprice for new price under new market data
@@ -168,17 +179,18 @@ fs.writeFileSync('performance.json', JSON.stringify(res));
 	let keys=Object.keys(res);
 	let subportfolio=Object.keys(res[0]);
 	var export_data={};
-	export_data['dates']=rows;
-	export_data['values_names']=Object.keys(res[0][subportfolio[0]]);
-	export_data['values']=[];
 	export_data['subportfolio']=subportfolio;
-	for (j=0;j<subportfolio.length;j++){
+	export_data['values_names']=Object.keys(res[0][subportfolio[0]]);
+	export_data['dates']=rows;
+	export_data['values']=[];
+	
+	for (j=0;j<subportfolio.length;j++){ //subportfolio
 		var data={};
 		var tmp_data_2=[];	
-		for (i=0;i<export_data.values_names.length;i++){
-		var tmp_data_1=[];
-			for(k=0;k<keys.length;k++){
-				tmp_data_1[k]=res[k][subportfolio[j]][export_data.values_names[i]];
+		for (i=0;i<export_data.values_names.length;i++){ //value names
+			var tmp_data_1=[];
+			for(k=0;k<keys.length;k++){ //dates
+				tmp_data_1[k]=res[k][subportfolio[j]][export_data.values_names[i]]; //values
 			};
 			tmp_data_2[i]=tmp_data_1;
 		};
