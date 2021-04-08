@@ -71,9 +71,10 @@
 	        this.base=new library.fixed_income(instrument);
                 if(fcd.getTime()<= this.base.schedule[0].getTime()) throw new Error("callable_fixed_income: first call date before issue date");
                 if (!this.base.notional_exchange) throw new Error("callable_fixed_income: callable instruments must exchange notionals");
+		var call_tenor=library.get_safe_natural(instrument.call_tenor);
 		this.call_schedule=library.schedule(fcd, 
 						     library.get_safe_date(instrument.maturity), 
-						     instrument.call_tenor || 0, //european call by default
+						     call_tenor || 0, //european call by default
 						     this.base.adj);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
 		this.opportunity_spread=(typeof instrument.opportunity_spread==='number' ) ? instrument.opportunity_spread : 0;
@@ -83,7 +84,7 @@
 		var i;
 		this.basket=new Array(this.call_schedule.length);
 		for (i=0; i<this.call_schedule.length; i++){
-                        if(!this.base.is_amortizing){
+                        if(!this.base.is_amortizing && this.base.fixed_rate.length===1){
 			        //basket instruments are co-terminal swaptions with standard conditions
 			        this.basket[i]=new library.swaption({
 		                        is_payer: false,
