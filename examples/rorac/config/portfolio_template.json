@@ -1,17 +1,5 @@
 [
 {
-  "months": 3,
-  "notional": 10000,
-  "fixed_rate": 0.0,
-  "bdc": "unadjusted",
-  "tenor": 3,
-  "repay_tenor": 3,
-  "interest_capitalization": false,
-  "type": "bond",
-  "linear_amortization": false,
-  "sub_portfolio": "RISKLESS"
-},
-{
   "months": 60,
   "notional": 10000,
   "fixed_rate": 0.0,
