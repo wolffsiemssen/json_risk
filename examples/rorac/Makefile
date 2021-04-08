@@ -16,6 +16,7 @@ params/curves.csv: downloads/bbk.csv
 	sh scripts/convert.sh $< $@ # SANITIZE BUNDESBANK DOWNLOAD, CONVERT TO NICE CSV
 
 downloads/bbk.csv:
+	mkdir -p downloads
 	sh scripts/download.sh $@ # DOWNLOAD BUNDESBANK DATA
 
 clean:
