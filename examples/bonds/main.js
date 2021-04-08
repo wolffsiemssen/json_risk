@@ -15,27 +15,19 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		dcc: "Act/365",
 		bdc: "unadjusted",
 		calendar: "TARGET",
+		tenor: "12",
+		repay_tenor: "12",
+		interest_capitalization: "No",
 
-		tenor_string: "12",
-		get tenor() { return parseInt(this.tenor_string);},
+		//optionality
+    		call_tenor: "-1",
+    		get type() { return this.call_tenor!=="-1" ? "callable_bond" : "bond" ;},
+		opportunity_spread: 0,
 
-		repay_tenor_string: "12",
-		get repay_tenor() { return parseInt(this.repay_tenor_string);},
-
-		interest_capitalization_string: "No",
-		get interest_capitalization() { return this.interest_capitalization_string==='Yes';},
-
-    call_tenor_string: "-1",
-		get call_tenor() { return parseInt(this.call_tenor_string);},
-
-    get type() { return (this.call_tenor<0) ? "bond" : "callable_bond" ;},
-
-    opportunity_spread_string: "0.0",
-    get opportunity_spread() { return parseFloat(this.opportunity_spread_string) || 0.0;},
-
+		//market data
 		discount_curve: "EUR_OIS_DISCOUNT",
 		forward_curve: "EUR_6M_FWD",
-    surface: "CONST_10BP"
+		surface: "CONST_10BP"
 	}
 	$scope.params={valuation_date: "2019-01-01"};
 	$scope.available_params={list: null, selection: null};
@@ -47,7 +39,7 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 	function update(){
 		JsonRisk.valuation_date=JsonRisk.get_safe_date($scope.params.valuation_date);
 		$scope.errors=[];
-    $scope.json=JSON.stringify($scope.instrument,null,'  ');
+    		$scope.json=JSON.stringify($scope.instrument,null,'  ');
 
 		//curves
 		var dc=null; //discount

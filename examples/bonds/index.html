@@ -145,7 +145,7 @@ main app
 			  <div class="form-group row">
 			    <label class="col-sm-3 col-form-label col-form-label-sm">Tenor</label>
 			    <div class="col-sm-9">
-      			        <select class="custom-select" ng-model="instrument.tenor_string">
+      			        <select class="custom-select" ng-model="instrument.tenor">
 				<option value="12" selected>yearly</option>
 				<option value="6">semi-annual</option>
 				<option value="3">quarterly</option>
@@ -212,7 +212,7 @@ main app
 				      <div class="input-group-prepend">
 				       <label class="input-group-text">Tenor</label>
 				      </div>
-				      <select class="custom-select" ng-model="instrument.repay_tenor_string">
+				      <select class="custom-select" ng-model="instrument.repay_tenor">
 				      <option value="12" selected>yearly</option>
 				      <option value="6">semi-annual</option>
 				      <option value="3">quarterly</option>
@@ -224,7 +224,7 @@ main app
 				       <label class="input-group-text">Int capitalization</label>
 				      </div>
 		
-			        <select class="custom-select" ng-model="instrument.interest_capitalization_string">
+			        <select class="custom-select" ng-model="instrument.interest_capitalization">
   				  <option selected>No</option>
 				  <option >Yes</option>
 				</select>
@@ -257,7 +257,7 @@ main app
 				      <div class="input-group-prepend">
 				       <label class="input-group-text">Type</label>
 				      </div>
-				      <select class="custom-select" ng-model="instrument.call_tenor_string">
+				      <select class="custom-select" ng-model="instrument.call_tenor">
 				        <option value="-1" selected>none</option>
 				        <option value="0">european</option>
 				        <option value="12">bermudan yearly</option>
@@ -270,7 +270,7 @@ main app
 				      <div class="input-group-prepend">
 				       <label class="input-group-text">First Call Date</label>
 				      </div>
-		          <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.first_exercise_date" ng-disabled="instrument.call_tenor_string<0" placeholder="yyyy-mm-dd">
+		          <input type="text" pattern="\d{4}-\d{2}-\d{2}" class="form-control form-control-sm" ng-model="instrument.first_exercise_date" ng-disabled="instrument.call_tenor===-1" placeholder="yyyy-mm-dd">
 			      </div>
 
 			    </div>
@@ -279,7 +279,7 @@ main app
 			  <div class="form-group row">
 			    <label class="col-sm-3 col-form-label col-form-label-sm">Opportunity Spread</label>
 			    <div class="col-sm-9">
-				<input type="text" class="form-control" ng-model="instrument.opportunity_spread_string">  
+				<input type="text" class="form-control" ng-model="instrument.opportunity_spread">  
 			    </div>
 			  </div>
 
@@ -324,7 +324,7 @@ main app
 			    </div>
 			  </div>
 
-			  <div class="form-group row" ng-if="instrument.call_tenor_string>=0">
+			  <div class="form-group row" ng-if="instrument.call_tenor_string!=='-1'">
 			    <label class="col-sm-3 col-form-label col-form-label-sm">Volatility Surface</label>
 			    <div class="col-sm-9">
 					<select class="custom-select" ng-options="key as key for (key, value) in params.surfaces" ng-model="instrument.surface">
@@ -611,7 +611,7 @@ main app
 
 </div>
 
-<script src="json_risk.min.js"></script>
+<script src="json_risk.js"></script>
 <script src="main.js"></script>
 <script src="charts.js"></script>
 <script src="import.js"></script>
