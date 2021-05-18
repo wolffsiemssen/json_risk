@@ -77,7 +77,7 @@
 						     call_tenor || 0, //european call by default
 						     this.base.adj);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
-		this.opportunity_spread=library.get_safe_bool(instrument.opportunity_spread) || 0.0;
+		this.opportunity_spread=library.get_safe_number(instrument.opportunity_spread) || 0.0;
                 this.exclude_base=library.get_safe_bool(instrument.exclude_base);
 
 		//basket generation
