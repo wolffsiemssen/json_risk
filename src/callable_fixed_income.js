@@ -55,7 +55,7 @@
 		                        first_exercise_date: this.call_schedule[i],
 		                        notional: instrument.notional,
 		                        fixed_rate: instrument.fixed_rate-this.opportunity_spread,
-		                        tenor: instrument.tenor,
+		                        tenor: 12,
 		                        float_spread: 0.00,
 		                        float_tenor: instrument.float_tenor || 6,
 		                        float_current_rate: 0.00,
@@ -72,7 +72,7 @@
                                                 this.base.get_cash_flows(),
                                                 this.call_schedule[i],
                                                 {
-	                                                tenor: instrument.tenor,
+	                                                tenor: 12,
 	                                                float_spread: 0.00,
 	                                                float_tenor: instrument.float_tenor || 6,
 	                                                calendar: instrument.calendar,
