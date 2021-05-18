@@ -4,7 +4,7 @@ function export_curve_to_csv(curve, curve_name, file_name){
         var line="";
         for (var i=0;i<c.times.length;i++){
                 header+=';'+Math.round(365*c.times[i])+"D";
-                line+=';'+(100*JsonRisk.get_rate(c,c.times[i])).toFixed(8)
+                line+=';'+JsonRisk.get_rate(c,c.times[i]).toFixed(8)
         }
 	      var export_data=header+'\n'+line;
         

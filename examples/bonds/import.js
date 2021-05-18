@@ -151,7 +151,7 @@ var import_data=function(fil, kind, sc){
                 
                         for (j=1;j<results.data[0].length;j++){
                                 labels.push(results.data[0][j]);
-                                zcs.push(results.data[1][j]/100);
+                                zcs.push(results.data[1][j]);
                         }
                         
                         if (!sc.params) sc.params={};
@@ -181,7 +181,7 @@ var import_data=function(fil, kind, sc){
                                 row=new Array(results.data[0].length-1);
                                 labels_expiry.push(results.data[i][0]);
                                 for (j=0;j<row.length;j++){
-                                        row[j]=results.data[i][j+1]/10000;
+                                        row[j]=results.data[i][j+1];
                                 }
                                 values.push(row);
                         }
