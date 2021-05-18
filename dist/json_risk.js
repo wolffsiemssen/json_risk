@@ -77,7 +77,7 @@
 						     call_tenor || 0, //european call by default
 						     this.base.adj);
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
-		this.opportunity_spread=(typeof instrument.opportunity_spread==='number' ) ? instrument.opportunity_spread : 0;
+		this.opportunity_spread=library.get_safe_bool(instrument.opportunity_spread) || 0.0;
                 this.exclude_base=library.get_safe_bool(instrument.exclude_base);
 
 		//basket generation
@@ -92,7 +92,7 @@
 		                        first_exercise_date: this.call_schedule[i],
 		                        notional: instrument.notional,
 		                        fixed_rate: instrument.fixed_rate-this.opportunity_spread,
-		                        tenor: instrument.tenor,
+		                        tenor: 12,
 		                        float_spread: 0.00,
 		                        float_tenor: instrument.float_tenor || 6,
 		                        float_current_rate: 0.00,
@@ -109,7 +109,7 @@
                                                 this.base.get_cash_flows(),
                                                 this.call_schedule[i],
                                                 {
-	                                                tenor: instrument.tenor,
+	                                                tenor: 12,
 	                                                float_spread: 0.00,
 	                                                float_tenor: instrument.float_tenor || 6,
 	                                                calendar: instrument.calendar,
