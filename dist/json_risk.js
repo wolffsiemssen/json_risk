@@ -331,19 +331,21 @@
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
                 //curve only has one support point
-                if (imin===imax) return (t===get_time_at(curve,imin)) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
+		var tmin=get_time_at(curve,imin);
+                if (imin===imax) return (t===tmin) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/tmin);
                 //extrapolation (constant on zero coupon rates)
-                if (t<get_time_at(curve,imin)) return Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
-                if (t>get_time_at(curve,imax)) return Math.pow(get_df_at(curve,imax), t/get_time_at(curve,imax));
+		var tmax=get_time_at(curve,imax);
+                if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
+                if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
                 //interpolation (linear on discount factors)
                 if (imin+1===imax){
-                        if(get_time_at(curve,imax)-get_time_at(curve,imin)<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-                        return get_df_at(curve,imin)*(get_time_at(curve,imax)-t)/(get_time_at(curve,imax)-get_time_at(curve,imin))+
-                               get_df_at(curve,imax)*(t-get_time_at(curve,imin))/(get_time_at(curve,imax)-get_time_at(curve,imin));
+                        if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+                        return get_df_at(curve,imin)*(tmax-t)/(tmax-tmin)+
+                               get_df_at(curve,imax)*(t-tmin)/(tmax-tmin);
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
+		if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
                 return library.get_df(curve,t,imin,imed);
         };
 
@@ -3290,10 +3292,23 @@
 			* @private
 		*/           
         var normalise_curve=function(obj){ // constructs times from days, dates or labels and makes dfs and zcs an array of length one if it is not an array
+                var times=library.get_curve_times(obj),
+                    dfs=obj.dfs ? ((Array.isArray(obj.dfs[0])) ? obj.dfs : [obj.dfs]) : null,
+                    zcs=obj.zcs ? ((Array.isArray(obj.zcs[0])) ? obj.zcs : [obj.zcs]) : null;
+		
+		if (!dfs){
+			dfs=new Array(zcs.length);
+			for (var i=0;i<zcs.length;i++){
+				dfs[i]=new Array(zcs[i].length);
+				for (var j=0;j<zcs[i].length;j++){
+					dfs[i][j]=Math.pow(1+zcs[i][j],-times[j]);
+				}
+			}
+		}
+
                 return {
-                        times: library.get_curve_times(obj),
-                        dfs: obj.dfs ? ((Array.isArray(obj.dfs[0])) ? obj.dfs : [obj.dfs]) : null,
-                        zcs: obj.zcs ? ((Array.isArray(obj.zcs[0])) ? obj.zcs : [obj.zcs]) : null
+                        times: times,
+                        dfs: dfs
                 };
         };
 
@@ -3410,10 +3425,14 @@
 		*/           
         var get_scalar_curve=function(vec_curve, i){
                 if (!vec_curve) return null;
-                return { times: vec_curve.times,
-                        dfs: vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null,
-                        zcs: vec_curve.zcs ? (vec_curve.zcs[vec_curve.zcs.length>1 ? i : 0]) : null
-                };
+		var times=vec_curve.times,
+                    dfs=vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null;
+
+		return{ 
+			times: times,
+			dfs:dfs
+		};
+
         };
 		/**
 		 	* ...

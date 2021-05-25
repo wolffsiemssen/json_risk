@@ -136,19 +136,21 @@
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
                 //curve only has one support point
-                if (imin===imax) return (t===get_time_at(curve,imin)) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
+		var tmin=get_time_at(curve,imin);
+                if (imin===imax) return (t===tmin) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/tmin);
                 //extrapolation (constant on zero coupon rates)
-                if (t<get_time_at(curve,imin)) return Math.pow(get_df_at(curve,imin), t/get_time_at(curve,imin));
-                if (t>get_time_at(curve,imax)) return Math.pow(get_df_at(curve,imax), t/get_time_at(curve,imax));
+		var tmax=get_time_at(curve,imax);
+                if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
+                if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
                 //interpolation (linear on discount factors)
                 if (imin+1===imax){
-                        if(get_time_at(curve,imax)-get_time_at(curve,imin)<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-                        return get_df_at(curve,imin)*(get_time_at(curve,imax)-t)/(get_time_at(curve,imax)-get_time_at(curve,imin))+
-                               get_df_at(curve,imax)*(t-get_time_at(curve,imin))/(get_time_at(curve,imax)-get_time_at(curve,imin));
+                        if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+                        return get_df_at(curve,imin)*(tmax-t)/(tmax-tmin)+
+                               get_df_at(curve,imax)*(t-tmin)/(tmax-tmin);
                 }
                 //binary search and recursion
                 imed=Math.ceil((imin+imax)/2.0);
-                if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
+		if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
                 return library.get_df(curve,t,imin,imed);
         };
 

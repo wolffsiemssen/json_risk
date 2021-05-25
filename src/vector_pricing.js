@@ -30,10 +30,23 @@
 			* @private
 		*/           
         var normalise_curve=function(obj){ // constructs times from days, dates or labels and makes dfs and zcs an array of length one if it is not an array
+                var times=library.get_curve_times(obj),
+                    dfs=obj.dfs ? ((Array.isArray(obj.dfs[0])) ? obj.dfs : [obj.dfs]) : null,
+                    zcs=obj.zcs ? ((Array.isArray(obj.zcs[0])) ? obj.zcs : [obj.zcs]) : null;
+		
+		if (!dfs){
+			dfs=new Array(zcs.length);
+			for (var i=0;i<zcs.length;i++){
+				dfs[i]=new Array(zcs[i].length);
+				for (var j=0;j<zcs[i].length;j++){
+					dfs[i][j]=Math.pow(1+zcs[i][j],-times[j]);
+				}
+			}
+		}
+
                 return {
-                        times: library.get_curve_times(obj),
-                        dfs: obj.dfs ? ((Array.isArray(obj.dfs[0])) ? obj.dfs : [obj.dfs]) : null,
-                        zcs: obj.zcs ? ((Array.isArray(obj.zcs[0])) ? obj.zcs : [obj.zcs]) : null
+                        times: times,
+                        dfs: dfs
                 };
         };
 
@@ -150,10 +163,14 @@
 		*/           
         var get_scalar_curve=function(vec_curve, i){
                 if (!vec_curve) return null;
-                return { times: vec_curve.times,
-                        dfs: vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null,
-                        zcs: vec_curve.zcs ? (vec_curve.zcs[vec_curve.zcs.length>1 ? i : 0]) : null
-                };
+		var times=vec_curve.times,
+                    dfs=vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null;
+
+		return{ 
+			times: times,
+			dfs:dfs
+		};
+
         };
 		/**
 		 	* ...
