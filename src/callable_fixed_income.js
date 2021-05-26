@@ -44,8 +44,14 @@
                 this.exclude_base=library.get_safe_bool(instrument.exclude_base);
 		this.simple_calibration=library.get_safe_bool(instrument.simple_calibration);
 
+		//truncate call dates as soon as principal has been redeemed
+		var cf_obj=this.base.get_cash_flows();
+		var i=cf_obj.current_principal.length-1;
+		while (cf_obj.current_principal[i]===0) i--;
+		while (this.call_schedule[this.call_schedule.length-1]>=cf_obj.date_pmt[i]) this.call_schedule.pop();
+		
+
 		//basket generation
-		var i;
 		this.basket=new Array(this.call_schedule.length);
 		for (i=0; i<this.call_schedule.length; i++){
                         if((!this.base.is_amortizing && this.base.fixed_rate.length===1) || this.simple_calibration){
