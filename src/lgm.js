@@ -152,7 +152,7 @@
                 while (i<cf_obj.t_pmt.length){
 			dh=h(cf_obj.t_pmt[i])-h(t_exercise);
 			for (j=0; j<state.length; j++){
-        	                res[j]+=(cf_obj.pmt_total[i]) * discount_factors[i] * Math.exp(-dh*state[j]-dh*dh*xi*0.5);
+        	                res[j]+=(cf_obj.pmt_total[i]) * discount_factors[i] * library.fast_exp(-dh*state[j]-dh*dh*xi*0.5); //Math.exp(-dh*state[j]-dh*dh*xi*0.5);
 			}
                         i++;
                 }

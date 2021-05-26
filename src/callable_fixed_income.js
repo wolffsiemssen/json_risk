@@ -42,12 +42,13 @@
 		this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
 		this.opportunity_spread=library.get_safe_number(instrument.opportunity_spread) || 0.0;
                 this.exclude_base=library.get_safe_bool(instrument.exclude_base);
+		this.simple_calibration=library.get_safe_bool(instrument.simple_calibration);
 
 		//basket generation
 		var i;
 		this.basket=new Array(this.call_schedule.length);
 		for (i=0; i<this.call_schedule.length; i++){
-                        if(!this.base.is_amortizing && this.base.fixed_rate.length===1){
+                        if((!this.base.is_amortizing && this.base.fixed_rate.length===1) || this.simple_calibration){
 			        //basket instruments are co-terminal swaptions with standard conditions
 			        this.basket[i]=new library.swaption({
 		                        is_payer: false,

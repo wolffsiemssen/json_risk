@@ -188,6 +188,26 @@
                 f=0.5/f;
                 return (x>=0) ? 1-f : f;
         };
+
+
+		/**
+		 	* fast exponential function according to Schraudolph, A Fast, Compact Approximataion of the Exponential Function (1999)
+			* @param {number} x
+			* @returns {number} ...
+			* @memberof library
+			* @public
+		*/ 
+
+	var A = 6;
+	var B = Math.pow(2,A);
+
+        library.fast_exp=function(x){
+		if (Math.abs(x)>A) return Math.exp(x);
+                var z=1+(x/B);
+		for (var i=0;i<A;i++) z=z*z;
+		return z;
+        };
+
 		/**
 		 	* TODO
 			* @param {} func
