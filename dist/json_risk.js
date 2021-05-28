@@ -90,6 +90,7 @@
 
 		//basket generation
 		this.basket=new Array(this.call_schedule.length);
+		var temp;
 		for (i=0; i<this.call_schedule.length; i++){
                         if((!this.base.is_amortizing && this.base.fixed_rate.length===1) || this.simple_calibration){
 			        //basket instruments are co-terminal swaptions with standard conditions
@@ -98,7 +99,7 @@
 		                        maturity: instrument.maturity,
 		                        first_exercise_date: this.call_schedule[i],
 		                        notional: instrument.notional,
-		                        fixed_rate: instrument.fixed_rate-this.opportunity_spread,
+		                        fixed_rate: this.base.fixed_rate[0]-this.opportunity_spread,
 		                        tenor: 12,
 		                        float_spread: 0.00,
 		                        float_tenor: instrument.float_tenor || 6,
@@ -111,8 +112,7 @@
 		                });
                         }else{
         		        //basket instruments are equivalent regular swaptions with standard conditions
-			        this.basket[i]=new library.swaption(
-                                        library.create_equivalent_regular_swaption(
+				temp=library.create_equivalent_regular_swaption(
                                                 this.base.get_cash_flows(),
                                                 this.call_schedule[i],
                                                 {
@@ -121,8 +121,9 @@
 	                                                float_tenor: instrument.float_tenor || 6,
 	                                                calendar: instrument.calendar,
 	                                                bdc: instrument.bdc
-                                                })
-		                );
+                                                });
+				temp.fixed_rate -= this.opportunity_spread;
+			        this.basket[i]=new library.swaption(temp);
                         }
 		}
         };
@@ -1263,7 +1264,8 @@
 			* @returns {number} present value
 			* @memberof library
 			* @public
-		*/   
+		*/
+	
 	library.lgm_dcf=function(cf_obj,t_exercise, discount_factors, xi, state, opportunity_spread){
                 /*
 
@@ -1282,27 +1284,34 @@
                 */
 		if(!Array.isArray(state)) throw new Error("lgm_dcf: state variable must be an array of numbers");                
 
-                var i=0, j, dh;
+                var i=0, j, dh, temp, dh_dh_xi_2;
 		var res=new Array(state.length);
+		var times=cf_obj.t_pmt;
+		var amounts=cf_obj.pmt_total;
 		// move forward to first line after exercise date
-                while(cf_obj.t_pmt[i]<=t_exercise) i++;
+                while(times[i]<=t_exercise) i++;
 
 		//include accrued interest if interest payment is part of the cash flow object
 		var accrued_interest=0;		
 		if (cf_obj.pmt_interest){
-			accrued_interest=(i===0) ? 0 : cf_obj.pmt_interest[i]*(t_exercise-cf_obj.t_pmt[i-1])/(cf_obj.t_pmt[i]-cf_obj.t_pmt[i-1]);
+			accrued_interest=(i===0) ? 0 : cf_obj.pmt_interest[i]*(t_exercise-times[i-1])/(times[i]-times[i-1]);
 		}
 		// include principal payment on exercise date  
 		var sadj=strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread);
+		temp= - (cf_obj.current_principal[i]+accrued_interest+sadj) * discount_factors[discount_factors.length-1];
 		for (j=0; j<state.length; j++){
-			res[j] = - (cf_obj.current_principal[i]+accrued_interest+sadj) * discount_factors[discount_factors.length-1];
+			res[j] = temp;
 		}
 
                 // include all payments after exercise date
-                while (i<cf_obj.t_pmt.length){
+                while (i<times.length){
 			dh=h(cf_obj.t_pmt[i])-h(t_exercise);
-			for (j=0; j<state.length; j++){
-        	                res[j]+=(cf_obj.pmt_total[i]) * discount_factors[i] * library.fast_exp(-dh*state[j]-dh*dh*xi*0.5); //Math.exp(-dh*state[j]-dh*dh*xi*0.5);
+			temp=amounts[i] * discount_factors[i];
+			if(temp!==0){
+				dh_dh_xi_2=dh*dh*xi*0.5;
+				for (j=0; j<state.length; j++){
+			                res[j]+=temp * Math.exp(-dh*state[j]-dh_dh_xi_2);
+				}
 			}
                         i++;
                 }
@@ -1897,25 +1906,6 @@
                 f*=f;f*=f;f*=f;f*=f; // raise to the power of -16
                 f=0.5/f;
                 return (x>=0) ? 1-f : f;
-        };
-
-
-		/**
-		 	* fast exponential function according to Schraudolph, A Fast, Compact Approximataion of the Exponential Function (1999)
-			* @param {number} x
-			* @returns {number} ...
-			* @memberof library
-			* @public
-		*/ 
-
-	var A = 6;
-	var B = Math.pow(2,A);
-
-        library.fast_exp=function(x){
-		if (Math.abs(x)>A) return Math.exp(x);
-                var z=1+(x/B);
-		for (var i=0;i<A;i++) z=z*z;
-		return z;
         };
 
 		/**

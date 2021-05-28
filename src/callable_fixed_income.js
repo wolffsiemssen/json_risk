@@ -53,6 +53,7 @@
 
 		//basket generation
 		this.basket=new Array(this.call_schedule.length);
+		var temp;
 		for (i=0; i<this.call_schedule.length; i++){
                         if((!this.base.is_amortizing && this.base.fixed_rate.length===1) || this.simple_calibration){
 			        //basket instruments are co-terminal swaptions with standard conditions
@@ -61,7 +62,7 @@
 		                        maturity: instrument.maturity,
 		                        first_exercise_date: this.call_schedule[i],
 		                        notional: instrument.notional,
-		                        fixed_rate: instrument.fixed_rate-this.opportunity_spread,
+		                        fixed_rate: this.base.fixed_rate[0]-this.opportunity_spread,
 		                        tenor: 12,
 		                        float_spread: 0.00,
 		                        float_tenor: instrument.float_tenor || 6,
@@ -74,8 +75,7 @@
 		                });
                         }else{
         		        //basket instruments are equivalent regular swaptions with standard conditions
-			        this.basket[i]=new library.swaption(
-                                        library.create_equivalent_regular_swaption(
+				temp=library.create_equivalent_regular_swaption(
                                                 this.base.get_cash_flows(),
                                                 this.call_schedule[i],
                                                 {
@@ -84,8 +84,9 @@
 	                                                float_tenor: instrument.float_tenor || 6,
 	                                                calendar: instrument.calendar,
 	                                                bdc: instrument.bdc
-                                                })
-		                );
+                                                });
+				temp.fixed_rate -= this.opportunity_spread;
+			        this.basket[i]=new library.swaption(temp);
                         }
 		}
         };

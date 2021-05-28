@@ -113,7 +113,8 @@
 			* @returns {number} present value
 			* @memberof library
 			* @public
-		*/   
+		*/
+	
 	library.lgm_dcf=function(cf_obj,t_exercise, discount_factors, xi, state, opportunity_spread){
                 /*
 
@@ -132,27 +133,34 @@
                 */
 		if(!Array.isArray(state)) throw new Error("lgm_dcf: state variable must be an array of numbers");                
 
-                var i=0, j, dh;
+                var i=0, j, dh, temp, dh_dh_xi_2;
 		var res=new Array(state.length);
+		var times=cf_obj.t_pmt;
+		var amounts=cf_obj.pmt_total;
 		// move forward to first line after exercise date
-                while(cf_obj.t_pmt[i]<=t_exercise) i++;
+                while(times[i]<=t_exercise) i++;
 
 		//include accrued interest if interest payment is part of the cash flow object
 		var accrued_interest=0;		
 		if (cf_obj.pmt_interest){
-			accrued_interest=(i===0) ? 0 : cf_obj.pmt_interest[i]*(t_exercise-cf_obj.t_pmt[i-1])/(cf_obj.t_pmt[i]-cf_obj.t_pmt[i-1]);
+			accrued_interest=(i===0) ? 0 : cf_obj.pmt_interest[i]*(t_exercise-times[i-1])/(times[i]-times[i-1]);
 		}
 		// include principal payment on exercise date  
 		var sadj=strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread);
+		temp= - (cf_obj.current_principal[i]+accrued_interest+sadj) * discount_factors[discount_factors.length-1];
 		for (j=0; j<state.length; j++){
-			res[j] = - (cf_obj.current_principal[i]+accrued_interest+sadj) * discount_factors[discount_factors.length-1];
+			res[j] = temp;
 		}
 
                 // include all payments after exercise date
-                while (i<cf_obj.t_pmt.length){
+                while (i<times.length){
 			dh=h(cf_obj.t_pmt[i])-h(t_exercise);
-			for (j=0; j<state.length; j++){
-        	                res[j]+=(cf_obj.pmt_total[i]) * discount_factors[i] * library.fast_exp(-dh*state[j]-dh*dh*xi*0.5); //Math.exp(-dh*state[j]-dh*dh*xi*0.5);
+			temp=amounts[i] * discount_factors[i];
+			if(temp!==0){
+				dh_dh_xi_2=dh*dh*xi*0.5;
+				for (j=0; j<state.length; j++){
+			                res[j]+=temp * Math.exp(-dh*state[j]-dh_dh_xi_2);
+				}
 			}
                         i++;
                 }
