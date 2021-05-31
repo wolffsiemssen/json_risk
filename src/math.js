@@ -85,13 +85,14 @@
 		}
 		return res;
 	};
-		/**
-		 	* TODO
-			* @param {boolean} b
-			* @returns {boolean} boolean vector
-			* @memberof library
-			* @public
-		*/   
+
+	/**
+	 	* TODO
+		* @param {boolean} b
+		* @returns {boolean} boolean vector
+		* @memberof library
+		* @public
+	*/   
 	library.get_safe_bool=function(b){
 		if(typeof b === 'boolean') return b;				
 		if(typeof b === 'number') return b!==0;
@@ -102,13 +103,14 @@
 		}
 		return false;
 	};
-		/**
-		 	* TODO
-			* @param {boolean} b
-			* @returns {boolean} boolean vector
-			* @memberof library
-			* @public
-		*/   
+
+	/**
+	 	* TODO
+		* @param {boolean} b
+		* @returns {boolean} boolean vector
+		* @memberof library
+		* @public
+	*/   
 	library.get_safe_bool_vector=function(b){ //returns vector of booleans when input can be converted to booleans. Returns single-entry array [false] otherwise
 		if(typeof b === 'boolean') return [b];
 		if(typeof b === 'number') return [b!==0];
@@ -125,24 +127,25 @@
 		}
 		return res;
 	};
-		/**
-		 	* ...
-			* @param {number} x
-			* @returns {number} ...
-			* @memberof library
-			* @public
-		*/           
+
+	/**
+	 	* ...
+		* @param {number} x
+		* @returns {number} ...
+		* @memberof library
+		* @public
+	*/           
         library.ndf=function(x){
           return Math.exp(-x*x/2.0)/RT2PI;
         };
           
-		/**
-		 	* cumulative normal distribution function with double precision according to Graeme West, BETTER APPROXIMATIONS TO CUMULATIVE NORMAL FUNCTIONS, 2004
-			* @param {number} x
-			* @returns {number} ...
-			* @memberof library
-			* @public
-		*/         
+	/**
+	 	* cumulative normal distribution function with double precision according to Graeme West, BETTER APPROXIMATIONS TO CUMULATIVE NORMAL FUNCTIONS, 2004
+		* @param {number} x
+		* @returns {number} ...
+		* @memberof library
+		* @public
+	*/         
         library.cndf=function(x){
                 var z = Math.abs(x);
                 var c;
@@ -174,32 +177,32 @@
         var D5=0.0000488906;
         var D6=0.0000053830;
 
-		/**
-		 	* fast cumulative normal distribution function
-			* @param {number} x
-			* @returns {number} ...
-			* @memberof library
-			* @public
-		*/   
+	/**
+	 	* fast cumulative normal distribution function according to Abramowitz and Stegun
+		* @param {number} x
+		* @returns {number} ...
+		* @memberof library
+		* @public
+	*/   
         library.fast_cndf=function(x){
-                var z=Math.abs(x);
-                var f=1+z*(D1+z*(D2+z*(D3+z*(D4+z*(D5+z*D6)))));
-                f*=f;f*=f;f*=f;f*=f; // raise to the power of -16
-                f=0.5/f;
-                return (x>=0) ? 1-f : f;
+		var z=(x>0) ? x:-x;
+		var f=1+z*(D1+z*(D2+z*(D3+z*(D4+z*(D5+z*D6)))));
+		f*=f;f*=f;f*=f;f*=f; // raise to the power of -16
+		f=0.5/f;
+		return (x>=0) ? 1-f : f;
         };
 
-		/**
-		 	* TODO
-			* @param {} func
-			* @param {number} start
-			* @param {number} next
-			* @param {number} max_iter
-			* @param {number} threshold
-			* @returns {number} ...
-			* @memberof library
-			* @public
-		*/           
+	/**
+	 	* TODO
+		* @param {} func
+		* @param {number} start
+		* @param {number} next
+		* @param {number} max_iter
+		* @param {number} threshold
+		* @returns {number} ...
+		* @memberof library
+		* @public
+	*/           
         library.find_root_secant=function(func, start, next, max_iter, threshold){
                 var x=start, xnext=next, temp=0, iter=max_iter||20, t=threshold||0.00000001;
                 var f=func(x), fnext=func(xnext);

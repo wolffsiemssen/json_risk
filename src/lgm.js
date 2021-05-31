@@ -131,10 +131,10 @@
 		state must be an array of numbers
 		
                 */
-		if(!Array.isArray(state)) throw new Error("lgm_dcf: state variable must be an array of numbers");                
+		if(!state.length) throw new Error("lgm_dcf: state variable must be an array of numbers");                
 
                 var i=0, j, dh, temp, dh_dh_xi_2;
-		var res=new Array(state.length);
+		var res=TEMP_ARRAY_PAYOFF;
 		var times=cf_obj.t_pmt;
 		var amounts=cf_obj.pmt_total;
 		// move forward to first line after exercise date
@@ -407,36 +407,37 @@
 
 	var STD_DEV_RANGE=4;
 	var RESOLUTION=15;
+	var TEMP_ARRAY_PAYOFF=new Float64Array(2*STD_DEV_RANGE*RESOLUTION+1);
+	var TEMP_ARRAY_STATE=new Float64Array(2*STD_DEV_RANGE*RESOLUTION+1);
 
-
-		/**
-		 	* ...
-			* @param {object} cf_obj
-			* @param {} exercise_vec
-			* @param {object} disc_curve discount curve
-			* @param {} xi_vec
-			* @param {object} spread_curve spread curve
-			* @param {} residual_spread
-			* @param {} opportunity_spread
-			* @returns {object} cash flow
-			* @memberof library
-			* @public
-		*/   
+	/**
+	 	* ...
+		* @param {object} cf_obj
+		* @param {} exercise_vec
+		* @param {object} disc_curve discount curve
+		* @param {} xi_vec
+		* @param {object} spread_curve spread curve
+		* @param {} residual_spread
+		* @param {} opportunity_spread
+		* @returns {object} cash flow
+		* @memberof library
+		* @public
+	*/   
 	library.lgm_bermudan_call_on_cf=function(cf_obj,t_exercise_vec, disc_curve, xi_vec, spread_curve, residual_spread, opportunity_spread){
-                /*
+		/*
 
 		Calculates the bermudan call option price on a cash flow (numeric integration according to martingale formula 4.14a).
 
-                requires cf_obj of type
-                {
-                        current_principal: array(double),
-                        t_pmt: array(double),
-                        pmt_total: array(double)
-                }
+		requires cf_obj of type
+		{
+		        current_principal: array(double),
+		        t_pmt: array(double),
+		        pmt_total: array(double)
+		}
 
 		state must be an array of numbers
 		
-                */
+		*/
 
 		if(t_exercise_vec[t_exercise_vec.length-1]<0) return 0; //expired option		
 		if(t_exercise_vec[t_exercise_vec.length-1]<1/512){
@@ -454,13 +455,12 @@
 			* @memberof library
 			* @private
 		*/   
-		function make_state_vector(){ //repopulates state vector and ds measure
-			var res=new Array(n);			
-			res[0]=-STD_DEV_RANGE*std_dev;
+		function make_state_vector(){ //repopulates state vector and ds measure			
+			TEMP_ARRAY_STATE[0]=-STD_DEV_RANGE*std_dev;
 			for (i=1; i<n; i++){
-				res[i]=res[0]+i*ds;
+				TEMP_ARRAY_STATE[i]=TEMP_ARRAY_STATE[i-1]+ds;
 			}
-			return res;
+			return TEMP_ARRAY_STATE;
 		}
 		/**
 		 	* TODO
@@ -470,7 +470,7 @@
 		function update_value(){ //take maximum of payoff and hold values
 			var i_d=0;
 			for (i=0; i<n; i++){
-				value[i]=Math.max(hold[i], payoff[i]);
+				value[i]=Math.max(hold[i], payoff[i], 0);
 				if(!i_d && i>0){
 					if((payoff[i]-hold[i])*(payoff[i-1]-hold[i-1])<0){
 						i_d=i; //discontinuity where payoff-hold changes sign
@@ -496,24 +496,37 @@
 			* @private
 		*/   
 		function numeric_integration(j){ //simple implementation of lgm martingale formula
-			if(xi_last-xi<1E-15) return value[j];
-		        var temp=0, dp_lo=0, dp_hi, norm_scale=1/Math.sqrt(xi_last-xi);
-			for (i=0; i<n; i++){
-				dp_hi= (i===n-1) ? 1 : library.fast_cndf((state_last[i]-state[j]+0.5*ds)*norm_scale);	
+			if(xi_last-xi<1E-12) return value[j];
+		        var temp=0,
+			    dp_lo=0,
+  			    dp_hi,
+			    norm_scale=1/Math.sqrt(xi_last-xi),
+			    increment=ds_last*norm_scale,
+			    i=0,
+			    x=(state_last[0]-state[j]+0.5*ds_last)*norm_scale;
+			while(x<-STD_DEV_RANGE){
+				x+=increment;
+				i+=1;
+			}
+			dp_hi=library.fast_cndf(x);
+			while(x<STD_DEV_RANGE){
+				if(i >= n) break;
+				dp_hi=library.fast_cndf(x);
 				temp+=value[i]*(dp_hi-dp_lo);
 				dp_lo=dp_hi; // for next iteration
+				x+=increment;
+				i++;
 			}
 			return temp;
 		}
-
 
 		var n=2*STD_DEV_RANGE*RESOLUTION+1;
 		var j, i, n_ex;
 		var xi, xi_last=0, std_dev, ds, ds_last;
 		var state, state_last;
 		var payoff;
-		var value=new Array(n);
-		var hold=new Array(n);
+		var value=new Float64Array(n);
+		var hold=new Float64Array(n);
                 var discount_factors;
 
 		//n_ex starts at last exercise date
