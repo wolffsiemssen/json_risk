@@ -91,8 +91,8 @@
       this.is_float = false;
       this.fixed_rate = library.get_safe_number_vector(instrument.fixed_rate); //array valued
       this.float_spread = 0;
-      this.cap_rate = 0;
-      this.floor_rate = 0;
+      this.cap_rate = [0];
+      this.floor_rate = [0];
       this.fixing_schedule = [this.schedule[0], maturity];
     } else {
       //floating rate instrument
@@ -114,8 +114,8 @@
       var fixing_stub_end = instrument.fixing_stub_end || false;
       var fixing_stub_long = instrument.fixing_stub_long || false;
 
-      this.cap_rate = (typeof instrument.cap_rate === 'number') ? instrument.cap_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
-      this.floor_rate = (typeof instrument.floor_rate === 'number') ? instrument.floor_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
+      this.cap_rate = (typeof instrument.cap_rate === 'number') ? [instrument.cap_rate] : [Number.POSITIVE_INFINITY]; // can be number or array, arrays to be implemented
+      this.floor_rate = (typeof instrument.floor_rate === 'number') ? [instrument.floor_rate] : [Number.POSITIVE_INFINITY]; // can be number or array, arrays to be implemented
       this.fixing_schedule = library.schedule(this.schedule[0],
         maturity,
         fixing_tenor,
@@ -365,7 +365,7 @@
       if (!this.is_float) {
         fwd_rate[i]=0;
       } else {
-        if (c.date_accrual_start[i] <= library.valuation_date) {
+        if (c.t_accrual_start[i] <= 0) {
           //period beginning in the past or now, use current rate
           fwd_rate[i]= this.float_current_rate;
         } else if (c.is_fixing_date[i - 1]) {

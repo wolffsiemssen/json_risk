@@ -118,17 +118,16 @@
                         };
         };
 
-
-		/**
-		 	* TODO
-			* @param {object} curve curve
-			* @param {number} t 
-			* @param {number} imin
-			* @param {number} imax
-			* @returns {number} discount factor
-			* @memberof library
-			* @public
-		*/          
+	/**
+	 	* TODO
+		* @param {object} curve curve
+		* @param {number} t 
+		* @param {number} imin
+		* @param {number} imax
+		* @returns {number} discount factor
+		* @memberof library
+		* @public
+	*/          
         library.get_df=function(curve,t,imin,imax){
                 if (undefined===imin) imin=0;
                 if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
@@ -142,16 +141,23 @@
 		var tmax=get_time_at(curve,imax);
                 if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
                 if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
-                //interpolation (linear on discount factors)
-                if (imin+1===imax){
-                        if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-                        return get_df_at(curve,imin)*(tmax-t)/(tmax-tmin)+
-                               get_df_at(curve,imax)*(t-tmin)/(tmax-tmin);
+		// binary search
+		var tmed;
+                while (imin+1!==imax){
+			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+			tmed=get_time_at(curve,imed);
+			if (t>tmed){
+				tmin=tmed;
+				imin=imed;
+			}else{
+				tmax=tmed;
+				imax=imed;
+			}	                       
                 }
-                //binary search and recursion
-                imed=Math.ceil((imin+imax)/2.0);
-		if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
-                return library.get_df(curve,t,imin,imed);
+		//interpolation (linear on discount factors)
+		if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+		var temp=1/(tmax-tmin);
+                return (get_df_at(curve,imin)*(tmax-t)+get_df_at(curve,imax)*(t-tmin))*temp;
         };
 
 

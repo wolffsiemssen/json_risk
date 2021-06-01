@@ -29,6 +29,7 @@
                 if(typeof residual_spread !== "number") residual_spread=0;
                 var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
+		var tset=library.time_from_now(sd);
 
                 //sanity checks
                 if (undefined===cf_obj.t_pmt || undefined===cf_obj.pmt_total) throw new Error("dcf: invalid cashflow object");
@@ -39,11 +40,11 @@
                 var df_d;
                 var df_s;
                 var df_residual;
-                while(cf_obj.date_pmt[i]<=sd) i++; // only consider cashflows after settlement date
+                while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
                 while (i<cf_obj.t_pmt.length){
                         df_d=library.get_df(dc,cf_obj.t_pmt[i]);
                         df_s=library.get_df(sc,cf_obj.t_pmt[i]);
-                        df_residual=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
+                        df_residual=(residual_spread!==0) ? Math.pow(1+residual_spread, -cf_obj.t_pmt[i]) : 1;
                         res+=cf_obj.pmt_total[i]*df_d*df_s*df_residual;
                         i++;
                 }

@@ -321,17 +321,16 @@
                         };
         };
 
-
-		/**
-		 	* TODO
-			* @param {object} curve curve
-			* @param {number} t 
-			* @param {number} imin
-			* @param {number} imax
-			* @returns {number} discount factor
-			* @memberof library
-			* @public
-		*/          
+	/**
+	 	* TODO
+		* @param {object} curve curve
+		* @param {number} t 
+		* @param {number} imin
+		* @param {number} imax
+		* @returns {number} discount factor
+		* @memberof library
+		* @public
+	*/          
         library.get_df=function(curve,t,imin,imax){
                 if (undefined===imin) imin=0;
                 if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
@@ -345,16 +344,23 @@
 		var tmax=get_time_at(curve,imax);
                 if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
                 if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
-                //interpolation (linear on discount factors)
-                if (imin+1===imax){
-                        if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-                        return get_df_at(curve,imin)*(tmax-t)/(tmax-tmin)+
-                               get_df_at(curve,imax)*(t-tmin)/(tmax-tmin);
+		// binary search
+		var tmed;
+                while (imin+1!==imax){
+			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+			tmed=get_time_at(curve,imed);
+			if (t>tmed){
+				tmin=tmed;
+				imin=imed;
+			}else{
+				tmax=tmed;
+				imax=imed;
+			}	                       
                 }
-                //binary search and recursion
-                imed=Math.ceil((imin+imax)/2.0);
-		if (t>get_time_at(curve,imed)) return library.get_df(curve,t,imed,imax);
-                return library.get_df(curve,t,imin,imed);
+		//interpolation (linear on discount factors)
+		if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+		var temp=1/(tmax-tmin);
+                return (get_df_at(curve,imin)*(tmax-t)+get_df_at(curve,imax)*(t-tmin))*temp;
         };
 
 
@@ -446,6 +452,7 @@
                 if(typeof residual_spread !== "number") residual_spread=0;
                 var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
+		var tset=library.time_from_now(sd);
 
                 //sanity checks
                 if (undefined===cf_obj.t_pmt || undefined===cf_obj.pmt_total) throw new Error("dcf: invalid cashflow object");
@@ -456,11 +463,11 @@
                 var df_d;
                 var df_s;
                 var df_residual;
-                while(cf_obj.date_pmt[i]<=sd) i++; // only consider cashflows after settlement date
+                while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
                 while (i<cf_obj.t_pmt.length){
                         df_d=library.get_df(dc,cf_obj.t_pmt[i]);
                         df_s=library.get_df(sc,cf_obj.t_pmt[i]);
-                        df_residual=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
+                        df_residual=(residual_spread!==0) ? Math.pow(1+residual_spread, -cf_obj.t_pmt[i]) : 1;
                         res+=cf_obj.pmt_total[i]*df_d*df_s*df_residual;
                         i++;
                 }
@@ -583,8 +590,8 @@
       this.is_float = false;
       this.fixed_rate = library.get_safe_number_vector(instrument.fixed_rate); //array valued
       this.float_spread = 0;
-      this.cap_rate = 0;
-      this.floor_rate = 0;
+      this.cap_rate = [0];
+      this.floor_rate = [0];
       this.fixing_schedule = [this.schedule[0], maturity];
     } else {
       //floating rate instrument
@@ -606,8 +613,8 @@
       var fixing_stub_end = instrument.fixing_stub_end || false;
       var fixing_stub_long = instrument.fixing_stub_long || false;
 
-      this.cap_rate = (typeof instrument.cap_rate === 'number') ? instrument.cap_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
-      this.floor_rate = (typeof instrument.floor_rate === 'number') ? instrument.floor_rate : Number.POSITIVE_INFINITY; // can be number or array, arrays to be implemented
+      this.cap_rate = (typeof instrument.cap_rate === 'number') ? [instrument.cap_rate] : [Number.POSITIVE_INFINITY]; // can be number or array, arrays to be implemented
+      this.floor_rate = (typeof instrument.floor_rate === 'number') ? [instrument.floor_rate] : [Number.POSITIVE_INFINITY]; // can be number or array, arrays to be implemented
       this.fixing_schedule = library.schedule(this.schedule[0],
         maturity,
         fixing_tenor,
@@ -857,7 +864,7 @@
       if (!this.is_float) {
         fwd_rate[i]=0;
       } else {
-        if (c.date_accrual_start[i] <= library.valuation_date) {
+        if (c.t_accrual_start[i] <= 0) {
           //period beginning in the past or now, use current rate
           fwd_rate[i]= this.float_current_rate;
         } else if (c.is_fixing_date[i - 1]) {
