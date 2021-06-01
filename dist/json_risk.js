@@ -331,9 +331,9 @@
 		* @memberof library
 		* @public
 	*/          
-        library.get_df=function(curve,t,imin,imax){
-                if (undefined===imin) imin=0;
-                if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
+        library.get_df=function(curve,t){
+                var imin=0;
+                var imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
                 
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
@@ -345,7 +345,7 @@
                 if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
                 if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
 		// binary search
-		var tmed;
+		var imed,tmed;
                 while (imin+1!==imax){
 			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
 			tmed=get_time_at(curve,imed);
@@ -528,17 +528,18 @@
 
     var first_date = library.get_safe_date(instrument.first_date); //null allowed
     var next_to_last_date = library.get_safe_date(instrument.next_to_last_date); //null allowed
-    var stub_end = instrument.stub_end || false;
-    var stub_long = instrument.stub_long || false;
+    var stub_end = library.get_safe_bool(instrument.stub_end);
+    var stub_long = library.get_safe_bool(instrument.stub_long);
+    this.excl_margin = library.get_safe_number(instrument.excl_margin) || 0;
 
-    this.current_accrued_interest = instrument.current_accrued_interest || 0;
+//    this.current_accrued_interest = instrument.current_accrued_interest || 0;
 
     this.type = (typeof instrument.type === 'string') ? instrument.type : 'unknown';
 
     this.is_holiday_func = library.is_holiday_factory(instrument.calendar || "");
     this.year_fraction_func = library.year_fraction_factory(instrument.dcc || "");
     this.bdc = instrument.bdc || "";
-    this.adjust_accrual_periods = instrument.adjust_accrual_periods || false;
+    this.adjust_accrual_periods = library.get_safe_bool(instrument.adjust_accrual_periods);
 
     this.adj = function(d) {
       return library.adjust(d, this.bdc, this.is_holiday_func);
@@ -847,6 +848,7 @@
     pmt_principal[0] = -this.notional;
     pmt_interest[0] = 0;
     pmt_total[0] = this.notional_exchange ? -this.notional : 0;
+    var current_margin=0;
 
     var i;
     for (i = 1; i < n; i++) {
@@ -882,7 +884,8 @@
       current_rate = fwd_rate[i] + get_rate_or_spread();
 
       //calculate interest amount for the current period
-      interest_current_period[i] = current_principal[i] * current_rate * c.accrual_factor[i];
+      interest_current_period[i] = current_principal[i] * (current_rate - this.excl_margin) * c.accrual_factor[i];
+      if (this.excl_margin!==0) current_margin += current_principal[i] * this.excl_margin * c.accrual_factor[i];
 
       //accrue interest
       accrued_interest[i] = (i > 0 ? accrued_interest[i - 1] : 0) + interest_current_period[i];
@@ -893,7 +896,9 @@
         accrued_interest[i] = 0;
         if (current_capitalization) {
           pmt_principal[i] = pmt_principal[i] - pmt_interest[i];
+	  if (this.excl_margin!==0) pmt_principal[i] = pmt_principal[i] - current_margin;
         }
+	current_margin=0;
       } else {
         pmt_interest[i] = 0;
       }

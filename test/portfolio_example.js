@@ -3309,4 +3309,5 @@ var test_pf=[
   "spread_curve": "EURO-GOV",
   "call_tenor": 1
  }
-];
+]
+;

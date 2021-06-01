@@ -128,9 +128,9 @@
 		* @memberof library
 		* @public
 	*/          
-        library.get_df=function(curve,t,imin,imax){
-                if (undefined===imin) imin=0;
-                if (undefined===imax) imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
+        library.get_df=function(curve,t){
+                var imin=0;
+                var imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
                 
                 //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
                 if (t<1/512) return 1.0;
@@ -142,7 +142,7 @@
                 if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
                 if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
 		// binary search
-		var tmed;
+		var imed,tmed;
                 while (imin+1!==imax){
 			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
 			tmed=get_time_at(curve,imed);

@@ -1118,6 +1118,20 @@ for (i=0;i<400;i++){
 	am((p1>100 && p2<100), "Irregular bond valuation with changing repay amounts (" + (i+1) + ").");
 }
 
+// test margins. Bond with margin should have the same principal cashflow as the same bond without margin
+var res=0;
+for (i=0;i<400;i++){
+	bond_internal=new JsonRisk.fixed_income(bonds[i]);
+        p1=bond_internal.get_cash_flows().pmt_principal;      
+	bonds[i].excl_margin=0.00125;
+        bond_internal=new JsonRisk.fixed_income(bonds[i]);
+        p2=bond_internal.get_cash_flows().pmt_principal;
+	for (var j=0;j<p1.length;j++){
+		res+=Math.abs(p2[j]-p1[j]);
+	}
+	am((res<0.001), "Irregular bond valuation with margin (" + (i+1) + ").");
+}
+
 
 // test fair rate derivation for all kinds of amortizing bonds
 
