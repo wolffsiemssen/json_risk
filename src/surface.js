@@ -116,18 +116,28 @@
 		if (!Array.isArray(sl)) throw new Error("get_slice_rate: invalid surface, values property must be an array of arrays");
                 //slice only has one value left
                 if (imin===imax) return sl[imin];
+		var tmin=get_term_at(surface,imin);
+		var tmax=get_term_at(surface,imax);
                 //extrapolation (constant)
                 if (t_term<get_term_at(surface, imin)) return sl[imin];
                 if (t_term>get_term_at(surface, imax)) return sl[imax];
-                //interpolation (linear)
-                if (imin+1===imax){
-                        return sl[imin]*(get_term_at(surface, imax)-t_term)/(get_term_at(surface, imax)-get_term_at(surface, imin))+
-                               sl[imax]*(t_term-get_term_at(surface, imin))/(get_term_at(surface, imax)-get_term_at(surface, imin));
+		// binary search
+		var imed,tmed;
+                while (imin+1!==imax){
+			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+			tmed=get_term_at(surface,imed);
+			if (t_term>tmed){
+				tmin=tmed;
+				imin=imed;
+			}else{
+				tmax=tmed;
+				imax=imed;
+			}	                       
                 }
-                //binary search and recursion
-                imed=Math.ceil((imin+imax)/2.0);
-                if (t_term>get_term_at(surface,imed)) return get_slice_rate(surface,i_expiry,t_term,imed,imax);
-                return get_slice_rate(surface,i_expiry, t_term,imin,imed);
+		//interpolation (linear)
+		if(tmax-tmin<1/512) throw new Error("get_slice_rate: invalid curve, support points must be increasing and differ at least one day");
+		var temp=1/(tmax-tmin);
+                return (sl[imin]*(tmax-t_term)+sl[imax]*(t_term-tmin))*temp;
         }
 		/**
 		 	* ...
@@ -146,18 +156,28 @@
 
                 //surface only has one slice left
                 if (imin===imax) return get_slice_rate(surface, imin, t_term);
+		var tmin=get_expiry_at(surface,imin);
+		var tmax=get_expiry_at(surface,imax);
                 //extrapolation (constant)
-                if (t_expiry<get_expiry_at(surface, imin)) return get_slice_rate(surface, imin, t_term);
-                if (t_expiry>get_expiry_at(surface, imax)) return get_slice_rate(surface, imax, t_term);
-                //interpolation (linear)
-                if (imin+1===imax){
-                        return get_slice_rate(surface, imin, t_term)*(get_expiry_at(surface, imax)-t_expiry)/(get_expiry_at(surface, imax)-get_expiry_at(surface, imin))+
-                               get_slice_rate(surface, imax, t_term)*(t_expiry-get_expiry_at(surface, imin))/(get_expiry_at(surface, imax)-get_expiry_at(surface, imin));
+                if (t_expiry<tmin) return get_slice_rate(surface, imin, t_term);
+                if (t_expiry>tmax) return get_slice_rate(surface, imax, t_term);
+		// binary search
+		var imed,tmed;
+                while (imin+1!==imax){
+			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+			tmed=get_expiry_at(surface,imed);
+			if (t_expiry>tmed){
+				tmin=tmed;
+				imin=imed;
+			}else{
+				tmax=tmed;
+				imax=imed;
+			}	                       
                 }
-                //binary search and recursion
-                imed=Math.ceil((imin+imax)/2.0);
-                if (t_expiry>get_expiry_at(surface,imed)) return library.get_surface_rate(surface,t_expiry,t_term,imed,imax);
-                return library.get_surface_rate(surface,t_expiry,t_term,imin,imed);
+		//interpolation (linear)
+		if(tmax-tmin<1/512) throw new Error("get_surface_rate: invalid curve, support points must be increasing and differ at least one day");
+		var temp=1/(tmax-tmin);
+                return (get_slice_rate(surface,imin,t_term)*(tmax-t_expiry)+get_slice_rate(surface,imax,t_term)*(t_expiry-tmin))*temp;
         };
 
 
