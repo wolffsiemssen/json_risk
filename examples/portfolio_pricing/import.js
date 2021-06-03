@@ -238,6 +238,25 @@ var import_data_csv=function(fil, kind, sc){
                         sc.$apply();
                 }
                 pp_config.header=true;
+        
+        
+        }else if (kind==="calendar"){
+                pp_config.complete=function(results,file){
+                        var i;
+                        var dates=[];
+                        if (!sc.params) sc.params={};
+                        if (!sc.params.calendars) sc.params.calendars={};    
+                        for (j=1;j<results.data.length;j++){
+                                dates.push(results.data[j][0])                               
+                                };
+                                sc.params.calendars[results.data[0]]={
+                                        dates: dates
+                        		}
+                       sc.params_count=sc.params_count + 1;
+                        sc.$apply();                       
+                } 
+        
+       
         }else{
                 return null;
         }
@@ -258,7 +277,7 @@ var import_data_json=function(fil, kind, sc){
     fil.text().then(text => {
         if (kind==="params"){
             sc.params=JSON.parse(text);	
-            var keys=['curves','scalars','surfaces'];
+            var keys=['curves','scalars','surfaces','calendars'];
             for (j=0;j<keys.length;j++){
                 if (undefined===sc.params[keys[j]]) continue;
                 key=Object.keys(sc.params[keys[j]]);
