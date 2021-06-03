@@ -3141,7 +3141,9 @@
                         };
                 }
                 //fallback
-                return is_holiday_default;
+		if(sl==="") return is_holiday_default;
+		throw new Error("is_holiday_factory: calendar not found");
+                
         };
 
                 
@@ -3375,7 +3377,16 @@
 				}
                         }
                 }
-        
+
+		//calendars
+		var cal;
+		if (typeof(params.calendars) === 'object'){
+                        keys=Object.keys(params.calendars);
+                        for (i=0; i< keys.length;i++){
+				cal=params.calendars[keys[i]];
+				library.add_calendar(keys[i],cal.dates);
+                        }
+		}
         };
 
 		/**

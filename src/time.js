@@ -444,7 +444,9 @@
                         };
                 }
                 //fallback
-                return is_holiday_default;
+		if(sl==="") return is_holiday_default;
+		throw new Error("is_holiday_factory: calendar not found");
+                
         };
 
                 
