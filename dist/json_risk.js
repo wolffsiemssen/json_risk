@@ -3286,12 +3286,44 @@
                 if (len !== stored_params.vector_length) throw new Error("vector_pricing: provided parameters need to have the same length or length one");
         };
 
-		/**
-		 	* ...
-			* @param {object} params parameter
-			* @memberof library
-			* @public
-		*/           
+	/**
+	 	* ...
+		* @param {object} params parameter
+		* @memberof library
+		* @public
+	*/
+	function name_to_moneyness(str){
+		var s=str.toLowerCase();
+		if (s.endsWith('atm')) return 0; //ATM surface
+		var n=s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
+		if (n.length<2) return null;
+		return n[1]/10000;
+
+	}
+
+	/**
+	 	* ...
+		* @param {object} params parameter
+		* @memberof library
+		* @public
+	*/
+	function find_smile(name, list){
+		var res=[],moneyness;
+		for (var i=0;i<list.length;i++){
+			if (!list[i].startsWith(name)) continue; //not a smile section of surface name
+			if (list[i].length===name.length) continue; //this is the surface itself
+			moneyness=name_to_moneyness(list[i]);
+			if (null===moneyness) continue;
+			res.push({ name: list[i],
+				   moneyness: moneyness
+			});
+		}
+		res.sort(function(a,b){
+			return a.moneyness-b.moneyness;
+		});
+		return res;
+	} 
+       
         library.store_params=function(params){
                 stored_params={vector_length: 1,
 			       scalars: {},
@@ -3323,11 +3355,24 @@
                 }
                 
                 //surfaces
+		var smile,moneyness,j;
                 if (typeof(params.surfaces) === 'object'){
                         keys=Object.keys(params.surfaces);
                         for (i=0; i< keys.length;i++){
                                 stored_params.surfaces[keys[i]]=normalise_surface(params.surfaces[keys[i]]);
                                 update_vector_length(stored_params.surfaces[keys[i]].values.length);
+                        }
+			//link smile surfaces to their atm surface
+                        for (i=0; i< keys.length;i++){
+                                smile=find_smile(keys[i],keys);
+				if (smile.length>0){
+					stored_params.surfaces[keys[i]].smile=[];
+					stored_params.surfaces[keys[i]].moneyness=[];
+					for (j=0;j<smile.length;j++){
+						stored_params.surfaces[keys[i]].smile.push(stored_params.surfaces[smile[j].name]);
+						stored_params.surfaces[keys[i]].moneyness.push(smile[j].moneyness);
+					}
+				}
                         }
                 }
         
@@ -3382,11 +3427,24 @@
 			* @memberof library
 			* @private
 		*/         
-        var get_scalar_surface=function(vec_surface, i){
+        var get_scalar_surface=function(vec_surface, i, nosmile){
                 if (!vec_surface) return null;
-                return { expiries: vec_surface.expiries,
-                         terms: vec_surface.terms,
-                         values: vec_surface.values[vec_surface.values.length>1 ? i : 0]
+		var expiries=vec_surface.expiries;
+		var terms=vec_surface.terms;
+		var values=vec_surface.values[vec_surface.values.length>1 ? i : 0];
+		var smile=null,moneyness=null,j;
+		if (nosmile!==true && Array.isArray(vec_surface.smile) && Array.isArray(vec_surface.moneyness)){
+			moneyness=vec_surface.moneyness;
+			smile=[];
+			for (j=0;j<vec_surface.smile.length;j++){
+				smile.push(get_scalar_surface(vec_surface.smile[j],i,true));
+			}
+		}
+                return { expiries: expiries,
+                         terms: terms,
+                         values: values,
+			 moneyness: moneyness,
+			 smile: smile
                 };
         };
 
