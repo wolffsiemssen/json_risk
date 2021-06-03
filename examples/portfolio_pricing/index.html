@@ -10,7 +10,7 @@ bootstrap
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 -->
 <link rel="stylesheet" href="../css/bootstrap_v4.0.0.min.css">
-<link rel="stylesheet" href="../css/expanded_own_bootstrap_css.css">
+<link rel="stylesheet" href="expanded_own_bootstrap_css.css">
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
@@ -336,6 +336,42 @@ main app
                           </tbody>
                         </table>                
                 </div>
+                
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Calendars</h1>
+                	<div class="btn-toolbar mb-2 mb-md-0">
+                  		<div class="btn-group mr-2">
+                    		<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="import_file('csv','calendar')">Import new</button>
+                    		<button type="button" class="btn btn-sm btn-outline-secondary" ng-click="params.calendars={};count_params();">Clear all</button>
+                  		</div>
+                	</div>
+        		</div>
+                
+             <div class="table-responsive">
+                  <table class="table table-responsive table-hover table-sm table-bordered">
+                          <thead class="thead-light">
+                            <tr>
+                              <th scope="col">Name</th>
+                              <th scope="col">Days</th>
+                              <th scope="col">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr ng-repeat="(key, value) in params.calendars">
+                              <th scope="row">{{key}}</th>
+                              <td><span class="badge badge-primary">{{value.dates.length}}</span></td>        
+                               <th scope="row">
+                                    <div class="btn-group mr-2">
+                                        <button type="button" class="btn btn-sm btn-link" ng-click="remove_parameter(key,value, 'calendars')">Remove</button>
+                                    </div>
+
+                              </th>
+                            </tr>
+                          </tbody>
+                        </table>
+        	</div>    
+                
+                
           </div>
           
                   

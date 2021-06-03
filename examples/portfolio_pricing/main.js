@@ -371,6 +371,10 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 		    delete $scope.params.surfaces[key];
 		    if (Object.keys($scope.params.surfaces).length === 0) delete $scope.params.surfaces;
 	    	}
+	    	if (kind==='calendars'){	    
+		    delete $scope.params.calendars[key];
+		    if (Object.keys($scope.params.calendars).length === 0) delete $scope.params.calendars;
+	    	}
 	    	$scope.res=null;
 		$scope.errors=null;
 		$scope.warnings=null;
