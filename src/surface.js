@@ -108,9 +108,9 @@
 			* @memberof library
 			* @privat
 		*/            
-        function get_slice_rate(surface,i_expiry,t_term,imin,imax){
-                imin=imin || 0;
-                imax=imax || (surface.terms || surface.labels_term || []).length-1;
+        function get_slice_rate(surface,i_expiry,t_term){
+                var imin = 0;
+                var imax = (surface.terms || surface.labels_term || []).length-1;
                 
                 var sl=surface.values[i_expiry];
 		if (!Array.isArray(sl)) throw new Error("get_slice_rate: invalid surface, values property must be an array of arrays");
@@ -150,9 +150,9 @@
 			* @memberof library
 			* @public
 		*/   
-        library.get_surface_rate=function(surface,t_expiry,t_term,imin,imax){
-                imin=imin || 0;
-                imax=imax || (surface.expiries || surface.labels_expiry || []).length-1;
+        library.get_surface_rate=function(surface,t_expiry,t_term){
+                var imin = 0;
+                var imax = (surface.expiries || surface.labels_expiry || []).length-1;
 
                 //surface only has one slice left
                 if (imin===imax) return get_slice_rate(surface, imin, t_term);
@@ -180,5 +180,39 @@
                 return (get_slice_rate(surface,imin,t_term)*(tmax-t_expiry)+get_slice_rate(surface,imax,t_term)*(t_expiry-tmin))*temp;
         };
 
+	library.get_cube_rate=function(cube,t_expiry,t_term,m){
+		var atm=library.get_surface_rate(cube,t_expiry,t_term);
+		if(cube.moneyness && cube.smile){
+			if (!cube.moneyness.length || !cube.smile.length) throw new Error("get_cube_rate: invalid cube, moneyness and smile must be arrays");
+		                var imin = 0;
+				var imax = cube.moneyness.length-1;
+
+				//surface only has one slice left
+				if (imin===imax) return atm+library.get_surface_rate(cube.smile[imin], t_expiry, t_term);
+				var mmin=cube.moneyness[imin];
+				var mmax=cube.moneyness[imax];
+				//extrapolation (constant)
+				if (m<mmin) return atm+library.get_surface_rate(cube.smile[imin], t_expiry, t_term);
+				if (m>mmax) return atm+library.get_surface_rate(cube.smile[imax], t_expiry, t_term);
+				// binary search
+				var imed,mmed;
+				while (imin+1!==imax){
+					imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+					mmed=cube.moneyness[imed];
+					if (m>mmed){
+						mmin=mmed;
+						imin=imed;
+					}else{
+						mmax=mmed;
+						imax=imed;
+					}	                       
+				}
+				//interpolation (linear)
+				if(mmax-mmin<1E-15) throw new Error("get_cube_rate: invalid cube, moneyness must be nondecreasing");
+				var temp=1/(mmax-mmin);
+				return atm+(library.get_surface_rate(cube.smile[imin],t_expiry,t_term)*(mmax-m)+library.get_surface_rate(cube.smile[imax],t_expiry,t_term)*(m-mmin))*temp;
+		}
+		return atm;
+	};
 
 }(this.JsonRisk || module.exports));

@@ -1521,7 +1521,10 @@
 					      discount_factors[j]*
 					      (h(cf_obj.t_pmt[j])-h(tte));
 				}
-				std_dev_bachelier=library.get_surface_rate(surface, tte, ttm-tte)*Math.sqrt(tte);
+				//bachelier swaption price and std deviation
+				target=basket[i].present_value(disc_curve, fwd_curve, surface);
+				std_dev_bachelier=basket[i].std_dev;
+
                                 //initial guess
 				xi=Math.pow(std_dev_bachelier*basket[i].swap.annuity(disc_curve)/deno,2);
 
@@ -2281,9 +2284,9 @@
 			* @memberof library
 			* @privat
 		*/            
-        function get_slice_rate(surface,i_expiry,t_term,imin,imax){
-                imin=imin || 0;
-                imax=imax || (surface.terms || surface.labels_term || []).length-1;
+        function get_slice_rate(surface,i_expiry,t_term){
+                var imin = 0;
+                var imax = (surface.terms || surface.labels_term || []).length-1;
                 
                 var sl=surface.values[i_expiry];
 		if (!Array.isArray(sl)) throw new Error("get_slice_rate: invalid surface, values property must be an array of arrays");
@@ -2323,9 +2326,9 @@
 			* @memberof library
 			* @public
 		*/   
-        library.get_surface_rate=function(surface,t_expiry,t_term,imin,imax){
-                imin=imin || 0;
-                imax=imax || (surface.expiries || surface.labels_expiry || []).length-1;
+        library.get_surface_rate=function(surface,t_expiry,t_term){
+                var imin = 0;
+                var imax = (surface.expiries || surface.labels_expiry || []).length-1;
 
                 //surface only has one slice left
                 if (imin===imax) return get_slice_rate(surface, imin, t_term);
@@ -2353,6 +2356,40 @@
                 return (get_slice_rate(surface,imin,t_term)*(tmax-t_expiry)+get_slice_rate(surface,imax,t_term)*(t_expiry-tmin))*temp;
         };
 
+	library.get_cube_rate=function(cube,t_expiry,t_term,m){
+		var atm=library.get_surface_rate(cube,t_expiry,t_term);
+		if(cube.moneyness && cube.smile){
+			if (!cube.moneyness.length || !cube.smile.length) throw new Error("get_cube_rate: invalid cube, moneyness and smile must be arrays");
+		                var imin = 0;
+				var imax = cube.moneyness.length-1;
+
+				//surface only has one slice left
+				if (imin===imax) return atm+library.get_surface_rate(cube.smile[imin], t_expiry, t_term);
+				var mmin=cube.moneyness[imin];
+				var mmax=cube.moneyness[imax];
+				//extrapolation (constant)
+				if (m<mmin) return atm+library.get_surface_rate(cube.smile[imin], t_expiry, t_term);
+				if (m>mmax) return atm+library.get_surface_rate(cube.smile[imax], t_expiry, t_term);
+				// binary search
+				var imed,mmed;
+				while (imin+1!==imax){
+					imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+					mmed=cube.moneyness[imed];
+					if (m>mmed){
+						mmin=mmed;
+						imin=imed;
+					}else{
+						mmax=mmed;
+						imax=imed;
+					}	                       
+				}
+				//interpolation (linear)
+				if(mmax-mmin<1E-15) throw new Error("get_cube_rate: invalid cube, moneyness must be nondecreasing");
+				var temp=1/(mmax-mmin);
+				return atm+(library.get_surface_rate(cube.smile[imin],t_expiry,t_term)*(mmax-m)+library.get_surface_rate(cube.smile[imax],t_expiry,t_term)*(m-mmin))*temp;
+		}
+		return atm;
+	};
 
 }(this.JsonRisk || module.exports));
 ;(function(library){
@@ -2521,23 +2558,25 @@
                         return 0;
                 }       
                 //obtain fwd rate, that is, fair swap rate
-                var fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
+                this.fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
+		this.moneyness=this.swap.fixed_rate-this.fair_rate;
                 
                 //obtain time-scaled volatility
 		if(typeof vol_surface!=='object' || vol_surface===null) throw new Error("swaption.present_value: must provide valid surface");
-                var std_dev=library.get_surface_rate(vol_surface, t_first_exercise_date, t_term)*Math.sqrt(t_first_exercise_date);
+		this.vol=library.get_cube_rate(vol_surface, t_first_exercise_date, t_term, this.moneyness);
+                this.std_dev=this.vol*Math.sqrt(t_first_exercise_date);
                 
                 var res;
 		if (t_first_exercise_date<0){
 			//degenerate case where swaption has expired in the past
 			return 0;
-		}else if (t_first_exercise_date<1/512 || std_dev<0.0001){
+		}else if (t_first_exercise_date<1/512 || this.std_dev<0.0001){
                         //degenerate case where swaption is almost expiring or volatility is very low
-                        res=Math.max(this.swap.phi*(this.swap.fixed_rate - fair_rate), 0);
+                        res=Math.max(this.swap.phi*this.moneyness, 0);
                 }else{
                         //bachelier formula      
-                        var d1 = (this.swap.fixed_rate - fair_rate) / std_dev;
-                        res=this.swap.phi*(this.swap.fixed_rate - fair_rate)*library.cndf(this.swap.phi*d1)+std_dev*library.ndf(d1);
+                        var d1 = this.moneyness / this.std_dev;
+                        res=this.swap.phi*this.moneyness*library.cndf(this.swap.phi*d1)+this.std_dev*library.ndf(d1);
                 }
                 res*=this.swap.annuity(disc_curve);
                 res*=this.sign;

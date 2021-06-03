@@ -358,7 +358,10 @@
 					      discount_factors[j]*
 					      (h(cf_obj.t_pmt[j])-h(tte));
 				}
-				std_dev_bachelier=library.get_surface_rate(surface, tte, ttm-tte)*Math.sqrt(tte);
+				//bachelier swaption price and std deviation
+				target=basket[i].present_value(disc_curve, fwd_curve, surface);
+				std_dev_bachelier=basket[i].std_dev;
+
                                 //initial guess
 				xi=Math.pow(std_dev_bachelier*basket[i].swap.annuity(disc_curve)/deno,2);
 

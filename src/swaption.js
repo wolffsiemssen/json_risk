@@ -57,23 +57,25 @@
                         return 0;
                 }       
                 //obtain fwd rate, that is, fair swap rate
-                var fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
+                this.fair_rate=this.swap.fair_rate(disc_curve, fwd_curve);
+		this.moneyness=this.swap.fixed_rate-this.fair_rate;
                 
                 //obtain time-scaled volatility
 		if(typeof vol_surface!=='object' || vol_surface===null) throw new Error("swaption.present_value: must provide valid surface");
-                var std_dev=library.get_surface_rate(vol_surface, t_first_exercise_date, t_term)*Math.sqrt(t_first_exercise_date);
+		this.vol=library.get_cube_rate(vol_surface, t_first_exercise_date, t_term, this.moneyness);
+                this.std_dev=this.vol*Math.sqrt(t_first_exercise_date);
                 
                 var res;
 		if (t_first_exercise_date<0){
 			//degenerate case where swaption has expired in the past
 			return 0;
-		}else if (t_first_exercise_date<1/512 || std_dev<0.0001){
+		}else if (t_first_exercise_date<1/512 || this.std_dev<0.0001){
                         //degenerate case where swaption is almost expiring or volatility is very low
-                        res=Math.max(this.swap.phi*(this.swap.fixed_rate - fair_rate), 0);
+                        res=Math.max(this.swap.phi*this.moneyness, 0);
                 }else{
                         //bachelier formula      
-                        var d1 = (this.swap.fixed_rate - fair_rate) / std_dev;
-                        res=this.swap.phi*(this.swap.fixed_rate - fair_rate)*library.cndf(this.swap.phi*d1)+std_dev*library.ndf(d1);
+                        var d1 = this.moneyness / this.std_dev;
+                        res=this.swap.phi*this.moneyness*library.cndf(this.swap.phi*d1)+this.std_dev*library.ndf(d1);
                 }
                 res*=this.swap.annuity(disc_curve);
                 res*=this.sign;
