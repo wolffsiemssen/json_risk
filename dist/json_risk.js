@@ -1297,7 +1297,7 @@
 		if(!state.length) throw new Error("lgm_dcf: state variable must be an array of numbers");                
 
                 var i=0, j, dh, temp, dh_dh_xi_2;
-		var res=TEMP_ARRAY_PAYOFF;
+		var res=new Float64Array(state.length);
 		var times=cf_obj.t_pmt;
 		var amounts=cf_obj.pmt_total;
 		// move forward to first line after exercise date
@@ -1573,9 +1573,6 @@
 
 	var STD_DEV_RANGE=4;
 	var RESOLUTION=15;
-	var TEMP_ARRAY_PAYOFF=new Float64Array(2*STD_DEV_RANGE*RESOLUTION+1);
-	var TEMP_ARRAY_STATE=new Float64Array(2*STD_DEV_RANGE*RESOLUTION+1);
-
 	/**
 	 	* ...
 		* @param {object} cf_obj
@@ -1622,11 +1619,12 @@
 			* @private
 		*/   
 		function make_state_vector(){ //repopulates state vector and ds measure			
-			TEMP_ARRAY_STATE[0]=-STD_DEV_RANGE*std_dev;
+			var res=new Float64Array(2*STD_DEV_RANGE*RESOLUTION+1);		
+			res[0]=-STD_DEV_RANGE*std_dev;
 			for (i=1; i<n; i++){
-				TEMP_ARRAY_STATE[i]=TEMP_ARRAY_STATE[i-1]+ds;
+				res[i]=res[i-1]+ds;
 			}
-			return TEMP_ARRAY_STATE;
+			return res;
 		}
 		/**
 		 	* TODO
@@ -1674,7 +1672,6 @@
 				x+=increment;
 				i+=1;
 			}
-			dp_hi=library.fast_cndf(x);
 			while(x<STD_DEV_RANGE){
 				if(i >= n) break;
 				dp_hi=library.fast_cndf(x);
