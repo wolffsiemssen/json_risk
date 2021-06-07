@@ -153,7 +153,9 @@ app.controller('main_ctrl', ['$scope', function($scope) { // Controller für ind
 				        "current_accrued_interest",
 				        "first_exercise_date",
 				        "call_tenor",
-				        "opportunity_spread"];
+				        "opportunity_spread",
+					"excl_margin",
+					"simple_calibration"];
 			        export_to_csv_file($scope.portfolio, "portfolio.csv", columns); // function in export.js
 		        }
 	        }
