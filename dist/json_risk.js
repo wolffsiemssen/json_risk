@@ -99,7 +99,7 @@
 		                        maturity: instrument.maturity,
 		                        first_exercise_date: this.call_schedule[i],
 		                        notional: instrument.notional,
-		                        fixed_rate: this.base.fixed_rate[0]-this.opportunity_spread,
+		                        fixed_rate: this.base.fixed_rate[0]-this.opportunity_spread-this.base.excl_margin,
 		                        tenor: 12,
 		                        float_spread: 0.00,
 		                        float_tenor: instrument.float_tenor || 6,
