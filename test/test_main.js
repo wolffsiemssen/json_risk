@@ -1013,6 +1013,19 @@ for (i=0; i<months.length; i++){
 }
 
 
+
+/* 
+
+Test swaption with zero notional
+
+*/
+
+
+swaption.notional=0;
+p1=JsonRisk.pricer_swaption(swaption,curve,curve, surface);
+am(p1===0, "Test swaption with zero notional");
+                
+
 /* 
 
 Test cashflow equivalent swaption generation

@@ -48,6 +48,7 @@
         library.swap.prototype.fair_rate=function(disc_curve, fwd_curve){
                 //returns fair rate, that is, rate such that swap has zero present value
                 var pv_float=this.float_leg.present_value(disc_curve, null, fwd_curve);
+		if(0===pv_float) return 0;
                 return - this.phi * pv_float / this.annuity(disc_curve);
         };
  		/**
