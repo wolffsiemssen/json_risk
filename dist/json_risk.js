@@ -442,14 +442,15 @@
                         t_pmt: array(double),
                         pmt_total: array(double)
                 }
-                requires safe curves
+                requires safe curves (curves may be null)
                 
                 */
-                var dc=disc_curve || library.get_safe_curve(null);
-                var sc=spread_curve || library.get_safe_curve(null);
+                
+
 		library.require_vd(); //valuation date must be set
                 //curve initialisation and fallbacks
                 if(typeof residual_spread !== "number") residual_spread=0;
+		disc_curve=disc_curve || library.get_const_curve(0);
                 var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
 		var tset=library.time_from_now(sd);
@@ -465,10 +466,10 @@
                 var df_residual;
                 while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
                 while (i<cf_obj.t_pmt.length){
-                        df_d=library.get_df(dc,cf_obj.t_pmt[i]);
-                        df_s=library.get_df(sc,cf_obj.t_pmt[i]);
-                        df_residual=(residual_spread!==0) ? Math.pow(1+residual_spread, -cf_obj.t_pmt[i]) : 1;
-                        res+=cf_obj.pmt_total[i]*df_d*df_s*df_residual;
+                        df=library.get_df(disc_curve,cf_obj.t_pmt[i]);
+                        if(spread_curve) df*=library.get_df(spread_curve,cf_obj.t_pmt[i]);
+                        if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
+                        res+=cf_obj.pmt_total[i]*df;
                         i++;
                 }
                 return res;
