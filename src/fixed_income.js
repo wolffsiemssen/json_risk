@@ -482,7 +482,7 @@
     if (this.is_float && (typeof fwd_curve !== 'object' || fwd_curve === null)) throw new Error("fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream");    
     return library.dcf(this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
       library.get_safe_curve(disc_curve),
-      library.get_safe_curve(spread_curve),
+      spread_curve ? library.get_safe_curve(spread_curve) : null,
       this.residual_spread,
       this.settlement_date);
   };

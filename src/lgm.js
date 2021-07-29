@@ -48,26 +48,35 @@
 		*/   
         function get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread){
                 var res=new Array(cf_obj.t_pmt.length+1); //last item holds discount factor for t_exercise
-                var i=0, df;
+                var i=0, rate;
+		if(typeof residual_spread !== "number") residual_spread=0;
+		var fast=(!(spread_curve) && 0===residual_spread);
 
 		// move forward to first line after exercise date
                 while(cf_obj.t_pmt[i]<=0) i++;
         
                 //discount factors for cash flows after t_exercise
                 while (i<cf_obj.t_pmt.length){
-			df=library.get_df(disc_curve, cf_obj.t_pmt[i]);
-			if(spread_curve) df*=library.get_df(spread_curve, cf_obj.t_pmt[i]);
-			if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
-			res[i]=df;
+			if(fast){
+				res[i]=library.get_df(disc_curve, cf_obj.t_pmt[i]);
+			}else{
+				rate=library.get_rate(disc_curve, cf_obj.t_pmt[i]);
+				if(spread_curve) rate+=library.get_rate(spread_curve, cf_obj.t_pmt[i]);
+				rate+=residual_spread;
+				res[i]=Math.pow(1+rate, - cf_obj.t_pmt[i]);
+			}
                         i++;
                 }
 
                 //discount factor for t_exercise
-                df=library.get_df(disc_curve, t_exercise);
-		if(spread_curve) df*=library.get_df(spread_curve, t_exercise);
-		if(residual_spread) df*=Math.pow(1+residual_spread, -t_exercise);
-		
-                res[i]=df;
+		if(fast){
+			res[i]=library.get_df(disc_curve, t_exercise);
+		}else{
+	                rate=library.get_rate(disc_curve, t_exercise);
+			if(spread_curve) rate+=library.get_rate(spread_curve, t_exercise);
+			rate+=residual_spread;	
+        	        res[i]=Math.pow(1+rate, -t_exercise);
+		}
                 return res;
         }
 

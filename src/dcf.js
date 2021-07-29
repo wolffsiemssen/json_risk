@@ -38,14 +38,17 @@
                 
                 var res=0;
                 var i=0;
-                var df_d;
-                var df_s;
-                var df_residual;
+                var df, rate;
+		var fast=(!(spread_curve) && 0===residual_spread);
                 while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
                 while (i<cf_obj.t_pmt.length){
-                        df=library.get_df(disc_curve,cf_obj.t_pmt[i]);
-                        if(spread_curve) df*=library.get_df(spread_curve,cf_obj.t_pmt[i]);
-                        if(residual_spread) df*=Math.pow(1+residual_spread, -cf_obj.t_pmt[i]);
+			if(fast){
+				df=library.get_df(disc_curve,cf_obj.t_pmt[i]);
+			}else{
+	                        rate=residual_spread+library.get_rate(disc_curve,cf_obj.t_pmt[i]);
+	                        if(spread_curve) rate+=library.get_rate(spread_curve,cf_obj.t_pmt[i]);
+				df=Math.pow(1+rate, - cf_obj.t_pmt[i]);
+			}
                         res+=cf_obj.pmt_total[i]*df;
                         i++;
                 }
