@@ -3299,105 +3299,105 @@
                 if (len !== stored_params.vector_length) throw new Error("vector_pricing: provided parameters need to have the same length or length one");
         };
 
-	/**
-	 	* ...
-		* @param {object} params parameter
-		* @memberof library
-		* @public
-	*/
-	function name_to_moneyness(str){
-		var s=str.toLowerCase();
-		if (s.endsWith('atm')) return 0; //ATM surface
-		var n=s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
-		if (n.length<2) return null;
-		return n[1]/10000;
+		/**
+		 	* ...
+			* @param {object} params parameter
+			* @memberof library
+			* @public
+		*/
+		function name_to_moneyness(str){
+			var s=str.toLowerCase();
+			if (s.endsWith('atm')) return 0; //ATM surface
+			var n=s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
+			if (n.length<2) return null;
+			return n[1]/10000;
 
-	}
-
-	/**
-	 	* ...
-		* @param {object} params parameter
-		* @memberof library
-		* @public
-	*/
-	function find_smile(name, list){
-		var res=[],moneyness;
-		for (var i=0;i<list.length;i++){
-			if (!list[i].startsWith(name)) continue; //not a smile section of surface name
-			if (list[i].length===name.length) continue; //this is the surface itself
-			moneyness=name_to_moneyness(list[i]);
-			if (null===moneyness) continue;
-			res.push({ name: list[i],
-				   moneyness: moneyness
-			});
 		}
-		res.sort(function(a,b){
-			return a.moneyness-b.moneyness;
-		});
-		return res;
-	} 
+
+		/**
+		 	* ...
+			* @param {object} params parameter
+			* @memberof library
+			* @public
+		*/
+		function find_smile(name, list){
+			var res=[],moneyness;
+			for (var i=0;i<list.length;i++){
+				if (!list[i].startsWith(name)) continue; //not a smile section of surface name
+				if (list[i].length===name.length) continue; //this is the surface itself
+				moneyness=name_to_moneyness(list[i]);
+				if (null===moneyness) continue;
+				res.push({ name: list[i],
+					   moneyness: moneyness
+				});
+			}
+			res.sort(function(a,b){
+				return a.moneyness-b.moneyness;
+			});
+			return res;
+		} 
        
         library.store_params=function(params){
-                stored_params={vector_length: 1,
+            stored_params={vector_length: 1,
 			       scalars: {},
 			       curves: {},
 			       surfaces: {}
 	        };
 
-                var keys, i;
-                //valuation date
-                stored_params.valuation_date=library.get_safe_date(params.valuation_date);
-                //scalars
-                if (typeof(params.scalars) === 'object'){
-                        keys=Object.keys(params.scalars);
-                        for (i=0; i< keys.length;i++){
-                                stored_params.scalars[keys[i]]=normalise_scalar(params.scalars[keys[i]]);
-                                update_vector_length(stored_params.scalars[keys[i]].value.length);
-                        }
+            var keys, i;
+            //valuation date
+            stored_params.valuation_date=library.get_safe_date(params.valuation_date);
+            //scalars
+            if (typeof(params.scalars) === 'object'){
+                    keys=Object.keys(params.scalars);
+                    for (i=0; i< keys.length;i++){
+                            stored_params.scalars[keys[i]]=normalise_scalar(params.scalars[keys[i]]);
+                            update_vector_length(stored_params.scalars[keys[i]].value.length);
+                    }
+            }
+            //curves
+            if (typeof(params.curves) === 'object'){
+                    keys=Object.keys(params.curves);
+                    var obj,len;
+                    for (i=0; i< keys.length;i++){
+                            obj=normalise_curve(params.curves[keys[i]]);
+                            stored_params.curves[keys[i]]=obj;
+                            len=obj.dfs ? obj.dfs.length : obj.zcs.length;
+                            update_vector_length(len);
+                    }
+            }
+            
+            //surfaces
+			var smile,moneyness,j;
+            if (typeof(params.surfaces) === 'object'){
+                keys=Object.keys(params.surfaces);
+                for (i=0; i< keys.length;i++){
+                        stored_params.surfaces[keys[i]]=normalise_surface(params.surfaces[keys[i]]);
+                        update_vector_length(stored_params.surfaces[keys[i]].values.length);
                 }
-                //curves
-                if (typeof(params.curves) === 'object'){
-                        keys=Object.keys(params.curves);
-                        var obj,len;
-                        for (i=0; i< keys.length;i++){
-                                obj=normalise_curve(params.curves[keys[i]]);
-                                stored_params.curves[keys[i]]=obj;
-                                len=obj.dfs ? obj.dfs.length : obj.zcs.length;
-                                update_vector_length(len);
-                        }
-                }
-                
-                //surfaces
-		var smile,moneyness,j;
-                if (typeof(params.surfaces) === 'object'){
-                        keys=Object.keys(params.surfaces);
-                        for (i=0; i< keys.length;i++){
-                                stored_params.surfaces[keys[i]]=normalise_surface(params.surfaces[keys[i]]);
-                                update_vector_length(stored_params.surfaces[keys[i]].values.length);
-                        }
-			//link smile surfaces to their atm surface
-                        for (i=0; i< keys.length;i++){
-                                smile=find_smile(keys[i],keys);
-				if (smile.length>0){
-					stored_params.surfaces[keys[i]].smile=[];
-					stored_params.surfaces[keys[i]].moneyness=[];
-					for (j=0;j<smile.length;j++){
-						stored_params.surfaces[keys[i]].smile.push(stored_params.surfaces[smile[j].name]);
-						stored_params.surfaces[keys[i]].moneyness.push(smile[j].moneyness);
+				//link smile surfaces to their atm surface
+                for (i=0; i< keys.length;i++){
+                    smile=find_smile(keys[i],keys);
+					if (smile.length>0){
+						stored_params.surfaces[keys[i]].smile=[];
+						stored_params.surfaces[keys[i]].moneyness=[];
+						for (j=0;j<smile.length;j++){
+							stored_params.surfaces[keys[i]].smile.push(stored_params.surfaces[smile[j].name]);
+							stored_params.surfaces[keys[i]].moneyness.push(smile[j].moneyness);
+						}
 					}
-				}
-                        }
                 }
+            }
 
-		//calendars
-		var cal;
-		if (typeof(params.calendars) === 'object'){
-                        keys=Object.keys(params.calendars);
-                        for (i=0; i< keys.length;i++){
-				cal=params.calendars[keys[i]];
-				library.add_calendar(keys[i],cal.dates);
-                        }
-		}
+			//calendars
+			var cal;
+			if (typeof(params.calendars) === 'object'){
+		    	keys=Object.keys(params.calendars);
+		    	for (i=0; i< keys.length;i++){
+					cal=params.calendars[keys[i]];
+					library.add_calendar(keys[i],cal.dates);
+				}
+			}
         };
 
 		/**
@@ -3418,8 +3418,8 @@
 			* @public
 		*/   
         library.set_params=function(params){
-		if (typeof(params) !== 'object') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
-		if (typeof(params.vector_length) !== 'number') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
+			if (typeof(params) !== 'object') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
+			if (typeof(params.vector_length) !== 'number') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
                 stored_params=params;
         };
 		/**
