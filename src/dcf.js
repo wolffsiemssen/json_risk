@@ -27,10 +27,10 @@
 		library.require_vd(); //valuation date must be set
                 //curve initialisation and fallbacks
                 if(typeof residual_spread !== "number") residual_spread=0;
-		disc_curve=disc_curve || library.get_const_curve(0);
+				disc_curve=disc_curve || library.get_const_curve(0);
                 var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
-		var tset=library.time_from_now(sd);
+				var tset=library.time_from_now(sd);
 
                 //sanity checks
                 if (undefined===cf_obj.t_pmt || undefined===cf_obj.pmt_total) throw new Error("dcf: invalid cashflow object");
@@ -39,18 +39,18 @@
                 var res=0;
                 var i=0;
                 var df, rate;
-		var fast=(!(spread_curve) && 0===residual_spread);
-                while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
-                while (i<cf_obj.t_pmt.length){
-			if(fast){
-				df=library.get_df(disc_curve,cf_obj.t_pmt[i]);
-			}else{
-	                        rate=residual_spread+library.get_rate(disc_curve,cf_obj.t_pmt[i]);
-	                        if(spread_curve) rate+=library.get_rate(spread_curve,cf_obj.t_pmt[i]);
-				df=Math.pow(1+rate, - cf_obj.t_pmt[i]);
-			}
-                        res+=cf_obj.pmt_total[i]*df;
-                        i++;
+				var fast=(!(spread_curve) && 0===residual_spread);
+		        while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
+		        while (i<cf_obj.t_pmt.length){
+					if(fast){
+						df=disc_curve.get_df(cf_obj.t_pmt[i]);
+					}else{
+						rate=residual_spread+disc_curve.get_rate(cf_obj.t_pmt[i]);
+						if(spread_curve) rate+=spread_curve.get_rate(cf_obj.t_pmt[i]);
+						df=Math.pow(1+rate, - cf_obj.t_pmt[i]);
+					}
+		            res+=cf_obj.pmt_total[i]*df;
+		            i++;
                 }
                 return res;
         };

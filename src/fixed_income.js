@@ -526,8 +526,8 @@
         t_pmt: c.t_pmt,
         pmt_total: pmt
       },
-      disc_curve,
-      spread_curve,
+      library.get_safe_curve(disc_curve),
+      library.get_safe_curve(spread_curve),
       this.residual_spread,
       this.settlement_date);
     res /= this.annuity(disc_curve, spread_curve, fc);

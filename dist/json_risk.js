@@ -152,6 +152,9 @@
 
         if(typeof disc_curve !== 'object' || disc_curve===null) throw new Error("callable_fixed_income.present_value: must provide discount curve");
 		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: must provide forward curve for calibration");
+		library.get_safe_curve(disc_curve);
+		library.get_safe_curve(fwd_curve);
+		if(spread_curve) library.get_safe_curve(spread_curve);
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
 		if(typeof surface!=='object' || surface===null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
@@ -218,11 +221,11 @@
         library.get_const_curve=function(value, type){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
                 if(value <= -1) throw new Error("get_const_curve: invalid input."); 
-                return {
+                return library.get_safe_curve({
                                 type: type || "yield", 
                                 times: [1], 
                                 dfs: [1/(1+value)] //zero rates are act/365 annual compounding
-                       };
+                       });
         };
 
 
@@ -303,64 +306,111 @@
                 return dfs;
         }
         
+
 		/**
-		 	* converts curve in a curve with format {type, times, dfs}
+		 	* obtain discount factor interpolated from times and dfs arrays 
+			* @param {array} times curve times
+			* @param {array} dfs curve discount factors
+			* @param {number} t 
+			* @returns {number} discount factor
+			* @memberof library
+			* @public
+		*/          
+        function get_df(times,dfs,t){
+            var imin=0;
+            var imax=times.length-1;
+            
+            //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
+            if (t<1/512) return 1.0;
+            //curve only has one support point
+			var tmin=times[imin];
+		    if (imin===imax) return (t===tmin) ? dfs[imin] : Math.pow(dfs[imin], t/tmin);
+		    //extrapolation (constant on zero coupon rates)
+			var tmax=times[imax];
+		    if (t<tmin) return Math.pow(dfs[imin], t/tmin);
+			if (t>tmax) return Math.pow(dfs[imax], t/tmax);
+			// binary search
+			var imed,tmed;
+		    while (imin+1!==imax){
+				imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+				tmed=times[imed];
+				if (t>tmed){
+					tmin=tmed;
+					imin=imed;
+				}else{
+					tmax=tmed;
+					imax=imed;
+				}	                       
+		    }
+			//interpolation (linear on discount factors)
+			if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+			var temp=1/(tmax-tmin);
+            return (dfs[imin]*(tmax-t)+dfs[imax]*(t-tmin))*temp;
+        }
+
+
+		/**
+		 	* attaches get_df and other function to curve. If curve is null or falsy, create valid constant curve
 			* @param {object} curve curve
 			* @returns {object} curve
 			* @memberof library
 			* @public
 		*/   
         library.get_safe_curve=function(curve){
-                //if valid curve is given, returns validated curve in most efficient form {type, times, dfs}, 
-                //if null or other falsy argument is given, returns constant zero curve
-                if (!curve) return library.get_const_curve(0.0);
-                return {
-                                type: "yield", 
-                                times: library.get_curve_times(curve),
-                                dfs: get_curve_dfs(curve)
-                        };
+                //if null or other falsy argument is given, returns constant curve
+                if (!curve) curve={
+					times: [1],
+					dfs: [1]
+				};
+
+				// extract times and discount factors from curve and store in hidden function scope
+				var _times=library.get_curve_times(curve);
+				var _dfs=get_curve_dfs(curve);
+
+				// define get_df closure based on hidden variables		
+				curve.get_df=function(t){
+						return get_df(_times,_dfs,t);
+				};
+
+				// attach get_rate based on get_df
+				curve.get_rate=function(t){
+					if (t<1/512) return 0.0;
+					return Math.pow(this.get_df(t),-1/t)-1;
+				};
+
+				// attach get_fwd_rate based on get_df
+				curve.get_fwd_rate=function(tstart,tend){
+					if (tend-tstart<1/512) return 0.0;
+					return Math.pow(this.get_df(tend) / this.get_df(tstart),-1/(tend-tstart))-1;
+				};
+
+				// attach get_times closure in order to reobtain hidden times when needed
+				curve.get_times=function(){
+					return _times;
+				};
+
+				// attach get_dfs closure in order to reobtain hidden dfs when needed
+				curve.get_dfs=function(){
+					return _dfs;
+				};
+
+				return curve;
         };
 
-	/**
-	 	* TODO
-		* @param {object} curve curve
-		* @param {number} t 
-		* @param {number} imin
-		* @param {number} imax
-		* @returns {number} discount factor
-		* @memberof library
-		* @public
-	*/          
+
+		/**
+		 	* Get discount factor from curve, calling get_safe_curve in case curve.get_df is not defined
+			* @param {object} curve curve
+			* @param {number} t 
+			* @param {number} imin
+			* @param {number} imax
+			* @returns {number} discount factor
+			* @memberof library
+			* @public
+		*/          
         library.get_df=function(curve,t){
-                var imin=0;
-                var imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
-                
-                //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
-                if (t<1/512) return 1.0;
-                //curve only has one support point
-		var tmin=get_time_at(curve,imin);
-                if (imin===imax) return (t===tmin) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/tmin);
-                //extrapolation (constant on zero coupon rates)
-		var tmax=get_time_at(curve,imax);
-                if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
-                if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
-		// binary search
-		var imed,tmed;
-                while (imin+1!==imax){
-			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
-			tmed=get_time_at(curve,imed);
-			if (t>tmed){
-				tmin=tmed;
-				imin=imed;
-			}else{
-				tmax=tmed;
-				imax=imed;
-			}	                       
-                }
-		//interpolation (linear on discount factors)
-		if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-		var temp=1/(tmax-tmin);
-                return (get_df_at(curve,imin)*(tmax-t)+get_df_at(curve,imax)*(t-tmin))*temp;
+			if (curve.get_df instanceof Function) return curve.get_df(t);
+			return library.get_safe_curve(curve).get_df(t);
         };
 
 
@@ -373,8 +423,8 @@
 			* @public
 		*/  
         library.get_rate=function(curve,t){
-                if (t<1/512) return 0.0;
-                return Math.pow(library.get_df(curve,t),-1/t)-1;
+			if (curve.get_rate instanceof Function) return curve.get_rate(t);
+			return library.get_safe_curve(curve).get_rate(t);
         };
 
 		/**
@@ -387,8 +437,8 @@
 			* @public
 		*/  
         library.get_fwd_rate=function(curve,tstart,tend){
-                if (tend-tstart<1/512) return 0.0;
-                return Math.pow(library.get_df(curve,tend) / library.get_df(curve,tstart),-1/(tend-tstart))-1;
+			if (curve.get_fwd_rate instanceof Function) return curve.get_fwd_rate(tstart,tend);
+			return library.get_safe_curve(curve).get_fwd_rate(tstart,tend);
         };
 
 
@@ -401,23 +451,23 @@
 			* @memberof library
 			* @public
 		*/ 
-	library.add_curves=function(c1, c2){
-		var t1=library.get_curve_times(c1);
-		var t2=library.get_curve_times(c2);
-		var times=[], i1=0, i2=0, tmin;
-		var zcs=[];
-		while(true){
-			tmin=Number.POSITIVE_INFINITY;
-			if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
-			if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
-			times.push(tmin);
-			zcs.push(library.get_rate(c1,tmin)+library.get_rate(c2, tmin));
-			if(tmin===t1[i1] && i1<t1.length) i1++;
-			if(tmin===t2[i2] && i2<t2.length) i2++;
-			if(i1===t1.length && i2===t2.length) break;
-		}
-		return {times:times, zcs: zcs};
-	};
+		library.add_curves=function(c1, c2){
+			var t1=library.get_curve_times(c1);
+			var t2=library.get_curve_times(c2);
+			var times=[], i1=0, i2=0, tmin;
+			var zcs=[];
+			while(true){
+				tmin=Number.POSITIVE_INFINITY;
+				if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
+				if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
+				times.push(tmin);
+				zcs.push(library.get_rate(c1,tmin)+library.get_rate(c2, tmin));
+				if(tmin===t1[i1] && i1<t1.length) i1++;
+				if(tmin===t2[i2] && i2<t2.length) i2++;
+				if(i1===t1.length && i2===t2.length) break;
+			}
+			return {times:times, zcs: zcs};
+		};
 
 
 }(this.JsonRisk || module.exports));
@@ -450,10 +500,10 @@
 		library.require_vd(); //valuation date must be set
                 //curve initialisation and fallbacks
                 if(typeof residual_spread !== "number") residual_spread=0;
-		disc_curve=disc_curve || library.get_const_curve(0);
+				disc_curve=disc_curve || library.get_const_curve(0);
                 var sd=library.get_safe_date(settlement_date);
                 if (!sd) sd=library.valuation_date;
-		var tset=library.time_from_now(sd);
+				var tset=library.time_from_now(sd);
 
                 //sanity checks
                 if (undefined===cf_obj.t_pmt || undefined===cf_obj.pmt_total) throw new Error("dcf: invalid cashflow object");
@@ -462,18 +512,18 @@
                 var res=0;
                 var i=0;
                 var df, rate;
-		var fast=(!(spread_curve) && 0===residual_spread);
-                while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
-                while (i<cf_obj.t_pmt.length){
-			if(fast){
-				df=library.get_df(disc_curve,cf_obj.t_pmt[i]);
-			}else{
-	                        rate=residual_spread+library.get_rate(disc_curve,cf_obj.t_pmt[i]);
-	                        if(spread_curve) rate+=library.get_rate(spread_curve,cf_obj.t_pmt[i]);
-				df=Math.pow(1+rate, - cf_obj.t_pmt[i]);
-			}
-                        res+=cf_obj.pmt_total[i]*df;
-                        i++;
+				var fast=(!(spread_curve) && 0===residual_spread);
+		        while(cf_obj.t_pmt[i]<=tset) i++; // only consider cashflows after settlement date
+		        while (i<cf_obj.t_pmt.length){
+					if(fast){
+						df=disc_curve.get_df(cf_obj.t_pmt[i]);
+					}else{
+						rate=residual_spread+disc_curve.get_rate(cf_obj.t_pmt[i]);
+						if(spread_curve) rate+=spread_curve.get_rate(cf_obj.t_pmt[i]);
+						df=Math.pow(1+rate, - cf_obj.t_pmt[i]);
+					}
+		            res+=cf_obj.pmt_total[i]*df;
+		            i++;
                 }
                 return res;
         };
@@ -1029,8 +1079,8 @@
         t_pmt: c.t_pmt,
         pmt_total: pmt
       },
-      disc_curve,
-      spread_curve,
+      library.get_safe_curve(disc_curve),
+      library.get_safe_curve(spread_curve),
       this.residual_spread,
       this.settlement_date);
     res /= this.annuity(disc_curve, spread_curve, fc);
@@ -1167,8 +1217,6 @@
 }(this.JsonRisk || module.exports));
 ;(function(library){
 
-
-
         /*
         
                 JsonRisk LGM (a.k.a. Hull-White) model
@@ -1225,10 +1273,10 @@
                 //discount factors for cash flows after t_exercise
                 while (i<cf_obj.t_pmt.length){
 			if(fast){
-				res[i]=library.get_df(disc_curve, cf_obj.t_pmt[i]);
+				res[i]=disc_curve.get_df(cf_obj.t_pmt[i]);
 			}else{
-				rate=library.get_rate(disc_curve, cf_obj.t_pmt[i]);
-				if(spread_curve) rate+=library.get_rate(spread_curve, cf_obj.t_pmt[i]);
+				rate=disc_curve.get_rate(cf_obj.t_pmt[i]);
+				if(spread_curve) rate+=spread_curve.get_rate(cf_obj.t_pmt[i]);
 				rate+=residual_spread;
 				res[i]=Math.pow(1+rate, - cf_obj.t_pmt[i]);
 			}
@@ -1237,10 +1285,10 @@
 
                 //discount factor for t_exercise
 		if(fast){
-			res[i]=library.get_df(disc_curve, t_exercise);
+			res[i]=disc_curve.get_df(t_exercise);
 		}else{
-	                rate=library.get_rate(disc_curve, t_exercise);
-			if(spread_curve) rate+=library.get_rate(spread_curve, t_exercise);
+	                rate=disc_curve.get_rate(t_exercise);
+			if(spread_curve) rate+=spread_curve.get_rate(t_exercise);
 			rate+=residual_spread;	
         	        res[i]=Math.pow(1+rate, -t_exercise);
 		}
@@ -2644,18 +2692,18 @@
                 var cup=library.get_const_curve(irr+0.0001);
                 var cdown=library.get_const_curve(irr-0.0001);
                 var npv_up=library.dcf(cf_obj, cup, null, null, first_exercise_date);
-                npv_up/=library.get_df(cup,tte);
+                npv_up/=cup.get_df(tte);
                 var npv_down=library.dcf(cf_obj, cdown, null, null, first_exercise_date);
-                npv_down/=library.get_df(cdown,tte);
+                npv_down/=cdown.get_df(tte);
                 var effective_duration_target=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                 
                 //brief function to compute forward effective duration
                 var ed=function(bond){   
                         var bond_internal=new library.fixed_income(bond);  
                         npv_up=bond_internal.present_value(cup);
-                        npv_up/=library.get_df(cup,tte);
+                        npv_up/=cup.get_df(tte);
                         npv_down=bond_internal.present_value(cdown);
-                        npv_down/=library.get_df(cdown,tte);
+                        npv_down/=cdown.get_df(tte);
                         var res=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                         return res;
                 };

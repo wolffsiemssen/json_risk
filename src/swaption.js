@@ -132,18 +132,18 @@
                 var cup=library.get_const_curve(irr+0.0001);
                 var cdown=library.get_const_curve(irr-0.0001);
                 var npv_up=library.dcf(cf_obj, cup, null, null, first_exercise_date);
-                npv_up/=library.get_df(cup,tte);
+                npv_up/=cup.get_df(tte);
                 var npv_down=library.dcf(cf_obj, cdown, null, null, first_exercise_date);
-                npv_down/=library.get_df(cdown,tte);
+                npv_down/=cdown.get_df(tte);
                 var effective_duration_target=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                 
                 //brief function to compute forward effective duration
                 var ed=function(bond){   
                         var bond_internal=new library.fixed_income(bond);  
                         npv_up=bond_internal.present_value(cup);
-                        npv_up/=library.get_df(cup,tte);
+                        npv_up/=cup.get_df(tte);
                         npv_down=bond_internal.present_value(cdown);
-                        npv_down/=library.get_df(cdown,tte);
+                        npv_down/=cdown.get_df(tte);
                         var res=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                         return res;
                 };

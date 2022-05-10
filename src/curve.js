@@ -15,11 +15,11 @@
         library.get_const_curve=function(value, type){
                 if(typeof value !== 'number') throw new Error("get_const_curve: input must be number."); 
                 if(value <= -1) throw new Error("get_const_curve: invalid input."); 
-                return {
+                return library.get_safe_curve({
                                 type: type || "yield", 
                                 times: [1], 
                                 dfs: [1/(1+value)] //zero rates are act/365 annual compounding
-                       };
+                       });
         };
 
 
@@ -100,64 +100,111 @@
                 return dfs;
         }
         
+
 		/**
-		 	* converts curve in a curve with format {type, times, dfs}
+		 	* obtain discount factor interpolated from times and dfs arrays 
+			* @param {array} times curve times
+			* @param {array} dfs curve discount factors
+			* @param {number} t 
+			* @returns {number} discount factor
+			* @memberof library
+			* @public
+		*/          
+        function get_df(times,dfs,t){
+            var imin=0;
+            var imax=times.length-1;
+            
+            //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
+            if (t<1/512) return 1.0;
+            //curve only has one support point
+			var tmin=times[imin];
+		    if (imin===imax) return (t===tmin) ? dfs[imin] : Math.pow(dfs[imin], t/tmin);
+		    //extrapolation (constant on zero coupon rates)
+			var tmax=times[imax];
+		    if (t<tmin) return Math.pow(dfs[imin], t/tmin);
+			if (t>tmax) return Math.pow(dfs[imax], t/tmax);
+			// binary search
+			var imed,tmed;
+		    while (imin+1!==imax){
+				imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
+				tmed=times[imed];
+				if (t>tmed){
+					tmin=tmed;
+					imin=imed;
+				}else{
+					tmax=tmed;
+					imax=imed;
+				}	                       
+		    }
+			//interpolation (linear on discount factors)
+			if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
+			var temp=1/(tmax-tmin);
+            return (dfs[imin]*(tmax-t)+dfs[imax]*(t-tmin))*temp;
+        }
+
+
+		/**
+		 	* attaches get_df and other function to curve. If curve is null or falsy, create valid constant curve
 			* @param {object} curve curve
 			* @returns {object} curve
 			* @memberof library
 			* @public
 		*/   
         library.get_safe_curve=function(curve){
-                //if valid curve is given, returns validated curve in most efficient form {type, times, dfs}, 
-                //if null or other falsy argument is given, returns constant zero curve
-                if (!curve) return library.get_const_curve(0.0);
-                return {
-                                type: "yield", 
-                                times: library.get_curve_times(curve),
-                                dfs: get_curve_dfs(curve)
-                        };
+                //if null or other falsy argument is given, returns constant curve
+                if (!curve) curve={
+					times: [1],
+					dfs: [1]
+				};
+
+				// extract times and discount factors from curve and store in hidden function scope
+				var _times=library.get_curve_times(curve);
+				var _dfs=get_curve_dfs(curve);
+
+				// define get_df closure based on hidden variables		
+				curve.get_df=function(t){
+						return get_df(_times,_dfs,t);
+				};
+
+				// attach get_rate based on get_df
+				curve.get_rate=function(t){
+					if (t<1/512) return 0.0;
+					return Math.pow(this.get_df(t),-1/t)-1;
+				};
+
+				// attach get_fwd_rate based on get_df
+				curve.get_fwd_rate=function(tstart,tend){
+					if (tend-tstart<1/512) return 0.0;
+					return Math.pow(this.get_df(tend) / this.get_df(tstart),-1/(tend-tstart))-1;
+				};
+
+				// attach get_times closure in order to reobtain hidden times when needed
+				curve.get_times=function(){
+					return _times;
+				};
+
+				// attach get_dfs closure in order to reobtain hidden dfs when needed
+				curve.get_dfs=function(){
+					return _dfs;
+				};
+
+				return curve;
         };
 
-	/**
-	 	* TODO
-		* @param {object} curve curve
-		* @param {number} t 
-		* @param {number} imin
-		* @param {number} imax
-		* @returns {number} discount factor
-		* @memberof library
-		* @public
-	*/          
+
+		/**
+		 	* Get discount factor from curve, calling get_safe_curve in case curve.get_df is not defined
+			* @param {object} curve curve
+			* @param {number} t 
+			* @param {number} imin
+			* @param {number} imax
+			* @returns {number} discount factor
+			* @memberof library
+			* @public
+		*/          
         library.get_df=function(curve,t){
-                var imin=0;
-                var imax=(curve.times || curve.days || curve.dates || curve.labels).length-1;
-                
-                //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
-                if (t<1/512) return 1.0;
-                //curve only has one support point
-		var tmin=get_time_at(curve,imin);
-                if (imin===imax) return (t===tmin) ? get_df_at(curve,imin) : Math.pow(get_df_at(curve,imin), t/tmin);
-                //extrapolation (constant on zero coupon rates)
-		var tmax=get_time_at(curve,imax);
-                if (t<tmin) return Math.pow(get_df_at(curve,imin), t/tmin);
-                if (t>tmax) return Math.pow(get_df_at(curve,imax), t/tmax);
-		// binary search
-		var imed,tmed;
-                while (imin+1!==imax){
-			imed=(imin+imax)/2.0|0; // truncate the mean time down to the closest integer
-			tmed=get_time_at(curve,imed);
-			if (t>tmed){
-				tmin=tmed;
-				imin=imed;
-			}else{
-				tmax=tmed;
-				imax=imed;
-			}	                       
-                }
-		//interpolation (linear on discount factors)
-		if(tmax-tmin<1/512) throw new Error("get_df_internal: invalid curve, support points must be increasing and differ at least one day");
-		var temp=1/(tmax-tmin);
-                return (get_df_at(curve,imin)*(tmax-t)+get_df_at(curve,imax)*(t-tmin))*temp;
+			if (curve.get_df instanceof Function) return curve.get_df(t);
+			return library.get_safe_curve(curve).get_df(t);
         };
 
 
@@ -170,8 +217,8 @@
 			* @public
 		*/  
         library.get_rate=function(curve,t){
-                if (t<1/512) return 0.0;
-                return Math.pow(library.get_df(curve,t),-1/t)-1;
+			if (curve.get_rate instanceof Function) return curve.get_rate(t);
+			return library.get_safe_curve(curve).get_rate(t);
         };
 
 		/**
@@ -184,8 +231,8 @@
 			* @public
 		*/  
         library.get_fwd_rate=function(curve,tstart,tend){
-                if (tend-tstart<1/512) return 0.0;
-                return Math.pow(library.get_df(curve,tend) / library.get_df(curve,tstart),-1/(tend-tstart))-1;
+			if (curve.get_fwd_rate instanceof Function) return curve.get_fwd_rate(tstart,tend);
+			return library.get_safe_curve(curve).get_fwd_rate(tstart,tend);
         };
 
 
@@ -198,23 +245,23 @@
 			* @memberof library
 			* @public
 		*/ 
-	library.add_curves=function(c1, c2){
-		var t1=library.get_curve_times(c1);
-		var t2=library.get_curve_times(c2);
-		var times=[], i1=0, i2=0, tmin;
-		var zcs=[];
-		while(true){
-			tmin=Number.POSITIVE_INFINITY;
-			if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
-			if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
-			times.push(tmin);
-			zcs.push(library.get_rate(c1,tmin)+library.get_rate(c2, tmin));
-			if(tmin===t1[i1] && i1<t1.length) i1++;
-			if(tmin===t2[i2] && i2<t2.length) i2++;
-			if(i1===t1.length && i2===t2.length) break;
-		}
-		return {times:times, zcs: zcs};
-	};
+		library.add_curves=function(c1, c2){
+			var t1=library.get_curve_times(c1);
+			var t2=library.get_curve_times(c2);
+			var times=[], i1=0, i2=0, tmin;
+			var zcs=[];
+			while(true){
+				tmin=Number.POSITIVE_INFINITY;
+				if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
+				if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
+				times.push(tmin);
+				zcs.push(library.get_rate(c1,tmin)+library.get_rate(c2, tmin));
+				if(tmin===t1[i1] && i1<t1.length) i1++;
+				if(tmin===t2[i2] && i2<t2.length) i2++;
+				if(i1===t1.length && i2===t2.length) break;
+			}
+			return {times:times, zcs: zcs};
+		};
 
 
 }(this.JsonRisk || module.exports));

@@ -115,6 +115,9 @@
 
         if(typeof disc_curve !== 'object' || disc_curve===null) throw new Error("callable_fixed_income.present_value: must provide discount curve");
 		if(typeof fwd_curve !== 'object' || fwd_curve===null) throw new Error("callable_fixed_income.present_value: must provide forward curve for calibration");
+		library.get_safe_curve(disc_curve);
+		library.get_safe_curve(fwd_curve);
+		if(spread_curve) library.get_safe_curve(spread_curve);
 				
 		//calibrate lgm model - returns xi for non-expired swaptions only
 		if(typeof surface!=='object' || surface===null) throw new Error("callable_fixed_income.present_value: must provide valid surface");

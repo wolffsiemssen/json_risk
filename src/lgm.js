@@ -1,7 +1,5 @@
 (function(library){
 
-
-
         /*
         
                 JsonRisk LGM (a.k.a. Hull-White) model
@@ -58,10 +56,10 @@
                 //discount factors for cash flows after t_exercise
                 while (i<cf_obj.t_pmt.length){
 			if(fast){
-				res[i]=library.get_df(disc_curve, cf_obj.t_pmt[i]);
+				res[i]=disc_curve.get_df(cf_obj.t_pmt[i]);
 			}else{
-				rate=library.get_rate(disc_curve, cf_obj.t_pmt[i]);
-				if(spread_curve) rate+=library.get_rate(spread_curve, cf_obj.t_pmt[i]);
+				rate=disc_curve.get_rate(cf_obj.t_pmt[i]);
+				if(spread_curve) rate+=spread_curve.get_rate(cf_obj.t_pmt[i]);
 				rate+=residual_spread;
 				res[i]=Math.pow(1+rate, - cf_obj.t_pmt[i]);
 			}
@@ -70,10 +68,10 @@
 
                 //discount factor for t_exercise
 		if(fast){
-			res[i]=library.get_df(disc_curve, t_exercise);
+			res[i]=disc_curve.get_df(t_exercise);
 		}else{
-	                rate=library.get_rate(disc_curve, t_exercise);
-			if(spread_curve) rate+=library.get_rate(spread_curve, t_exercise);
+	                rate=disc_curve.get_rate(t_exercise);
+			if(spread_curve) rate+=spread_curve.get_rate(t_exercise);
 			rate+=residual_spread;	
         	        res[i]=Math.pow(1+rate, -t_exercise);
 		}
