@@ -3281,8 +3281,9 @@
 			* @memberof library
 			* @private
 		*/           
-        var normalise_scalar=function(obj){ //makes value an array of length one if it is not an array
-                return (Array.isArray(obj.value)) ? {value: obj.value} : {value: [obj.value]};
+        var normalise_scalar=function(obj, name){ //makes value an array of length one if it is not an array
+				var val=(Array.isArray(obj.value)) ? obj.value : [obj.value];
+                return {value: val, name: name || null};
         };
 
 		/**
@@ -3292,22 +3293,23 @@
 			* @memberof library
 			* @private
 		*/           
-        var normalise_curve=function(obj){ // constructs times from days, dates or labels and makes dfs and zcs an array of length one if it is not an array
+        var normalise_curve=function(obj, name){ // constructs times from days, dates or labels and makes dfs and zcs an array of length one if it is not an array
                 var times=library.get_curve_times(obj),
                     dfs=obj.dfs ? ((Array.isArray(obj.dfs[0])) ? obj.dfs : [obj.dfs]) : null,
                     zcs=obj.zcs ? ((Array.isArray(obj.zcs[0])) ? obj.zcs : [obj.zcs]) : null;
 		
-		if (!dfs){
-			dfs=new Array(zcs.length);
-			for (var i=0;i<zcs.length;i++){
-				dfs[i]=new Array(zcs[i].length);
-				for (var j=0;j<zcs[i].length;j++){
-					dfs[i][j]=Math.pow(1+zcs[i][j],-times[j]);
+				if (!dfs){
+					dfs=new Array(zcs.length);
+					for (var i=0;i<zcs.length;i++){
+						dfs[i]=new Array(zcs[i].length);
+						for (var j=0;j<zcs[i].length;j++){
+							dfs[i][j]=Math.pow(1+zcs[i][j],-times[j]);
+						}
+					}
 				}
-			}
-		}
 
                 return {
+						name: name || null,
                         times: times,
                         dfs: dfs
                 };
@@ -3321,9 +3323,10 @@
 			* @memberof library
 			* @private
 		*/           
-        var normalise_surface=function(obj){ // constructs terms from labels_term, expiries from labels_expiry and makes value an array of length one if it is not an array
+        var normalise_surface=function(obj,name){ // constructs terms from labels_term, expiries from labels_expiry and makes value an array of length one if it is not an array
                 var safe_surface=library.get_safe_surface(obj); //has terms and expiries
                 return {
+						name: name || null,
                         expiries: safe_surface.expiries,
                         terms: safe_surface.terms,
                         values: (Array.isArray(obj.values[0][0])) ? obj.values : [obj.values]
@@ -3346,6 +3349,72 @@
                 }
                 if (len !== stored_params.vector_length) throw new Error("vector_pricing: provided parameters need to have the same length or length one");
         };
+
+		/**
+		 	* attaches the first matching rule in the n-th scenario from the stored scenario groups to the object
+			* @param {number} n number indicating which scenario to attach, zero means no scenario
+			* @param {object} obj scalar, curve, or surface object
+			* @returns {number} ...
+			* @memberof library
+			* @private
+		*/ 
+		var attach_scenario=function(n,obj){
+			var risk_factor=obj.name || null;
+			var tags=obj.tags || [];
+
+			// unset scenario rule
+			delete obj._rule;
+
+			// return if n is zero
+			if (n===0) return false;
+
+			// return if there are no scenario groups
+			var sg=stored_params.scenario_groups;
+			if (0===sg.length) return false;
+
+			// find n-th scenario
+			var i=1;i_group=0; i_scen=0;
+			while (i<n){
+				i++;
+				if (i_scen<sg[i_group].length){
+					// next scenario
+					i_scen++;
+				}else if(i_group<sg.length){
+					// next scenario group
+					i_scen=0;
+					i_group++;
+				}else{
+					// there are less than n scenarios, just return
+					return false;
+				}
+			}
+			
+			// attach scenario if one of the rules match
+			var scen=sg[i_group][i_scen];
+			var rule;
+			for (var i_rule=0;i_rule<scen.length;i_rule++){
+				rule=scen[i_rule];
+				if (Array.isArray(rule.risk_factors)){
+					// match by risk factors
+					if (rule.risk_factors.indexOf(risk_factor) > -1){
+						obj._rule=rule; 
+						return true;
+					}
+				}
+				if (Array.isArray(rule.tags)){
+					// if no exact match by risk factors, all tags of that rule must match
+					var found=true;
+					for (i=0;i<rule.tags.length;i++){
+						if (tags.indexOf(rule.tags[i] === -1)) found=false;
+					}
+					if (found){
+						obj._rule=rule; 
+						return true;
+					}
+				}
+			}	
+			return false;
+		};
 
 		/**
 		 	* ...
@@ -3389,7 +3458,8 @@
             stored_params={vector_length: 1,
 			       scalars: {},
 			       curves: {},
-			       surfaces: {}
+			       surfaces: {},
+				   scenario_groups: []
 	        };
 
             var keys, i;
@@ -3399,7 +3469,7 @@
             if (typeof(params.scalars) === 'object'){
                     keys=Object.keys(params.scalars);
                     for (i=0; i< keys.length;i++){
-                            stored_params.scalars[keys[i]]=normalise_scalar(params.scalars[keys[i]]);
+                            stored_params.scalars[keys[i]]=normalise_scalar(params.scalars[keys[i]], keys[i]);
                             update_vector_length(stored_params.scalars[keys[i]].value.length);
                     }
             }
@@ -3408,7 +3478,7 @@
                     keys=Object.keys(params.curves);
                     var obj,len;
                     for (i=0; i< keys.length;i++){
-                            obj=normalise_curve(params.curves[keys[i]]);
+                            obj=normalise_curve(params.curves[keys[i]],keys[i]);
                             stored_params.curves[keys[i]]=obj;
                             len=obj.dfs ? obj.dfs.length : obj.zcs.length;
                             update_vector_length(len);
@@ -3420,7 +3490,7 @@
             if (typeof(params.surfaces) === 'object'){
                 keys=Object.keys(params.surfaces);
                 for (i=0; i< keys.length;i++){
-                        stored_params.surfaces[keys[i]]=normalise_surface(params.surfaces[keys[i]]);
+                        stored_params.surfaces[keys[i]]=normalise_surface(params.surfaces[keys[i]], keys[i]);
                         update_vector_length(stored_params.surfaces[keys[i]].values.length);
                 }
 				//link smile surfaces to their atm surface
@@ -3446,7 +3516,20 @@
 					library.add_calendar(keys[i],cal.dates);
 				}
 			}
+
+			//scenario groups
+			if (Array.isArray(params.scenario_groups)){
+	            stored_params.scenario_groups=params.scenario_groups;
+				var l=0;
+				for (i=0;i<params.scenario_groups.length;i++){
+					if(!Array.isArray(params.scenario_groups[i])) throw new Error("vector_pricing: invalid parameters, scenario groups must be arrays.");
+					l+=params.scenario_groups[i].length;
+				}
+				// scenarios do not include base scenario, so length is sum of array lenghts plus one
+				update_vector_length(l+1);	
+			}
         };
+
 
 		/**
 		 	* ...
@@ -3457,6 +3540,7 @@
         library.get_params=function(){
                 return stored_params;
         };
+
 
 		/**
 		 	* ...
@@ -3470,6 +3554,8 @@
 			if (typeof(params.vector_length) !== 'number') throw new Error("vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.");
                 stored_params=params;
         };
+
+
 		/**
 		 	* ...
 			* @param {object} vec_curve
@@ -3480,15 +3566,16 @@
 		*/           
         var get_scalar_curve=function(vec_curve, i){
                 if (!vec_curve) return null;
-		var times=vec_curve.times,
-                    dfs=vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null;
+				var times=vec_curve.times;
+				var dfs=vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null;
 
-		return{ 
-			times: times,
-			dfs:dfs
-		};
-
+				return{ 
+					times: times,
+					dfs:dfs
+				};
         };
+
+
 		/**
 		 	* ...
 			* @param {object} vec_surface
@@ -3498,24 +3585,24 @@
 			* @private
 		*/         
         var get_scalar_surface=function(vec_surface, i, nosmile){
-                if (!vec_surface) return null;
-		var expiries=vec_surface.expiries;
-		var terms=vec_surface.terms;
-		var values=vec_surface.values[vec_surface.values.length>1 ? i : 0];
-		var smile=null,moneyness=null,j;
-		if (nosmile!==true && Array.isArray(vec_surface.smile) && Array.isArray(vec_surface.moneyness)){
-			moneyness=vec_surface.moneyness;
-			smile=[];
-			for (j=0;j<vec_surface.smile.length;j++){
-				smile.push(get_scalar_surface(vec_surface.smile[j],i,true));
+        	if (!vec_surface) return null;
+			var expiries=vec_surface.expiries;
+			var terms=vec_surface.terms;
+			var values=vec_surface.values[vec_surface.values.length>1 ? i : 0];
+			var smile=null,moneyness=null,j;
+			if (nosmile!==true && Array.isArray(vec_surface.smile) && Array.isArray(vec_surface.moneyness)){
+				moneyness=vec_surface.moneyness;
+				smile=[];
+				for (j=0;j<vec_surface.smile.length;j++){
+					smile.push(get_scalar_surface(vec_surface.smile[j],i,true));
+				}
 			}
-		}
-                return { expiries: expiries,
-                         terms: terms,
-                         values: values,
-			 moneyness: moneyness,
-			 smile: smile
-                };
+            return { expiries: expiries,
+                     terms: terms,
+                     values: values,
+					 moneyness: moneyness,
+					 smile: smile
+            };
         };
 
 		/**
@@ -3529,7 +3616,7 @@
                 switch (instrument.type.toLowerCase()){
                         case "bond":
                         case "floater":
-			return new library.fixed_income(instrument);
+						return new library.fixed_income(instrument);
                         case "swap":
                         return new library.swap(instrument);
                         case "swaption":
@@ -3566,6 +3653,12 @@
                         sc=get_scalar_curve(vec_sc, i);
                         fc=get_scalar_curve(vec_fc, i);
                         su=get_scalar_surface(vec_surface, i);
+
+						if (dc) attach_scenario(i,dc);
+						if (sc) attach_scenario(i,sc);
+						if (fc) attach_scenario(i,fc);
+						if (su) attach_scenario(i,su);
+
                         switch (instrument.type.toLowerCase()){
                                 case "bond":
                                 case "floater":
