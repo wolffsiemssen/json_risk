@@ -1,4 +1,22 @@
-var test_pf=[
+(function(root, data)
+{
+    if (typeof module === 'object' && typeof exports !== 'undefined')
+	{
+		// Node
+		module.exports = data;
+	}
+	else
+	{
+		// Browser
+		root.portfolio = data;
+	}
+}(this, 
+/*
+
+	data below here
+
+*/
+[
  {
   "id": 1,
   "type": "bond",
@@ -3309,5 +3327,4 @@ var test_pf=[
   "spread_curve": "EURO-GOV",
   "call_tenor": 1
  }
-]
-;
+]));

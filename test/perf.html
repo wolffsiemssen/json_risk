@@ -2,28 +2,28 @@
 <html>
   <head>
     <title>JSON Risk TEST</title>
+
+  <script src="../dist/json_risk.js"></script>
+  <script src="params_example.js"></script>
+  <script src="portfolio_example.js"></script>
   </head>
   <body>
     <button onclick="pftest()">Start performance test</button></br>
     
   </body>
-  <script src="../dist/json_risk.js"></script>
-  <script src="params_example.js"></script>
-  <script src="portfolio_example.js"></script>
   <script>
-
         function output(msg){
                 m=msg+'</br>';
                 document.body.innerHTML+=m;
         }
         var pftest=function(){
                 output("Starting performance test...");
-                JsonRisk.store_params(test_params);
+                JsonRisk.store_params(params);
 
-                var n=JsonRisk.vector_pricer(test_pf[0]).length;
+                var n=JsonRisk.vector_pricer(portfolio[0]).length;
                 var t0 = new Date().getTime();
-                for (j=1;j<test_pf.length;j++){
-	                JsonRisk.vector_pricer(test_pf[j]);
+                for (j=1;j<portfolio.length;j++){
+	                JsonRisk.vector_pricer(portfolio[j]);
 	                output(""+ (n*j) + " valuations...");
                 }
 
@@ -31,7 +31,7 @@
                 var m;
 
                 output("Valuations took " + (t1 - t0)/1000 + " seconds.");
-                output("1 Mio. instruments with " + n + " Valuations would take " + (1000000*(t1 - t0)/1000/60/60/data.length).toFixed(2) + " hours.");
+                output("1 Mio. instruments with " + n + " Valuations would take " + (1000000*(t1 - t0)/1000/60/60/portfolio.length).toFixed(2) + " hours.");
         }
 
   </script>

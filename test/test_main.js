@@ -1476,8 +1476,7 @@ for (i=0; i<Maturity.length; i++){
 Test vector pricing
 
 */
-
-var params=(typeof(test_params)==='object') ? test_params : require('./params_example.json');
+if (typeof require === 'function' ) var params=require('./params_example.js');
 JsonRisk.store_params(params);
 var results;
 var check=function(arr){

@@ -1,4 +1,23 @@
-var test_params={
+(function(root, data)
+{
+    if (typeof module === 'object' && typeof exports !== 'undefined')
+	{
+		// Node
+		module.exports = data;
+	}
+	else
+	{
+		// Browser
+		root.params = data;
+	}
+}(this, 
+/*
+
+	data below here
+
+*/
+
+{
  "valuation_date": "31.07.2018",
  "scalars": {
   "EUR-EQUITY": {
@@ -5309,4 +5328,4 @@ var test_params={
 	 "TEST2":
 		{"dates":["01.01.2010", "01.01.2011"]}
 	}
-};
+}));
