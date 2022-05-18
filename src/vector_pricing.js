@@ -20,7 +20,7 @@
 		*/           
         var normalise_scalar=function(obj, name){ //makes value an array of length one if it is not an array
 				var val=(Array.isArray(obj.value)) ? obj.value : [obj.value];
-                return {value: val, name: name || null};
+                return {value: val, tags: obj.tags || null, name: name || null};
         };
 
 		/**
@@ -47,6 +47,7 @@
 
                 return {
 						name: name || null,
+						tags: obj.tags || null,
                         times: times,
                         dfs: dfs
                 };
@@ -64,6 +65,7 @@
                 var safe_surface=library.get_safe_surface(obj); //has terms and expiries
                 return {
 						name: name || null,
+						tags: obj.tags || null,
                         expiries: safe_surface.expiries,
                         terms: safe_surface.terms,
                         values: (Array.isArray(obj.values[0][0])) ? obj.values : [obj.values]
@@ -110,7 +112,7 @@
 			if (0===sg.length) return false;
 
 			// find n-th scenario
-			var i=1;i_group=0; i_scen=0;
+			var i=1, i_group=0, i_scen=0;
 			while (i<n){
 				i++;
 				if (i_scen<sg[i_group].length){
@@ -127,10 +129,10 @@
 			}
 			
 			// attach scenario if one of the rules match
-			var scen=sg[i_group][i_scen];
+			var rules=sg[i_group][i_scen].rules;
 			var rule;
-			for (var i_rule=0;i_rule<scen.length;i_rule++){
-				rule=scen[i_rule];
+			for (var i_rule=0;i_rule<rules.length;i_rule++){
+				rule=rules[i_rule];
 				if (Array.isArray(rule.risk_factors)){
 					// match by risk factors
 					if (rule.risk_factors.indexOf(risk_factor) > -1){
@@ -142,7 +144,7 @@
 					// if no exact match by risk factors, all tags of that rule must match
 					var found=true;
 					for (i=0;i<rule.tags.length;i++){
-						if (tags.indexOf(rule.tags[i] === -1)) found=false;
+						if (tags.indexOf(rule.tags[i]) === -1) found=false;
 					}
 					if (found){
 						obj._rule=rule; 
@@ -306,7 +308,9 @@
 				var times=vec_curve.times;
 				var dfs=vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null;
 
-				return{ 
+				return{
+					name: vec_curve.name || null,
+					tags: vec_curve.tags || null,
 					times: times,
 					dfs:dfs
 				};
@@ -334,11 +338,14 @@
 					smile.push(get_scalar_surface(vec_surface.smile[j],i,true));
 				}
 			}
-            return { expiries: expiries,
-                     terms: terms,
-                     values: values,
-					 moneyness: moneyness,
-					 smile: smile
+            return { 
+				name: vec_surface.name || null,
+				tags: vec_surface.tags || null,
+				expiries: expiries,
+				terms: terms,
+				values: values,
+				moneyness: moneyness,
+				smile: smile
             };
         };
 

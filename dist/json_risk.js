@@ -313,8 +313,6 @@
 			* @param {array} dfs curve discount factors
 			* @param {number} t 
 			* @returns {number} discount factor
-			* @memberof library
-			* @public
 		*/          
         function get_df(times,dfs,t){
             var imin=0;
@@ -348,6 +346,19 @@
             return (dfs[imin]*(tmax-t)+dfs[imax]*(t-tmin))*temp;
         }
 
+		/**
+		 	* obtain zero rate interpolated from times and dfs arrays 
+			* @param {array} times curve times
+			* @param {array} dfs curve discount factors
+			* @param {number} t 
+			* @returns {number} zero rate
+		*/  
+
+		function get_rate(times,dfs,t){
+			if (t<1/512) return 0.0;
+			return Math.pow(get_df(times,dfs,t),-1/t)-1;
+		}
+
 
 		/**
 		 	* attaches get_df and other function to curve. If curve is null or falsy, create valid constant curve
@@ -369,13 +380,12 @@
 
 				// define get_df closure based on hidden variables		
 				curve.get_df=function(t){
-						return get_df(_times,_dfs,t);
+					return get_df(_times,_dfs,t);
 				};
 
 				// attach get_rate based on get_df
 				curve.get_rate=function(t){
-					if (t<1/512) return 0.0;
-					return Math.pow(this.get_df(t),-1/t)-1;
+					return get_rate(_times,_dfs,t);
 				};
 
 				// attach get_fwd_rate based on get_df
@@ -393,6 +403,20 @@
 				curve.get_dfs=function(){
 					return _dfs;
 				};
+
+				// apply scenario rule if present
+				var c=curve;
+				if(typeof curve._rule === 'object'){
+					var tmp={
+						labels: curve._rule.labels_x,
+						zcs: curve._rule.values[0]
+					};
+					if (curve._rule.model==="multiplicative") c=library.multiply_curves(curve,tmp);
+					if (curve._rule.model==="additive") c=library.add_curves(curve,tmp);
+					// extract times and discount factors from scenario affected curve and store in hidden function scope
+					_times=library.get_curve_times(c);
+					_dfs=get_curve_dfs(c);
+				}
 
 				return curve;
         };
@@ -454,6 +478,8 @@
 		library.add_curves=function(c1, c2){
 			var t1=library.get_curve_times(c1);
 			var t2=library.get_curve_times(c2);
+			var d1=get_curve_dfs(c1);
+			var d2=get_curve_dfs(c2);
 			var times=[], i1=0, i2=0, tmin;
 			var zcs=[];
 			while(true){
@@ -461,7 +487,35 @@
 				if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
 				if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
 				times.push(tmin);
-				zcs.push(library.get_rate(c1,tmin)+library.get_rate(c2, tmin));
+				zcs.push(get_rate(t1,d1,tmin)+get_rate(t2,d2,tmin));
+				if(tmin===t1[i1] && i1<t1.length) i1++;
+				if(tmin===t2[i2] && i2<t2.length) i2++;
+				if(i1===t1.length && i2===t2.length) break;
+			}
+			return {times:times, zcs: zcs};
+		};
+
+		/**
+		 	* multiplies two curves (times of curves can be different)
+			* @param {object} c1 curve
+			* @param {object} c2 curve
+			* @returns {object} curve {times:times, zcs: zcs}
+			* @memberof library
+			* @public
+		*/ 
+		library.multiply_curves=function(c1, c2){
+			var t1=library.get_curve_times(c1);
+			var t2=library.get_curve_times(c2);
+			var d1=get_curve_dfs(c1);
+			var d2=get_curve_dfs(c2);
+			var times=[], i1=0, i2=0, tmin;
+			var zcs=[];
+			while(true){
+				tmin=Number.POSITIVE_INFINITY;
+				if(i1<t1.length) tmin=Math.min(t1[i1], tmin);
+				if(i2<t2.length) tmin=Math.min(t2[i2], tmin);
+				times.push(tmin);
+				zcs.push(get_rate(t1,d1,tmin)*get_rate(t2,d2,tmin));
 				if(tmin===t1[i1] && i1<t1.length) i1++;
 				if(tmin===t2[i2] && i2<t2.length) i2++;
 				if(i1===t1.length && i2===t2.length) break;
@@ -497,7 +551,7 @@
                 */
                 
 
-		library.require_vd(); //valuation date must be set
+				library.require_vd(); //valuation date must be set
                 //curve initialisation and fallbacks
                 if(typeof residual_spread !== "number") residual_spread=0;
 				disc_curve=disc_curve || library.get_const_curve(0);
@@ -3283,7 +3337,7 @@
 		*/           
         var normalise_scalar=function(obj, name){ //makes value an array of length one if it is not an array
 				var val=(Array.isArray(obj.value)) ? obj.value : [obj.value];
-                return {value: val, name: name || null};
+                return {value: val, tags: obj.tags || null, name: name || null};
         };
 
 		/**
@@ -3310,6 +3364,7 @@
 
                 return {
 						name: name || null,
+						tags: obj.tags || null,
                         times: times,
                         dfs: dfs
                 };
@@ -3327,6 +3382,7 @@
                 var safe_surface=library.get_safe_surface(obj); //has terms and expiries
                 return {
 						name: name || null,
+						tags: obj.tags || null,
                         expiries: safe_surface.expiries,
                         terms: safe_surface.terms,
                         values: (Array.isArray(obj.values[0][0])) ? obj.values : [obj.values]
@@ -3373,7 +3429,7 @@
 			if (0===sg.length) return false;
 
 			// find n-th scenario
-			var i=1;i_group=0; i_scen=0;
+			var i=1, i_group=0, i_scen=0;
 			while (i<n){
 				i++;
 				if (i_scen<sg[i_group].length){
@@ -3390,10 +3446,10 @@
 			}
 			
 			// attach scenario if one of the rules match
-			var scen=sg[i_group][i_scen];
+			var rules=sg[i_group][i_scen].rules;
 			var rule;
-			for (var i_rule=0;i_rule<scen.length;i_rule++){
-				rule=scen[i_rule];
+			for (var i_rule=0;i_rule<rules.length;i_rule++){
+				rule=rules[i_rule];
 				if (Array.isArray(rule.risk_factors)){
 					// match by risk factors
 					if (rule.risk_factors.indexOf(risk_factor) > -1){
@@ -3405,7 +3461,7 @@
 					// if no exact match by risk factors, all tags of that rule must match
 					var found=true;
 					for (i=0;i<rule.tags.length;i++){
-						if (tags.indexOf(rule.tags[i] === -1)) found=false;
+						if (tags.indexOf(rule.tags[i]) === -1) found=false;
 					}
 					if (found){
 						obj._rule=rule; 
@@ -3569,7 +3625,9 @@
 				var times=vec_curve.times;
 				var dfs=vec_curve.dfs ? (vec_curve.dfs[vec_curve.dfs.length>1 ? i : 0]) : null;
 
-				return{ 
+				return{
+					name: vec_curve.name || null,
+					tags: vec_curve.tags || null,
 					times: times,
 					dfs:dfs
 				};
@@ -3597,11 +3655,14 @@
 					smile.push(get_scalar_surface(vec_surface.smile[j],i,true));
 				}
 			}
-            return { expiries: expiries,
-                     terms: terms,
-                     values: values,
-					 moneyness: moneyness,
-					 smile: smile
+            return { 
+				name: vec_surface.name || null,
+				tags: vec_surface.tags || null,
+				expiries: expiries,
+				terms: terms,
+				values: values,
+				moneyness: moneyness,
+				smile: smile
             };
         };
 

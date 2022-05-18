@@ -16,6 +16,7 @@ var am=function(expr,msg){
         }
 };
 
+
 am (typeof JsonRisk.require_vd === 'function', "require_vd function defined");
 am (typeof JsonRisk.pricer_bond === 'function', "pricer_bond function defined");
 am (typeof JsonRisk.period_str_to_time === 'function', "period_str_to_time function defined");
@@ -758,7 +759,7 @@ Kupon=[1.750,1.500,1.000,0.500,1.000,0.500,4.250,4.750,3.250,2.500,2.500,1.250];
 Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
               "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
               "15.08.2046", "15.08.2048"];
-var bond;
+
 var adj=function(d){
         return JsonRisk.adjust(d,"following",JsonRisk.is_holiday_factory("TARGET"));
 };
@@ -1623,6 +1624,75 @@ results=JsonRisk.vector_pricer({
 });
 am(check(results), "Vector pricing with callable bond returns valid vector of numbers");
 
+/* 
+
+Test vector pricing with scenarios
+
+*/
+if (typeof require === 'function' ) var params_vector=require('./params_vector.js');
+if (typeof require === 'function' ) var params_scen_rf=require('./params_scen_rf.js');
+if (typeof require === 'function' ) var params_scen_tag=require('./params_scen_tag.js');
+
+var compare=function(arr1, arr2){
+		var x,y;
+		if (arr1.length!== arr2.length) return false;
+        for (var j=0; j<arr1.length; j++){
+                if(typeof(arr1[j])!== 'number') return false;
+                if (isNaN(arr1[j])) return false;
+                if(typeof(arr2[j])!== 'number') return false;
+                if (isNaN(arr2[j])) return false;
+				x=arr1[j]-arr1[0];
+				y=arr2[j]-arr2[0];
+				x*=10000;
+				y*=10000;
+				if (x.toFixed(2) !== y.toFixed(2)){
+					console.log(`Prices do not match: Arr1 ${x}, Arr2 ${y}`);
+					return false;
+				}
+        }
+        return true;
+};
+
+bond={
+        type: 'bond',
+        maturity: new Date(2045,1,1),
+        notional: 100.0,
+        fixed_rate: 0.0125,
+        tenor: 1,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement_days: 2,
+        disc_curve: "EUR_OIS_DISCOUNT",
+        spread_curve: "EUR_GOV_SPREAD",
+        currency: "EUR"
+};
+
+// vector pricing is the reference
+JsonRisk.store_params(params_vector);
+var results_vector=JsonRisk.vector_pricer(bond);
+
+// scenarios by risk factor
+JsonRisk.store_params(params_scen_rf);
+var results_scen_rf=JsonRisk.vector_pricer(bond);
+am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor (1)");
+
+// scenarios by tag
+JsonRisk.store_params(params_scen_tag);
+var results_scen_tag=JsonRisk.vector_pricer(bond);
+am(compare(results_vector,results_scen_tag), "Vector pricing with scenarios by tag (1)");
+
+bond.disc_curve="CONST_100BP";
+bond.spread_curve="EUR_PFA_SPREAD";
+// vector pricing is the reference
+JsonRisk.store_params(params_vector);
+results_vector=JsonRisk.vector_pricer(bond);
+// scenarios by tag
+JsonRisk.store_params(params_scen_tag);
+results_scen_tag=JsonRisk.vector_pricer(bond);
+am(compare(results_vector,results_scen_tag), "Vector pricing with scenarios by tag (2)");
+
+
 JsonRisk.valuation_date=new Date(2002,1,15);
 var sd=new Date(2002,1,19);
 curve=JsonRisk.get_const_curve(0.048);
@@ -1639,7 +1709,7 @@ for(i=0;i<values.length;i++){
 }
 surface={expiries: [1,2,3,4,5], terms: [1,2,3,4,5], values: values};
 
-var bond={
+bond={
 		effective_date: sd,
 		maturity: JsonRisk.add_months(sd,5*12),
 		first_exercise_date: JsonRisk.add_months(sd, 12),
@@ -1649,7 +1719,7 @@ var bond={
 		bdc: "m",
 		dcc: "act/365",
 		calendar: "TARGET"
-        };
+};
 
 
 
@@ -1680,7 +1750,7 @@ bond={
 		bdc: "m",
 		dcc: "30/360",
 		calendar: "TARGET"
-        };
+};
 
 
 

@@ -24,7 +24,7 @@
                 */
                 
 
-		library.require_vd(); //valuation date must be set
+				library.require_vd(); //valuation date must be set
                 //curve initialisation and fallbacks
                 if(typeof residual_spread !== "number") residual_spread=0;
 				disc_curve=disc_curve || library.get_const_curve(0);
