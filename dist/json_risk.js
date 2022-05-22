@@ -413,6 +413,7 @@
 					};
 					if (curve._rule.model==="multiplicative") c=library.multiply_curves(curve,tmp);
 					if (curve._rule.model==="additive") c=library.add_curves(curve,tmp);
+					if (curve._rule.model==="absolute") c=tmp;
 					// extract times and discount factors from scenario affected curve and store in hidden function scope
 					_times=library.get_curve_times(c);
 					_dfs=get_curve_dfs(c);
