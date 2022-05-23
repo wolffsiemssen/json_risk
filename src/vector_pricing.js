@@ -62,14 +62,10 @@
 			* @private
 		*/           
         var normalise_surface=function(obj,name){ // constructs terms from labels_term, expiries from labels_expiry and makes value an array of length one if it is not an array
-                var safe_surface=library.get_safe_surface(obj); //has terms and expiries
-                return {
+                return Object.assign({},obj,{
 						name: name || null,
-						tags: obj.tags || null,
-                        expiries: safe_surface.expiries,
-                        terms: safe_surface.terms,
                         values: (Array.isArray(obj.values[0][0])) ? obj.values : [obj.values]
-                };
+                });
         };
 
 
@@ -327,8 +323,6 @@
 		*/         
         var get_scalar_surface=function(vec_surface, i, nosmile){
         	if (!vec_surface) return null;
-			var expiries=vec_surface.expiries;
-			var terms=vec_surface.terms;
 			var values=vec_surface.values[vec_surface.values.length>1 ? i : 0];
 			var smile=null,moneyness=null,j;
 			if (nosmile!==true && Array.isArray(vec_surface.smile) && Array.isArray(vec_surface.moneyness)){
@@ -338,15 +332,11 @@
 					smile.push(get_scalar_surface(vec_surface.smile[j],i,true));
 				}
 			}
-            return { 
-				name: vec_surface.name || null,
-				tags: vec_surface.tags || null,
-				expiries: expiries,
-				terms: terms,
+            return Object.assign({},vec_surface,{
 				values: values,
 				moneyness: moneyness,
 				smile: smile
-            };
+            });
         };
 
 		/**

@@ -28,7 +28,6 @@ am (typeof JsonRisk.get_fwd_rate === 'function', "get_fwd_rate function defined"
 am (typeof JsonRisk.get_const_curve === 'function', "get_const_curve function defined");
 am (typeof JsonRisk.get_safe_curve === 'function', "get_safe_curve function defined");
 
-
 /*!
 	
 	Test Year Fraction
@@ -1470,8 +1469,6 @@ for (i=0; i<Maturity.length; i++){
 	am((result-result_accreting)*(result_amortizing-result)>0, "Multi-callable accreting and amortizing bond consistency check (" +(i+1)+")");
 }
 
-
-
 /* 
 
 Test vector pricing
@@ -1607,8 +1604,8 @@ am(check(results), "Vector pricing with swaption returns valid vector of numbers
 results=JsonRisk.vector_pricer({
         type: 'callable_bond',
         maturity: new Date(2032,1,1),
-	first_exercise_date: new Date(2025,1,1),
-	call_tenor: 3,
+		first_exercise_date: new Date(2025,1,1),
+		call_tenor: 3,
         notional: 100.0,
         fixed_rate: 0.0125,
         tenor: 12,
@@ -1626,7 +1623,7 @@ am(check(results), "Vector pricing with callable bond returns valid vector of nu
 
 /* 
 
-Test vector pricing with scenarios
+Test vector pricing with curve scenarios
 
 */
 if (typeof require === 'function' ) var params_vector=require('./params_vector.js');
@@ -1645,7 +1642,7 @@ var compare=function(arr1, arr2){
 				y=arr2[j]-arr2[0];
 				x*=10000;
 				y*=10000;
-				if (x.toFixed(2) !== y.toFixed(2)){
+				if (Math.abs(x-y)>0.0001){
 					console.log(`Prices do not match: Arr1 ${x}, Arr2 ${y}`);
 					return false;
 				}
@@ -1682,6 +1679,8 @@ JsonRisk.store_params(params_scen_tag);
 var results_scen_tag=JsonRisk.vector_pricer(bond);
 am(compare(results_vector,results_scen_tag), "Vector pricing with scenarios by tag (1)");
 
+
+
 bond.disc_curve="CONST_100BP";
 bond.spread_curve="EUR_PFA_SPREAD";
 // vector pricing is the reference
@@ -1691,6 +1690,33 @@ results_vector=JsonRisk.vector_pricer(bond);
 JsonRisk.store_params(params_scen_tag);
 results_scen_tag=JsonRisk.vector_pricer(bond);
 am(compare(results_vector,results_scen_tag), "Vector pricing with scenarios by tag (2)");
+
+
+bond={
+        type: 'callable_bond',
+        maturity: new Date(2042,1,1),
+		first_exercise_date: new Date(2023,1,1),
+		call_tenor: 3,
+        notional: 100.0,
+        fixed_rate: 0.0001,
+        tenor: 12,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement_days: 2,
+        disc_curve: "CONST",
+        surface: "CONST_0BP",
+        fwd_curve: "CONST",
+        currency: "EUR"
+};
+
+// vector pricing is the reference
+JsonRisk.store_params(params_vector);
+results_vector=JsonRisk.vector_pricer(bond);
+// scenarios by risk factor
+JsonRisk.store_params(params_scen_rf);
+results_scen_rf=JsonRisk.vector_pricer(bond);
+am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor, with volatilities (1)");
 
 
 JsonRisk.valuation_date=new Date(2002,1,15);
