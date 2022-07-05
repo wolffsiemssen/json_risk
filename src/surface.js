@@ -97,10 +97,13 @@
 		var scen=null;
 		if(typeof surface._rule === 'object'){
 			scen={
-				labels_expiry: surface._rule.labels_x,
-				labels_term: surface._rule.labels_y,
+				labels_expiry: surface._rule.labels_y,
+				labels_term: surface._rule.labels_x,
 				values: surface._rule.values
 			};
+			if(scen.labels_expiry.length !== scen.values.length) throw new Error("get_safe_surface: length of scenario labels_y must match length of scenario values outer array");
+			if(scen.labels_term.length !== scen.values[0].length) throw new Error("get_safe_surface: length of scenario labels_x must match length of scenario values inner arrays");
+
 			if (surface._rule.model==="multiplicative") surface.get_rate=function(t_expiry,t_term){
 					return get_surface_rate(surface,t_expiry,t_term) * get_surface_rate(scen,t_expiry,t_term);
 				};

@@ -1629,6 +1629,7 @@ Test vector pricing with curve scenarios
 if (typeof require === 'function' ) var params_vector=require('./params_vector.js');
 if (typeof require === 'function' ) var params_scen_rf=require('./params_scen_rf.js');
 if (typeof require === 'function' ) var params_scen_tag=require('./params_scen_tag.js');
+if (typeof require === 'function' ) var params_vola_sensis=require('./params_vola_sensis.js');
 
 var compare=function(arr1, arr2){
 		var x,y;
@@ -1646,6 +1647,7 @@ var compare=function(arr1, arr2){
 					console.log(`Prices do not match: Arr1 ${x}, Arr2 ${y}`);
 					return false;
 				}
+				console.log(`Prices match: Arr1 ${x}, Arr2 ${y}`);
         }
         return true;
 };
@@ -1718,6 +1720,12 @@ JsonRisk.store_params(params_scen_rf);
 results_scen_rf=JsonRisk.vector_pricer(bond);
 am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor, with volatilities (1)");
 
+// vola sensis
+bond.disc_curve="EUR_OIS_DISCOUNT";
+bond.fwd_curve="EUR_6M_FWD";
+bond.surface="CONST_30BP";
+JsonRisk.store_params(params_vola_sensis);
+results_vector=JsonRisk.vector_pricer(bond);
 
 JsonRisk.valuation_date=new Date(2002,1,15);
 var sd=new Date(2002,1,19);
