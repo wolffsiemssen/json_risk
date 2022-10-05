@@ -3731,49 +3731,105 @@
 			* @public
 		*/          
         library.vector_pricer=function(instrument){
+				var simulation_once=function(){
+					this.results.present_value=new Array(this.num_scenarios);
+				};
+
+				var simulation_scenario=function(){
+					var i=this.idx_scen;
+					var dc=this.dc;
+					var sc=this.sc;
+					var fc=this.fc;
+					var su=this.su;
+					switch (this.instrument.type.toLowerCase()){
+						case "bond":
+						case "floater":
+						case "fxterm":
+						case "irregular_bond":
+						this.results.present_value[i]=this.object.present_value(dc,sc,fc);
+						break;
+						case "swap":
+						case "swaption":
+						this.results.present_value[i]=this.object.present_value(dc,fc,su);
+						break;
+						case "callable_bond":
+						this.results.present_value[i]=this.object.present_value(dc,sc,fc,su);
+						break;
+					}
+					// if currency is provided and not EUR, convert or throw error
+					if (!this.instrument.currency) return;
+					if (this.instrument.currency === 'EUR') return;
+					this.results.present_value[i]/=this.fx.value;
+				};
+
+				var module = {
+					simulation_once: simulation_once,
+					simulation_scenario: simulation_scenario
+				};
+
+				return library.simulation(instrument, [module]).present_value;
+        };
+
+
+		/**
+		 	* runs a generic simulation on an instrument
+			* @param {object} instrument any instrument
+			* @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
+			* @returns {object} results object
+			* @memberof library
+			* @public
+		*/          
+        library.simulation=function(instrument, modules){
                 if (typeof(instrument.type)!== 'string') throw new Error ("vector_pricer: instrument object must contain valid type");
                 library.valuation_date=stored_params.valuation_date;
-                var obj=library.get_internal_object(instrument);
+
+				// create context for module execution
+				var context={
+					instrument: instrument,					
+					object: library.get_internal_object(instrument),
+					params: stored_params,
+					num_scen: stored_params.vector_length,
+					idx_scen: 0,
+					dc: null,
+					sc: null,
+					fc: null,
+					su: null,
+					fx: null,
+					results: {}
+				};
+
                 var vec_dc=stored_params.curves[instrument.disc_curve || ""] || null;
                 var vec_sc=stored_params.curves[instrument.spread_curve || ""] || null;
                 var vec_fc=stored_params.curves[instrument.fwd_curve || ""] || null;
                 var vec_surface=stored_params.surfaces[instrument.surface || ""] || null;
-                var vec_fx=stored_params.scalars[instrument.currency || ""] || null;
-                var dc, sc, fc, su, fx;
-                var res=new Array(stored_params.vector_length);
-                for (var i=0; i< stored_params.vector_length; i++){
-                        dc=get_scalar_curve(vec_dc, i);
-                        sc=get_scalar_curve(vec_sc, i);
-                        fc=get_scalar_curve(vec_fc, i);
-                        su=get_scalar_surface(vec_surface, i);
+                var vec_fx=stored_params.scalars[instrument.currency || ""] || {value: [1]};
+				var j;
+                for (var i=0; i<stored_params.vector_length; i++){
+						// update context with curves
+                        context.dc=get_scalar_curve(vec_dc, i);
+                        context.sc=get_scalar_curve(vec_sc, i);
+                        context.fc=get_scalar_curve(vec_fc, i);
+                        context.su=get_scalar_surface(vec_surface, i);
+						context.fx={value: vec_fx.value[vec_fx.value.length>1 ? i : 0]}; 
+						context.idx_scen=i;
 
-						if (dc) attach_scenario(i,dc);
-						if (sc) attach_scenario(i,sc);
-						if (fc) attach_scenario(i,fc);
-						if (su) attach_scenario(i,su);
+						// attach scenarios to curves
+						if (context.dc) attach_scenario(i,context.dc);
+						if (context.sc) attach_scenario(i,context.sc);
+						if (context.fc) attach_scenario(i,context.fc);
+						if (context.su) attach_scenario(i,context.su);
 
-                        switch (instrument.type.toLowerCase()){
-                                case "bond":
-                                case "floater":
-                                case "fxterm":
-				                case "irregular_bond":
-                                res[i]=obj.present_value(dc,sc,fc);
-                                break;
-                                case "swap":
-                                case "swaption":
-                                res[i]=obj.present_value(dc,fc,su);
-				                break;
-                                case "callable_bond":
-                                res[i]=obj.present_value(dc,sc,fc,su);
-                                break;
-                        }
-                        // if currency is provided and not EUR, convert or throw error
-                        if (!instrument.currency) continue;
-                        if (instrument.currency === 'EUR') continue;
-                        if (!vec_fx) throw new Error ('vector_pricer: cannot convert currency, scalar parameter not provided');
-                        res[i]/=vec_fx.value[vec_fx.value.length>1 ? i : 0];  
+						// call simulation_once for all modules for i=0	
+						for (j=0;j<modules.length;j++){
+							if (0===i && 'function' === typeof modules[j].simulation_once) modules[j].simulation_once.call(context);
+						}
+
+						// call simulation_scenario for all modules for i=0	
+						for (j=0;j<modules.length;j++){
+							if ('function' === typeof modules[j].simulation_scenario) modules[j].simulation_scenario.call(context);
+						}
                 }
-                return res;
+                return context.results;
         };
         
 }(this.JsonRisk || module.exports));
