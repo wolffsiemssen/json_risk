@@ -68,6 +68,7 @@
 		*/   
         library.schedule=function(eff_dt, maturity, tenor, adjust_func, first_dt, next_to_last_dt, stub_end, stub_long){
                 if(!(maturity instanceof Date)) throw new Error ("schedule: maturity must be provided");
+				if(isNaN(maturity)) throw new Error ("schedule: invalid date provided for maturity");
 	
                 if(!(eff_dt instanceof Date)){
                         //effective date is strictly needed if valuation date is not set
@@ -77,6 +78,7 @@
 			//effective date is strictly needed if next_to_last_date is not given and stub_end is true (implicit stub in the end)
                         if (!(next_to_last_dt instanceof Date) && stub_end) throw new Error("schedule: if next to last date is not provided and stub in the end is specified, effective date must be provided");
                 }
+				if(eff_dt instanceof Date && isNaN(eff_dt)) throw new Error ("schedule: invalid date provided for effective date");
                 if ((eff_dt instanceof Date && maturity<eff_dt) || (library.valuation_date instanceof Date && maturity < library.valuation_date)) 
                         throw new Error("schedule: maturity is before valuation date or effective date.");
                 if(typeof tenor !== "number")
