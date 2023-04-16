@@ -117,7 +117,7 @@
                 //retrieve outstanding principal on first_exercise_date (corresponds to regular swaption notional)
                 var outstanding_principal=0;
                 var i=0;
-		while (cf_obj.date_pmt[i]<=first_exercise_date) i++;
+		        while (cf_obj.date_pmt[i]<=first_exercise_date) i++;
                 outstanding_principal=cf_obj.current_principal[i];
 
                 if (outstanding_principal===0) throw new Error("create_equivalent_regular_swaption: invalid cashflow object or first_exercise_date, zero outstanding principal");
@@ -150,7 +150,8 @@
                 
                 //find bullet bond maturity that has approximately the same effective duration               
                 //start with analytic best estimate
-                var ttm=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
+                var ttm_guess=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
+				var ttm=ttm_guess;
                 var maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
 
                 var bond={
@@ -169,6 +170,8 @@
                 //alter maturity until we obtain effective duration target value
                 while (Math.abs(effective_duration-effective_duration_target)>1/512 && iter>0){
                         ttm=ttm*effective_duration_target/effective_duration;
+						// revert to best estimate when value is implausible
+						if(isNaN(ttm) || ttm > 1000 || ttm < 1/512) ttm=ttm_guess;
                         maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
                         bond.maturity=maturity;
                         effective_duration=ed(bond);
