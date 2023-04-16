@@ -2234,7 +2234,7 @@
                         if (!(next_to_last_dt instanceof Date) && stub_end) throw new Error("schedule: if next to last date is not provided and stub in the end is specified, effective date must be provided");
                 }
 				if(eff_dt instanceof Date && isNaN(eff_dt)) throw new Error ("schedule: invalid date provided for effective date");
-                if ((eff_dt instanceof Date && maturity<eff_dt) || (library.valuation_date instanceof Date && maturity < library.valuation_date)) 
+                if (maturity < (eff_dt instanceof Date ? eff_dt : library.valuation_date))
                         throw new Error("schedule: maturity is before valuation date or effective date.");
                 if(typeof tenor !== "number")
                         throw new Error("schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");
