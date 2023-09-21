@@ -25,8 +25,8 @@ app.controller('main_ctrl', ['$scope', function($scope) {
 		opportunity_spread: 0,
 
 		//market data
-		discount_curve: "EUR_OIS_DISCOUNT",
-		forward_curve: "EUR_6M_FWD",
+		discount_curve: "EUR_ESTR",
+		forward_curve: "EUR_6M",
 		surface: "CONST_10BP"
 	}
 	$scope.params={valuation_date: "2019-01-01"};

@@ -4,7 +4,7 @@ var load_params_from_server=function(sc){
 		sc.params={
 			valuation_date: "2018-08-31",
 			curves: {
-			  EUR_OIS_DISCOUNT: {
+			  EUR_ESTR: {
 			   type: "yield",
 			   labels: [
 			    "1Y","2Y","3Y","4Y","5Y","7Y","10Y","15Y","20Y","25Y"
@@ -21,7 +21,7 @@ var load_params_from_server=function(sc){
 			     0.00803145,
 			     0.00912026
 			    ]},
-			  EUR_3M_FWD: {
+			  EUR_3M: {
 			     type: "yield",
 			     labels: [
 			      "1Y","2Y","3Y","4Y","5Y","7Y","10Y","15Y","20Y","25Y"
@@ -38,7 +38,7 @@ var load_params_from_server=function(sc){
 			       0.00903145,
 			       0.01012026
 			      ]},
-			  EUR_6M_FWD: {
+			  EUR_6M: {
 			     type: "yield",
 			     labels: [
 			      "1Y","2Y","3Y","4Y","5Y","7Y","10Y","15Y","20Y","25Y"
