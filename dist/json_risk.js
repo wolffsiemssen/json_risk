@@ -2767,7 +2767,7 @@
                 //sanity checks
                 if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
                 if (cf_obj.t_pmt.length !== cf_obj.pmt_total.length || cf_obj.t_pmt.length !== cf_obj.current_principal.length) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
-		library.require_vd();//valuation date must be set
+		        library.require_vd();//valuation date must be set
                 if (!conventions) conventions={};
                 var tenor=conventions.tenor || 6;
                 var bdc=conventions.bdc || "unadjusted";
@@ -2810,6 +2810,7 @@
                 //find bullet bond maturity that has approximately the same effective duration               
                 //start with analytic best estimate
                 var ttm_guess=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
+                if(ttm_guess<1/365) ttm_guess=1/365;
 				var ttm=ttm_guess;
                 var maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
 
