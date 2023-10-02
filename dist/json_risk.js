@@ -800,7 +800,8 @@
       i_rep = 1,
       i_fix = 1,
       i_cond = 0;
-    while (true) {
+      i_max=this.schedule.length+this.repay_schedule.length+this.fixing_schedule.length+this.conditions_valid_until.length;
+    while (i<i_max) {
       date_accrual_start[i] = date_accrual_end[i - 1];
       date_accrual_end[i] = new Date(Math.min(this.schedule[i_int],
         this.repay_schedule[i_rep],
@@ -2230,11 +2231,11 @@
                         if (null===library.valuation_date) throw new Error("schedule: if valuation_date is unset, effective date must be provided");
                         //effective date is strictly needed if first date is given (explicit stub at beginning)
                         if (first_dt instanceof Date) throw new Error("schedule: if first date is provided, effective date must be provided");
-			//effective date is strictly needed if next_to_last_date is not given and stub_end is true (implicit stub in the end)
+			            //effective date is strictly needed if next_to_last_date is not given and stub_end is true (implicit stub in the end)
                         if (!(next_to_last_dt instanceof Date) && stub_end) throw new Error("schedule: if next to last date is not provided and stub in the end is specified, effective date must be provided");
                 }
 				if(eff_dt instanceof Date && isNaN(eff_dt)) throw new Error ("schedule: invalid date provided for effective date");
-                if (maturity < (eff_dt instanceof Date ? eff_dt : library.valuation_date))
+                if (maturity <= (eff_dt instanceof Date ? eff_dt : library.valuation_date))
                         throw new Error("schedule: maturity is before valuation date or effective date.");
                 if(typeof tenor !== "number")
                         throw new Error("schedule: tenor must be a nonnegative integer, e.g., 6 for semiannual schedule, 0 for zerobond/iam schedule");

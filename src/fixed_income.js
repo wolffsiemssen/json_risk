@@ -192,7 +192,8 @@
       i_rep = 1,
       i_fix = 1,
       i_cond = 0;
-    while (true) {
+      i_max=this.schedule.length+this.repay_schedule.length+this.fixing_schedule.length+this.conditions_valid_until.length;
+    while (i<i_max) {
       date_accrual_start[i] = date_accrual_end[i - 1];
       date_accrual_end[i] = new Date(Math.min(this.schedule[i_int],
         this.repay_schedule[i_rep],
