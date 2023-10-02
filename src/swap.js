@@ -7,13 +7,13 @@
 			* @public
 		*/   
        library.swap=function(instrument){
-                this.phi=instrument.is_payer ? -1 : 1;
+                this.phi=library.get_safe_bool(instrument.is_payer) ? -1 : 1;
                 
                 this.fixed_rate=instrument.fixed_rate;
                 //the fixed leg of the swap
                 this.fixed_leg=new library.fixed_income({
                         notional: instrument.notional * this.phi,
-			notional_exchange : false,
+			            notional_exchange : false,
                         maturity: instrument.maturity,
                         fixed_rate: instrument.fixed_rate,
                         tenor: instrument.tenor,
@@ -26,7 +26,7 @@
                 //the floating rate leg of the swap
                 this.float_leg=new library.fixed_income({
                         notional: - instrument.notional * this.phi,
-			notional_exchange : false,
+			            notional_exchange : false,
                         maturity: instrument.maturity,
                         float_spread: instrument.float_spread,
                         tenor: instrument.float_tenor,

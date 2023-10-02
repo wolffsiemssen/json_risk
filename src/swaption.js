@@ -7,7 +7,7 @@
 			* @public
 		*/   
         library.swaption=function(instrument){
-                this.sign=instrument.is_short ? -1 : 1;
+                this.sign=library.get_safe_bool(instrument.is_short) ? -1 : 1;
                 
                 //maturity of the underlying swap
                 this.maturity=library.get_safe_date(instrument.maturity);       
