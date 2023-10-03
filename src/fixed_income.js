@@ -428,7 +428,7 @@
 
     //erase principal payments if notional_exchange is false
     if(false===this.notional_exchange){
-        for (i = 1; i < n; i++) pmt_principal[i]=0;
+        for (i = 0; i < n; i++) pmt_principal[i]=0;
     }
 
     //returns finalized cash flow table object
