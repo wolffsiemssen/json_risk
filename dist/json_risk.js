@@ -623,12 +623,13 @@
 
     var effective_date = library.get_safe_date(instrument.effective_date); //null allowed
 
-    if (typeof instrument.notional !== 'number')
+    this.notional=library.get_safe_number(instrument.notional);
+    if (null === this.notional)
       throw new Error("fixed_income: must provide valid notional.");
-    this.notional = instrument.notional;
 
     //include notional exchange unless explicitly set to false (e.g., for swaps)
-    this.notional_exchange = (instrument.notional_exchange === false) ? false : true;
+    this.notional_exchange = library.get_safe_bool(instrument.notional_exchange);
+    if (null===instrument.notional_exchange || ''===instrument.notional_exchange || undefined===instrument.notional_exchange) this.notional_exchange=true;
 
     //interest related fields
     var tenor = library.get_safe_natural(instrument.tenor);
@@ -1959,8 +1960,8 @@
 		if(typeof b === 'number') return b!==0;
 		if(typeof b === 'string'){
 			var s=b.trim().toLowerCase();
-			if(s==='true' || s==='yes' || s==='y') return true;
-			return false;
+			if(s==='true' || s==='yes' || s==='t' || s==='y') return true;
+            return false;
 		}
 		return false;
 	};

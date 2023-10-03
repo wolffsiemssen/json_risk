@@ -98,8 +98,8 @@
 		if(typeof b === 'number') return b!==0;
 		if(typeof b === 'string'){
 			var s=b.trim().toLowerCase();
-			if(s==='true' || s==='yes' || s==='y') return true;
-			return false;
+			if(s==='true' || s==='yes' || s==='t' || s==='y') return true;
+            return false;
 		}
 		return false;
 	};
