@@ -83,10 +83,14 @@ Callable bond pricing is implemented with a Linear Gauss Markov (or, equivalentl
 
 JSON Risk supports the day count conventions
 
-- act/365,
-- act/360,
-- act/act (ICMA),
-- 30E/360.
+ - act/act according to the ISDA 2006 rules in section 4.16 (b), also recognized by JSON Risk as actual/actual or a/a
+ - act/365 according to the ISDA 2006 rules in section 4.16 (d), also recognized by JSON Risk as actual/365, a/365, actual/365 (fixed) or act/365 (fixed)
+ - act/360 according to the ISDA 2006 rules in section 4.16 (e), also recognized by JSON Risk as actual/360, a/360, or french
+ - 30u/360 according to the ISDA 2006 rules in section 4.16 (f), also recognized by JSON Risk as 30/360, bond basis, or bond
+ - 30e/360 according to the ISDA 2006 rules in section 4.16 (g), also recognized by JSON Risk as eurobond basis or eurobond
+ - 30g/360 according to the ISDA 2006 rules in section 4.16 (h), also recognized by JSON Risk as 30e/360 (ISDA) or 30/360 German
+
+JSON Risk is case insensitive when parsing day count conventions on instrument data.
 
 ### Business day conventions
 
