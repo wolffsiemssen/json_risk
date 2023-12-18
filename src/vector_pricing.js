@@ -290,6 +290,24 @@
                 stored_params=params;
         };
 
+		/**
+		 	* ...
+			* @param {object} vec_scalar
+			* @param {object} i
+			* @returns {object} scalar
+			* @memberof library
+			* @private
+		*/           
+        var get_scalar_scalar=function(vec_scalar, i){
+                if (!vec_scalar) return null;
+				return{
+					name: vec_scalar.name || null,
+                    tags: vec_scalar.tags || null,
+					value: vec_scalar.value[vec_scalar.value.length>1 ? i : 0]
+				};
+        };
+
+
 
 		/**
 		 	* ...
@@ -359,6 +377,8 @@
                         return new library.fxterm(instrument);
                         case "callable_bond":
                         return new library.callable_fixed_income(instrument);
+                        case "equity":
+                        return new library.equity(instrument);
                         default:
                         throw new Error ("get_internal_object: invalid instrument type");
                 }
@@ -382,6 +402,7 @@
 					var sc=this.sc;
 					var fc=this.fc;
 					var su=this.su;
+                    var qu=this.qu;
 					switch (this.instrument.type.toLowerCase()){
 						case "bond":
 						case "floater":
@@ -395,12 +416,15 @@
 						break;
 						case "callable_bond":
 						this.results.present_value[i]=this.object.present_value(dc,sc,fc,su);
+                        break;
+						case "equity":
+						this.results.present_value[i]=this.object.present_value(qu);
 						break;
 					}
 					// if currency is provided and not EUR, convert or throw error
 					if (!this.instrument.currency) return;
 					if (this.instrument.currency === 'EUR') return;
-					this.results.present_value[i]/=this.fx.value;
+					this.results.present_value[i]/=library.get_safe_scalar(this.fx).get_value();
 				};
 
 				var module = {
@@ -435,7 +459,8 @@
 					sc: null,
 					fc: null,
 					su: null,
-					fx: null,
+					qu: null,
+                    fx: null,
 					results: {}
 				};
 
@@ -443,6 +468,7 @@
                 var vec_sc=stored_params.curves[instrument.spread_curve || ""] || null;
                 var vec_fc=stored_params.curves[instrument.fwd_curve || ""] || null;
                 var vec_surface=stored_params.surfaces[instrument.surface || ""] || null;
+                var vec_qu=stored_params.scalars[instrument.quote || ""] || {value: [1]};
                 var vec_fx=stored_params.scalars[instrument.currency || ""] || {value: [1]};
 				var j;
                 for (var i=0; i<stored_params.vector_length; i++){
@@ -451,7 +477,8 @@
                         context.sc=get_scalar_curve(vec_sc, i);
                         context.fc=get_scalar_curve(vec_fc, i);
                         context.su=get_scalar_surface(vec_surface, i);
-						context.fx={value: vec_fx.value[vec_fx.value.length>1 ? i : 0]}; 
+                        context.qu=get_scalar_scalar(vec_qu,i); 
+						context.fx=get_scalar_scalar(vec_fx,i); 
 						context.idx_scen=i;
 
 						// attach scenarios to curves
@@ -459,6 +486,8 @@
 						if (context.sc) attach_scenario(i,context.sc);
 						if (context.fc) attach_scenario(i,context.fc);
 						if (context.su) attach_scenario(i,context.su);
+                        if (context.qu) attach_scenario(i,context.qu);
+                        if (context.fx) attach_scenario(i,context.fx);
 
 						// call simulation_once for all modules for i=0	
 						for (j=0;j<modules.length;j++){

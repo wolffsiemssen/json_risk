@@ -1634,6 +1634,7 @@ if (typeof require === 'function' ) var params_vola_sensis=require('./params_vol
 var compare=function(arr1, arr2){
 		var x,y;
 		if (arr1.length!== arr2.length) return false;
+        console.log("Arrays are the same length");
         for (var j=0; j<arr1.length; j++){
                 if(typeof(arr1[j])!== 'number') return false;
                 if (isNaN(arr1[j])) return false;
@@ -1719,6 +1720,177 @@ results_vector=JsonRisk.vector_pricer(bond);
 JsonRisk.store_params(params_scen_rf);
 results_scen_rf=JsonRisk.vector_pricer(bond);
 am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor, with volatilities (1)");
+
+/*
+
+    Test vector and scenario pricing wih FX and equity
+
+*/
+
+bond={
+        type: 'bond',
+        maturity: new Date(2042,1,1),
+        notional: 100.0,
+        fixed_rate: 0.01,
+        tenor: 12,
+        bdc: "following",
+        dcc: "act/act",
+        calendar: "TARGET",
+        settlement_days: 2,
+        disc_curve: "CONST",
+        currency: "USD"
+};
+
+equity={
+    type: 'equity',
+    quote: 'EQUITY',
+    quantity: 1000,
+    currency: "GBP"
+};
+
+params_vector={
+    valuation_date: new Date(2023,1,1),
+    curves: {
+        CONST: { times: [1], zcs: [0.05]}
+    },
+    scalars: {
+        USD: { value: [ 1, 1.1, 1.2, 1.3, 1.4 ]},
+        GBP: { value: [ 2, 0.9, 0.8, 0.7, 0.6 ]},
+        EQUITY: { value: [100,200,300,400,500]}
+    }
+};
+
+params_scen_rf={
+    valuation_date: new Date(2023,1,1),
+    curves: {
+        CONST: { times: [1], zcs: [0.05]}
+    },
+    scalars: {
+        USD: { name: "USD", value: 1},
+        GBP: { name: "GBP", value: 2},
+        EQUITY: { name: "EQUITY", value: 100}
+    },
+    scenario_groups: [[
+        {
+            name: "SCEN1",
+            rules: [
+                {
+                    risk_factors: ["USD"],
+                    model: "multiplicative",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[1.1]]
+                },
+                {
+                    risk_factors: ["GBP"],
+                    model: "absolute",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[0.9]]
+                },
+                {
+                    risk_factors: ["EQUITY"],
+                    model: "additive",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[100]]
+                }
+            ]
+        },
+        {
+            name: "SCEN2",
+            rules: [
+                {
+                    risk_factors: ["USD"],
+                    model: "multiplicative",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[1.2]]
+                },
+                {
+                    risk_factors: ["GBP"],
+                    model: "absolute",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[0.8]]
+                },
+                {
+                    risk_factors: ["EQUITY"],
+                    model: "additive",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[200]]
+                }
+            ]
+        },
+        {
+            name: "SCEN3",
+            rules: [
+                {
+                    risk_factors: ["USD"],
+                    model: "multiplicative",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[1.3]]
+                },
+                {
+                    risk_factors: ["GBP"],
+                    model: "absolute",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[0.7]]
+                },
+                {
+                    risk_factors: ["EQUITY"],
+                    model: "additive",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[300]]
+                }
+            ]
+        },
+        {
+            name: "SCEN4",
+            rules: [
+                {
+                    risk_factors: ["USD"],
+                    model: "multiplicative",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[1.4]]
+                },
+                {
+                    risk_factors: ["GBP"],
+                    model: "absolute",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[0.6]]
+                },
+                {
+                    risk_factors: ["EQUITY"],
+                    model: "additive",
+                    labels_x: [ "1" ],
+                    labels_y: [ "1" ],
+                    values: [[400]]
+                }
+            ]
+        }
+    ]]
+};
+
+JsonRisk.store_params(params_vector);
+results_vector=JsonRisk.vector_pricer(bond);
+JsonRisk.store_params(params_scen_rf);
+results_scen_rf=JsonRisk.vector_pricer(bond);
+
+am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor, with FX");
+
+JsonRisk.store_params(params_vector);
+results_vector=JsonRisk.vector_pricer(equity);
+JsonRisk.store_params(params_scen_rf);
+results_scen_rf=JsonRisk.vector_pricer(equity);
+
+am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor, with FX and equity");
 
 // vola sensis
 bond.disc_curve="EUR_OIS_DISCOUNT";
