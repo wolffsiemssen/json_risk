@@ -5,7 +5,7 @@ Here are three reasons for using a financial risk and pricing library in JavaScr
 
  - As one of the key technologies of the web, JavaScript is ubiquitous and heavily supported by the leading tech companies and by a large open source community.
  - Web applications required to have access to financial math logic both on the client and on the server side are largely bound to use JavaScript, as JavaScript is the only programming language natively supported in all major web browsers.
- - With JSON being a native subset of JavaScript, data interchange in JavaScript applications is almost as easy as calling the Javascript `JSON.parse` and `JSON.stingify` functions, making any parsing and serialization logic obsolete for most applications.
+ - With JSON being a native subset of JavaScript, data interchange in JavaScript applications is almost as easy as calling the Javascript `JSON.parse` and `JSON.stringify` functions, making any parsing and serialization logic obsolete for most applications.
 
 ## How to include in node.js:
 
