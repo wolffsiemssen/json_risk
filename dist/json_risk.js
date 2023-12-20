@@ -3238,7 +3238,7 @@
 
             case "30g/360":
             case "30e/360 (isda)":
-            case "30e/360 german":
+            case "30/360 german":
                 return yf_30G360;
 
             default:
