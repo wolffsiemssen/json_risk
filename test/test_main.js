@@ -1853,8 +1853,8 @@ params_scen_rf={
                     values: [[100]]
                 }
             ]
-        },
-        {
+        }],
+        [{
             name: "SCEN2",
             rules: [
                 {

@@ -111,10 +111,10 @@
 			var i=1, i_group=0, i_scen=0;
 			while (i<n){
 				i++;
-				if (i_scen<sg[i_group].length){
+				if (i_scen<sg[i_group].length-1){
 					// next scenario
 					i_scen++;
-				}else if(i_group<sg.length){
+				}else if(i_group<sg.length-1){
 					// next scenario group
 					i_scen=0;
 					i_group++;
