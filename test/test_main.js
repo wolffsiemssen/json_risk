@@ -16,6 +16,10 @@ var am=function(expr,msg){
         }
 };
 
+var get_utc_date=function(y,m,d){
+	timestamp=Date.UTC(y,m,d);
+	return new Date(timestamp);
+};
 
 am (typeof JsonRisk.require_vd === 'function', "require_vd function defined");
 am (typeof JsonRisk.pricer_bond === 'function', "pricer_bond function defined");
@@ -39,117 +43,117 @@ var yf;
 var i;
 yf=JsonRisk.year_fraction_factory("a/365");
 for (i=1; i<11; i++){
-        from=new Date(2000+i, 2*i, 3*i);
+        from=get_utc_date(2000+i, 2*i, 3*i);
         to=JsonRisk.add_days(from,i*i);
         am((yf(from, to)*365).toFixed(10)===(i*i).toFixed(10), "Act/365 year fraction (" + i + ")");
 }
 
 yf=JsonRisk.year_fraction_factory("a/360");
 for (i=1; i<11; i++){
-        from=new Date(2000+i, 2*i, 3*i);
+        from=get_utc_date(2000+i, 2*i, 3*i);
         to=JsonRisk.add_days(from,i*i);
         am((yf(from,to)*360).toFixed(10)===(i*i).toFixed(10), "Act/360 year fraction (" + i + ")");
 }
 
 yf=JsonRisk.year_fraction_factory("30U/360");
-from=new Date(2000,0,1);
-to = new Date(2001,0,1);
+from=get_utc_date(2000,0,1);
+to = get_utc_date(2001,0,1);
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30U/360 year fraction (1)");    
 
-from=new Date(2010,7,1);
-to = new Date(2020,7,1);
+from=get_utc_date(2010,7,1);
+to = get_utc_date(2020,7,1);
 am(yf(from,to).toFixed(10)===(10).toFixed(10), "30U/360 year fraction (2)");
 
-from=new Date(2000,0,31); //day will be set to 30
-to = new Date(2001,0,30);
+from=get_utc_date(2000,0,31); //day will be set to 30
+to = get_utc_date(2001,0,30);
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30U/360 year fraction (3)");
 
-from=new Date(2000,0,30);
-to = new Date(2001,0,31); //day will be set to 30
+from=get_utc_date(2000,0,30);
+to = get_utc_date(2001,0,31); //day will be set to 30
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30U/360 year fraction (4)");
 
-from=new Date(2000,1,28); //day will not be set to 30
-to = new Date(2010,1,28); //day will not be set to 30
+from=get_utc_date(2000,1,28); //day will not be set to 30
+to = get_utc_date(2010,1,28); //day will not be set to 30
 am(yf(from,to).toFixed(10)===(10).toFixed(10), "30U/360 year fraction (5)");
 
-from=new Date(2000,0,29);
-to = new Date(2001,0,31); //day will not set to 30 since start day is less than 30
+from=get_utc_date(2000,0,29);
+to = get_utc_date(2001,0,31); //day will not set to 30 since start day is less than 30
 am(yf(from,to).toFixed(10)===(1+2/360).toFixed(10), "30U/360 year fraction (6)");
 
 
 yf=JsonRisk.year_fraction_factory("30E/360");
-from=new Date(2000,0,1);
-to = new Date(2001,0,1);
+from=get_utc_date(2000,0,1);
+to = get_utc_date(2001,0,1);
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30E/360 year fraction (1)");    
 
-from=new Date(2010,7,1);
-to = new Date(2020,7,1);
+from=get_utc_date(2010,7,1);
+to = get_utc_date(2020,7,1);
 am(yf(from,to).toFixed(10)===(10).toFixed(10), "30E/360 year fraction (2)");
 
-from=new Date(2000,0,31); //day will be set to 30
-to = new Date(2001,0,30);
+from=get_utc_date(2000,0,31); //day will be set to 30
+to = get_utc_date(2001,0,30);
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30E/360 year fraction (3)");
 
-from=new Date(2000,0,30);
-to = new Date(2001,0,31); //day will be set to 30
+from=get_utc_date(2000,0,30);
+to = get_utc_date(2001,0,31); //day will be set to 30
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30E/360 year fraction (4)");
 
-from=new Date(2000,1,28); //day will not be set to 30
-to = new Date(2010,1,28); //day will not be set to 30
+from=get_utc_date(2000,1,28); //day will not be set to 30
+to = get_utc_date(2010,1,28); //day will not be set to 30
 am(yf(from,to).toFixed(10)===(10).toFixed(10), "30E/360 year fraction (5)");
 
-from=new Date(2000,1,29); //day will not be set to 30
-to = new Date(2010,1,28); //day will not be set to 30
+from=get_utc_date(2000,1,29); //day will not be set to 30
+to = get_utc_date(2010,1,28); //day will not be set to 30
 am(yf(from,to).toFixed(10)===(10-1/360).toFixed(10), "30E/360 year fraction (6)");
 
 
 
 yf=JsonRisk.year_fraction_factory("30G/360");
-from=new Date(2000,0,1);
-to = new Date(2001,0,1);
+from=get_utc_date(2000,0,1);
+to = get_utc_date(2001,0,1);
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30G/360 year fraction (1)");    
 
-from=new Date(2010,7,1);
-to = new Date(2020,7,1);
+from=get_utc_date(2010,7,1);
+to = get_utc_date(2020,7,1);
 am(yf(from,to).toFixed(10)===(10).toFixed(10), "30G/360 year fraction (2)");
 
-from=new Date(2000,0,31); //day will be set to 30
-to = new Date(2001,0,30);
+from=get_utc_date(2000,0,31); //day will be set to 30
+to = get_utc_date(2001,0,30);
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30G/360 year fraction (3)");
 
-from=new Date(2000,0,30);
-to = new Date(2001,0,31); //day will be set to 30
+from=get_utc_date(2000,0,30);
+to = get_utc_date(2001,0,31); //day will be set to 30
 am(yf(from,to).toFixed(10)===(1).toFixed(10), "30G/360 year fraction (4)");
 
-from=new Date(2000,1,29); //day will be set to 30
-to = new Date(2010,1,28); //day will be set to 30
+from=get_utc_date(2000,1,29); //day will be set to 30
+to = get_utc_date(2010,1,28); //day will be set to 30
 am(yf(from,to).toFixed(10)===(10).toFixed(10), "30G/360 year fraction (5)");
 
-from=new Date(2000,1,28); //day will not be set to 30 since not the last day in feb
-to = new Date(2010,1,28); //day will be set to 30
+from=get_utc_date(2000,1,28); //day will not be set to 30 since not the last day in feb
+to = get_utc_date(2010,1,28); //day will be set to 30
 am(yf(from,to).toFixed(10)===(10+2/360).toFixed(10), "30G/360 year fraction (6)");
 
 
 yf=JsonRisk.year_fraction_factory("act/act");
-from=new Date(2010,11,30);
-to = new Date(2011,0,2);
+from=get_utc_date(2010,11,30);
+to = get_utc_date(2011,0,2);
 am(yf(from,to).toFixed(10)===(3/365).toFixed(10), "act/act year fraction (1)");
 
-from=new Date(2011,11,30);
-to = new Date(2012,0,2);
+from=get_utc_date(2011,11,30);
+to = get_utc_date(2012,0,2);
 am(yf(from,to).toFixed(10)===(2/365+1/366).toFixed(10), "act/act year fraction (2)");
 
-from=new Date(2010,11,30);
-to = new Date(2013,0,2);
+from=get_utc_date(2010,11,30);
+to = get_utc_date(2013,0,2);
 am(yf(from,to).toFixed(10)===(367/365 + 1 + 1/365).toFixed(10), "act/act year fraction (3)");
 
-from=new Date(2010,3,30);
-to = new Date(2010,9,30);
+from=get_utc_date(2010,3,30);
+to = get_utc_date(2010,9,30);
 am(yf(from,to).toFixed(10)===(183/365).toFixed(10), "act/act year fraction (4)");
 
 yf=JsonRisk.year_fraction_factory("");
 for (i=1; i<11; i++){
-        from=new Date(2000+i,2*i,3*i);
+        from=get_utc_date(2000+i,2*i,3*i);
         to=JsonRisk.add_days(from,i*i);
         am((yf(from,to)*365).toFixed(10)===(i*i).toFixed(10), "Undefined year fracion fallback to Act/365 (" + i + ")");
 }
@@ -159,19 +163,19 @@ for (i=1; i<11; i++){
 	Test month addition
 	
 */
-from=new Date(2000,1,25);
+from=get_utc_date(2000,1,25);
 for (i=1; i<11; i++){
-        am(JsonRisk.add_months(from,i*i).getTime()===new Date(2000,1+(i*i),25).getTime(),"Month addition (pos)");
-        am(JsonRisk.add_months(from,-i*i).getTime()===new Date(2000,1-(i*i),25).getTime(),"Month addition (neg)");
+        am(JsonRisk.add_months(from,i*i).getTime()===get_utc_date(2000,1+(i*i),25).getTime(),"Month addition (pos)");
+        am(JsonRisk.add_months(from,-i*i).getTime()===get_utc_date(2000,1-(i*i),25).getTime(),"Month addition (neg)");
 }
 
-from=new Date(2000,0,31);
+from=get_utc_date(2000,0,31);
 for (i=1; i<4; i++){
-        am(JsonRisk.add_months(from,2*i).getTime()===new Date(2000,2*i,31).getTime(),"Month addition (31st)");
-        am(JsonRisk.add_months(from,2*i+5).getTime()===new Date(2000,2*i+5,31).getTime(),"Month addition (31st)");
-        am(JsonRisk.add_months(from,12*i+1).getTime()===new Date(2000,12*i+1,28).getTime(),"Month addition (31st, Feb)");
+        am(JsonRisk.add_months(from,2*i).getTime()===get_utc_date(2000,2*i,31).getTime(),"Month addition (31st)");
+        am(JsonRisk.add_months(from,2*i+5).getTime()===get_utc_date(2000,2*i+5,31).getTime(),"Month addition (31st)");
+        am(JsonRisk.add_months(from,12*i+1).getTime()===get_utc_date(2000,12*i+1,28).getTime(),"Month addition (31st, Feb)");
 }
-am(JsonRisk.add_months(from,49).getTime()===new Date(2000,49,29).getTime(),"Month addition (31st, Feb, Leap Year)");
+am(JsonRisk.add_months(from,49).getTime()===get_utc_date(2000,49,29).getTime(),"Month addition (31st, Feb, Leap Year)");
 
 /*!
 	
@@ -180,47 +184,47 @@ am(JsonRisk.add_months(from,49).getTime()===new Date(2000,49,29).getTime(),"Mont
 */
 var cal=JsonRisk.is_holiday_factory("TARGET");
 
-from=new Date(2000,0,1);
+from=get_utc_date(2000,0,1);
 for (i=1; i<10; i++){
         from=JsonRisk.add_days(from,i*i);
         am(from.getTime()===JsonRisk.adjust(from,"unadjusted",cal).getTime(),"BDC unadjusted (" + i + ")");
 }
 
-from=new Date(2018,0,1); //Monday
+from=get_utc_date(2018,0,1); //Monday
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
 am(JsonRisk.add_days(from,-3).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 
-from=new Date(2018,2,30);//Friday
+from=get_utc_date(2018,2,30);//Friday
 am(JsonRisk.add_days(from,4).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
 am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
 am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 
-from=new Date(2018,3,2); //Monday (Ostermontag)
+from=get_utc_date(2018,3,2); //Monday (Ostermontag)
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
 am(JsonRisk.add_days(from,-4).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
-from=new Date(2018,4,1); //Tuesday
+from=get_utc_date(2018,4,1); //Tuesday
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
 am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
-from=new Date(2018,11,25); //Tuesday
+from=get_utc_date(2018,11,25); //Tuesday
 am(JsonRisk.add_days(from,2).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
 am(JsonRisk.add_days(from,2).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
 am(JsonRisk.add_days(from,-1).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
-from=new Date(2018,11,26); //Wednesday
+from=get_utc_date(2018,11,26); //Wednesday
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"following",cal).getTime(),"BDC following");
 am(JsonRisk.add_days(from,1).getTime()===JsonRisk.adjust(from,"modified following",cal).getTime(),"BDC mod following");
 am(JsonRisk.add_days(from,-2).getTime()===JsonRisk.adjust(from,"preceding",cal).getTime(),"BDC preceding");
 
 //test custom calendar
-from=new Date(2000,0,1);
-to=new Date(2100,0,1);
+from=get_utc_date(2000,0,1);
+to=get_utc_date(2100,0,1);
 dates=[];
 while (from.getTime()<to.getTime()){
         if (cal(from)) dates.push(from); // add all target holidays to custom list
@@ -231,7 +235,7 @@ JsonRisk.add_calendar("custom", dates);
 
 //check custom calendar equals TARGET
 var customcal=JsonRisk.is_holiday_factory("CUSTOM"); //should be case insensitive
-from=new Date(2000,0,1);
+from=get_utc_date(2000,0,1);
 var res=true;
 while (from.getTime()<to.getTime()){
 
@@ -272,13 +276,13 @@ am(foo==="do not overwrite", "Period string (invalid period string)");
 
 */
 
-console.log(new Date(2018,1,28));
-am(JsonRisk.date_str_to_date("28.2.2018").getTime()===new Date(2018,1,28).getTime(), "Date string (28.2.2018)");
-am(JsonRisk.date_str_to_date("2018-2-28").getTime()===new Date(2018,1,28).getTime(), "Date string (2018-28-2)");
-am(JsonRisk.date_str_to_date("2018-02-28").getTime()===new Date(2018,1,28).getTime(), "Date string (2018-28-02)");
-am(JsonRisk.date_str_to_date("2018-03-31").getTime()===new Date(2018,2,31).getTime(), "Date string (2018-31-03)");
-am(JsonRisk.date_str_to_date("31.12.1999").getTime()===new Date(1999,11,31).getTime(), "Date string (31.12.1999)");
-am(JsonRisk.date_str_to_date("1.1.1999").getTime()===new Date(1999,0,1).getTime(), "Date string (1.1.1999)");
+console.log(get_utc_date(2018,1,28));
+am(JsonRisk.date_str_to_date("28.2.2018").getTime()===get_utc_date(2018,1,28).getTime(), "Date string (28.2.2018)");
+am(JsonRisk.date_str_to_date("2018-2-28").getTime()===get_utc_date(2018,1,28).getTime(), "Date string (2018-28-2)");
+am(JsonRisk.date_str_to_date("2018-02-28").getTime()===get_utc_date(2018,1,28).getTime(), "Date string (2018-28-02)");
+am(JsonRisk.date_str_to_date("2018-03-31").getTime()===get_utc_date(2018,2,31).getTime(), "Date string (2018-31-03)");
+am(JsonRisk.date_str_to_date("31.12.1999").getTime()===get_utc_date(1999,11,31).getTime(), "Date string (31.12.1999)");
+am(JsonRisk.date_str_to_date("1.1.1999").getTime()===get_utc_date(1999,0,1).getTime(), "Date string (1.1.1999)");
 
 var foo="do not overwrite";
 try{
@@ -488,137 +492,137 @@ var same_dates=function(sched, expected){
 };
 
 var expected=[
-        new Date(1980,0,1),
-        new Date(1981,0,1),
-        new Date(1982,0,1),
-        new Date(1983,0,1),
-        new Date(1984,0,1)
+        get_utc_date(1980,0,1),
+        get_utc_date(1981,0,1),
+        get_utc_date(1982,0,1),
+        get_utc_date(1983,0,1),
+        get_utc_date(1984,0,1)
 ];
 
 var adj=function(d){return JsonRisk.adjust(d,"unadjusted",JsonRisk.is_holiday_factory(""));};
 
-var sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, null, null);
+var sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, null, null);
 am (same_dates(sched, expected), "Backward schedule generation (1)");
 
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), new Date(1983,0,1));
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, get_utc_date(1981,0,1), get_utc_date(1983,0,1));
 am (same_dates(sched, expected), "Backward schedule generation (2)");
 
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), new Date(1984,0,1));
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, get_utc_date(1981,0,1), get_utc_date(1984,0,1));
 am (same_dates(sched, expected), "Backward schedule generation (3)");
 
 adj=function(d){return JsonRisk.adjust(d,"preceding",JsonRisk.is_holiday_factory(""));};
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), new Date(1983,0,1));
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, get_utc_date(1981,0,1), get_utc_date(1983,0,1));
 am (same_dates(sched, expected), "Backward schedule generation (4)");
 
 
 adj=function(d){return JsonRisk.adjust(d,"unadjusted",JsonRisk.is_holiday_factory(""));};
 
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, null, null, true /*stub at end*/);
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, null, null, true /*stub at end*/);
 am (same_dates(sched, expected), "Forward schedule generation (1)");
 
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1981,0,1), null);
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, get_utc_date(1981,0,1), null);
 am (same_dates(sched, expected), "Forward schedule generation (2)");
 
 expected=[
-        new Date(1980,0,1),
-        new Date(1981,0,2),
-        new Date(1982,0,2),
-        new Date(1983,0,2),
-        new Date(1984,0,2)
+        get_utc_date(1980,0,1),
+        get_utc_date(1981,0,2),
+        get_utc_date(1982,0,2),
+        get_utc_date(1983,0,2),
+        get_utc_date(1984,0,2)
 ];
 
 adj=function(d){return JsonRisk.adjust(d,"following",JsonRisk.is_holiday_factory("Target"));};
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,2), 12, adj);
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,2), 12, adj);
 am (same_dates(sched, expected), "Backward schedule generation where effective date is unadjusted and duplicate needs to be avoided");
 
 
 expected=[
-        new Date(1980,11,31),
-        new Date(1981,11,31),
-        new Date(1982,11,31),
-        new Date(1983,11,31),
-        new Date(1985,0,1)
+        get_utc_date(1980,11,31),
+        get_utc_date(1981,11,31),
+        get_utc_date(1982,11,31),
+        get_utc_date(1983,11,31),
+        get_utc_date(1985,0,1)
 ];
 
 adj=function(d){return JsonRisk.adjust(d,"preceding",JsonRisk.is_holiday_factory("Target"));};
-sched=JsonRisk.schedule(new Date(1980,11,31), new Date(1985,0,1), 12, adj, null, null, true /*stub at end*/);
+sched=JsonRisk.schedule(get_utc_date(1980,11,31), get_utc_date(1985,0,1), 12, adj, null, null, true /*stub at end*/);
 am (same_dates(sched, expected), "Forward schedule generation where maturity date is unadjusted and duplicate needs to be avoided");
 
 
 expected=[
-        new Date(1980,0,1),
-        new Date(1980,2,1), //first date
-        new Date(1981,2,1),
-        new Date(1982,2,1),
-        new Date(1983,2,1), //next to last date
-        new Date(1984,0,1)
+        get_utc_date(1980,0,1),
+        get_utc_date(1980,2,1), //first date
+        get_utc_date(1981,2,1),
+        get_utc_date(1982,2,1),
+        get_utc_date(1983,2,1), //next to last date
+        get_utc_date(1984,0,1)
 ];
 
 adj=function(d){return JsonRisk.adjust(d,"unadjusted",JsonRisk.is_holiday_factory(""));};
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1980,2,1), new Date(1983,2,1));
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, get_utc_date(1980,2,1), get_utc_date(1983,2,1));
 am (same_dates(sched, expected), "Backward schedule generation (6)");
 
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 12, adj, new Date(1980,2,1), null);
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 12, adj, get_utc_date(1980,2,1), null);
 am (same_dates(sched, expected), "Forward schedule generation (6)");
 
 expected=[
-        new Date(1980,0,1),
-        new Date(1980,2,1), //first date
-        new Date(1980,8,1),
-        new Date(1981,2,1),
-        new Date(1981,8,1),
-        new Date(1982,2,1),
-        new Date(1982,8,1),
-        new Date(1983,2,1), //next to last date
-        new Date(1984,0,1)
+        get_utc_date(1980,0,1),
+        get_utc_date(1980,2,1), //first date
+        get_utc_date(1980,8,1),
+        get_utc_date(1981,2,1),
+        get_utc_date(1981,8,1),
+        get_utc_date(1982,2,1),
+        get_utc_date(1982,8,1),
+        get_utc_date(1983,2,1), //next to last date
+        get_utc_date(1984,0,1)
 ];
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 6, adj, new Date(1980,2,1), new Date(1983,2,1));
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 6, adj, get_utc_date(1980,2,1), get_utc_date(1983,2,1));
 am (same_dates(sched, expected), "Backward schedule generation (7)");
 
 
 expected=[
-        new Date(1980,0,1),
-        new Date(1980,2,1), //first date
-        new Date(1980,8,1),
-        new Date(1981,2,1),
-        new Date(1981,8,1),
-        new Date(1982,2,1),
-        new Date(1982,8,1),
-        new Date(1983,2,1), 
-        new Date(1983,8,1), //implicit final stub
-        new Date(1984,0,1)
+        get_utc_date(1980,0,1),
+        get_utc_date(1980,2,1), //first date
+        get_utc_date(1980,8,1),
+        get_utc_date(1981,2,1),
+        get_utc_date(1981,8,1),
+        get_utc_date(1982,2,1),
+        get_utc_date(1982,8,1),
+        get_utc_date(1983,2,1), 
+        get_utc_date(1983,8,1), //implicit final stub
+        get_utc_date(1984,0,1)
 ];
 
-sched=JsonRisk.schedule(new Date(1980,0,1), new Date(1984,0,1), 6, adj, new Date(1980,2,1), null);
+sched=JsonRisk.schedule(get_utc_date(1980,0,1), get_utc_date(1984,0,1), 6, adj, get_utc_date(1980,2,1), null);
 am (same_dates(sched, expected), "Forward schedule generation (7)");
 
 expected=[
-        new Date(1980,0,1),
-        new Date(1981,0,1),
-        new Date(1982,0,1),
-        new Date(1983,0,1),
-        new Date(1984,0,1)
+        get_utc_date(1980,0,1),
+        get_utc_date(1981,0,1),
+        get_utc_date(1982,0,1),
+        get_utc_date(1983,0,1),
+        get_utc_date(1984,0,1)
 ];
-JsonRisk.valuation_date=new Date(1980,6,1);
-sched=JsonRisk.schedule(null, new Date(1984,0,1), 12, adj, null, null);
+JsonRisk.valuation_date=get_utc_date(1980,6,1);
+sched=JsonRisk.schedule(null, get_utc_date(1984,0,1), 12, adj, null, null);
 am (same_dates(sched, expected), "Backward schedule generation without effective date (1)");
 
-sched=JsonRisk.schedule(null, new Date(1984,0,1), 12, adj, null, new Date(1983,0,1));
+sched=JsonRisk.schedule(null, get_utc_date(1984,0,1), 12, adj, null, get_utc_date(1983,0,1));
 am (same_dates(sched, expected), "Backward schedule generation without effective date (2)");
 
 expected=[
-        new Date(1980,3,1),
-        new Date(1980,9,1),
-        new Date(1981,3,1),
-        new Date(1981,9,1),
-        new Date(1982,3,1),
-        new Date(1982,9,1),
-        new Date(1983,3,1),
-        new Date(1984,0,1)
+        get_utc_date(1980,3,1),
+        get_utc_date(1980,9,1),
+        get_utc_date(1981,3,1),
+        get_utc_date(1981,9,1),
+        get_utc_date(1982,3,1),
+        get_utc_date(1982,9,1),
+        get_utc_date(1983,3,1),
+        get_utc_date(1984,0,1)
 ];
 
 
-sched=JsonRisk.schedule(null, new Date(1984,0,1), 6, adj, null, new Date(1983,3,1));
+sched=JsonRisk.schedule(null, get_utc_date(1984,0,1), 6, adj, null, get_utc_date(1983,3,1));
 am (same_dates(sched, expected), "Backward schedule generation without effective date (3)");
 
 
@@ -629,7 +633,7 @@ am (same_dates(sched, expected), "Backward schedule generation without effective
 */
 var start, end, stub;
 for (i=2;i<=12;i++){
-	start=new Date(2000+i, i-2, 2*i); //starts in Jan, Feb, Mar ...
+	start=get_utc_date(2000+i, i-2, 2*i); //starts in Jan, Feb, Mar ...
 	end=JsonRisk.add_months(start, 12*i+1);   //always requires one-month short stub or one+i months long stub ...
 	expected=JsonRisk.schedule(start, end, i, adj, null, null, false, false); //standard backward schedule has short stub at beginning
 	stub=JsonRisk.add_months(start, 1);
@@ -662,7 +666,7 @@ for (i=2;i<=12;i++){
 	
 */
 var curve=JsonRisk.get_const_curve(0.05);
-JsonRisk.valuation_date=new Date(2000,0,17);
+JsonRisk.valuation_date=get_utc_date(2000,0,17);
 var bond={
         maturity: "2010-01-18",
         notional: 100,
@@ -710,7 +714,7 @@ var Kurs_Dirty=[109.396, 109.114, 105.367, 101.279, 105.139, 100.490,
 var Rendite=[0.18, 0.21, 0.25, 0.32, 0.37, 0.44, 1.15, 1.17,
              1.24, 1.29, 1.31, 1.34];
 
-JsonRisk.valuation_date=new Date(2018,1,23);
+JsonRisk.valuation_date=get_utc_date(2018,1,23);
 
 var bonds=[];
 for (i=0; i<Kupon.length; i++){
@@ -753,7 +757,7 @@ for (i=0; i<Kupon.length; i++){
 }
 
 //Real prices at interest payment date minus settlement days
-JsonRisk.valuation_date=new Date(2018,0,2);
+JsonRisk.valuation_date=get_utc_date(2018,0,2);
 
 Kupon=[3.750, 4.000];
 Maturity=["04.01.2019", "04.01.2037"];
@@ -790,7 +794,7 @@ for (i=0; i<Kupon.length; i++){
 
 
 //Real prices before interest payment date minus settlement
-JsonRisk.valuation_date=new Date(2017,11,31);
+JsonRisk.valuation_date=get_utc_date(2017,11,31);
 
 Kurs_Dirty=[108.230, 157.199];
 Rendite=[-0.70, 0.93];
@@ -819,7 +823,7 @@ Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
 var adj=function(d){
         return JsonRisk.adjust(d,"following",JsonRisk.is_holiday_factory("TARGET"));
 };
-JsonRisk.valuation_date=adj(new Date(1900,0,1));
+JsonRisk.valuation_date=adj(get_utc_date(1900,0,1));
 
 var pv=0, pv_ref=0;
 //brief function to calculate bond pv at 10% discount
@@ -902,7 +906,7 @@ Kurs_Dirty=[109.396, 109.114, 105.367, 101.279, 105.139, 100.490,
 Rendite=[0.18, 0.21, 0.25, 0.32, 0.37, 0.44, 1.15, 1.17,
          1.24, 1.29, 1.31, 1.34];
      
-JsonRisk.valuation_date=new Date(2018,1,23);             
+JsonRisk.valuation_date=get_utc_date(2018,1,23);             
 var floaters=[];
 for (i=0; i<Kupon.length; i++){
         floaters.push({
@@ -963,7 +967,7 @@ curve_up={times:times,zcs:zcs_up};
 var swap, swap_up;
 var p_up, p, p_diff;
 
-JsonRisk.valuation_date=new Date(2018,1,23);             
+JsonRisk.valuation_date=get_utc_date(2018,1,23);             
 for (i=0; i<months.length; i++){
         for (j=0; j<tenors.length; j++){
                 swap={
@@ -1126,7 +1130,7 @@ Test FX Term
 
 */
 
-JsonRisk.valuation_date=new Date(2017,10,30);
+JsonRisk.valuation_date=get_utc_date(2017,10,30);
 
 times = [1,2,3,5];
 dfs = [0.95,0.91,0.86,0.78];
@@ -1134,16 +1138,16 @@ curve = {times:times, dfs:dfs};
 
 var fx_swapleg ={
          notional: 100, 
-         maturity: new Date(2018,10,30),
+         maturity: get_utc_date(2018,10,30),
          notional_2: -100,
-         maturity_2: new Date(2019,10,30)
+         maturity_2: get_utc_date(2019,10,30)
         };
 
 var pv= JsonRisk.pricer_fxterm(fx_swapleg,curve);
 am(pv.toFixed(2) === "4.00", "FX swap valuation (1)");
 
-fx_swapleg.maturity=new Date(2020,10,29);
-fx_swapleg.maturity_2=new Date(2022,10,29);
+fx_swapleg.maturity=get_utc_date(2020,10,29);
+fx_swapleg.maturity_2=get_utc_date(2022,10,29);
 
 var pv= JsonRisk.pricer_fxterm(fx_swapleg,curve);
 am(pv.toFixed(2) === "8.00", "FX swap valuation (2)");
@@ -1165,7 +1169,7 @@ bonds=[];
 var discount_rate;
 for (i=0;i<400;i++){
         bonds.push({
-		effective_date: new Date(JsonRisk.valuation_date),
+		effective_date: JsonRisk.valuation_date,
 		maturity: Maturity[i % Maturity.length],
 		notional: 100.0,
 		fixed_rate: Kupon[i % Kupon.length]/100,
@@ -1248,7 +1252,7 @@ var spread_curve={times: [1], zcs: [0.05]};
 var r;
 for (i=0;i<400;i++){
         bonds.push({
-		effective_date: new Date(JsonRisk.valuation_date),
+		effective_date: JsonRisk.valuation_date,
 		maturity: Maturity[i % Maturity.length],
 		notional: 100.0,
 		fixed_rate: Kupon[i % Kupon.length]/100,
@@ -1294,18 +1298,18 @@ for (i=0;i<400;i++){
 Test LGM option pricing
 
 */
-JsonRisk.valuation_date=new Date(2019,0,1);
+JsonRisk.valuation_date=get_utc_date(2019,0,1);
 yf=JsonRisk.year_fraction_factory("");
 var cf_obj={
-	date_pmt:[new Date(2019,0,1),
-		  new Date(2020,0,1),
-		  new Date(2021,0,1),
-		  new Date(2022,0,1),
-		  new Date(2023,0,1),
-	 	  new Date(2024,0,1),
-	 	  new Date(2025,0,1),
-	 	  new Date(2026,0,1),
-	 	  new Date(2027,0,1)],
+	date_pmt:[get_utc_date(2019,0,1),
+		  get_utc_date(2020,0,1),
+		  get_utc_date(2021,0,1),
+		  get_utc_date(2022,0,1),
+		  get_utc_date(2023,0,1),
+	 	  get_utc_date(2024,0,1),
+	 	  get_utc_date(2025,0,1),
+	 	  get_utc_date(2026,0,1),
+	 	  get_utc_date(2027,0,1)],
 	current_principal:[100,100,90,80,70,60,50,40,30],
 	pmt_interest:[0,11,0.9,0.8,0.7,0.6, 0.5, 0.4, 0.3],
 	pmt_total:[0,11,10.9,10.8,10.7,10.6, 10.5, 10.4, 30.3]
@@ -1318,13 +1322,13 @@ for (i=0;i<cf_obj.date_pmt.length;i++){
 
 var cf_regular;
 
-expiries=[new Date(2019,0,1),
-	  new Date(2020,0,1),
-	  new Date(2021,0,1),
-	  new Date(2022,0,1),
-	  new Date(2023,0,1),
-	  new Date(2024,0,1),
-	  new Date(2025,0,1)];
+expiries=[get_utc_date(2019,0,1),
+	  get_utc_date(2020,0,1),
+	  get_utc_date(2021,0,1),
+	  get_utc_date(2022,0,1),
+	  get_utc_date(2023,0,1),
+	  get_utc_date(2024,0,1),
+	  get_utc_date(2025,0,1)];
 var lgm_xi;
 var lgm_state;
 var result, result_orig, result_numeric, bpv;
@@ -1393,7 +1397,7 @@ var curve=JsonRisk.get_const_curve(0.01);
 var curve_up=JsonRisk.get_const_curve(0.0101);
 surface={type: "bachelier", expiries: [1,2,5], terms: [1,5,10,20], values: [[0.008, 0.0081, 0.0082, 0.0080],[0.0085, 0.0076, 0.0068, 0.0068],[0.01, 0.0103, 0.012, 0.011]]};
 //surface=JsonRisk.get_const_surface(0.06);
-JsonRisk.valuation_date=new Date(2000,0,17);
+JsonRisk.valuation_date=get_utc_date(2000,0,17);
 
 Maturity=["15.02.2024", "15.05.2024", "15.08.2024", "15.02.2025", "15.08.2025",
           "15.02.2026", "04.07.2039", "04.07.2040", "04.07.2042", "04.07.2044",
@@ -1543,7 +1547,7 @@ var check=function(arr){
 };
 results=JsonRisk.vector_pricer({
         type: 'bond',
-        maturity: new Date(2032,1,1),
+        maturity: get_utc_date(2032,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
         tenor: 12,
@@ -1559,7 +1563,7 @@ am(check(results), "Vector pricing with bond returns valid vector of numbers");
         
 results=JsonRisk.vector_pricer({
         type: 'floater',
-        maturity: new Date(2032,1,1),
+        maturity: get_utc_date(2032,1,1),
         notional: 100.0,
         float_spread: 0.0125,
         float_current_rate: 0.0125,
@@ -1576,9 +1580,9 @@ am(check(results), "Vector pricing with floater returns valid vector of numbers"
       
 results=JsonRisk.vector_pricer({
         type: 'fxterm',
-        maturity: new Date(2032,1,1),
+        maturity: get_utc_date(2032,1,1),
         notional: 100.0,
-        maturity_2: new Date(2038,1,1),
+        maturity_2: get_utc_date(2038,1,1),
         notional_2: 105,
         currency: "EUR",
         disc_curve: "EURO-GOV"
@@ -1588,9 +1592,9 @@ am(check(results), "Vector pricing with fxterm returns valid vector of numbers (
 
 results=JsonRisk.vector_pricer({
         type: 'fxterm',
-        maturity: new Date(2032,1,1),
+        maturity: get_utc_date(2032,1,1),
         notional: 107.0,
-        maturity_2: new Date(2038,1,1),
+        maturity_2: get_utc_date(2038,1,1),
         notional_2: 112,
         currency: "USD",
         disc_curve: "EURO-GOV"
@@ -1600,7 +1604,7 @@ am(check(results), "Vector pricing with fxterm returns valid vector of numbers (
 results=JsonRisk.vector_pricer({
         type: 'swap',
         is_payer: true,
-        maturity: new Date(2032,1,1),
+        maturity: get_utc_date(2032,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
         tenor: 12,
@@ -1620,7 +1624,7 @@ am(check(results), "Vector pricing with swap returns valid vector of numbers");
 results=JsonRisk.vector_pricer({
         type: 'bond',
         effective_date: JsonRisk.valuation_date,
-        maturity: new Date(2032,1,1),
+        maturity: get_utc_date(2032,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
         tenor: 12,
@@ -1639,8 +1643,8 @@ am(check(results), "Vector pricing with amortizing bond returns valid vector of 
 results=JsonRisk.vector_pricer({
         type: 'swaption',
         is_payer: true,
-        maturity: new Date(2032,1,1),
-        first_exercise_date: new Date(2022,1,1),
+        maturity: get_utc_date(2032,1,1),
+        first_exercise_date: get_utc_date(2022,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
         tenor: 12,
@@ -1660,8 +1664,8 @@ am(check(results), "Vector pricing with swaption returns valid vector of numbers
 
 results=JsonRisk.vector_pricer({
         type: 'callable_bond',
-        maturity: new Date(2032,1,1),
-		first_exercise_date: new Date(2025,1,1),
+        maturity: get_utc_date(2032,1,1),
+		first_exercise_date: get_utc_date(2025,1,1),
 		call_tenor: 3,
         notional: 100.0,
         fixed_rate: 0.0125,
@@ -1712,7 +1716,7 @@ var compare=function(arr1, arr2){
 
 bond={
         type: 'bond',
-        maturity: new Date(2045,1,1),
+        maturity: get_utc_date(2045,1,1),
         notional: 100.0,
         fixed_rate: 0.0125,
         tenor: 1,
@@ -1754,8 +1758,8 @@ am(compare(results_vector,results_scen_tag), "Vector pricing with scenarios by t
 
 bond={
         type: 'callable_bond',
-        maturity: new Date(2042,1,1),
-		first_exercise_date: new Date(2023,1,1),
+        maturity: get_utc_date(2042,1,1),
+		first_exercise_date: get_utc_date(2023,1,1),
 		call_tenor: 3,
         notional: 100.0,
         fixed_rate: 0.0001,
@@ -1786,7 +1790,7 @@ am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by ri
 
 bond={
         type: 'bond',
-        maturity: new Date(2042,1,1),
+        maturity: get_utc_date(2042,1,1),
         notional: 100.0,
         fixed_rate: 0.01,
         tenor: 12,
@@ -1806,7 +1810,7 @@ equity={
 };
 
 params_vector={
-    valuation_date: new Date(2023,1,1),
+    valuation_date: get_utc_date(2023,1,1),
     curves: {
         CONST: { times: [1], zcs: [0.05]}
     },
@@ -1818,7 +1822,7 @@ params_vector={
 };
 
 params_scen_rf={
-    valuation_date: new Date(2023,1,1),
+    valuation_date: get_utc_date(2023,1,1),
     curves: {
         CONST: { times: [1], zcs: [0.05]}
     },
@@ -1956,8 +1960,8 @@ bond.surface="CONST_30BP";
 JsonRisk.store_params(params_vola_sensis);
 results_vector=JsonRisk.vector_pricer(bond);
 
-JsonRisk.valuation_date=new Date(2002,1,15);
-var sd=new Date(2002,1,19);
+JsonRisk.valuation_date=get_utc_date(2002,1,15);
+var sd=get_utc_date(2002,1,19);
 curve=JsonRisk.get_const_curve(0.048);
 values= [
   [0.1490, 0.1340, 0.1228, 0.1189, 0.1148],
@@ -1996,7 +2000,7 @@ for (i=0;i<13;i++){
 	console.log("EMBEDDED OPTION PRICE:     " + (result-result_multi));
 }
 
-JsonRisk.valuation_date=new Date(2014,3,30);
+JsonRisk.valuation_date=get_utc_date(2014,3,30);
 sd=JsonRisk.valuation_date;
 fwd_curve=JsonRisk.get_const_curve(0.02);
 disc_curve=JsonRisk.get_const_curve(0.02);
@@ -2005,8 +2009,8 @@ surface={expiries: [1], terms: [1], values: [[0.2*0.02]]};
 
 bond={
 		effective_date: sd,
-		maturity: new Date(2024, 4, 6),
-		first_exercise_date: new Date(2015, 4, 6),
+		maturity: get_utc_date(2024, 4, 6),
+		first_exercise_date: get_utc_date(2015, 4, 6),
 		tenor: 12,
 		notional: 1.0,
 		fixed_rate: 0.04,
