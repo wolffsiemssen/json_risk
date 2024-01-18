@@ -20,7 +20,8 @@
                         effective_date: instrument.effective_date,
                         calendar: instrument.calendar,
                         bdc: instrument.bdc,
-                        dcc: instrument.dcc
+                        dcc: instrument.dcc,
+						adjust_accrual_periods: instrument.adjust_accrual_periods
                 });
                 
                 //the floating rate leg of the swap
@@ -34,7 +35,8 @@
                         calendar: instrument.calendar,
                         bdc: instrument.float_bdc,
                         dcc: instrument.float_dcc,
-                        float_current_rate: instrument.float_current_rate
+                        float_current_rate: instrument.float_current_rate,
+						adjust_accrual_periods: instrument.adjust_accrual_periods
                 });
         };
  		/**

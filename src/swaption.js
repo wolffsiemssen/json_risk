@@ -20,23 +20,24 @@
                         throw new Error("swaption: must provide valid first_exercise_date date.");
 
                 //underlying swap object
-		this.swap=new library.swap({
-			is_payer: instrument.is_payer,
-                        notional: instrument.notional,
-			effective_date: this.first_exercise_date,
-                        maturity: instrument.maturity,
-                        fixed_rate: instrument.fixed_rate,
-                        tenor: instrument.tenor,
-                        calendar: instrument.calendar,
-                        bdc: instrument.bdc,
-                        dcc: instrument.dcc,
-                        float_spread: instrument.float_spread,
-                        float_tenor: instrument.float_tenor,
-                        float_bdc: instrument.float_bdc,
-                        float_dcc: instrument.float_dcc,
-                        float_current_rate: instrument.float_current_rate
-		});
-        };
+				this.swap=new library.swap({
+					is_payer: instrument.is_payer,
+					notional: instrument.notional,
+					effective_date: this.first_exercise_date,
+					maturity: instrument.maturity,
+					fixed_rate: instrument.fixed_rate,
+					tenor: instrument.tenor,
+					calendar: instrument.calendar,
+					bdc: instrument.bdc,
+					dcc: instrument.dcc,
+					float_spread: instrument.float_spread,
+					float_tenor: instrument.float_tenor,
+					float_bdc: instrument.float_bdc,
+					float_dcc: instrument.float_dcc,
+					float_current_rate: instrument.float_current_rate,
+					adjust_accrual_periods: instrument.adjust_accrual_periods
+				});
+		};
 		/**
 		 	* calculates the present value for internal swaption (object)
 			* @param {object} disc_curve discount curve
