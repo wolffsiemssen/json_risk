@@ -699,7 +699,7 @@
     var repay_tenor = library.get_safe_natural(instrument.repay_tenor);
     if (null === repay_tenor) repay_tenor = tenor;
 
-    var linear_amortization = instrument.linear_amortization || false;
+    var linear_amortization = library.get_safe_bool(instrument.linear_amortization);
 
     this.repay_amount = library.get_safe_number_vector(instrument.repay_amount) || [0]; //array valued
 
