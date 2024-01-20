@@ -89,6 +89,20 @@
         return new Date(Date.UTC(y, m, d));
     };
 
+    /**
+     * constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+     * @param {date} date object
+     * @returns {string} date string
+     * @memberof library
+     * @public
+     */
+    library.date_to_date_str = function(d) {
+		var dobj=library.get_safe_date(d);
+		if(null===dobj) throw new Error("date_to_date_str: invalid input.");
+		return dobj.toISOString().slice(0,10);
+    };
+
+
 
     /**
      * takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null

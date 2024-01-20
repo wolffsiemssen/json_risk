@@ -2004,6 +2004,9 @@
 		if(typeof b === 'boolean') return b;				
 		if(typeof b === 'number') return b!==0;
 		if(typeof b === 'string'){
+			var n=Number(b.trim()).valueOf();
+			if (0===n) return false;
+			if (!isNaN(n)) return true;
 			var s=b.trim().toLowerCase();
 			if(s==='true' || s==='yes' || s==='t' || s==='y') return true;
             return false;
@@ -3032,6 +3035,20 @@
         if (d < 0 || d > days_in_month(y, m)) throw new Error('date_str_to_time(str) - Invalid day in date string: ' + str);
         return new Date(Date.UTC(y, m, d));
     };
+
+    /**
+     * constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+     * @param {date} date object
+     * @returns {string} date string
+     * @memberof library
+     * @public
+     */
+    library.date_to_date_str = function(d) {
+		var dobj=library.get_safe_date(d);
+		if(null===dobj) throw new Error("date_to_date_str: invalid input.");
+		return dobj.toISOString().slice(0,10);
+    };
+
 
 
     /**

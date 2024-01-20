@@ -33,6 +33,40 @@ am (typeof JsonRisk.get_const_curve === 'function', "get_const_curve function de
 am (typeof JsonRisk.get_safe_curve === 'function', "get_safe_curve function defined");
 
 /*!
+
+	Test date conversion back and forth
+
+*/
+
+am(JsonRisk.date_to_date_str('2000-01-01') === '2000-01-01', "date conversion back and forth (1)");
+am(JsonRisk.date_to_date_str('2000/01/01') === '2000-01-01', "date conversion back and forth (2)");
+am(JsonRisk.date_to_date_str('01.01.2000') === '2000-01-01', "date conversion back and forth (3)");
+am(JsonRisk.date_to_date_str('2000-1-1')  === '2000-01-01', "date conversion back and forth (4)");
+am(JsonRisk.date_to_date_str('2000/1/1') === '2000-01-01', "date conversion back and forth (5)");
+am(JsonRisk.date_to_date_str('1.1.2000') === '2000-01-01', "date conversion back and forth (6)");
+
+/*
+
+	Test number and boolean vector parsing
+
+*/
+
+for (var b of JsonRisk.get_safe_bool_vector("True   TRUE yes YES 1  1   1.0 0.999E10")){
+	am(true===b,"Boolean conversion (true)"); 
+
+}
+
+for (var b of JsonRisk.get_safe_bool_vector("False   FALSE no NOTTRUE 0  0.0   0.000E10")){
+	am(false===b,"Boolean conversion (false)"); 
+
+}
+
+for (var n of JsonRisk.get_safe_number_vector("1 1.0 100%")){
+	am(1===n,"Number conversion (one)"); 
+
+}
+
+/*!
 	
 	Test Year Fraction
 	

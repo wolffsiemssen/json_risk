@@ -97,6 +97,9 @@
 		if(typeof b === 'boolean') return b;				
 		if(typeof b === 'number') return b!==0;
 		if(typeof b === 'string'){
+			var n=Number(b.trim()).valueOf();
+			if (0===n) return false;
+			if (!isNaN(n)) return true;
 			var s=b.trim().toLowerCase();
 			if(s==='true' || s==='yes' || s==='t' || s==='y') return true;
             return false;
