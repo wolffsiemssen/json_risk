@@ -182,10 +182,10 @@
 					return get_rate(_times,_dfs,t);
 				};
 
-				// attach get_fwd_rate based on get_df
-				curve.get_fwd_rate=function(tstart,tend){
+				// attach get_fwd_amount based on get_df
+				curve.get_fwd_amount=function(tstart,tend){
 					if (tend-tstart<1/512) return 0.0;
-					return Math.pow(this.get_df(tend) / this.get_df(tstart),-1/(tend-tstart))-1;
+					return (this.get_df(tstart) / this.get_df(tend))-1;
 				};
 
 				// attach get_times closure in order to reobtain hidden times when needed
@@ -255,9 +255,9 @@
 			* @memberof library
 			* @public
 		*/  
-        library.get_fwd_rate=function(curve,tstart,tend){
-			if (curve.get_fwd_rate instanceof Function) return curve.get_fwd_rate(tstart,tend);
-			return library.get_safe_curve(curve).get_fwd_rate(tstart,tend);
+        library.get_fwd_amount=function(curve,tstart,tend){
+			if (curve.get_fwd_amount instanceof Function) return curve.get_fwd_amount(tstart,tend);
+			return library.get_safe_curve(curve).get_fwd_amount(tstart,tend);
         };
 
 

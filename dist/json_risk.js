@@ -388,10 +388,10 @@
 					return get_rate(_times,_dfs,t);
 				};
 
-				// attach get_fwd_rate based on get_df
-				curve.get_fwd_rate=function(tstart,tend){
+				// attach get_fwd_amount based on get_df
+				curve.get_fwd_amount=function(tstart,tend){
 					if (tend-tstart<1/512) return 0.0;
-					return Math.pow(this.get_df(tend) / this.get_df(tstart),-1/(tend-tstart))-1;
+					return (this.get_df(tstart) / this.get_df(tend))-1;
 				};
 
 				// attach get_times closure in order to reobtain hidden times when needed
@@ -461,9 +461,9 @@
 			* @memberof library
 			* @public
 		*/  
-        library.get_fwd_rate=function(curve,tstart,tend){
-			if (curve.get_fwd_rate instanceof Function) return curve.get_fwd_rate(tstart,tend);
-			return library.get_safe_curve(curve).get_fwd_rate(tstart,tend);
+        library.get_fwd_amount=function(curve,tstart,tend){
+			if (curve.get_fwd_amount instanceof Function) return curve.get_fwd_amount(tstart,tend);
+			return library.get_safe_curve(curve).get_fwd_amount(tstart,tend);
         };
 
 
@@ -953,7 +953,6 @@
   library.fixed_income.prototype.finalize_cash_flows = function(fwd_curve, override_rate_or_spread) {
     library.require_vd(); //valuation date must be set
 
-    var default_yf = library.year_fraction_factory(null);
     var c = this.cash_flows;
     var n = c.date_accrual_start.length;
     var current_principal = new Array(n);
@@ -1024,10 +1023,10 @@
           //period beginning in the future, and start date is fixing date, use forward curve from now until next fixing date
           j = 0;
           while (!c.is_fixing_date[i + j] && i + j < c.is_fixing_date.length) j++;
-  
-          fwd_rate[i] = library.get_fwd_rate(fwd_curve,
-              c.t_accrual_start[i],
-              c.t_accrual_end[i + j]);
+  		  
+          fwd_rate[i] = library.get_fwd_amount(fwd_curve,c.t_accrual_start[i], c.t_accrual_end[i + j]);
+          fwd_rate[i] /= this.year_fraction_func(c.date_accrual_start[i], c.date_accrual_end[i + j]);
+
         } else {
           fwd_rate[i]=fwd_rate[i-1];
         }
@@ -1116,7 +1115,7 @@
 
   library.fixed_income.prototype.get_cash_flows = function(fwd_curve) {
     if (this.is_float) {
-      if (typeof fwd_curve !== 'object' || fwd_curve === null) throw new Error("fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
+	  if (typeof fwd_curve !== 'object' || fwd_curve === null) throw new Error("fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream");
       return this.finalize_cash_flows(fwd_curve);
     }
     return this.cash_flows;

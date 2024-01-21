@@ -28,7 +28,7 @@ am (typeof JsonRisk.get_safe_date === 'function', "get_safe_date function define
 am (typeof JsonRisk.date_str_to_date === 'function', "date_string_to_date function defined");
 am (typeof JsonRisk.get_rate === 'function', "get_rate function defined");
 am (typeof JsonRisk.get_df === 'function', "get_df function defined");
-am (typeof JsonRisk.get_fwd_rate === 'function', "get_fwd_rate function defined");
+am (typeof JsonRisk.get_fwd_amount === 'function', "get_fwd_amount function defined");
 am (typeof JsonRisk.get_const_curve === 'function', "get_const_curve function defined");
 am (typeof JsonRisk.get_safe_curve === 'function', "get_safe_curve function defined");
 
@@ -980,7 +980,9 @@ for (i=0; i<Kupon.length; i++){
         curve_up=JsonRisk.get_const_curve(r+0.0001);
         pu=JsonRisk.pricer_floater(floaters[i],curve_up, null, fwd_curve);
         pd=JsonRisk.pricer_floater(floaters[i],curve_down, null, fwd_curve);   
-       
+        console.log("JSON Risk Price one basis point cheaper:        " + pu.toFixed(3));    
+        console.log("Quote from www.bundesbank.de:                   " + Kurs_Dirty[i].toFixed(3));
+        console.log("JSON Risk Price one basis point more expensive: " + pd.toFixed(3));
         am(pu<Kurs_Dirty[i] && Kurs_Dirty[i]<pd, "Floater Valuation (using constant forward curve with rate reflecting Bund coupon and a zero float_spread, " + (i+1) +")");
 }
 
