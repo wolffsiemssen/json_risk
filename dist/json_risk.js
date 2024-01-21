@@ -1,7 +1,7 @@
 /*!
 	JSON Risk
-	v0.0.0
-	https://github.com/tilwolff/json_risk
+	v1.0.0
+	https://github.com/wolffsiemssen/json_risk
 	License: MIT
 */
 
@@ -29,8 +29,6 @@
         JsonRisk.require_vd=function(){
 		if(!(JsonRisk.valuation_date instanceof Date)) throw new Error("JsonRisk: valuation_date must be set");
         };
-
-        
         
         return JsonRisk;
 

@@ -1,6 +1,6 @@
 {
   "name": "json_risk",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "JSON / JavaScript financial risk and pricing library",
   "main": "index.js",
   "directories": {
@@ -30,10 +30,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tilwolff/json_risk.git"
+    "url": "git+https://github.com/wolffsiemssen/json_risk.git"
   },
   "bugs": {
-    "url": "https://github.com/tilwolff/json_risk/issues"
+    "url": "https://github.com/wolffsiemssen/json_risk/issues"
   },
-  "homepage": "https://github.com/tilwolff/json_risk#readme"
+  "homepage": "https://www.jsonrisk.de"
 }
