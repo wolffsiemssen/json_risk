@@ -3057,7 +3057,15 @@
      */
     library.get_safe_date = function(d) {
         if (!d) return null;
-        if (d instanceof Date) return d;
+        if (d instanceof Date) {
+			var h=d.getUTCHours();
+			if (0===h) return d; // valid UTC 0:00 date
+			var y=d.getUTCFullYear();	
+			var m=d.getUTCMonth();
+			var t=d.getUTCDate();
+			if (h>11) t++; // advance to next day UTC 0:00 date
+			return new Date(Date.UTC(y,m,t)); 
+		}
         if ((d instanceof String) || typeof d === 'string') return library.date_str_to_date(d);
         throw new Error("get_safe_date: invalid input.");
     };
