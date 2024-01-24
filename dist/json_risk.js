@@ -3109,7 +3109,7 @@
      * @private
      */
     function days_between(from, to) {
-        return Math.round((to - from) * one_over_dl);
+        return Math.round((to.getTime() - from.getTime()) * one_over_dl);
     }
 
 
