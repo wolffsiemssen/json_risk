@@ -2813,7 +2813,7 @@
 		if (t_first_exercise_date<0){
 			//degenerate case where swaption has expired in the past
 			return 0;
-		}else if (t_first_exercise_date<1/512 || this.std_dev<0.0001){
+		}else if (t_first_exercise_date<1/512 || this.std_dev<0.000001){
                         //degenerate case where swaption is almost expiring or volatility is very low
                         res=Math.max(this.swap.phi*this.moneyness, 0);
                 }else{

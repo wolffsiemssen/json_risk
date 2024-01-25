@@ -1818,6 +1818,33 @@ JsonRisk.store_params(params_scen_rf);
 results_scen_rf=JsonRisk.vector_pricer(bond);
 am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor, with volatilities (1)");
 
+swaption={
+	type: "swaption",
+	notional: 100000,
+	tenor: 12,
+	fixed_rate: 0.0,
+	float_tenor: 6,
+	float_current_rate: 0,
+	surface: "CONST_0BP",
+	disc_curve: "CONST",
+	fwd_curve: "CONST",
+	currency: "EUR"
+};
+
+for (i=2; i<50; i++){
+	swaption.maturity=get_utc_date(2025, 2*i, 22);
+	swaption.first_exercise_date=get_utc_date(2024, i, 22);
+	// vector pricing is the reference
+	JsonRisk.store_params(params_vector);
+	results_vector=JsonRisk.vector_pricer(swaption);
+	console.log(results_vector[1]);
+	// scenarios by risk factor
+	JsonRisk.store_params(params_scen_rf);
+	results_scen_rf=JsonRisk.vector_pricer(swaption);
+	console.log(results_scen_rf[1]);
+	am(compare(results_vector,results_scen_rf), "Vector pricing with scenarios by risk factor, with volatilities (" + i + ")");
+}
+
 /*
 
     Test vector and scenario pricing wih FX and equity
