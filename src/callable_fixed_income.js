@@ -29,7 +29,8 @@
 
         var fcd = library.get_safe_date(instrument.first_exercise_date);
         if (null === fcd) throw new Error("callable_fixed_income: must provide first call date");
-
+        this.mean_reversion=instrument.mean_reversion;
+        if (null === this.mean_reversion) this.mean_reversion=0.0;
         this.base = new library.fixed_income(instrument);
         if (fcd.getTime() <= this.base.schedule[0].getTime()) throw new Error("callable_fixed_income: first call date before issue date");
         if (!this.base.notional_exchange) throw new Error("callable_fixed_income: callable instruments must exchange notionals");
@@ -118,6 +119,9 @@
         library.get_safe_curve(disc_curve);
         library.get_safe_curve(fwd_curve);
         if (spread_curve) library.get_safe_curve(spread_curve);
+
+        // set lgm mean reversion
+        library.lgm_set_mean_reversion(this.mean_reversion);
 
         //calibrate lgm model - returns xi for non-expired swaptions only
         if (typeof surface !== 'object' || surface === null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
