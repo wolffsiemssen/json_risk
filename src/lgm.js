@@ -415,7 +415,7 @@
 	};
 
 
-	var STD_DEV_RANGE=4;
+	var STD_DEV_RANGE=5;
 	var RESOLUTION=15;
 	/**
 	 	* ...

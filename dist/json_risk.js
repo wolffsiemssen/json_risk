@@ -371,6 +371,9 @@
 					times: [1],
 					dfs: [1]
 				};
+				
+				// do not call this twice on a curve. If curve already has get_rate, just return
+				if (curve.get_rate instanceof Function) return curve;
 
 				// extract times and discount factors from curve and store in hidden function scope
 				var _times=library.get_curve_times(curve);
@@ -1731,7 +1734,7 @@
 	};
 
 
-	var STD_DEV_RANGE=4;
+	var STD_DEV_RANGE=5;
 	var RESOLUTION=15;
 	/**
 	 	* ...
