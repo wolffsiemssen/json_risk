@@ -29,7 +29,10 @@
 
         var fcd = library.get_safe_date(instrument.first_exercise_date);
         if (null === fcd) throw new Error("callable_fixed_income: must provide first call date");
-        this.mean_reversion=instrument.mean_reversion;
+
+        this.mean_reversion=library.get_safe_number(instrument.mean_reversion); // null allowed
+        this.hull_white_volatility=library.get_safe_number(instrument.hull_white_volatility); // null allowed
+
         if (null === this.mean_reversion) this.mean_reversion=0.0;
         this.base = new library.fixed_income(instrument);
         if (fcd.getTime() <= this.base.schedule[0].getTime()) throw new Error("callable_fixed_income: first call date before issue date");
@@ -38,18 +41,26 @@
         this.call_schedule = library.schedule(fcd,
             library.get_safe_date(instrument.maturity),
             call_tenor || 0, //european call by default
-            this.base.adj);
+            this.base.adj,
+            null,
+            null,
+            true,
+            false);
         this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
+
+        var i;
+        for(i=0;i<this.call_schedule.length;i++){ // adjust exercise dates according to business day rule
+            this.call_schedule[i]=this.base.adj(this.call_schedule[i]);
+        }
         this.opportunity_spread = library.get_safe_number(instrument.opportunity_spread) || 0.0;
         this.exclude_base = library.get_safe_bool(instrument.exclude_base);
         this.simple_calibration = library.get_safe_bool(instrument.simple_calibration);
 
         //truncate call dates as soon as principal has been redeemed
         var cf_obj = this.base.get_cash_flows();
-        var i = cf_obj.current_principal.length - 1;
+        i = cf_obj.current_principal.length - 1;
         while (cf_obj.current_principal[i] === 0) i--;
         while (this.call_schedule[this.call_schedule.length - 1] >= cf_obj.date_pmt[i]) this.call_schedule.pop();
-
 
         //basket generation
         this.basket = new Array(this.call_schedule.length);
@@ -111,7 +122,7 @@
             tte;
         for (i = 0; i < this.call_schedule.length; i++) {
             tte = library.time_from_now(this.call_schedule[i]);
-            if (tte > 1 / 512) t_exercise.push(tte); //non-expired call date
+            if (tte > 1/512) t_exercise.push(tte); //non-expired call date
         }
 
         if (typeof disc_curve !== 'object' || disc_curve === null) throw new Error("callable_fixed_income.present_value: must provide discount curve");
@@ -125,7 +136,14 @@
 
         //calibrate lgm model - returns xi for non-expired swaptions only
         if (typeof surface !== 'object' || surface === null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
-        var xi_vec = library.lgm_calibrate(this.basket, disc_curve, fwd_curve, surface);
+        
+                
+        var xi_vec;
+        if(null == this.hull_white_volatility){
+            xi_vec = library.lgm_calibrate(this.basket, disc_curve, fwd_curve, surface);
+        }else{
+            xi_vec = library.get_xi_from_hull_white_volatility(t_exercise, this.hull_white_volatility);
+        }
 
         //derive call option price
         if (1 === xi_vec.length) {
