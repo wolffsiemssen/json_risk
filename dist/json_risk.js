@@ -64,7 +64,10 @@
 
         var fcd = library.get_safe_date(instrument.first_exercise_date);
         if (null === fcd) throw new Error("callable_fixed_income: must provide first call date");
-        this.mean_reversion=instrument.mean_reversion;
+
+        this.mean_reversion=library.get_safe_number(instrument.mean_reversion); // null allowed
+        this.hull_white_volatility=library.get_safe_number(instrument.hull_white_volatility); // null allowed
+
         if (null === this.mean_reversion) this.mean_reversion=0.0;
         this.base = new library.fixed_income(instrument);
         if (fcd.getTime() <= this.base.schedule[0].getTime()) throw new Error("callable_fixed_income: first call date before issue date");
@@ -73,18 +76,26 @@
         this.call_schedule = library.schedule(fcd,
             library.get_safe_date(instrument.maturity),
             call_tenor || 0, //european call by default
-            this.base.adj);
+            this.base.adj,
+            null,
+            null,
+            true,
+            false);
         this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
+
+        var i;
+        for(i=0;i<this.call_schedule.length;i++){ // adjust exercise dates according to business day rule
+            this.call_schedule[i]=this.base.adj(this.call_schedule[i]);
+        }
         this.opportunity_spread = library.get_safe_number(instrument.opportunity_spread) || 0.0;
         this.exclude_base = library.get_safe_bool(instrument.exclude_base);
         this.simple_calibration = library.get_safe_bool(instrument.simple_calibration);
 
         //truncate call dates as soon as principal has been redeemed
         var cf_obj = this.base.get_cash_flows();
-        var i = cf_obj.current_principal.length - 1;
+        i = cf_obj.current_principal.length - 1;
         while (cf_obj.current_principal[i] === 0) i--;
         while (this.call_schedule[this.call_schedule.length - 1] >= cf_obj.date_pmt[i]) this.call_schedule.pop();
-
 
         //basket generation
         this.basket = new Array(this.call_schedule.length);
@@ -146,7 +157,7 @@
             tte;
         for (i = 0; i < this.call_schedule.length; i++) {
             tte = library.time_from_now(this.call_schedule[i]);
-            if (tte > 1 / 512) t_exercise.push(tte); //non-expired call date
+            if (tte > 1/512) t_exercise.push(tte); //non-expired call date
         }
 
         if (typeof disc_curve !== 'object' || disc_curve === null) throw new Error("callable_fixed_income.present_value: must provide discount curve");
@@ -160,7 +171,14 @@
 
         //calibrate lgm model - returns xi for non-expired swaptions only
         if (typeof surface !== 'object' || surface === null) throw new Error("callable_fixed_income.present_value: must provide valid surface");
-        var xi_vec = library.lgm_calibrate(this.basket, disc_curve, fwd_curve, surface);
+        
+                
+        var xi_vec;
+        if(null == this.hull_white_volatility){
+            xi_vec = library.lgm_calibrate(this.basket, disc_curve, fwd_curve, surface);
+        }else{
+            xi_vec = library.get_xi_from_hull_white_volatility(t_exercise, this.hull_white_volatility);
+        }
 
         //derive call option price
         if (1 === xi_vec.length) {
@@ -1361,6 +1379,27 @@
         };
     };
 
+    /**
+     * Get a vector of xi values for a fixed constant hull white volatility. The xis depend on the mean reversion setting. 
+     * @param {} t_exercise the vector of exercise times
+     * @params {} sigma the constant hull white volatility
+     * @returns {} vector of xis for the LGM model
+     * @memberof library
+     * @private
+     */
+
+    library.get_xi_from_hull_white_volatility=function(t_exercise, sigma){
+        var xi=new Array(t_exercise.length);
+        var dxi=0,dh,sigma_dh;        
+        for(var i=0;i<xi.length;i++){
+            dh=(i===0) ? h(t_exercise[i]) : h(t_exercise[i]) - h(t_exercise[i-1]);
+            sigma_dh=sigma/dh;
+            dxi+=sigma_dh*sigma_dh;
+	        xi[i]=dxi*t_exercise[i];
+        }
+        return xi;
+    };
+
 
     /**
      * precalculates discount factors for each cash flow and for t_exercise
@@ -1487,13 +1526,15 @@
         // include principal payment on exercise date  
         var sadj = strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread);
         temp = -(cf_obj.current_principal[i] + accrued_interest + sadj) * discount_factors[discount_factors.length - 1];
+        dh=h(t_exercise);
+        dh_dh_xi_2=dh * dh * xi * 0.5;
         for (j = 0; j < state.length; j++) {
-            res[j] = temp;
+            res[j] = temp* Math.exp(-dh * state[j] - dh_dh_xi_2);
         }
 
         // include all payments after exercise date
         while (i < times.length) {
-            dh = h(cf_obj.t_pmt[i]) - h(t_exercise);
+            dh = h(cf_obj.t_pmt[i]);
             temp = amounts[i] * discount_factors[i];
             if (temp !== 0) {
                 dh_dh_xi_2 = dh * dh * xi * 0.5;
@@ -1539,7 +1580,7 @@
         var discount_factors = discount_factors_precalc || get_discount_factors(cf_obj, t_exercise, disc_curve, spread_curve, residual_spread); // if discount factors are not provided, get them
 
         if (t_exercise < 0) return 0; //expired option
-        if (t_exercise < 1 / 512 || xi < 1e-10) return Math.max(0, library.lgm_dcf(cf_obj, t_exercise, discount_factors, 0, [0], opportunity_spread)[0]); //very low volatility
+        if (t_exercise < 1/512 || xi < 1e-10) return Math.max(0, library.lgm_dcf(cf_obj, t_exercise, discount_factors, 0, [0], opportunity_spread)[0]); //very low volatility
 
         var std_dev = Math.sqrt(xi);
         var dh = h(t_exercise + 1 / 365) - h(t_exercise);
@@ -1602,12 +1643,13 @@
         }
 
         // include principal payment on or before exercise date
+        dh=h(t_exercise);
         var sadj = strike_adjustment(cf_obj, t_exercise, discount_factors, opportunity_spread);
-        var res = -(cf_obj.current_principal[i] + accrued_interest + sadj) * discount_factors[discount_factors.length - 1] * library.cndf(break_even * one_std_dev);
+        var res = -(cf_obj.current_principal[i] + accrued_interest + sadj) * discount_factors[discount_factors.length - 1] * library.cndf((break_even * one_std_dev) + (dh * std_dev));
 
         // include all payments after exercise date
         while (i < cf_obj.t_pmt.length) {
-            dh = h(cf_obj.t_pmt[i]) - h(t_exercise);
+            dh = h(cf_obj.t_pmt[i]);
             res += (cf_obj.pmt_total[i]) * discount_factors[i] * library.cndf((break_even * one_std_dev) + (dh * std_dev));
             i++;
         }
@@ -1748,8 +1790,8 @@
     };
 
 
-    var STD_DEV_RANGE = 5;
-    var RESOLUTION = 15;
+    var STD_DEV_RANGE = 6;
+    var RESOLUTION = 12;
     /**
      * Calculates the bermudan call option price on a cash flow (numeric integration according to martingale formula 4.14a).
      * @param {object} cf_obj
