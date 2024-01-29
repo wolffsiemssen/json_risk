@@ -16,9 +16,12 @@
      * @returns {} t
      * @private
      */
-    var h=function(t) {
+    var identity=function(t){
         return t;
     };
+    var h=identity;
+    var int_h_prime_minus_2=identity;
+
 
     /**
      * Set mean reversion by activating a corresponding h function
@@ -30,12 +33,18 @@
 
     library.lgm_set_mean_reversion=function(mean_rev) {
         if (typeof mean_rev !== 'number') return;
-        if (mean_rev === 0) h=function(t) {
-            return t;
-        };
-        if (mean_rev>0) h=function(t) {
-            return (1 - Math.exp(-mean_rev * t)) / mean_rev;
-        };
+        if (mean_rev === 0){
+            h=identity;
+            int_h_prime_minus_2=identity;
+        }
+        if (mean_rev>0){
+            h=function(t){
+                return (1 - Math.exp(-mean_rev * t)) / mean_rev;
+            };
+            int_h_prime_minus_2=function(t){
+                return 0.5/mean_rev*(Math.exp(2*mean_rev*t) -1);
+            };
+        }
     };
 
     /**
@@ -49,12 +58,9 @@
 
     library.get_xi_from_hull_white_volatility=function(t_exercise, sigma){
         var xi=new Array(t_exercise.length);
-        var dxi=0,dh,sigma_dh;        
+        var dxi=0,dh,dt,sigma_dh;        
         for(var i=0;i<xi.length;i++){
-            dh=(i===0) ? h(t_exercise[i]) : h(t_exercise[i]) - h(t_exercise[i-1]);
-            sigma_dh=sigma/dh;
-            dxi+=sigma_dh*sigma_dh;
-	        xi[i]=dxi*t_exercise[i];
+            xi[i]=sigma*sigma*int_h_prime_minus_2(t_exercise[i]);
         }
         return xi;
     };
