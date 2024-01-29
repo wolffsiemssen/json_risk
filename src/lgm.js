@@ -402,8 +402,7 @@
                 deno = 0;
                 for (j = 0; j < cf_obj.t_pmt.length; j++) {
                     deno += cf_obj.pmt_total[j] *
-                        discount_factors[j] *
-                        (h(cf_obj.t_pmt[j]) - h(tte));
+                        discount_factors[j] * h(cf_obj.t_pmt[j]);
                 }
                 //bachelier swaption price and std deviation
                 target = basket[i].present_value(disc_curve, fwd_curve, surface);
@@ -441,7 +440,6 @@
                     }
                     try {
                         xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
-
                     } catch (e) {
                         //use initial guess or zero as fallback, whichever is better
                         if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
