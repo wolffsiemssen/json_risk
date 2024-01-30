@@ -123,7 +123,13 @@
 
                 if (outstanding_principal===0) throw new Error("create_equivalent_regular_swaption: invalid cashflow object or first_exercise_date, zero outstanding principal");
                 //compute internal rate of return for remaining cash flow including settlement payment
-                var irr=library.irr(cf_obj, first_exercise_date, -outstanding_principal);
+                var irr;
+                try{
+                    irr=library.irr(cf_obj, first_exercise_date, -outstanding_principal);
+                }catch(e){
+                    // somtimes irr fails with degenerate options, e.g., on a last very short period
+                    irr = 0;
+                }
                 
                 //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
                 irr=12/tenor*(Math.pow(1+irr,tenor/12)-1);
