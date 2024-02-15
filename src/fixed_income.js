@@ -73,7 +73,7 @@
     var settlement_days = library.get_safe_natural(instrument.settlement_days) || 0;
     this.settlement_date = library.get_safe_date(instrument.settlement_date) || library.add_business_days(library.valuation_date, settlement_days, this.is_holiday_func);
 
-    this.residual_spread = (typeof instrument.residual_spread == 'number') ? instrument.residual_spread : 0;
+    this.residual_spread = library.get_safe_number(instrument.residual_spread) || 0;
     var currency = instrument.currency || "";
 
     // interest rate schedule
