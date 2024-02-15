@@ -43,9 +43,11 @@
     this.bdc = instrument.bdc || "";
     this.adjust_accrual_periods = library.get_safe_bool(instrument.adjust_accrual_periods);
 
-    this.adj = function(d) {
-      return library.adjust(d, this.bdc, this.is_holiday_func);
-    };
+    this.adj = function(b,i){
+        return function(d) {
+            return library.adjust(d, b, i);
+        };
+    }(this.bdc, this.is_holiday_func);
 
     //amortisation related fields
     var repay_tenor = library.get_safe_natural(instrument.repay_tenor);
