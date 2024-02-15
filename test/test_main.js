@@ -1135,7 +1135,7 @@ for (i=0; i<months.length; i++){
                 first_exercise_date=JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]);
                 bond={
                         maturity: JsonRisk.add_months(JsonRisk.valuation_date, expiries[j]+months[i]),
-                        notional: 10000,
+                        notional: (j%2) ? 10000 : 1000000000000,
                         fixed_rate: 0.02,
                         tenor: 6,
                         dcc: "act/365"

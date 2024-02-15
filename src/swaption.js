@@ -104,7 +104,7 @@
 			* @returns {object} ...
 			* @memberof library
 			* @public
-		*/           
+		*/         
         library.create_equivalent_regular_swaption=function(cf_obj, first_exercise_date, conventions){
                 //sanity checks
                 if (undefined===cf_obj.date_pmt || undefined===cf_obj.pmt_total || undefined===cf_obj.current_principal) throw new Error("create_equivalent_regular_swaption: invalid cashflow object");
@@ -156,9 +156,8 @@
                 };
                 
                 //find bullet bond maturity that has approximately the same effective duration               
-                //start with analytic best estimate
-                var ttm_guess=(Math.abs(irr)<0.00000001) ? effective_duration_target : -Math.log(1-effective_duration_target*irr)/irr;
-                if(ttm_guess<1/365) ttm_guess=1/365;
+                //start with simple estimate
+                var ttm_guess=effective_duration_target;
 				var ttm=ttm_guess;
                 var maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
 
