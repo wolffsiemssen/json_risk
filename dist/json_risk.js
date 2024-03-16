@@ -3798,6 +3798,8 @@
 					for (i=0;i<rule.tags.length;i++){
 						if (tags.indexOf(rule.tags[i]) === -1) found=false;
 					}
+					// if tag list is empty, no matching by tags at all
+					if(rule.tags.length===0) found=false;
 					if (found){
 						obj._rule=rule; 
 						return true;
