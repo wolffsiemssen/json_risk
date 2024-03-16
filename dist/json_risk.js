@@ -2966,6 +2966,9 @@
                 npv_down/=cdown.get_df(tte);
                 var effective_duration_target=10000.0*(npv_down-npv_up)/(npv_down+npv_up);
                 
+                // in some cases effective duration target is very short, make it at least one day
+                if(effective_duration_target<1/365) effective_duration_target=1/365;
+                
                 //brief function to compute forward effective duration
                 var ed=function(bond){   
                         var bond_internal=new library.fixed_income(bond);  
@@ -3000,7 +3003,7 @@
                 while (Math.abs(effective_duration-effective_duration_target)>1/512 && iter>0){
                         ttm=ttm*effective_duration_target/effective_duration;
 						// revert to best estimate when value is implausible
-						if(isNaN(ttm) || ttm > 1000 || ttm < 1/512) ttm=ttm_guess;
+						if(isNaN(ttm) || ttm > 100 || ttm < 1/365) ttm=ttm_guess;
                         maturity=library.add_days(first_exercise_date, Math.round(ttm*365));
                         bond.maturity=maturity;
                         effective_duration=ed(bond);
