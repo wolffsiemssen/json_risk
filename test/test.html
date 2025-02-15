@@ -1,16 +1,42 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>JSON Risk TEST</title>
-  </head>
-  <body>
-    
-  </body>
-  <script src="../dist/json_risk.js"></script>
-  <script src="params_example.js"></script>
-  <script src="params_vector.js"></script>
-  <script src="params_scen_tag.js"></script>
-  <script src="params_scen_rf.js"></script>
-  <script src="params_vola_sensis.js"></script>
-  <script src="test_main.js"></script>
+    <head>
+        <title>JSON Risk TEST</title>
+    </head>
+    <body>
+
+    </body>
+
+    <script>jr_tests=[];</script>
+    <!-- TESTS -->
+    <script src="tests/date_conversion.js"></script>
+    <script src="tests/number_bool_vector.js"></script>
+    <script src="tests/year_fraction.js"></script>
+    <script src="tests/month_rolling.js"></script>    
+    <script src="tests/holidays_calender.js"></script>    
+    <script src="tests/period_string_conversion.js"></script>
+    <script src="tests/date_string_conversion.js"></script>    
+    <script src="tests/curves.js"></script>
+    <script src="tests/interpolation_curve.js"></script>
+    <script src="tests/surfaces.js"></script>
+    <script src="tests/schedule.js"></script>
+    <script src="tests/schedule_generation_consistency.js"></script>  
+    <script src="tests/bond_valuation.js"></script>
+    <script src="tests/distribution_functions.js"></script>
+    <script src="tests/swaptions.js"></script>
+    <script src="tests/swaption_zero_notional.js"></script>
+    <script src="tests/cashflow_equivalent_swaption.js"></script>  
+    <script src="tests/fx_term.js"></script>
+    <script src="tests/irregular_bonds.js"></script>
+    <script src="tests/lgm_option_pricing.js"></script>
+    <script src="tests/callable_bond_valuation.js"></script>
+    <script src="tests/amortizing_callable_bonds.js"></script>
+    <script src="tests/vector_pricing.js"></script>
+    <script src="tests/vector_pricing_curve_scenarios.js"></script>
+
+    <!-- LIBRARY -->
+    <script src="../dist/json_risk.js"></script>
+
+    <!-- TEST FRAMEWORK MAIN SCRIPT -->
+    <script src="test.js"></script>
 </html>

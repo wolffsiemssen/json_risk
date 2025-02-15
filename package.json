@@ -9,7 +9,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "node test/test_main.js"
+    "test": "node test/test.js"
   },
   "keywords": [
     "finance",
