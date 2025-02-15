@@ -50,46 +50,6 @@
   /**
    * ...
    * @param {object} surface surface
-   * @returns {object} terms
-   * @memberof library
-   * @private
-   */
-  function get_terms(surface) {
-    var i = (surface.terms || surface.labels_term || []).length;
-    if (!i)
-      throw new Error(
-        "get_surface_terms: invalid surface, need to provide valid terms or labels_term",
-      );
-    var terms = new Array(i);
-    while (i > 0) {
-      i--;
-      terms[i] = get_term_at(surface, i);
-    }
-    return terms;
-  }
-  /**
-   * ...
-   * @param {object} surface surface
-   * @returns {object} experies
-   * @memberof library
-   * @private
-   */
-  function get_expiries(surface) {
-    var i = (surface.expiries || surface.labels_expiry || []).length;
-    if (!i)
-      throw new Error(
-        "get_surface_terms: invalid surface, need to provide valid expiries or labels_expiry",
-      );
-    var expiries = new Array(i);
-    while (i > 0) {
-      i--;
-      expiries[i] = get_expiry_at(surface, i);
-    }
-    return expiries;
-  }
-  /**
-   * ...
-   * @param {object} surface surface
    * @returns {object} surface
    * @memberof library
    * @public

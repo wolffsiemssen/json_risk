@@ -55,10 +55,6 @@
 
   library.get_xi_from_hull_white_volatility = function (t_exercise, sigma) {
     var xi = new Array(t_exercise.length);
-    var dxi = 0,
-      dh,
-      dt,
-      sigma_dh;
     for (var i = 0; i < xi.length; i++) {
       xi[i] = sigma * sigma * int_h_prime_minus_2(t_exercise[i]);
     }
@@ -376,8 +372,7 @@
       }
     }
 
-    var i = 0,
-      df;
+    var i = 0;
     var one_std_dev = 1 / std_dev;
 
     // move forward to first line after exercise date
@@ -508,7 +503,6 @@
       discount_factors,
       std_dev_bachelier,
       tte,
-      ttm,
       deno,
       target,
       approx,
@@ -534,7 +528,6 @@
     for (i = 0; i < basket.length; i++) {
       if (library.time_from_now(basket[i].first_exercise_date) > 1 / 512) {
         tte = library.time_from_now(basket[i].first_exercise_date);
-        ttm = library.time_from_now(basket[i].maturity);
         //first step: derive initial guess based on Hagan formula 5.16c
         //get swap fixed cash flow adjusted for basis spread
         cf_obj = library.lgm_european_swaption_adjusted_cashflow(

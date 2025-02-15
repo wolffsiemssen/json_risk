@@ -228,7 +228,7 @@
     }
 
     //surfaces
-    var smile, moneyness, j;
+    var smile, j;
     if (typeof params.surfaces === "object") {
       keys = Object.keys(params.surfaces);
       for (i = 0; i < keys.length; i++) {

@@ -112,7 +112,6 @@
 
     this.residual_spread =
       library.get_safe_number(instrument.residual_spread) || 0;
-    var currency = instrument.currency || "";
 
     // interest rate schedule
     this.schedule = library.schedule(
@@ -177,6 +176,8 @@
         this.adj,
         fixing_first_date,
         fixing_next_to_last_date,
+        fixing_stub_end,
+        fixing_stub_long,
       );
     }
 
@@ -247,12 +248,12 @@
       i_int = 1,
       i_rep = 1,
       i_fix = 1,
-      i_cond = 0;
-    i_max =
-      this.schedule.length +
-      this.repay_schedule.length +
-      this.fixing_schedule.length +
-      this.conditions_valid_until.length;
+      i_cond = 0,
+      i_max =
+        this.schedule.length +
+        this.repay_schedule.length +
+        this.fixing_schedule.length +
+        this.conditions_valid_until.length;
     while (i < i_max) {
       date_accrual_start[i] = date_accrual_end[i - 1];
       date_accrual_end[i] = new Date(
@@ -323,13 +324,7 @@
     var t_accrual_start = new Array(date_accrual_start.length);
     var t_accrual_end = new Array(date_accrual_start.length);
     var t_pmt = new Array(date_accrual_start.length);
-    var current_principal = new Array(date_accrual_start.length);
     var accrual_factor = new Array(date_accrual_start.length);
-    var interest_current_period = new Array(date_accrual_start.length);
-    var accrued_interest = new Array(date_accrual_start.length);
-    var pmt_principal = new Array(date_accrual_start.length);
-    var pmt_interest = new Array(date_accrual_start.length);
-    var pmt_total = new Array(date_accrual_start.length);
 
     //populate rate-independent fields and adjust dates if necessary
     for (i = 0; i < date_accrual_start.length; i++) {

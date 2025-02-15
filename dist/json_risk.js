@@ -425,7 +425,6 @@
 
     this.residual_spread =
       library.get_safe_number(instrument.residual_spread) || 0;
-    var currency = instrument.currency || "";
 
     // interest rate schedule
     this.schedule = library.schedule(
@@ -490,6 +489,8 @@
         this.adj,
         fixing_first_date,
         fixing_next_to_last_date,
+        fixing_stub_end,
+        fixing_stub_long,
       );
     }
 
@@ -560,12 +561,12 @@
       i_int = 1,
       i_rep = 1,
       i_fix = 1,
-      i_cond = 0;
-    i_max =
-      this.schedule.length +
-      this.repay_schedule.length +
-      this.fixing_schedule.length +
-      this.conditions_valid_until.length;
+      i_cond = 0,
+      i_max =
+        this.schedule.length +
+        this.repay_schedule.length +
+        this.fixing_schedule.length +
+        this.conditions_valid_until.length;
     while (i < i_max) {
       date_accrual_start[i] = date_accrual_end[i - 1];
       date_accrual_end[i] = new Date(
@@ -636,13 +637,7 @@
     var t_accrual_start = new Array(date_accrual_start.length);
     var t_accrual_end = new Array(date_accrual_start.length);
     var t_pmt = new Array(date_accrual_start.length);
-    var current_principal = new Array(date_accrual_start.length);
     var accrual_factor = new Array(date_accrual_start.length);
-    var interest_current_period = new Array(date_accrual_start.length);
-    var accrued_interest = new Array(date_accrual_start.length);
-    var pmt_principal = new Array(date_accrual_start.length);
-    var pmt_interest = new Array(date_accrual_start.length);
-    var pmt_total = new Array(date_accrual_start.length);
 
     //populate rate-independent fields and adjust dates if necessary
     for (i = 0; i < date_accrual_start.length; i++) {
@@ -1956,10 +1951,6 @@
 
   library.get_xi_from_hull_white_volatility = function (t_exercise, sigma) {
     var xi = new Array(t_exercise.length);
-    var dxi = 0,
-      dh,
-      dt,
-      sigma_dh;
     for (var i = 0; i < xi.length; i++) {
       xi[i] = sigma * sigma * int_h_prime_minus_2(t_exercise[i]);
     }
@@ -2277,8 +2268,7 @@
       }
     }
 
-    var i = 0,
-      df;
+    var i = 0;
     var one_std_dev = 1 / std_dev;
 
     // move forward to first line after exercise date
@@ -2409,7 +2399,6 @@
       discount_factors,
       std_dev_bachelier,
       tte,
-      ttm,
       deno,
       target,
       approx,
@@ -2435,7 +2424,6 @@
     for (i = 0; i < basket.length; i++) {
       if (library.time_from_now(basket[i].first_exercise_date) > 1 / 512) {
         tte = library.time_from_now(basket[i].first_exercise_date);
-        ttm = library.time_from_now(basket[i].maturity);
         //first step: derive initial guess based on Hagan formula 5.16c
         //get swap fixed cash flow adjusted for basis spread
         cf_obj = library.lgm_european_swaption_adjusted_cashflow(
@@ -3147,46 +3135,6 @@
   /**
    * ...
    * @param {object} surface surface
-   * @returns {object} terms
-   * @memberof library
-   * @private
-   */
-  function get_terms(surface) {
-    var i = (surface.terms || surface.labels_term || []).length;
-    if (!i)
-      throw new Error(
-        "get_surface_terms: invalid surface, need to provide valid terms or labels_term",
-      );
-    var terms = new Array(i);
-    while (i > 0) {
-      i--;
-      terms[i] = get_term_at(surface, i);
-    }
-    return terms;
-  }
-  /**
-   * ...
-   * @param {object} surface surface
-   * @returns {object} experies
-   * @memberof library
-   * @private
-   */
-  function get_expiries(surface) {
-    var i = (surface.expiries || surface.labels_expiry || []).length;
-    if (!i)
-      throw new Error(
-        "get_surface_terms: invalid surface, need to provide valid expiries or labels_expiry",
-      );
-    var expiries = new Array(i);
-    while (i > 0) {
-      i--;
-      expiries[i] = get_expiry_at(surface, i);
-    }
-    return expiries;
-  }
-  /**
-   * ...
-   * @param {object} surface surface
    * @returns {object} surface
    * @memberof library
    * @public
@@ -3643,7 +3591,7 @@
     }
 
     //surfaces
-    var smile, moneyness, j;
+    var smile, j;
     if (typeof params.surfaces === "object") {
       keys = Object.keys(params.surfaces);
       for (i = 0; i < keys.length; i++) {
