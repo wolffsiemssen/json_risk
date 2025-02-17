@@ -1,13 +1,94 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>JSON Risk TEST</title>
-    </head>
-    <body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Risk TEST</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+        }
+        .left-column {
+            width: 20%;
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-right: 1px solid #ddd;
+        }
+        .right-column {
+            width: 80%;
+            padding: 10px;
+        }
+        .log-output {
+            background-color: #eee;
+            height: 90%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            font-family: monospace;
+            overflow-y: auto;
+        }
+        .log-output p {
+            margin: 2px 0; /* Reduce space between log messages */
+        }
+    </style>
+</head>
+<body>
 
-    </body>
+    <div class="container">
+        <div class="left-column" id="control">
+            <a href="#" onclick="runAll()">Run all tests</a>
+            <hr/>
+        </div>
+        <div class="right-column">
+            <div class="log-output" id="log">
+            </div>
+        </div>
+    </div>
 
-    <script>jr_tests=[];</script>
+    <script>
+        // test objects are injected here
+        jr_tests=[];
+        
+        // message output for tests
+        function logMessage(message,success) {
+            const logContainer = document.getElementById('log');
+            const newLogEntry = document.createElement('p');
+            const marker= document.createElement('strong');
+            if(success){
+                marker.style.color = 'green';
+                marker.textContent="Success: ";
+            }else{
+                marker.style.color = 'red';
+                marker.textContent="Failure: ";            
+            }
+            newLogEntry.appendChild(marker);
+            newLogEntry.appendChild(document.createTextNode(message));
+            logContainer.appendChild(newLogEntry);
+        }
+        
+        // clear log
+        function clearLogs(){
+            const logContainer = document.getElementById('log');
+            logContainer.innerHTML='';
+        }
+        
+        // run tests
+        function runAll(){
+            clearLogs();
+            for (test of jr_tests){
+                test.execute(TestFramework, JsonRisk);
+            }
+        }
+        
+    </script>
+    
+    <script></script>
     <!-- TESTS -->
     <script src="tests/date_conversion.js"></script>
     <script src="tests/number_bool_vector.js"></script>
@@ -39,4 +120,23 @@
 
     <!-- TEST FRAMEWORK MAIN SCRIPT -->
     <script src="test.js"></script>
+    
+    <!-- add test start buttons -->
+    <script>
+        for(let i=0;i<jr_tests.length;i++){
+            const test = jr_tests[i];
+            const control = document.getElementById('control');
+            const testLauncher = document.createElement('a');
+            testLauncher.textContent=test.name;
+            testLauncher.href='#';
+            testLauncher.style.display="block";
+            testLauncher.addEventListener('click',function(){
+                clearLogs();
+                test.execute(TestFramework, JsonRisk);
+            });
+            control.appendChild(testLauncher);
+        }
+    </script>
+
+</body>
 </html>

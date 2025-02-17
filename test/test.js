@@ -7,17 +7,13 @@ Checks if expr is true and prints a message to the console or the html window. O
   assert: function (expr, msg) {
     var m;
     if (!expr) {
-      m = "Failure: " + msg;
-      console.log(m);
-      m = '<strong style="color:red">Failure: </strong>' + msg + "</br>";
-      if (typeof document != "undefined") document.body.innerHTML += m;
+      console.log("Failure: " + msg);
+      if (typeof logMessage == "function") logMessage(msg, false);
       if (typeof process != "undefined" && typeof process.exit === "function")
         process.exit(1);
     } else {
-      m = "Success: " + msg;
-      console.log(m);
-      m = '<strong style="color:green">Success: </strong>' + msg + "</br>";
-      if (typeof document != "undefined") document.body.innerHTML += m;
+      console.log("Success: " + msg);
+      if (typeof logMessage == "function") logMessage(msg, true);
     }
   },
   /*
@@ -113,8 +109,4 @@ if (typeof require === "function") {
   }
 } else {
   console.log("TESTS LOADED: " + jr_tests.length);
-  for (test of jr_tests) {
-    console.log(test.name);
-    test.execute(TestFramework, JsonRisk);
-  }
 }
