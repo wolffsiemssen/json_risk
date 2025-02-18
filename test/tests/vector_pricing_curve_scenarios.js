@@ -56,6 +56,18 @@ test.execute = function (TestFramework, JsonRisk) {
     currency: "EUR",
   };
 
+  for (let curve of Object.values(params_vector.curves)) {
+    curve.intp = "linear_df";
+  }
+
+  for (let curve of Object.values(params_scen_rf.curves)) {
+    curve.intp = "linear_df";
+  }
+
+  for (let curve of Object.values(params_scen_tag.curves)) {
+    curve.intp = "linear_df";
+  }
+
   // vector pricing is the reference
   JsonRisk.store_params(params_vector);
   var results_vector = JsonRisk.vector_pricer(bond);

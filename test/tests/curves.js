@@ -110,7 +110,6 @@ test.execute = function (TestFramework, JsonRisk) {
   //Curve without times - fallback based on dates
   c = {
     type: "yield",
-    labels: ["0Y", "1Y", "2Y", "3Y", "13Y"],
     dates: [
       "01.01.2000",
       "31.12.2000",
@@ -138,37 +137,96 @@ test.execute = function (TestFramework, JsonRisk) {
     "Yield Curve interpolation fallback on dates 4",
   );
 
-  //curve addition
-  var c1 = {
+  //Curve with scenario rules
+  additive = {
     type: "yield",
-    labels: ["0Y", "1Y", "2Y", "3Y", "13Y"],
-    zcs: [0.01, 0.009, 0.008, 0.008, 0.008],
-  };
-  var c2 = {
-    type: "yield",
-    labels: ["5Y", "10Y"],
-    zcs: [0.02, 0.02],
+    labels: ["1Y", "7Y", "12Y", "186M", "20Y"],
+    zcs: [0.01, 0.015, 0.016, 0.015, 0.01],
+    intp: "linear_zc",
+    _rule: {
+      model: "additive",
+      labels_x: ["1Y", "7Y", "12Y", "186M", "20Y"],
+      labels_y: ["1"],
+      values: [[0.01, 0.015, 0.016, 0.015, 0.01]],
+    },
   };
 
-  c = JsonRisk.add_curves(c1, c2);
+  multiplicative = {
+    type: "yield",
+    labels: ["1Y", "7Y", "12Y", "186M", "20Y"],
+    zcs: [0.01, 0.015, 0.016, 0.015, 0.01],
+    intp: "linear_zc",
+    _rule: {
+      model: "multiplicative",
+      labels_x: ["1Y", "7Y", "12Y", "186M", "20Y"],
+      labels_y: ["1"],
+      values: [[2, 2, 2, 2, 2]],
+    },
+  };
 
-  TestFramework.assert(7 === c.times.length, "Yield Curve addition");
+  absolute = {
+    type: "yield",
+    labels: ["1Y", "7Y", "12Y", "186M", "20Y"],
+    zcs: [0, 0, 0, 0, 0],
+    intp: "linear_zc",
+    _rule: {
+      model: "absolute",
+      labels_x: ["1Y", "7Y", "12Y", "186M", "20Y"],
+      labels_y: ["1"],
+      values: [[0.02, 0.03, 0.032, 0.03, 0.02]],
+    },
+  };
+
   TestFramework.assert(
-    (0.029).toFixed(10) === JsonRisk.get_rate(c, 1).toFixed(10),
-    "Yield Curve addition",
+    0.02 === JsonRisk.get_rate(absolute, 1.0),
+    "Yield Curve with absolute scenario (1)",
   );
+
   TestFramework.assert(
-    (0.028).toFixed(10) === JsonRisk.get_rate(c, 13).toFixed(10),
-    "Yield Curve addition",
+    0.032 === JsonRisk.get_rate(absolute, 12.0),
+    "Yield Curve with absolute scenario (2)",
   );
+
   TestFramework.assert(
-    (0.02 + JsonRisk.get_rate(c1, 5)).toFixed(10) ===
-      JsonRisk.get_rate(c, 5).toFixed(10),
-    "Yield Curve addition",
+    0.02 === JsonRisk.get_rate(absolute, 20.0),
+    "Yield Curve with absolute scenario (3)",
   );
+
   TestFramework.assert(
-    (0.02 + JsonRisk.get_rate(c1, 10)).toFixed(10) ===
-      JsonRisk.get_rate(c, 10).toFixed(10),
-    "Yield Curve addition",
+    0.032 === JsonRisk.get_rate(additive, 12.0),
+    "Yield Curve with additive scenario (1)",
+  );
+
+  TestFramework.assert(
+    0.032 === JsonRisk.get_rate(multiplicative, 12.0),
+    "Yield Curve with multiplicative scenario (1)",
+  );
+
+  TestFramework.assert(
+    JsonRisk.get_rate(additive, 0.1) === JsonRisk.get_rate(multiplicative, 0.1),
+    "Yield Curve with additive vs multiplicative scenario (1)",
+  );
+
+  TestFramework.assert(
+    JsonRisk.get_rate(additive, 5.0) === JsonRisk.get_rate(multiplicative, 5.0),
+    "Yield Curve with additive vs multiplicative scenario (2)",
+  );
+
+  TestFramework.assert(
+    JsonRisk.get_rate(additive, 10.0) ===
+      JsonRisk.get_rate(multiplicative, 10.0),
+    "Yield Curve with additive vs multiplicative scenario (3)",
+  );
+
+  TestFramework.assert(
+    JsonRisk.get_rate(additive, 15.0) ===
+      JsonRisk.get_rate(multiplicative, 15.0),
+    "Yield Curve with additive vs multiplicative scenario (4)",
+  );
+
+  TestFramework.assert(
+    JsonRisk.get_rate(additive, 30.0) ===
+      JsonRisk.get_rate(multiplicative, 30.0),
+    "Yield Curve with additive vs multiplicative scenario (5)",
   );
 };

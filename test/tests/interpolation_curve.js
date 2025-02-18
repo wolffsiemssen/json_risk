@@ -14,7 +14,7 @@ if (typeof module === "object" && typeof exports !== "undefined") {
 
 test.execute = function (TestFramework, JsonRisk) {
   Object.keys(referenceData).forEach((testCase) => {
-    if (!testCase.includes("DF_LINEAR_DF_FLAT_FLAT")) {
+    if (!testCase.includes("_FLAT_FLAT")) {
       return; // Nur DF_LINEAR_DF Tests durchführen
     }
 

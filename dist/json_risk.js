@@ -1478,6 +1478,107 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   "use strict";
+  const continuous = {
+    df: function (t, zc) {
+      return (1 + zc) ** -t;
+    },
+    zc: function (t, df) {
+      if (t < 1 / 512) return 0.0;
+      return df ** (-1 / t) - 1;
+    },
+  };
+
+  const annual = {
+    df: function (t, zc) {
+      return (1 + zc) ** -t;
+    },
+    zc: function (t, df) {
+      if (t < 1 / 512) return 0.0;
+      return df ** (-1 / t) - 1;
+    },
+  };
+
+  library.compounding_factory = function (str) {
+    if (undefined === str) return annual;
+    if (typeof str === "string") {
+      switch (str.toLowerCase()) {
+        case "annual":
+        case "a":
+          return annual;
+        case "continuous":
+        case "c":
+          return continuous;
+
+        default:
+          //fail if invalid string was supplied
+          throw new Error("compounding factory: invalid input " + str);
+      }
+    }
+    throw new Error(
+      "compounding factory: invalid input, string expected but " +
+        typeof str +
+        " supplied",
+    );
+  };
+})(this.JsonRisk || module.exports);
+(function (library) {
+  "use strict";
+
+  const find_index = function (x, s) {
+    let index = 0;
+    while (s > x[index + 1] && index < x.length - 2) {
+      index++;
+    }
+    return index;
+  };
+
+  library.linear_interpolation_factory = function (x, y) {
+    if (x.length !== y.length)
+      throw new Error(
+        "interpolation_factory: invalid input, x and y must have the same length",
+      );
+    if (0 === x.length)
+      throw new Error(
+        "interpolation_factory: invalid input, vectors have length zero",
+      );
+    if (1 === x.length)
+      return function () {
+        return x[0];
+      };
+    return function (s) {
+      const index = find_index(x, s);
+      const temp = 1 / (x[index + 1] - x[index]);
+      return (
+        (y[index] * (x[index + 1] - s) + y[index + 1] * (s - x[index])) * temp
+      );
+    };
+  };
+
+  library.linear_xy_interpolation_factory = function (x, y) {
+    if (x.length !== y.length)
+      throw new Error(
+        "interpolation_factory: invalid input, x and y must have the same length",
+      );
+    let xy = new Array(x.length);
+    for (let i = 0; i < x.length; i++) {
+      if (x[i] <= 0)
+        throw new Error(
+          "interpolation_factory: linear xy interpolation requires x to be greater than zero",
+        );
+      xy[i] = x[i] * y[i];
+    }
+    const linear = library.linear_interpolation_factory(x, xy);
+    return function (s) {
+      if (s <= 0)
+        throw new Error(
+          "linear xy interpolation requires x to be greater than zero",
+        );
+      return linear(s) / s;
+    };
+  };
+})(this.JsonRisk || module.exports);
+(function (library) {
+  "use strict";
 
   var RT2PI = Math.sqrt(4.0 * Math.acos(0.0));
   var SPLIT = 7.07106781186547;
@@ -2768,115 +2869,28 @@
     return times;
   };
 
-  /**
-   * get i-th dfs/zcs entry of a curve
-   * @param {object} curve curve
-   * @param {number} dfs/zcs
-   * @memberof library
-   * @private
-   */
-  function get_df_at(curve, i) {
-    if (Array.isArray(curve.dfs)) return curve.dfs[i];
-    if (Array.isArray(curve.zcs))
-      return Math.pow(1 + curve.zcs[i], -get_time_at(curve, i));
-    throw new Error("get_df: invalid curve, must provide dfs or zcs");
-  }
+  const get_values = function (curve, compounding) {
+    // extract times, rates and discount factors from curve and store in hidden function scope
+    let times = library.get_curve_times(curve);
+    let size = times.length;
+    let zcs = library.get_safe_number_vector(curve.zcs);
+    let dfs = library.get_safe_number_vector(curve.dfs);
 
-  /**
-   * get dfs/zcs-array of a curve
-   * @param {object} curve curve
-   * @returns {array} dfs/zcs
-   * @memberof library
-   * @private
-   */
-  function get_curve_dfs(curve) {
-    var i = (curve.times || curve.days || curve.dates || curve.labels || [])
-      .length;
-    if (!i)
-      throw new Error(
-        "get_curve_dfs: invalid curve, need to provide valid times, days, dates, or labels",
-      );
-    if (curve.dfs) {
-      if (curve.dfs.length !== i)
+    if (null === zcs) {
+      if (null === dfs)
         throw new Error(
-          "get_curve_dfs: invalid curve, dfs length must match times length",
+          "get_safe_curve: invalid curve, must provide numeric zcs or dfs",
         );
-    } else {
-      if (curve.zcs.length !== i)
-        throw new Error(
-          "get_curve_dfs: invalid curve, zcs length must match times length",
-        );
-    }
-    var dfs = new Array(i);
-    while (i > 0) {
-      i--;
-      dfs[i] = curve.dfs ? curve.dfs[i] : get_df_at(curve, i);
-      if (typeof dfs[i] != "number")
-        throw new Error(
-          "get_curve_dfs: invalid curve, must provide numeric zcs or dfs",
-        );
-    }
-    return dfs;
-  }
-
-  /**
-   * obtain discount factor interpolated from times and dfs arrays
-   * @param {array} times curve times
-   * @param {array} dfs curve discount factors
-   * @param {number} t
-   * @returns {number} discount factor
-   */
-  function get_df(times, dfs, t) {
-    var imin = 0;
-    var imax = times.length - 1;
-
-    //discount factor is one for infinitesimal time (less than a day makes no sense, anyway)
-    if (t < 1 / 512) return 1.0;
-    //curve only has one support point
-    var tmin = times[imin];
-    if (imin === imax)
-      return t === tmin ? dfs[imin] : Math.pow(dfs[imin], t / tmin);
-    //extrapolation (constant on zero coupon rates)
-    var tmax = times[imax];
-    if (t < tmin) return Math.pow(dfs[imin], t / tmin);
-    if (t > tmax) return Math.pow(dfs[imax], t / tmax);
-    // binary search
-    var imed, tmed;
-    while (imin + 1 !== imax) {
-      imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
-      tmed = times[imed];
-      if (t > tmed) {
-        tmin = tmed;
-        imin = imed;
-      } else {
-        tmax = tmed;
-        imax = imed;
+      zcs = new Array(size);
+      for (let i = 0; i < size; i++) {
+        zcs[i] = compounding.zc(times[i], dfs[i]);
       }
     }
-    //interpolation (linear on discount factors)
-    if (tmax - tmin < 1 / 512)
-      throw new Error(
-        "get_df_internal: invalid curve, support points must be increasing and differ at least one day",
-      );
-    var temp = 1 / (tmax - tmin);
-    return (dfs[imin] * (tmax - t) + dfs[imax] * (t - tmin)) * temp;
-  }
+    return [size, times, zcs];
+  };
 
   /**
-   * obtain zero rate interpolated from times and dfs arrays
-   * @param {array} times curve times
-   * @param {array} dfs curve discount factors
-   * @param {number} t
-   * @returns {number} zero rate
-   */
-
-  function get_rate(times, dfs, t) {
-    if (t < 1 / 512) return 0.0;
-    return Math.pow(get_df(times, dfs, t), -1 / t) - 1;
-  }
-
-  /**
-   * attaches get_df and other function to curve. If curve is null or falsy, create valid constant curve
+   * attaches get_rate and other function to curve. If curve is null or falsy, create valid constant curve
    * @param {object} curve curve
    * @returns {object} curve
    * @memberof library
@@ -2887,24 +2901,93 @@
     if (!curve)
       curve = {
         times: [1],
-        dfs: [1],
+        zcs: [0.0],
       };
 
     // do not call this twice on a curve. If curve already has get_rate, just return
     if (curve.get_rate instanceof Function) return curve;
 
-    // extract times and discount factors from curve and store in hidden function scope
-    var _times = library.get_curve_times(curve);
-    var _dfs = get_curve_dfs(curve);
+    // compounding
+    var _compounding = library.compounding_factory(curve.compounding);
 
-    // define get_df closure based on hidden variables
-    curve.get_df = function (t) {
-      return get_df(_times, _dfs, t);
+    // delete invalid members
+    for (const member of ["dfs", "zcs", "times", "days", "dates", "labels"]) {
+      if (!Array.isArray(curve[member])) delete curve[member];
+    }
+
+    // extract times, rates and discount factors from curve and store in hidden function scope
+    var [_size, _times, _zcs] = get_values(curve, _compounding);
+
+    var _get_interpolated_rate;
+
+    switch (curve.intp || "".toLowerCase()) {
+      case "linear_zc":
+        // interpolation on zcs
+        _get_interpolated_rate = library.linear_interpolation_factory(
+          _times,
+          _zcs,
+        );
+        break;
+      case "linear_rt":
+        // interpolation on zcs
+        _get_interpolated_rate = library.linear_xy_interpolation_factory(
+          _times,
+          _zcs,
+        );
+        break;
+      default: {
+        // interpolation on dfs
+        let _dfs = new Array(_size);
+        for (let i = 0; i < _size; i++) {
+          _dfs[i] = _compounding.df(_times[i], _zcs[i]);
+        }
+
+        const _interpolation = library.linear_interpolation_factory(
+          _times,
+          _dfs,
+        );
+
+        _get_interpolated_rate = function (t) {
+          return _compounding.zc(t, _interpolation(t));
+        };
+      }
+    }
+
+    // extrapolation
+    var _get_rate = function (t) {
+      if (t <= _times[0]) return _zcs[0];
+      if (t >= _times[_size - 1]) return _zcs[_size - 1];
+      return _get_interpolated_rate(t);
     };
 
-    // attach get_rate based on get_df
-    curve.get_rate = function (t) {
-      return get_rate(_times, _dfs, t);
+    // attach get_rate function with scenario rule if present
+
+    if (typeof curve._rule === "object") {
+      var scenario = {
+        labels: curve._rule.labels_x,
+        zcs: curve._rule.values[0],
+        intp: curve._rule.model === "absolute" ? curve.intp : "linear_zc",
+      };
+      scenario = library.get_safe_curve(scenario);
+      if (curve._rule.model === "multiplicative")
+        curve.get_rate = function (t) {
+          return _get_rate(t) * scenario.get_rate(t);
+        };
+      if (curve._rule.model === "additive")
+        curve.get_rate = function (t) {
+          return _get_rate(t) + scenario.get_rate(t);
+        };
+      if (curve._rule.model === "absolute")
+        curve.get_rate = function (t) {
+          return scenario.get_rate(t);
+        };
+    } else {
+      curve.get_rate = _get_rate;
+    }
+
+    // define get_df based on zcs
+    curve.get_df = function (t) {
+      return _compounding.df(t, this.get_rate(t));
     };
 
     // attach get_fwd_amount based on get_df
@@ -2918,26 +3001,10 @@
       return _times;
     };
 
-    // attach get_dfs closure in order to reobtain hidden dfs when needed
-    curve.get_dfs = function () {
-      return _dfs;
+    // attach get_zcs closure in order to reobtain hidden zcs when needed
+    curve.get_zcs = function () {
+      return _zcs;
     };
-
-    // apply scenario rule if present
-    var c = curve;
-    if (typeof curve._rule === "object") {
-      var tmp = {
-        labels: curve._rule.labels_x,
-        zcs: curve._rule.values[0],
-      };
-      if (curve._rule.model === "multiplicative")
-        c = library.multiply_curves(curve, tmp);
-      if (curve._rule.model === "additive") c = library.add_curves(curve, tmp);
-      if (curve._rule.model === "absolute") c = tmp;
-      // extract times and discount factors from scenario affected curve and store in hidden function scope
-      _times = library.get_curve_times(c);
-      _dfs = get_curve_dfs(c);
-    }
 
     return curve;
   };
@@ -2983,68 +3050,6 @@
     if (curve.get_fwd_amount instanceof Function)
       return curve.get_fwd_amount(tstart, tend);
     return library.get_safe_curve(curve).get_fwd_amount(tstart, tend);
-  };
-
-  /**
-   * adds two curves (times of curves can be different)
-   * @param {object} c1 curve
-   * @param {object} c2 curve
-   * @returns {object} curve {times:times, zcs: zcs}
-   * @memberof library
-   * @public
-   */
-  library.add_curves = function (c1, c2) {
-    var t1 = library.get_curve_times(c1);
-    var t2 = library.get_curve_times(c2);
-    var d1 = get_curve_dfs(c1);
-    var d2 = get_curve_dfs(c2);
-    var times = [],
-      i1 = 0,
-      i2 = 0,
-      tmin;
-    var zcs = [];
-    while (true) {
-      tmin = Number.POSITIVE_INFINITY;
-      if (i1 < t1.length) tmin = Math.min(t1[i1], tmin);
-      if (i2 < t2.length) tmin = Math.min(t2[i2], tmin);
-      times.push(tmin);
-      zcs.push(get_rate(t1, d1, tmin) + get_rate(t2, d2, tmin));
-      if (tmin === t1[i1] && i1 < t1.length) i1++;
-      if (tmin === t2[i2] && i2 < t2.length) i2++;
-      if (i1 === t1.length && i2 === t2.length) break;
-    }
-    return { times: times, zcs: zcs };
-  };
-
-  /**
-   * multiplies two curves (times of curves can be different)
-   * @param {object} c1 curve
-   * @param {object} c2 curve
-   * @returns {object} curve {times:times, zcs: zcs}
-   * @memberof library
-   * @public
-   */
-  library.multiply_curves = function (c1, c2) {
-    var t1 = library.get_curve_times(c1);
-    var t2 = library.get_curve_times(c2);
-    var d1 = get_curve_dfs(c1);
-    var d2 = get_curve_dfs(c2);
-    var times = [],
-      i1 = 0,
-      i2 = 0,
-      tmin;
-    var zcs = [];
-    while (true) {
-      tmin = Number.POSITIVE_INFINITY;
-      if (i1 < t1.length) tmin = Math.min(t1[i1], tmin);
-      if (i2 < t2.length) tmin = Math.min(t2[i2], tmin);
-      times.push(tmin);
-      zcs.push(get_rate(t1, d1, tmin) * get_rate(t2, d2, tmin));
-      if (tmin === t1[i1] && i1 < t1.length) i1++;
-      if (tmin === t2[i2] && i2 < t2.length) i2++;
-      if (i1 === t1.length && i2 === t2.length) break;
-    }
-    return { times: times, zcs: zcs };
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
