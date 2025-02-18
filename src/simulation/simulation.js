@@ -47,6 +47,7 @@
     return {
       name: name || null,
       tags: obj.tags || null,
+      intp: obj.intp || null,
       times: times,
       dfs: dfs,
     };
@@ -344,6 +345,7 @@
     return {
       name: vec_curve.name || null,
       tags: vec_curve.tags || null,
+      intp: vec_curve.intp || null,
       times: times,
       dfs: dfs,
     };
