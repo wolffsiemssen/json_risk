@@ -84,6 +84,7 @@ if (typeof require === "function") {
     "period_string_conversion.js",
     "date_string_conversion.js",
     "curves.js",
+    "compounding.js",
     "interpolation_curve.js",
     "surfaces.js",
     "schedule.js",

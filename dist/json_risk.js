@@ -1480,11 +1480,11 @@
   "use strict";
   const continuous = {
     df: function (t, zc) {
-      return (1 + zc) ** -t;
+      return Math.exp(-t * zc);
     },
     zc: function (t, df) {
       if (t < 1 / 512) return 0.0;
-      return df ** (-1 / t) - 1;
+      return -Math.log(df) / t;
     },
   };
 
