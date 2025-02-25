@@ -2919,7 +2919,7 @@
     var [_size, _times, _zcs] = get_values(curve, _compounding);
 
     var _get_interpolated_rate;
-
+    let _always_flat = false;
     switch (curve.intp || "".toLowerCase()) {
       case "linear_zc":
         // interpolation on zcs
@@ -2934,6 +2934,7 @@
           _times,
           _zcs,
         );
+        _always_flat = true;
         break;
       default: {
         // interpolation on dfs
@@ -2950,13 +2951,16 @@
         _get_interpolated_rate = function (t) {
           return _compounding.zc(t, _interpolation(t));
         };
+        _always_flat = true;
       }
     }
 
     // extrapolation
+    var _short_end_flat = !(curve.short_end_flat === false) || _always_flat;
+    var _long_end_flat = !(curve.long_end_flat === false) || _always_flat;
     var _get_rate = function (t) {
-      if (t <= _times[0]) return _zcs[0];
-      if (t >= _times[_size - 1]) return _zcs[_size - 1];
+      if (t <= _times[0] && _short_end_flat) return _zcs[0];
+      if (t >= _times[_size - 1] && _long_end_flat) return _zcs[_size - 1];
       return _get_interpolated_rate(t);
     };
 

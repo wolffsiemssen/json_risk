@@ -1,0 +1,86 @@
+{
+  "ZC_LINEAR_ZC_FLAT_FLAT":{
+    "times":[1,2,3,5,10],
+    "zcs":[0.01,0.02,0.03,0.03,0.028],
+    "intp": "linear_zc",
+    "short_end_flat": true,
+    "long_end_flat": true
+  },
+  "ZC_LINEAR_ZC_NONFLAT_NONFLAT":{
+    "times":[1,2,3,5,10],
+    "zcs":[0.01,0.02,0.03,0.03,0.028],
+    "intp": "linear_zc",
+    "short_end_flat": false,
+    "long_end_flat": false
+  },
+  "ZC_LINEAR_DF_FLAT_FLAT":{
+    "times":[1,2,3,5,10],
+    "zcs":[0.01,0.02,0.03,0.03,0.028],
+    "intp": "linear_df",
+    "short_end_flat": true,
+    "long_end_flat": true
+  },
+  "ZC_LINEAR_DF_NONFLAT_NONFLAT":{
+    "times":[1,2,3,5,10],
+    "zcs":[0.01,0.02,0.03,0.03,0.028],
+    "intp": "linear_df",
+    "short_end_flat": false,
+    "long_end_flat": false
+  }, 
+  "DF_LINEAR_ZC_FLAT_FLAT":{
+    "times":[1,2,3,5,10],
+    "dfs":[0.99009900990099,0.942322334547045,0.862608784384164,0.813091511343354,0.75869785008121],
+    "intp": "linear_zc",
+    "short_end_flat": true,
+    "long_end_flat": true
+  },
+  "DF_LINEAR_ZC_NONFLAT_NONFLAT":{
+    "times":[1,2,3,5,10],
+    "dfs":[0.99009900990099,0.942322334547045,0.862608784384164,0.813091511343354,0.75869785008121],
+    "intp": "linear_zc",
+    "short_end_flat": false,
+    "long_end_flat": false
+  },
+  "DF_LINEAR_DF_FLAT_FLAT":{
+    "times":[1,2,3,5,10],
+    "dfs":[0.99009900990099,0.942322334547045,0.862608784384164,0.813091511343354,0.75869785008121],
+    "intp": "linear_df",
+    "short_end_flat": true,
+    "long_end_flat": true
+  },
+  "DF_LINEAR_DF_NONFLAT_NONFLAT":{
+    "times":[1,2,3,5,10],
+    "dfs":[0.99009900990099,0.942322334547045,0.862608784384164,0.813091511343354,0.75869785008121],
+    "intp": "linear_df",
+    "short_end_flat": false,
+    "long_end_flat": false
+  },
+  "ZC_LINEAR_RT_FLAT_FLAT":{
+    "times":[1,2,3,5,10],
+    "zcs":[0.01,0.02,0.03,0.03,0.028],
+    "intp": "linear_rt",
+    "short_end_flat": true,
+    "long_end_flat": true
+  },
+  "ZC_LINEAR_RT_NONFLAT_NONFLAT":{
+    "times":[1,2,3,5,10],
+    "zcs":[0.01,0.02,0.03,0.03,0.028],
+    "intp": "linear_rt",
+    "short_end_flat": false,
+    "long_end_flat": false
+  }, 
+  "DF_LINEAR_RT_FLAT_FLAT":{
+    "times":[1,2,3,5,10],
+    "dfs":[0.99009900990099,0.942322334547045,0.862608784384164,0.813091511343354,0.75869785008121],
+    "intp": "linear_rt",
+    "short_end_flat": true,
+    "long_end_flat": true
+  },
+  "DF_LINEAR_RT_NONFLAT_NONFLAT":{
+    "times":[1,2,3,5,10],
+    "dfs":[0.99009900990099,0.942322334547045,0.862608784384164,0.813091511343354,0.75869785008121],
+    "intp": "linear_rt",
+    "short_end_flat": false,
+    "long_end_flat": false
+  }
+}
