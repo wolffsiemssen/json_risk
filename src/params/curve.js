@@ -136,6 +136,14 @@
         );
         _always_flat = true;
         break;
+      case "bessel":
+      case "hermite":
+        // bessel-hermite spline interpolation
+        _get_interpolated_rate = library.bessel_hermite_interpolation_factory(
+          _times,
+          _zcs,
+        );
+        break;
       default: {
         // interpolation on dfs
         let _dfs = new Array(_size);

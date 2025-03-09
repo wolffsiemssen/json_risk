@@ -85,6 +85,7 @@ if (typeof require === "function") {
     "date_string_conversion.js",
     "curves.js",
     "compounding.js",
+    "bessel_hermite.js",
     "interpolation_curve.js",
     "surfaces.js",
     "schedule.js",
