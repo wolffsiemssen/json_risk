@@ -100,7 +100,6 @@ if (typeof require === "function") {
     "lgm_option_pricing.js",
     "callable_bond_valuation.js",
     "amortizing_callable_bonds.js",
-    "vector_pricing.js",
     "vector_pricing_curve_scenarios.js",
   ];
 

@@ -14,22 +14,23 @@ if (typeof module === "object" && typeof exports !== "undefined") {
 
 test.execute = function (TestFramework, JsonRisk) {
   Object.keys(referenceData).forEach((testCase) => {
-    const curve = referenceData[testCase];
+    console.log(`Test case: ${testCase}`);
 
-    console.log(`Testfall: ${testCase}`);
+    const testData = referenceData[testCase];
+    const curve = new JsonRisk.Curve(testData);
 
-    curve.reference.times.forEach((t, index) => {
-      const expectedDF = curve.reference.dfs[index];
-      const actualDF = JsonRisk.get_df(curve, t);
+    testData.reference.times.forEach((t, index) => {
+      const expectedDF = testData.reference.dfs[index];
+      const actualDF = curve.get_df(t);
 
-      console.log(`Vergleich für ${testCase}, t=${t}`);
-      console.log(`Erwarteter DF-Wert: ${expectedDF}`);
-      console.log(`Berechneter DF-Wert: ${actualDF}`);
-      console.log(`Abweichung DF: ${Math.abs(expectedDF - actualDF)}`);
+      console.log(`Comparison for ${testCase}, t=${t}`);
+      console.log(`Expedted DiscFactor: ${expectedDF}`);
+      console.log(`Calculated DiscFactor: ${actualDF}`);
+      console.log(`Diff DiscFactor: ${Math.abs(expectedDF - actualDF)}`);
 
       TestFramework.assert(
         Math.abs(actualDF - expectedDF) < 1e-12,
-        `${testCase}: Diskontfaktorenvergleich bei t=${t}`,
+        `${testCase}: Compare DiscFactor at t=${t}`,
       );
     });
   });

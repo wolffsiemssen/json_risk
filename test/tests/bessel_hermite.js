@@ -17,14 +17,14 @@ test.execute = function (TestFramework, JsonRisk) {
   const zcs_lin = [0.01, 0.02, 0.03, 0.065, 0.1];
   const zcs = [0.01, 0.025, 0.01, 0.0, 0.01];
 
-  let curve_lin = JsonRisk.get_safe_curve({
+  let curve_lin = new JsonRisk.Curve({
     times: times,
     zcs: zcs_lin,
     intp: "bessel",
     compounding: "continuous",
   });
 
-  let curve = JsonRisk.get_safe_curve({
+  let curve = new JsonRisk.Curve({
     times: times,
     zcs: zcs,
     intp: "bessel",
@@ -46,7 +46,7 @@ test.execute = function (TestFramework, JsonRisk) {
     );
   }
 
-  let fourpoints = JsonRisk.get_safe_curve({
+  let fourpoints = new JsonRisk.Curve({
     times: [1 / 365, 11 / 365, 18 / 365, 25 / 365],
     zcs: [0.032609, 0.032671, 0.031859, 0.031278],
     intp: "bessel",

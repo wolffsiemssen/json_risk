@@ -213,6 +213,10 @@
     this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
 
     if (!this.is_float) this.cash_flows = this.finalize_cash_flows(null); // finalize cash flow table only for fixed rate instruments, for floaters this is done in present_value()
+
+    this.disc_curve = instrument.disc_curve || "";
+    this.spread_curve = instrument.spread_curve || "";
+    this.fwd_curve = instrument.fwd_curve || "";
   };
 
   /**
@@ -461,8 +465,7 @@
           while (!c.is_fixing_date[i + j] && i + j < c.is_fixing_date.length)
             j++;
 
-          fwd_rate[i] = library.get_fwd_amount(
-            fwd_curve,
+          fwd_rate[i] = fwd_curve.get_fwd_amount(
             c.t_accrual_start[i],
             c.t_accrual_end[i + j],
           );
@@ -595,22 +598,50 @@
     spread_curve,
     fwd_curve,
   ) {
-    if (typeof disc_curve !== "object" || disc_curve === null)
-      throw new Error(
-        "fixed_income.present value: Must provide discount curve when evaluating interest stream",
-      );
-    if (this.is_float && (typeof fwd_curve !== "object" || fwd_curve === null))
-      throw new Error(
-        "fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream",
-      );
+    if (!(disc_curve instanceof library.Curve))
+      disc_curve = new library.Curve(disc_curve);
+
+    if (this.is_float) {
+      if (!(fwd_curve instanceof library.Curve))
+        fwd_curve = new library.Curve(fwd_curve);
+    } else {
+      fwd_curve = null;
+    }
+
+    if (spread_curve) {
+      if (!(spread_curve instanceof library.Curve))
+        spread_curve = new library.Curve(spread_curve);
+    } else {
+      spread_curve = null;
+    }
+
     return library.dcf(
-      this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
-      library.get_safe_curve(disc_curve),
-      spread_curve ? library.get_safe_curve(spread_curve) : null,
+      this.get_cash_flows(fwd_curve),
+      disc_curve,
+      spread_curve,
       this.residual_spread,
       this.settlement_date,
     );
   };
+
+  library.fixed_income.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    deps.addCurve(this.disc_curve);
+    if (this.spread_curve != "") deps.addCurve(this.spread_curve);
+    if (this.is_float) deps.addCurve(this.fwd_curve);
+  };
+
+  library.fixed_income.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.disc_curve);
+    const spread_curve =
+      this.spread_curve != "" ? params.getCurve(this.spread_curve) : null;
+    const fwd_curve = this.is_float ? params.getCurve(this.fwd_curve) : null;
+    return this.present_value(disc_curve, spread_curve, fwd_curve);
+  };
+
   /**
    * TODO
    * @param {object} disc_curve discount curve
@@ -626,18 +657,35 @@
     fwd_curve,
   ) {
     library.require_vd(); //valuation date must be set
-    var fc = library.get_safe_curve(fwd_curve) || library.get_const_curve(0);
-    var c = this.finalize_cash_flows(fc); // cash flow with zero interest or zero spread
+
+    if (!(disc_curve instanceof library.Curve))
+      disc_curve = new library.Curve(disc_curve);
+
+    if (spread_curve) {
+      if (!(spread_curve instanceof library.Curve))
+        spread_curve = new library.Curve(spread_curve);
+    } else {
+      spread_curve = null;
+    }
+
+    if (fwd_curve) {
+      if (!(fwd_curve instanceof library.Curve))
+        fwd_curve = new library.Curve(fwd_curve);
+    } else {
+      fwd_curve = library.get_const_curve(0);
+    }
+
+    const c = this.finalize_cash_flows(fwd_curve); // cash flow with zero interest or zero spread
 
     //retrieve outstanding principal on valuation date
     var outstanding_principal = 0;
-    var i = 0;
+    let i = 0;
     while (c.date_pmt[i] <= library.valuation_date) i++;
     outstanding_principal = c.current_principal[i];
 
     //build cash flow object with zero interest and (harder) zero spread
-    var pmt = new Array(c.pmt_total.length);
-    var accrued = 0;
+    const pmt = new Array(c.pmt_total.length);
+    let accrued = 0;
     for (i = 0; i < pmt.length; i++) {
       pmt[i] = c.pmt_principal[i];
       //calculate interest amount for the current period
@@ -650,7 +698,7 @@
       }
     }
 
-    var res =
+    let res =
       outstanding_principal -
       library.dcf(
         {
@@ -658,12 +706,12 @@
           t_pmt: c.t_pmt,
           pmt_total: pmt,
         },
-        library.get_safe_curve(disc_curve),
-        library.get_safe_curve(spread_curve),
+        disc_curve,
+        spread_curve,
         this.residual_spread,
         this.settlement_date,
       );
-    res /= this.annuity(disc_curve, spread_curve, fc);
+    res /= this.annuity(disc_curve, spread_curve, fwd_curve);
     return res;
   };
 
@@ -681,9 +729,7 @@
     spread_curve,
     fwd_curve,
   ) {
-    var c = this.get_cash_flows(
-      library.get_safe_curve(fwd_curve) || library.get_const_curve(0),
-    );
+    var c = this.get_cash_flows(fwd_curve);
     var pmt = new Array(c.pmt_total.length);
     var accrued = 0;
     var i;
@@ -704,8 +750,8 @@
         t_pmt: c.t_pmt,
         pmt_total: pmt,
       },
-      library.get_safe_curve(disc_curve),
-      library.get_safe_curve(spread_curve),
+      disc_curve,
+      spread_curve,
       this.residual_spread,
       this.settlement_date,
     );

@@ -21,13 +21,13 @@ test.execute = function (TestFramework, JsonRisk) {
   const dfs_continuous = zcs.map((z, i) => {
     return Math.exp(-z * times[i]);
   });
-  let annual = JsonRisk.get_safe_curve({
+  let annual = new JsonRisk.Curve({
     times: times,
     dfs: dfs_annual,
     intp: "linear_zc",
     compounding: "annual",
   });
-  let continuous = JsonRisk.get_safe_curve({
+  let continuous = new JsonRisk.Curve({
     times: times,
     dfs: dfs_continuous,
     intp: "linear_zc",

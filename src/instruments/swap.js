@@ -21,6 +21,7 @@
       bdc: instrument.bdc,
       dcc: instrument.dcc,
       adjust_accrual_periods: instrument.adjust_accrual_periods,
+      disc_curve: instrument.disc_curve || "",
     });
 
     //the floating rate leg of the swap
@@ -36,6 +37,8 @@
       dcc: instrument.float_dcc,
       float_current_rate: instrument.float_current_rate,
       adjust_accrual_periods: instrument.adjust_accrual_periods,
+      disc_curve: instrument.disc_curve || "",
+      fwd_curve: instrument.fwd_curve || "",
     });
   };
   /**
@@ -77,6 +80,22 @@
     res += this.float_leg.present_value(disc_curve, null, fwd_curve);
     return res;
   };
+
+  library.swap.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+
+    this.float_leg.add_deps(deps);
+  };
+
+  library.swap.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.float_leg.disc_curve);
+    const fwd_curve = params.getCurve(this.float_leg.fwd_curve);
+    return this.present_value(disc_curve, fwd_curve);
+  };
+
   /**
    * ...
    * @param {object} fwd_curve forward curve

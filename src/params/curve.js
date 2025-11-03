@@ -4,7 +4,7 @@
    */
   var default_yf = null;
   /**
-   * converts rate of a curve to zero rates
+   * returns a constant zero-rate curve
    * @param {number} value rate of curve
    * @param {string} type type of curve e.g. yield
    * @returns {object} constant curve with discount factors {type, times, dfs}
@@ -15,22 +15,15 @@
     if (typeof value !== "number")
       throw new Error("get_const_curve: input must be number.");
     if (value <= -1) throw new Error("get_const_curve: invalid input.");
-    return library.get_safe_curve({
+    return new library.Curve({
       type: type || "yield",
       times: [1],
-      dfs: [1 / (1 + value)], //zero rates are act/365 annual compounding
+      zcs: [value], //zero rates are act/365 annual compounding
     });
   };
 
-  /**
-   * get i-th time entry of a curve
-   * @param {object} curve curve
-   * @param {number} i time
-   * @returns {number} time
-   * @memberof library
-   * @private
-   */
-  function get_time_at(curve, i) {
+  // helper function for curve constructor
+  const get_time_at = function (curve, i) {
     if (!curve.times) {
       //construct times from other parameters in order of preference
       //curve times are always act/365
@@ -43,23 +36,18 @@
         );
       }
       if (curve.labels) return library.period_str_to_time(curve.labels[i]);
-      throw new Error("get_time_at: invalid curve, cannot derive times");
+      throw new Error("Curve: invalid curve, cannot derive times");
     }
     return curve.times[i];
-  }
-  /**
-   * get time-array of a curve
-   * @param {object} curve curve
-   * @returns {array} times in days of given curve
-   * @memberof library
-   * @public
-   */
-  library.get_curve_times = function (curve) {
+  };
+
+  // helper function for curve constructor
+  const get_times = function (curve) {
     var i = (curve.times || curve.days || curve.dates || curve.labels || [])
       .length;
     if (!i)
       throw new Error(
-        "get_curve_times: invalid curve, need to provide valid times, days, dates, or labels",
+        "Curve: invalid curve, need to provide valid times, days, dates, or labels",
       );
     var times = new Array(i);
     while (i > 0) {
@@ -69,9 +57,10 @@
     return times;
   };
 
+  // helper function for curve constructor
   const get_values = function (curve, compounding) {
     // extract times, rates and discount factors from curve and store in hidden function scope
-    let times = library.get_curve_times(curve);
+    let times = get_times(curve);
     let size = times.length;
     let zcs = library.get_safe_number_vector(curve.zcs);
     let dfs = library.get_safe_number_vector(curve.dfs);
@@ -79,7 +68,7 @@
     if (null === zcs) {
       if (null === dfs)
         throw new Error(
-          "get_safe_curve: invalid curve, must provide numeric zcs or dfs",
+          "Curve: invalid curve, must provide numeric zcs or dfs",
         );
       zcs = new Array(size);
       for (let i = 0; i < size; i++) {
@@ -96,171 +85,160 @@
    * @memberof library
    * @public
    */
-  library.get_safe_curve = function (curve) {
-    //if null or other falsy argument is given, returns constant curve
-    if (!curve)
-      curve = {
-        times: [1],
-        zcs: [0.0],
+  class Curve extends library.Simulatable {
+    #type = "yield";
+    #times = null;
+    #zcs = null;
+    #intp = null;
+    #compounding = null;
+    #get_rate = null;
+    #get_rate_scenario = null;
+
+    constructor(obj) {
+      super(obj);
+      // type
+      if (typeof obj.type === "string") this.#type = obj.type;
+
+      // compounding
+      this.#compounding = library.compounding_factory(obj.compounding);
+
+      // delete invalid members
+      for (const member of ["dfs", "zcs", "times", "days", "dates", "labels"]) {
+        if (!Array.isArray(obj[member])) delete obj[member];
+      }
+
+      // extract times, rates and discount factors from curve and store in hidden function scope
+      const [_size, _times, _zcs] = get_values(obj, this.#compounding);
+      this.#times = _times;
+      this.#zcs = _zcs;
+
+      var _get_interpolated_rate;
+      let _always_flat = false;
+      this.#intp = (obj.intp || "").toLowerCase();
+      switch (this.#intp) {
+        case "linear_zc":
+          // interpolation on zcs
+          _get_interpolated_rate = library.linear_interpolation_factory(
+            this.#times,
+            this.#zcs,
+          );
+          break;
+        case "linear_rt":
+          // interpolation on zcs
+          _get_interpolated_rate = library.linear_xy_interpolation_factory(
+            this.#times,
+            this.#zcs,
+          );
+          _always_flat = true;
+          break;
+        case "bessel":
+        case "hermite":
+          // bessel-hermite spline interpolation
+          _get_interpolated_rate = library.bessel_hermite_interpolation_factory(
+            this.#times,
+            this.#zcs,
+          );
+          break;
+        default: {
+          // interpolation on dfs
+          let _dfs = new Array(_size);
+          for (let i = 0; i < _size; i++) {
+            _dfs[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
+          }
+
+          const _interpolation = library.linear_interpolation_factory(
+            this.#times,
+            _dfs,
+          );
+
+          const comp = this.#compounding;
+          _get_interpolated_rate = function (t) {
+            return comp.zc(t, _interpolation(t));
+          };
+          _always_flat = true;
+        }
+      }
+
+      // extrapolation
+      var _short_end_flat = !(obj.short_end_flat === false) || _always_flat;
+      var _long_end_flat = !(obj.long_end_flat === false) || _always_flat;
+      this.#get_rate = function (t) {
+        if (t <= _times[0] && _short_end_flat) return _zcs[0];
+        if (t >= _times[_size - 1] && _long_end_flat) return _zcs[_size - 1];
+        return _get_interpolated_rate(t);
       };
 
-    // do not call this twice on a curve. If curve already has get_rate, just return
-    if (curve.get_rate instanceof Function) return curve;
-
-    // compounding
-    var _compounding = library.compounding_factory(curve.compounding);
-
-    // delete invalid members
-    for (const member of ["dfs", "zcs", "times", "days", "dates", "labels"]) {
-      if (!Array.isArray(curve[member])) delete curve[member];
+      this.#get_rate_scenario = this.#get_rate;
     }
 
-    // extract times, rates and discount factors from curve and store in hidden function scope
-    var [_size, _times, _zcs] = get_values(curve, _compounding);
+    // detach scenario rule
+    detachRule() {
+      this.#get_rate_scenario = this.#get_rate;
+    }
 
-    var _get_interpolated_rate;
-    let _always_flat = false;
-    switch (curve.intp || "".toLowerCase()) {
-      case "linear_zc":
-        // interpolation on zcs
-        _get_interpolated_rate = library.linear_interpolation_factory(
-          _times,
-          _zcs,
-        );
-        break;
-      case "linear_rt":
-        // interpolation on zcs
-        _get_interpolated_rate = library.linear_xy_interpolation_factory(
-          _times,
-          _zcs,
-        );
-        _always_flat = true;
-        break;
-      case "bessel":
-      case "hermite":
-        // bessel-hermite spline interpolation
-        _get_interpolated_rate = library.bessel_hermite_interpolation_factory(
-          _times,
-          _zcs,
-        );
-        break;
-      default: {
-        // interpolation on dfs
-        let _dfs = new Array(_size);
-        for (let i = 0; i < _size; i++) {
-          _dfs[i] = _compounding.df(_times[i], _zcs[i]);
-        }
-
-        const _interpolation = library.linear_interpolation_factory(
-          _times,
-          _dfs,
-        );
-
-        _get_interpolated_rate = function (t) {
-          return _compounding.zc(t, _interpolation(t));
-        };
-        _always_flat = true;
+    // attach scenario rule
+    attachRule(rule) {
+      if (typeof rule === "object") {
+        var scenario = new library.Curve({
+          labels: rule.labels_x,
+          zcs: rule.values[0],
+          intp: rule.model === "absolute" ? this.#intp : "linear_zc",
+        });
+        if (rule.model === "multiplicative")
+          this.#get_rate_scenario = function (t) {
+            return this.#get_rate(t) * scenario.get_rate(t);
+          };
+        if (rule.model === "additive")
+          this.#get_rate_scenario = function (t) {
+            return this.#get_rate(t) + scenario.get_rate(t);
+          };
+        if (rule.model === "absolute")
+          this.#get_rate_scenario = function (t) {
+            return scenario.get_rate(t);
+          };
+      } else {
+        this.detachRule();
       }
     }
-
-    // extrapolation
-    var _short_end_flat = !(curve.short_end_flat === false) || _always_flat;
-    var _long_end_flat = !(curve.long_end_flat === false) || _always_flat;
-    var _get_rate = function (t) {
-      if (t <= _times[0] && _short_end_flat) return _zcs[0];
-      if (t >= _times[_size - 1] && _long_end_flat) return _zcs[_size - 1];
-      return _get_interpolated_rate(t);
-    };
-
-    // attach get_rate function with scenario rule if present
-
-    if (typeof curve._rule === "object") {
-      var scenario = {
-        labels: curve._rule.labels_x,
-        zcs: curve._rule.values[0],
-        intp: curve._rule.model === "absolute" ? curve.intp : "linear_zc",
-      };
-      scenario = library.get_safe_curve(scenario);
-      if (curve._rule.model === "multiplicative")
-        curve.get_rate = function (t) {
-          return _get_rate(t) * scenario.get_rate(t);
-        };
-      if (curve._rule.model === "additive")
-        curve.get_rate = function (t) {
-          return _get_rate(t) + scenario.get_rate(t);
-        };
-      if (curve._rule.model === "absolute")
-        curve.get_rate = function (t) {
-          return scenario.get_rate(t);
-        };
-    } else {
-      curve.get_rate = _get_rate;
+    // define get_rate aware of attached scenario
+    get_rate(t) {
+      return this.#get_rate_scenario(t);
     }
 
-    // define get_df based on zcs
-    curve.get_df = function (t) {
-      return _compounding.df(t, this.get_rate(t));
-    };
+    // define get_df based on zcs, aware of attached scenario
+    get_df(t) {
+      return this.#compounding.df(t, this.#get_rate_scenario(t));
+    }
 
     // attach get_fwd_amount based on get_df
-    curve.get_fwd_amount = function (tstart, tend) {
+    get_fwd_amount(tstart, tend) {
       if (tend - tstart < 1 / 512) return 0.0;
       return this.get_df(tstart) / this.get_df(tend) - 1;
-    };
+    }
 
-    // attach get_times closure in order to reobtain hidden times when needed
-    curve.get_times = function () {
-      return _times;
-    };
+    // reobtain copy of hidden times when needed
+    get times() {
+      return Array.from(this.#times);
+    }
 
-    // attach get_zcs closure in order to reobtain hidden zcs when needed
-    curve.get_zcs = function () {
-      return _zcs;
-    };
+    // reobtain copy of hidden zcs when needed
+    get zcs() {
+      return Array.from(this.#zcs);
+    }
 
-    return curve;
-  };
+    // reobtain copy of hidden dfs when needed
+    get dfs() {
+      let res = new Array(this.#times.length);
+      for (let i = 0; i < res.length; i++) {
+        res[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
+      }
+      return res;
+    }
 
-  /**
-   * Get discount factor from curve, calling get_safe_curve in case curve.get_df is not defined
-   * @param {object} curve curve
-   * @param {number} t
-   * @param {number} imin
-   * @param {number} imax
-   * @returns {number} discount factor
-   * @memberof library
-   * @public
-   */
-  library.get_df = function (curve, t) {
-    if (curve.get_df instanceof Function) return curve.get_df(t);
-    return library.get_safe_curve(curve).get_df(t);
-  };
+    get type() {
+      return this.#type;
+    }
+  }
 
-  /**
-   * TODO
-   * @param {object} curve curve
-   * @param {number} t
-   * @returns {number} ...
-   * @memberof library
-   * @public
-   */
-  library.get_rate = function (curve, t) {
-    if (curve.get_rate instanceof Function) return curve.get_rate(t);
-    return library.get_safe_curve(curve).get_rate(t);
-  };
-
-  /**
-   * TODO
-   * @param {object} curve curve
-   * @param {number} tstart
-   * @param {number} tend
-   * @returns {number} ...
-   * @memberof library
-   * @public
-   */
-  library.get_fwd_amount = function (curve, tstart, tend) {
-    if (curve.get_fwd_amount instanceof Function)
-      return curve.get_fwd_amount(tstart, tend);
-    return library.get_safe_curve(curve).get_fwd_amount(tstart, tend);
-  };
+  library.Curve = Curve;
 })(this.JsonRisk || module.exports);

@@ -124,6 +124,12 @@
         this.basket[i] = new library.swaption(temp);
       }
     }
+
+    // market deps
+    this.disc_curve = instrument.disc_curve || "";
+    this.spread_curve = instrument.spread_curve || "";
+    this.fwd_curve = instrument.fwd_curve || "";
+    this.surface = instrument.surface || "";
   };
 
   /**
@@ -161,18 +167,22 @@
       throw new Error(
         "callable_fixed_income.present_value: must provide forward curve for calibration",
       );
-    library.get_safe_curve(disc_curve);
-    library.get_safe_curve(fwd_curve);
-    if (spread_curve) library.get_safe_curve(spread_curve);
-
+    if ((!disc_curve) instanceof library.Curve)
+      disc_curve = new library.Curve(disc_curve);
+    if ((!fwd_curve) instanceof library.Curve)
+      fwd_curve = new library.Curve(fwd_curve);
+    if (spread_curve) {
+      if ((!spread_curve) instanceof library.Curve)
+        spread_curve = new library.Curve(spread_curve);
+    } else {
+      spread_curve = null;
+    }
     // set lgm mean reversion
     library.lgm_set_mean_reversion(this.mean_reversion);
 
     //calibrate lgm model - returns xi for non-expired swaptions only
-    if (typeof surface !== "object" || surface === null)
-      throw new Error(
-        "callable_fixed_income.present_value: must provide valid surface",
-      );
+    if (!(surface instanceof library.Surface))
+      surface = new library.Surface(surface);
 
     var xi_vec;
     if (null == this.hull_white_volatility) {
@@ -218,6 +228,26 @@
     if (!this.exclude_base)
       res += this.base.present_value(disc_curve, spread_curve, null);
     return res;
+  };
+
+  library.callable_fixed_income.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    deps.addCurve(this.disc_curve);
+    if (this.spread_curve != "") deps.addCurve(this.spread_curve);
+    deps.addCurve(this.fwd_curve);
+    deps.addSurface(this.surface);
+  };
+
+  library.callable_fixed_income.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.disc_curve);
+    const spread_curve =
+      this.spread_curve != "" ? params.getCurve(this.spread_curve) : null;
+    const fwd_curve = params.getCurve(this.fwd_curve);
+    const surface = params.getSurface(this.surface);
+    return this.present_value(disc_curve, spread_curve, fwd_curve, surface);
   };
 
   /**

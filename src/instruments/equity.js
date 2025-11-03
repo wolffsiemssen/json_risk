@@ -9,6 +9,7 @@
     this.quantity = library.get_safe_number(instrument.quantity);
     if (null === this.quantity)
       throw new Error("equity: must provide valid quantity");
+    this.quote = instrument.quote || "";
   };
   /**
    * calculates the present value for internal equity object
@@ -20,6 +21,19 @@
   library.equity.prototype.present_value = function (quote) {
     var q = library.get_safe_scalar(quote);
     return this.quantity * q.get_value();
+  };
+
+  library.equity.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    deps.addScalar(this.quote);
+  };
+
+  library.equity.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const quote = params.getScalar(this.quote);
+    return this.present_value(quote);
   };
 
   /**

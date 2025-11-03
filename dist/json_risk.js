@@ -151,6 +151,12 @@
         this.basket[i] = new library.swaption(temp);
       }
     }
+
+    // market deps
+    this.disc_curve = instrument.disc_curve || "";
+    this.spread_curve = instrument.spread_curve || "";
+    this.fwd_curve = instrument.fwd_curve || "";
+    this.surface = instrument.surface || "";
   };
 
   /**
@@ -188,18 +194,22 @@
       throw new Error(
         "callable_fixed_income.present_value: must provide forward curve for calibration",
       );
-    library.get_safe_curve(disc_curve);
-    library.get_safe_curve(fwd_curve);
-    if (spread_curve) library.get_safe_curve(spread_curve);
-
+    if ((!disc_curve) instanceof library.Curve)
+      disc_curve = new library.Curve(disc_curve);
+    if ((!fwd_curve) instanceof library.Curve)
+      fwd_curve = new library.Curve(fwd_curve);
+    if (spread_curve) {
+      if ((!spread_curve) instanceof library.Curve)
+        spread_curve = new library.Curve(spread_curve);
+    } else {
+      spread_curve = null;
+    }
     // set lgm mean reversion
     library.lgm_set_mean_reversion(this.mean_reversion);
 
     //calibrate lgm model - returns xi for non-expired swaptions only
-    if (typeof surface !== "object" || surface === null)
-      throw new Error(
-        "callable_fixed_income.present_value: must provide valid surface",
-      );
+    if (!(surface instanceof library.Surface))
+      surface = new library.Surface(surface);
 
     var xi_vec;
     if (null == this.hull_white_volatility) {
@@ -247,6 +257,26 @@
     return res;
   };
 
+  library.callable_fixed_income.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    deps.addCurve(this.disc_curve);
+    if (this.spread_curve != "") deps.addCurve(this.spread_curve);
+    deps.addCurve(this.fwd_curve);
+    deps.addSurface(this.surface);
+  };
+
+  library.callable_fixed_income.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.disc_curve);
+    const spread_curve =
+      this.spread_curve != "" ? params.getCurve(this.spread_curve) : null;
+    const fwd_curve = params.getCurve(this.fwd_curve);
+    const surface = params.getSurface(this.surface);
+    return this.present_value(disc_curve, spread_curve, fwd_curve, surface);
+  };
+
   /**
    * calculates the present value for callable bonds
    * @param {object} bond instrument of type bond
@@ -285,6 +315,7 @@
     this.quantity = library.get_safe_number(instrument.quantity);
     if (null === this.quantity)
       throw new Error("equity: must provide valid quantity");
+    this.quote = instrument.quote || "";
   };
   /**
    * calculates the present value for internal equity object
@@ -296,6 +327,19 @@
   library.equity.prototype.present_value = function (quote) {
     var q = library.get_safe_scalar(quote);
     return this.quantity * q.get_value();
+  };
+
+  library.equity.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    deps.addScalar(this.quote);
+  };
+
+  library.equity.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const quote = params.getScalar(this.quote);
+    return this.present_value(quote);
   };
 
   /**
@@ -526,6 +570,10 @@
     this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
 
     if (!this.is_float) this.cash_flows = this.finalize_cash_flows(null); // finalize cash flow table only for fixed rate instruments, for floaters this is done in present_value()
+
+    this.disc_curve = instrument.disc_curve || "";
+    this.spread_curve = instrument.spread_curve || "";
+    this.fwd_curve = instrument.fwd_curve || "";
   };
 
   /**
@@ -774,8 +822,7 @@
           while (!c.is_fixing_date[i + j] && i + j < c.is_fixing_date.length)
             j++;
 
-          fwd_rate[i] = library.get_fwd_amount(
-            fwd_curve,
+          fwd_rate[i] = fwd_curve.get_fwd_amount(
             c.t_accrual_start[i],
             c.t_accrual_end[i + j],
           );
@@ -908,22 +955,50 @@
     spread_curve,
     fwd_curve,
   ) {
-    if (typeof disc_curve !== "object" || disc_curve === null)
-      throw new Error(
-        "fixed_income.present value: Must provide discount curve when evaluating interest stream",
-      );
-    if (this.is_float && (typeof fwd_curve !== "object" || fwd_curve === null))
-      throw new Error(
-        "fixed_income.present value: Must provide forward curve when evaluating floating rate interest stream",
-      );
+    if (!(disc_curve instanceof library.Curve))
+      disc_curve = new library.Curve(disc_curve);
+
+    if (this.is_float) {
+      if (!(fwd_curve instanceof library.Curve))
+        fwd_curve = new library.Curve(fwd_curve);
+    } else {
+      fwd_curve = null;
+    }
+
+    if (spread_curve) {
+      if (!(spread_curve instanceof library.Curve))
+        spread_curve = new library.Curve(spread_curve);
+    } else {
+      spread_curve = null;
+    }
+
     return library.dcf(
-      this.get_cash_flows(library.get_safe_curve(fwd_curve) || null),
-      library.get_safe_curve(disc_curve),
-      spread_curve ? library.get_safe_curve(spread_curve) : null,
+      this.get_cash_flows(fwd_curve),
+      disc_curve,
+      spread_curve,
       this.residual_spread,
       this.settlement_date,
     );
   };
+
+  library.fixed_income.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    deps.addCurve(this.disc_curve);
+    if (this.spread_curve != "") deps.addCurve(this.spread_curve);
+    if (this.is_float) deps.addCurve(this.fwd_curve);
+  };
+
+  library.fixed_income.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.disc_curve);
+    const spread_curve =
+      this.spread_curve != "" ? params.getCurve(this.spread_curve) : null;
+    const fwd_curve = this.is_float ? params.getCurve(this.fwd_curve) : null;
+    return this.present_value(disc_curve, spread_curve, fwd_curve);
+  };
+
   /**
    * TODO
    * @param {object} disc_curve discount curve
@@ -939,18 +1014,35 @@
     fwd_curve,
   ) {
     library.require_vd(); //valuation date must be set
-    var fc = library.get_safe_curve(fwd_curve) || library.get_const_curve(0);
-    var c = this.finalize_cash_flows(fc); // cash flow with zero interest or zero spread
+
+    if (!(disc_curve instanceof library.Curve))
+      disc_curve = new library.Curve(disc_curve);
+
+    if (spread_curve) {
+      if (!(spread_curve instanceof library.Curve))
+        spread_curve = new library.Curve(spread_curve);
+    } else {
+      spread_curve = null;
+    }
+
+    if (fwd_curve) {
+      if (!(fwd_curve instanceof library.Curve))
+        fwd_curve = new library.Curve(fwd_curve);
+    } else {
+      fwd_curve = library.get_const_curve(0);
+    }
+
+    const c = this.finalize_cash_flows(fwd_curve); // cash flow with zero interest or zero spread
 
     //retrieve outstanding principal on valuation date
     var outstanding_principal = 0;
-    var i = 0;
+    let i = 0;
     while (c.date_pmt[i] <= library.valuation_date) i++;
     outstanding_principal = c.current_principal[i];
 
     //build cash flow object with zero interest and (harder) zero spread
-    var pmt = new Array(c.pmt_total.length);
-    var accrued = 0;
+    const pmt = new Array(c.pmt_total.length);
+    let accrued = 0;
     for (i = 0; i < pmt.length; i++) {
       pmt[i] = c.pmt_principal[i];
       //calculate interest amount for the current period
@@ -963,7 +1055,7 @@
       }
     }
 
-    var res =
+    let res =
       outstanding_principal -
       library.dcf(
         {
@@ -971,12 +1063,12 @@
           t_pmt: c.t_pmt,
           pmt_total: pmt,
         },
-        library.get_safe_curve(disc_curve),
-        library.get_safe_curve(spread_curve),
+        disc_curve,
+        spread_curve,
         this.residual_spread,
         this.settlement_date,
       );
-    res /= this.annuity(disc_curve, spread_curve, fc);
+    res /= this.annuity(disc_curve, spread_curve, fwd_curve);
     return res;
   };
 
@@ -994,9 +1086,7 @@
     spread_curve,
     fwd_curve,
   ) {
-    var c = this.get_cash_flows(
-      library.get_safe_curve(fwd_curve) || library.get_const_curve(0),
-    );
+    var c = this.get_cash_flows(fwd_curve);
     var pmt = new Array(c.pmt_total.length);
     var accrued = 0;
     var i;
@@ -1017,8 +1107,8 @@
         t_pmt: c.t_pmt,
         pmt_total: pmt,
       },
-      library.get_safe_curve(disc_curve),
-      library.get_safe_curve(spread_curve),
+      disc_curve,
+      spread_curve,
       this.residual_spread,
       this.settlement_date,
     );
@@ -1068,6 +1158,7 @@
     this.near_leg = new library.fixed_income({
       notional: instrument.notional, // negative if first leg is pay leg
       maturity: instrument.maturity,
+      disc_curve: instrument.disc_curve || "",
       fixed_rate: 0,
       tenor: 0,
     });
@@ -1080,6 +1171,7 @@
       this.far_leg = new library.fixed_income({
         notional: instrument.notional_2, // negative if second leg is pay leg
         maturity: instrument.maturity_2,
+        disc_curve: instrument.disc_curve || "",
         fixed_rate: 0,
         tenor: 0,
       });
@@ -1099,6 +1191,19 @@
     res += this.near_leg.present_value(disc_curve, null, null);
     if (this.far_leg) res += this.far_leg.present_value(disc_curve, null, null);
     return res;
+  };
+
+  library.fxterm.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    this.near_leg.add_deps(deps);
+  };
+
+  library.fxterm.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.near_leg.disc_curve);
+    return this.present_value(disc_curve);
   };
 
   /**
@@ -1137,6 +1242,7 @@
       bdc: instrument.bdc,
       dcc: instrument.dcc,
       adjust_accrual_periods: instrument.adjust_accrual_periods,
+      disc_curve: instrument.disc_curve || "",
     });
 
     //the floating rate leg of the swap
@@ -1152,6 +1258,8 @@
       dcc: instrument.float_dcc,
       float_current_rate: instrument.float_current_rate,
       adjust_accrual_periods: instrument.adjust_accrual_periods,
+      disc_curve: instrument.disc_curve || "",
+      fwd_curve: instrument.fwd_curve || "",
     });
   };
   /**
@@ -1193,6 +1301,22 @@
     res += this.float_leg.present_value(disc_curve, null, fwd_curve);
     return res;
   };
+
+  library.swap.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+
+    this.float_leg.add_deps(deps);
+  };
+
+  library.swap.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.float_leg.disc_curve);
+    const fwd_curve = params.getCurve(this.float_leg.fwd_curve);
+    return this.present_value(disc_curve, fwd_curve);
+  };
+
   /**
    * ...
    * @param {object} fwd_curve forward curve
@@ -1260,7 +1384,11 @@
       float_dcc: instrument.float_dcc,
       float_current_rate: instrument.float_current_rate,
       adjust_accrual_periods: instrument.adjust_accrual_periods,
+      disc_curve: instrument.disc_curve || "",
+      fwd_curve: instrument.fwd_curve || "",
     });
+
+    this.surface = instrument.surface || "";
   };
   /**
    * calculates the present value for internal swaption (object)
@@ -1278,6 +1406,15 @@
   ) {
     library.require_vd();
 
+    if (!(disc_curve instanceof library.Curve))
+      disc_curve = new library.Curve(disc_curve);
+
+    if (!(fwd_curve instanceof library.Curve))
+      fwd_curve = new library.Curve(fwd_curve);
+
+    if (!(vol_surface instanceof library.Surface))
+      vol_surface = new library.Surface(vol_surface);
+
     //obtain times
     var t_maturity = library.time_from_now(this.maturity);
     var t_first_exercise_date = library.time_from_now(this.first_exercise_date);
@@ -1292,11 +1429,11 @@
     //obtain time-scaled volatility
     if (typeof vol_surface !== "object" || vol_surface === null)
       throw new Error("swaption.present_value: must provide valid surface");
-    this.vol = library.get_cube_rate(
-      vol_surface,
+    this.vol = vol_surface.get_rate(
       t_first_exercise_date,
       t_term,
-      this.moneyness,
+      this.fair_rate, // fwd rate
+      this.swap.fixed_rate, // strike
     );
     this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
 
@@ -1318,6 +1455,24 @@
     res *= this.sign;
     return res;
   };
+
+  library.swaption.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+
+    this.swap.add_deps(deps);
+    deps.addSurface(this.surface);
+  };
+
+  library.swaption.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.swap.float_leg.disc_curve);
+    const fwd_curve = params.getCurve(this.swap.float_leg.fwd_curve);
+    const surface = params.getSurface(this.surface);
+    return this.present_value(disc_curve, fwd_curve, surface);
+  };
+
   /**
    * ...
    * @param {object} swaption Instrument
@@ -2854,12 +3009,51 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
+  class Simulatable {
+    static type = "simulatable";
+    #name = "";
+    #tags = new Set();
+    constructor(obj) {
+      // if non-object is given, throw error
+      if ("object" !== typeof obj)
+        throw new Error("Simulatable: must provide object");
+
+      // name
+      if ("name" in obj) {
+        if (typeof obj.name === "string") this.#name = obj.name;
+      }
+
+      // tags
+      if ("tags" in obj) {
+        if (!Array.isArray(obj.tags))
+          throw new Error("Simulatable: tags must be an array of strings");
+
+        for (const tag of obj.tags) {
+          if (typeof tag !== "string") continue;
+          if (tag === "") continue;
+          this.#tags.add(tag);
+        }
+      }
+    }
+
+    get name() {
+      return this.#name;
+    }
+
+    hasTag(tag) {
+      return this.#tags.has(tag);
+    }
+  }
+
+  library.Simulatable = Simulatable;
+})(this.JsonRisk || module.exports);
+(function (library) {
   /**
    * @memberof library
    */
   var default_yf = null;
   /**
-   * converts rate of a curve to zero rates
+   * returns a constant zero-rate curve
    * @param {number} value rate of curve
    * @param {string} type type of curve e.g. yield
    * @returns {object} constant curve with discount factors {type, times, dfs}
@@ -2870,22 +3064,15 @@
     if (typeof value !== "number")
       throw new Error("get_const_curve: input must be number.");
     if (value <= -1) throw new Error("get_const_curve: invalid input.");
-    return library.get_safe_curve({
+    return new library.Curve({
       type: type || "yield",
       times: [1],
-      dfs: [1 / (1 + value)], //zero rates are act/365 annual compounding
+      zcs: [value], //zero rates are act/365 annual compounding
     });
   };
 
-  /**
-   * get i-th time entry of a curve
-   * @param {object} curve curve
-   * @param {number} i time
-   * @returns {number} time
-   * @memberof library
-   * @private
-   */
-  function get_time_at(curve, i) {
+  // helper function for curve constructor
+  const get_time_at = function (curve, i) {
     if (!curve.times) {
       //construct times from other parameters in order of preference
       //curve times are always act/365
@@ -2898,23 +3085,18 @@
         );
       }
       if (curve.labels) return library.period_str_to_time(curve.labels[i]);
-      throw new Error("get_time_at: invalid curve, cannot derive times");
+      throw new Error("Curve: invalid curve, cannot derive times");
     }
     return curve.times[i];
-  }
-  /**
-   * get time-array of a curve
-   * @param {object} curve curve
-   * @returns {array} times in days of given curve
-   * @memberof library
-   * @public
-   */
-  library.get_curve_times = function (curve) {
+  };
+
+  // helper function for curve constructor
+  const get_times = function (curve) {
     var i = (curve.times || curve.days || curve.dates || curve.labels || [])
       .length;
     if (!i)
       throw new Error(
-        "get_curve_times: invalid curve, need to provide valid times, days, dates, or labels",
+        "Curve: invalid curve, need to provide valid times, days, dates, or labels",
       );
     var times = new Array(i);
     while (i > 0) {
@@ -2924,9 +3106,10 @@
     return times;
   };
 
+  // helper function for curve constructor
   const get_values = function (curve, compounding) {
     // extract times, rates and discount factors from curve and store in hidden function scope
-    let times = library.get_curve_times(curve);
+    let times = get_times(curve);
     let size = times.length;
     let zcs = library.get_safe_number_vector(curve.zcs);
     let dfs = library.get_safe_number_vector(curve.dfs);
@@ -2934,7 +3117,7 @@
     if (null === zcs) {
       if (null === dfs)
         throw new Error(
-          "get_safe_curve: invalid curve, must provide numeric zcs or dfs",
+          "Curve: invalid curve, must provide numeric zcs or dfs",
         );
       zcs = new Array(size);
       for (let i = 0; i < size; i++) {
@@ -2951,209 +3134,193 @@
    * @memberof library
    * @public
    */
-  library.get_safe_curve = function (curve) {
-    //if null or other falsy argument is given, returns constant curve
-    if (!curve)
-      curve = {
-        times: [1],
-        zcs: [0.0],
+  class Curve extends library.Simulatable {
+    #type = "yield";
+    #times = null;
+    #zcs = null;
+    #intp = null;
+    #compounding = null;
+    #get_rate = null;
+    #get_rate_scenario = null;
+
+    constructor(obj) {
+      super(obj);
+      // type
+      if (typeof obj.type === "string") this.#type = obj.type;
+
+      // compounding
+      this.#compounding = library.compounding_factory(obj.compounding);
+
+      // delete invalid members
+      for (const member of ["dfs", "zcs", "times", "days", "dates", "labels"]) {
+        if (!Array.isArray(obj[member])) delete obj[member];
+      }
+
+      // extract times, rates and discount factors from curve and store in hidden function scope
+      const [_size, _times, _zcs] = get_values(obj, this.#compounding);
+      this.#times = _times;
+      this.#zcs = _zcs;
+
+      var _get_interpolated_rate;
+      let _always_flat = false;
+      this.#intp = (obj.intp || "").toLowerCase();
+      switch (this.#intp) {
+        case "linear_zc":
+          // interpolation on zcs
+          _get_interpolated_rate = library.linear_interpolation_factory(
+            this.#times,
+            this.#zcs,
+          );
+          break;
+        case "linear_rt":
+          // interpolation on zcs
+          _get_interpolated_rate = library.linear_xy_interpolation_factory(
+            this.#times,
+            this.#zcs,
+          );
+          _always_flat = true;
+          break;
+        case "bessel":
+        case "hermite":
+          // bessel-hermite spline interpolation
+          _get_interpolated_rate = library.bessel_hermite_interpolation_factory(
+            this.#times,
+            this.#zcs,
+          );
+          break;
+        default: {
+          // interpolation on dfs
+          let _dfs = new Array(_size);
+          for (let i = 0; i < _size; i++) {
+            _dfs[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
+          }
+
+          const _interpolation = library.linear_interpolation_factory(
+            this.#times,
+            _dfs,
+          );
+
+          const comp = this.#compounding;
+          _get_interpolated_rate = function (t) {
+            return comp.zc(t, _interpolation(t));
+          };
+          _always_flat = true;
+        }
+      }
+
+      // extrapolation
+      var _short_end_flat = !(obj.short_end_flat === false) || _always_flat;
+      var _long_end_flat = !(obj.long_end_flat === false) || _always_flat;
+      this.#get_rate = function (t) {
+        if (t <= _times[0] && _short_end_flat) return _zcs[0];
+        if (t >= _times[_size - 1] && _long_end_flat) return _zcs[_size - 1];
+        return _get_interpolated_rate(t);
       };
 
-    // do not call this twice on a curve. If curve already has get_rate, just return
-    if (curve.get_rate instanceof Function) return curve;
-
-    // compounding
-    var _compounding = library.compounding_factory(curve.compounding);
-
-    // delete invalid members
-    for (const member of ["dfs", "zcs", "times", "days", "dates", "labels"]) {
-      if (!Array.isArray(curve[member])) delete curve[member];
+      this.#get_rate_scenario = this.#get_rate;
     }
 
-    // extract times, rates and discount factors from curve and store in hidden function scope
-    var [_size, _times, _zcs] = get_values(curve, _compounding);
+    // detach scenario rule
+    detachRule() {
+      this.#get_rate_scenario = this.#get_rate;
+    }
 
-    var _get_interpolated_rate;
-    let _always_flat = false;
-    switch (curve.intp || "".toLowerCase()) {
-      case "linear_zc":
-        // interpolation on zcs
-        _get_interpolated_rate = library.linear_interpolation_factory(
-          _times,
-          _zcs,
-        );
-        break;
-      case "linear_rt":
-        // interpolation on zcs
-        _get_interpolated_rate = library.linear_xy_interpolation_factory(
-          _times,
-          _zcs,
-        );
-        _always_flat = true;
-        break;
-      case "bessel":
-      case "hermite":
-        // bessel-hermite spline interpolation
-        _get_interpolated_rate = library.bessel_hermite_interpolation_factory(
-          _times,
-          _zcs,
-        );
-        break;
-      default: {
-        // interpolation on dfs
-        let _dfs = new Array(_size);
-        for (let i = 0; i < _size; i++) {
-          _dfs[i] = _compounding.df(_times[i], _zcs[i]);
-        }
-
-        const _interpolation = library.linear_interpolation_factory(
-          _times,
-          _dfs,
-        );
-
-        _get_interpolated_rate = function (t) {
-          return _compounding.zc(t, _interpolation(t));
-        };
-        _always_flat = true;
+    // attach scenario rule
+    attachRule(rule) {
+      if (typeof rule === "object") {
+        var scenario = new library.Curve({
+          labels: rule.labels_x,
+          zcs: rule.values[0],
+          intp: rule.model === "absolute" ? this.#intp : "linear_zc",
+        });
+        if (rule.model === "multiplicative")
+          this.#get_rate_scenario = function (t) {
+            return this.#get_rate(t) * scenario.get_rate(t);
+          };
+        if (rule.model === "additive")
+          this.#get_rate_scenario = function (t) {
+            return this.#get_rate(t) + scenario.get_rate(t);
+          };
+        if (rule.model === "absolute")
+          this.#get_rate_scenario = function (t) {
+            return scenario.get_rate(t);
+          };
+      } else {
+        this.detachRule();
       }
     }
-
-    // extrapolation
-    var _short_end_flat = !(curve.short_end_flat === false) || _always_flat;
-    var _long_end_flat = !(curve.long_end_flat === false) || _always_flat;
-    var _get_rate = function (t) {
-      if (t <= _times[0] && _short_end_flat) return _zcs[0];
-      if (t >= _times[_size - 1] && _long_end_flat) return _zcs[_size - 1];
-      return _get_interpolated_rate(t);
-    };
-
-    // attach get_rate function with scenario rule if present
-
-    if (typeof curve._rule === "object") {
-      var scenario = {
-        labels: curve._rule.labels_x,
-        zcs: curve._rule.values[0],
-        intp: curve._rule.model === "absolute" ? curve.intp : "linear_zc",
-      };
-      scenario = library.get_safe_curve(scenario);
-      if (curve._rule.model === "multiplicative")
-        curve.get_rate = function (t) {
-          return _get_rate(t) * scenario.get_rate(t);
-        };
-      if (curve._rule.model === "additive")
-        curve.get_rate = function (t) {
-          return _get_rate(t) + scenario.get_rate(t);
-        };
-      if (curve._rule.model === "absolute")
-        curve.get_rate = function (t) {
-          return scenario.get_rate(t);
-        };
-    } else {
-      curve.get_rate = _get_rate;
+    // define get_rate aware of attached scenario
+    get_rate(t) {
+      return this.#get_rate_scenario(t);
     }
 
-    // define get_df based on zcs
-    curve.get_df = function (t) {
-      return _compounding.df(t, this.get_rate(t));
-    };
+    // define get_df based on zcs, aware of attached scenario
+    get_df(t) {
+      return this.#compounding.df(t, this.#get_rate_scenario(t));
+    }
 
     // attach get_fwd_amount based on get_df
-    curve.get_fwd_amount = function (tstart, tend) {
+    get_fwd_amount(tstart, tend) {
       if (tend - tstart < 1 / 512) return 0.0;
       return this.get_df(tstart) / this.get_df(tend) - 1;
-    };
-
-    // attach get_times closure in order to reobtain hidden times when needed
-    curve.get_times = function () {
-      return _times;
-    };
-
-    // attach get_zcs closure in order to reobtain hidden zcs when needed
-    curve.get_zcs = function () {
-      return _zcs;
-    };
-
-    return curve;
-  };
-
-  /**
-   * Get discount factor from curve, calling get_safe_curve in case curve.get_df is not defined
-   * @param {object} curve curve
-   * @param {number} t
-   * @param {number} imin
-   * @param {number} imax
-   * @returns {number} discount factor
-   * @memberof library
-   * @public
-   */
-  library.get_df = function (curve, t) {
-    if (curve.get_df instanceof Function) return curve.get_df(t);
-    return library.get_safe_curve(curve).get_df(t);
-  };
-
-  /**
-   * TODO
-   * @param {object} curve curve
-   * @param {number} t
-   * @returns {number} ...
-   * @memberof library
-   * @public
-   */
-  library.get_rate = function (curve, t) {
-    if (curve.get_rate instanceof Function) return curve.get_rate(t);
-    return library.get_safe_curve(curve).get_rate(t);
-  };
-
-  /**
-   * TODO
-   * @param {object} curve curve
-   * @param {number} tstart
-   * @param {number} tend
-   * @returns {number} ...
-   * @memberof library
-   * @public
-   */
-  library.get_fwd_amount = function (curve, tstart, tend) {
-    if (curve.get_fwd_amount instanceof Function)
-      return curve.get_fwd_amount(tstart, tend);
-    return library.get_safe_curve(curve).get_fwd_amount(tstart, tend);
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * attaches get_value and other function to scalar object, handle scenario rule if present
-   * @param {object} scalar scalar object
-   * @returns {object} curve
-   * @memberof library
-   * @public
-   */
-  library.get_safe_scalar = function (scalar) {
-    //if non-object is given, throw error
-    if ("object" !== typeof scalar)
-      throw new Error("get_safe_scalar: must provide object");
-
-    // extract value and store in hidden function scope
-    var _value = library.get_safe_number(scalar.value);
-    if (null === _value)
-      throw new Error(
-        "get_safe_scalar: must provide object with scalar value property",
-      );
-
-    // apply scenario rule if present
-    if (typeof scalar._rule === "object") {
-      var scenval = scalar._rule.values[0][0];
-      if (scalar._rule.model === "multiplicative") _value *= scenval;
-      if (scalar._rule.model === "additive") _value += scenval;
-      if (scalar._rule.model === "absolute") _value = scenval;
     }
 
-    // atttach get_value function
-    scalar.get_value = function () {
-      return _value;
-    };
+    // reobtain copy of hidden times when needed
+    get times() {
+      return Array.from(this.#times);
+    }
 
-    return scalar;
-  };
+    // reobtain copy of hidden zcs when needed
+    get zcs() {
+      return Array.from(this.#zcs);
+    }
+
+    // reobtain copy of hidden dfs when needed
+    get dfs() {
+      let res = new Array(this.#times.length);
+      for (let i = 0; i < res.length; i++) {
+        res[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
+      }
+      return res;
+    }
+
+    get type() {
+      return this.#type;
+    }
+  }
+
+  library.Curve = Curve;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class Scalar extends library.Simulatable {
+    static type = "scalar";
+    #value = null;
+    #scenarioValue = null;
+    constructor(obj) {
+      super();
+      this.#value = library.get_safe_number(obj.value);
+      this.#scenarioValue = this.#value;
+    }
+
+    attachRule(rule) {
+      const scenval = rule.values[0][0];
+      if (rule.model === "multiplicative")
+        this.#scenarioValue = this.#value * scenval;
+      if (rule.model === "additive")
+        this.#scenarioValue = this.#value + scenval;
+      if (rule.model === "absolute") this.#scenarioValue = scenval;
+    }
+
+    detachRule() {
+      this.#scenarioValue = this.#value;
+    }
+
+    getValue() {
+      return this.#scenarioValue;
+    }
+  }
+
+  library.Scalar = Scalar;
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
@@ -3167,436 +3334,397 @@
   library.get_const_surface = function (value, type) {
     if (typeof value !== "number")
       throw new Error("get_const_surface: input must be number.");
-    return library.get_safe_surface({
+    return new library.Surface({
       type: type || "",
       expiries: [1],
       terms: [1],
       values: [[value]],
     });
   };
-  /**
-   * ...
-   * @param {object} surface surface
-   * @param {number} i
-   * @returns {number} term at time i
-   * @memberof library
-   * @private
-   */
-  function get_term_at(surface, i) {
-    //construct terms from labels_term if terms are not defined
-    if (surface.terms) return surface.terms[i];
-    if (surface.labels_term)
-      return library.period_str_to_time(surface.labels_term[i]);
-    throw new Error("get_term_at: invalid surface, cannot derive terms");
-  }
-  /**
-   * ...
-   * @param {object} surface surface
-   * @param {number} i
-   * @returns {number} expiry at time i
-   * @memberof library
-   * @private
-   */
-  function get_expiry_at(surface, i) {
-    //construct expiries from labels_expiry if expiries are not defined
-    if (surface.expiries) return surface.expiries[i];
-    if (surface.labels_expiry)
-      return library.period_str_to_time(surface.labels_expiry[i]);
-    throw new Error("get_expiry_at: invalid surface, cannot derive expiries");
-  }
-  /**
-   * ...
-   * @param {object} surface surface
-   * @returns {object} surface
-   * @memberof library
-   * @public
-   */
-  library.get_safe_surface = function (surface) {
-    //if valid surface is given, attach get_rate function and handle scenarios
-    //if null or other falsy argument is given, returns constant zero surface
-    if (!surface) return library.get_const_surface(0.0);
 
-    // apply scenario rule if present
-    var scen = null;
-    if (typeof surface._rule === "object") {
-      scen = {
-        labels_expiry: surface._rule.labels_y,
-        labels_term: surface._rule.labels_x,
-        values: surface._rule.values,
-      };
-      if (scen.labels_expiry.length !== scen.values.length)
-        throw new Error(
-          "get_safe_surface: length of scenario labels_y must match length of scenario values outer array",
-        );
-      if (scen.labels_term.length !== scen.values[0].length)
-        throw new Error(
-          "get_safe_surface: length of scenario labels_x must match length of scenario values inner arrays",
-        );
-
-      if (surface._rule.model === "multiplicative")
-        surface.get_rate = function (t_expiry, t_term) {
-          return (
-            get_surface_rate(surface, t_expiry, t_term) *
-            get_surface_rate(scen, t_expiry, t_term)
-          );
-        };
-      if (surface._rule.model === "additive")
-        surface.get_rate = function (t_expiry, t_term) {
-          return (
-            get_surface_rate(surface, t_expiry, t_term) +
-            get_surface_rate(scen, t_expiry, t_term)
-          );
-        };
-      if (surface._rule.model === "absolute")
-        surface.get_rate = function (t_expiry, t_term) {
-          return get_surface_rate(scen, t_expiry, t_term);
-        };
-    } else {
-      // no scenario
-      surface.get_rate = function (t_expiry, t_term) {
-        return get_surface_rate(surface, t_expiry, t_term);
-      };
+  // helper function for constructor
+  const get_times = function (labels) {
+    //construct times from labels
+    let res = null;
+    if (Array.isArray(labels)) {
+      res = labels.map((label) => library.period_str_to_time(label));
     }
-
-    if (surface.moneyness && surface.smile) {
-      if (!surface.moneyness.length || !surface.smile.length)
-        throw new Error(
-          "get_cube_rate: invalid cube, moneyness and smile must be arrays",
-        );
-      for (var i = 0; i < surface.smile.length; i++) {
-        library.get_safe_surface(surface.smile[i]);
-      }
-    }
-
-    return surface;
-  };
-  /**
-   * ...
-   * @param {object} surface
-   * @param {date} i_expiry
-   * @param {} t_term
-   * @param {} imin
-   * @param {} imax
-   * @returns {number} slice rate
-   * @memberof library
-   * @privat
-   */
-  function get_slice_rate(surface, i_expiry, t_term) {
-    var imin = 0;
-    var imax = (surface.terms || surface.labels_term || []).length - 1;
-
-    var sl = surface.values[i_expiry];
-    if (!Array.isArray(sl))
+    if (!res)
       throw new Error(
-        "get_slice_rate: invalid surface, values property must be an array of arrays",
+        "Surface: invalid surface, does not have times and no valid labels",
       );
-    //slice only has one value left
-    if (imin === imax) return sl[imin];
-    var tmin = get_term_at(surface, imin);
-    var tmax = get_term_at(surface, imax);
-    //extrapolation (constant)
-    if (t_term < get_term_at(surface, imin)) return sl[imin];
-    if (t_term > get_term_at(surface, imax)) return sl[imax];
-    // binary search
-    var imed, tmed;
-    while (imin + 1 !== imax) {
-      imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
-      tmed = get_term_at(surface, imed);
-      if (t_term > tmed) {
-        tmin = tmed;
-        imin = imed;
-      } else {
-        tmax = tmed;
-        imax = imed;
-      }
-    }
-    //interpolation (linear)
-    if (tmax - tmin < 1 / 512)
-      throw new Error(
-        "get_slice_rate: invalid surface, support points must be increasing and differ at least one day",
-      );
-    var temp = 1 / (tmax - tmin);
-    return (sl[imin] * (tmax - t_term) + sl[imax] * (t_term - tmin)) * temp;
-  }
-  /**
-   * ...
-   * @param {object} surface
-   * @param {date} t_expiry
-   * @param {} t_term
-   * @returns {number} surface rate
-   */
-  function get_surface_rate(surface, t_expiry, t_term) {
-    var imin = 0;
-    var imax = (surface.expiries || surface.labels_expiry || []).length - 1;
-
-    // surface only has one slice left
-    if (imin === imax) return get_slice_rate(surface, imin, t_term);
-    var tmin = get_expiry_at(surface, imin);
-    var tmax = get_expiry_at(surface, imax);
-    // extrapolation (constant)
-    if (t_expiry < tmin) return get_slice_rate(surface, imin, t_term);
-    if (t_expiry > tmax) return get_slice_rate(surface, imax, t_term);
-    // binary search
-    var imed, tmed;
-    while (imin + 1 !== imax) {
-      // truncate the mean time down to the closest integer
-      imed = ((imin + imax) / 2.0) | 0;
-      tmed = get_expiry_at(surface, imed);
-      if (t_expiry > tmed) {
-        tmin = tmed;
-        imin = imed;
-      } else {
-        tmax = tmed;
-        imax = imed;
-      }
-    }
-    // interpolation (linear)
-    if (tmax - tmin < 1 / 512)
-      throw new Error(
-        "get_surface_rate: invalid surface, support points must be increasing and differ at least one day",
-      );
-    var temp = 1 / (tmax - tmin);
-    return (
-      (get_slice_rate(surface, imin, t_term) * (tmax - t_expiry) +
-        get_slice_rate(surface, imax, t_term) * (t_expiry - tmin)) *
-      temp
-    );
-  }
-
-  /**
-   * ...
-   * @param {object} surface
-   * @param {date} t_expiry
-   * @param {} t_term
-   * @returns {number} surface rate
-   */
-  library.get_surface_rate = function (surface, t_expiry, t_term) {
-    if (surface.get_rate instanceof Function)
-      return surface.get_rate(t_expiry, t_term);
-    return library.get_safe_surface(surface).get_rate(t_expiry, t_term);
+    return res;
   };
 
-  library.get_cube_rate = function (cube, t_expiry, t_term, m) {
-    var atm = library.get_surface_rate(cube, t_expiry, t_term);
-    if (cube.moneyness && cube.smile) {
-      if (!cube.moneyness.length || !cube.smile.length)
+  // helper function for constructor
+  const get_values = function (values, num_expiries, num_terms) {
+    let res = new Array();
+    if (!Array.isArray(values))
+      throw new Error("Surface: values must be an array");
+    if (values.length !== num_expiries)
+      throw new Error("Surface: values do not have the right length.");
+    for (const slice of values) {
+      if (!Array.isArray(slice))
+        throw new Error("Surface: values must be an array of arrays");
+      if (slice.length !== num_terms)
         throw new Error(
-          "get_cube_rate: invalid cube, moneyness and smile must be arrays",
+          "Surface: one of the slices does not have the right length.",
         );
-      var imin = 0;
-      var imax = cube.moneyness.length - 1;
+      for (const value of slice) {
+        if (!(typeof value === "number"))
+          throw new Error(
+            `Surface: values must be an array of arrays of numbers, but contains invalid value ${value}`,
+          );
+      }
+      // slice is valid, make a copy of the values
+      res.push(Array.from(slice));
+    }
+    return res;
+  };
 
-      //surface only has one slice left
-      if (imin === imax)
-        return (
-          atm + library.get_surface_rate(cube.smile[imin], t_expiry, t_term)
+  class Surface extends library.Simulatable {
+    #type = "bachelier";
+    #expiries = null;
+    #terms = null;
+    #values = null;
+    #moneyness = [];
+    #smile = [];
+    #get_surface_rate_scenario = null;
+    constructor(obj) {
+      super(obj);
+
+      // type
+      if (typeof obj.type === "string") this.#type = obj.type;
+
+      // expiries
+      if ("expiries" in obj) {
+        this.#expiries = library.get_safe_number_vector(obj.expiries);
+      } else {
+        this.#expiries = get_times(obj.labels_expiry);
+      }
+
+      // terms
+      if ("terms" in obj) {
+        this.#terms = library.get_safe_number_vector(obj.terms);
+      } else {
+        this.#terms = get_times(obj.labels_term);
+      }
+      // values
+      this.#values = get_values(
+        obj.values,
+        this.#expiries.length,
+        this.#terms.length,
+      );
+
+      // moneyness
+      if ("moneyness" in obj) {
+        this.#moneyness = library.get_safe_number_vector(obj.moneyness);
+      }
+
+      // smile
+      if ("smile" in obj) {
+        if (!Array.isArray(obj.smile))
+          throw new Error("Surface: smile must be an array");
+        this.#smile = obj.smile.map((s) => {
+          if (!(s instanceof library.Surface)) {
+            // no recursions, smile surfaces must not have smiles themselves
+            let temp = Object.assign({}, s);
+            delete temp.moneyness;
+            delete temp.smile;
+
+            // make surface
+            return new library.Surface(temp);
+          } else {
+            return s;
+          }
+        });
+      }
+
+      // check consistency
+      if (this.#moneyness.length !== this.#smile.length)
+        throw new Error(
+          "Surface: smile and moneyness must have the same length",
         );
-      var mmin = cube.moneyness[imin];
-      var mmax = cube.moneyness[imax];
+
+      // scenario dependent surface evaluation
+      this.#get_surface_rate_scenario = this.get_surface_rate;
+    }
+
+    // getter functions
+    get type() {
+      return this.#type;
+    }
+
+    // detach scenario rule
+    detachRule() {
+      this.#get_surface_rate_scenario = this.get_surface_rate;
+    }
+
+    // attach scenario ruls
+    attachRule(rule) {
+      if (typeof rule === "object") {
+        const scen = new library.Surface({
+          labels_expiry: rule.labels_y,
+          labels_term: rule.labels_x,
+          values: rule.values,
+        });
+
+        if (rule.model === "multiplicative") {
+          this.#get_surface_rate_scenario = function (t_expiry, t_term) {
+            return (
+              this.get_surface_rate(t_expiry, t_term) *
+              scen.get_surface_rate(t_expiry, t_term)
+            );
+          };
+        }
+        if (rule.model === "additive") {
+          this.#get_surface_rate_scenario = function (t_expiry, t_term) {
+            return (
+              this.get_surface_rate(t_expiry, t_term) +
+              scen.get_surface_rate(t_expiry, t_term)
+            );
+          };
+        }
+        if (rule.model === "absolute") {
+          this.#get_surface_rate_scenario = function (t_expiry, t_term) {
+            return scen.get_surface_rate(t_expiry, t_term);
+          };
+        }
+      } else {
+        this.detachRule();
+      }
+    }
+
+    // interpolaton function for single slice
+    #get_slice_rate(i_expiry, t_term) {
+      let imin = 0;
+      let imax = this.#terms.length - 1;
+
+      const slice = this.#values[i_expiry];
+
+      //slice only has one value left
+      if (imin === imax) return slice[imin];
+      var tmin = this.#terms[imin];
+      var tmax = this.#terms[imax];
       //extrapolation (constant)
-      if (m < mmin)
-        return (
-          atm + library.get_surface_rate(cube.smile[imin], t_expiry, t_term)
-        );
-      if (m > mmax)
-        return (
-          atm + library.get_surface_rate(cube.smile[imax], t_expiry, t_term)
-        );
+      if (t_term < tmin) return slice[imin];
+      if (t_term > tmax) return slice[imax];
       // binary search
-      var imed, mmed;
+      let imed, tmed;
       while (imin + 1 !== imax) {
         imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
-        mmed = cube.moneyness[imed];
-        if (m > mmed) {
-          mmin = mmed;
+        tmed = this.#terms[imed];
+        if (t_term > tmed) {
+          tmin = tmed;
           imin = imed;
         } else {
-          mmax = mmed;
+          tmax = tmed;
           imax = imed;
         }
       }
       //interpolation (linear)
-      if (mmax - mmin < 1e-15)
+      if (tmax - tmin < 1 / 512)
         throw new Error(
-          "get_cube_rate: invalid cube, moneyness must be nondecreasing",
+          "get_slice_rate: invalid surface, support points must be increasing and differ at least one day",
         );
-      var temp = 1 / (mmax - mmin);
+      var temp = 1 / (tmax - tmin);
       return (
-        atm +
-        (library.get_surface_rate(cube.smile[imin], t_expiry, t_term) *
-          (mmax - m) +
-          library.get_surface_rate(cube.smile[imax], t_expiry, t_term) *
-            (m - mmin)) *
-          temp
+        (slice[imin] * (tmax - t_term) + slice[imax] * (t_term - tmin)) * temp
       );
     }
-    return atm;
-  };
+
+    // interpolation function for surface
+    get_surface_rate(t_expiry, t_term) {
+      var imin = 0;
+      var imax = this.#expiries.length - 1;
+
+      // surface only has one slice left
+      if (imin === imax) return this.#get_slice_rate(imin, t_term);
+      var tmin = this.#expiries[imin];
+      var tmax = this.#expiries[imax];
+      // extrapolation (constant)
+      if (t_expiry < tmin) return this.#get_slice_rate(imin, t_term);
+      if (t_expiry > tmax) return this.#get_slice_rate(imax, t_term);
+      // binary search
+      var imed, tmed;
+      while (imin + 1 !== imax) {
+        // truncate the mean time down to the closest integer
+        imed = ((imin + imax) / 2.0) | 0;
+        tmed = this.#expiries[imed];
+        if (t_expiry > tmed) {
+          tmin = tmed;
+          imin = imed;
+        } else {
+          tmax = tmed;
+          imax = imed;
+        }
+      }
+      // interpolation (linear)
+      if (tmax - tmin < 1 / 512)
+        throw new Error(
+          "get_surface_rate: invalid surface, support points must be increasing and differ at least one day",
+        );
+      var temp = 1 / (tmax - tmin);
+      return (
+        (this.#get_slice_rate(imin, t_term) * (tmax - t_expiry) +
+          this.#get_slice_rate(imax, t_term) * (t_expiry - tmin)) *
+        temp
+      );
+    }
+
+    // interpolation function for cube
+    get_rate(t_expiry, t_term, fwd, strike) {
+      // atm rate can have a scenario
+      var atm = this.#get_surface_rate_scenario(t_expiry, t_term);
+
+      // optionally, we consider a smile on the surface
+      if (this.#smile.length > 0) {
+        let imin = 0;
+        let imax = this.#smile.length - 1;
+
+        // smile only has one extra surface
+        if (imin === imax)
+          return atm + this.#smile[imin].get_surface_rate(t_expiry, t_term);
+
+        // determine moneyness
+        let m = strike - fwd;
+        let mmin = this.#moneyness[imin];
+        let mmax = this.#moneyness[imax];
+        //extrapolation (constant)
+        if (m < mmin)
+          return atm + this.#smile[imin].get_surface_rate(t_expiry, t_term);
+        if (m > mmax)
+          return atm + this.#smile[imax].get_surface_rate(t_expiry, t_term);
+
+        // binary search
+        let imed, mmed;
+        while (imin + 1 !== imax) {
+          imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
+          mmed = this.#moneyness[imed];
+          if (m > mmed) {
+            mmin = mmed;
+            imin = imed;
+          } else {
+            mmax = mmed;
+            imax = imed;
+          }
+        }
+        //interpolation (linear)
+        if (mmax - mmin < 1e-15)
+          throw new Error(
+            "get_cube_rate: invalid cube, moneyness must be nondecreasing",
+          );
+        var temp = 1 / (mmax - mmin);
+        return (
+          atm +
+          (this.#smile[imin].get_surface_rate(t_expiry, t_term) * (mmax - m) +
+            this.#smile[imax].get_surface_rate(t_expiry, t_term) * (m - mmin)) *
+            temp
+        );
+      }
+      return atm;
+    }
+  }
+
+  library.Surface = Surface;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  /*
-        
-                JsonRisk vector pricing
-                
-                
-        */
+  class Deps {
+    #scalars = new Set();
+    #curves = new Set();
+    #surfaces = new Set();
+    constructor() {}
 
-  var stored_params = null; //hidden variable for parameter storage
-
-  /**
-   * ...
-   * @param {object} obj
-   * @returns {number} scalar
-   * @memberof library
-   * @private
-   */
-  var normalise_scalar = function (obj, name) {
-    //makes value an array of length one if it is not an array
-    var val = Array.isArray(obj.value) ? obj.value : [obj.value];
-    return { value: val, tags: obj.tags || null, name: name || null };
-  };
-
-  /**
-   * ...
-   * @param {object} obj
-   * @returns {object} curve
-   * @memberof library
-   * @private
-   */
-  var normalise_curve = function (obj, name) {
-    // copy original curve and make dfs and zcs an array of arrays of length one if it is not an array of arrays
-    return Object.assign({}, obj, {
-      name: name || null,
-      dfs: obj.dfs ? (Array.isArray(obj.dfs[0]) ? obj.dfs : [obj.dfs]) : null,
-      zcs: obj.zcs ? (Array.isArray(obj.zcs[0]) ? obj.zcs : [obj.zcs]) : null,
-    });
-  };
-
-  /**
-   * ...
-   * @param {object} obj
-   * @returns {object} surface
-   * @memberof library
-   * @private
-   */
-  var normalise_surface = function (obj, name) {
-    // constructs terms from labels_term, expiries from labels_expiry and makes value an array of length one if it is not an array
-    return Object.assign({}, obj, {
-      name: name || null,
-      values: Array.isArray(obj.values[0][0]) ? obj.values : [obj.values],
-    });
-  };
-
-  /**
-   * ...
-   * @param {object} len length
-   * @returns {number} ...
-   * @memberof library
-   * @private
-   */
-  var update_vector_length = function (len) {
-    if (1 === len) return;
-    if (1 === stored_params.vector_length) {
-      stored_params.vector_length = len;
-      return;
-    }
-    if (len !== stored_params.vector_length)
-      throw new Error(
-        "vector_pricing: provided parameters need to have the same length or length one",
-      );
-  };
-
-  /**
-   * attaches the first matching rule in the n-th scenario from the stored scenario groups to the object
-   * @param {number} n number indicating which scenario to attach, zero means no scenario
-   * @param {object} obj scalar, curve, or surface object
-   * @returns {number} ...
-   * @memberof library
-   * @private
-   */
-  var attach_scenario = function (n, obj) {
-    var risk_factor = obj.name || null;
-    var tags = obj.tags || [];
-
-    // unset scenario rule
-    delete obj._rule;
-
-    // return if n is zero
-    if (n === 0) return false;
-
-    // return if there are no scenario groups
-    var sg = stored_params.scenario_groups;
-    if (0 === sg.length) return false;
-
-    // find n-th scenario
-    var i = 1,
-      i_group = 0,
-      i_scen = 0;
-    while (i < n) {
-      i++;
-      if (i_scen < sg[i_group].length - 1) {
-        // next scenario
-        i_scen++;
-      } else if (i_group < sg.length - 1) {
-        // next scenario group
-        i_scen = 0;
-        i_group++;
-      } else {
-        // there are less than n scenarios, just return
-        return false;
-      }
+    #require_string(name) {
+      if (typeof name !== "string")
+        throw new Error("Deps: name must be a string");
+      if (name === "") throw new Error("Deps: name must be nonempty");
+      return name;
     }
 
-    // attach scenario if one of the rules match
-    var rules = sg[i_group][i_scen].rules;
-    var rule;
-    for (var i_rule = 0; i_rule < rules.length; i_rule++) {
-      rule = rules[i_rule];
-      if (Array.isArray(rule.risk_factors)) {
-        // match by risk factors
-        if (rule.risk_factors.indexOf(risk_factor) > -1) {
-          obj._rule = rule;
-          return true;
-        }
-      }
-      if (Array.isArray(rule.tags)) {
-        // if no exact match by risk factors, all tags of that rule must match
-        var found = true;
-        for (i = 0; i < rule.tags.length; i++) {
-          if (tags.indexOf(rule.tags[i]) === -1) found = false;
-        }
-        // if tag list is empty, no matching by tags at all
-        if (rule.tags.length === 0) found = false;
-        if (found) {
-          obj._rule = rule;
-          return true;
-        }
-      }
+    addScalar(name) {
+      this.#scalars.add(this.#require_string(name));
     }
-    return false;
+
+    addCurve(name) {
+      this.#curves.add(this.#require_string(name));
+    }
+
+    addSurface(name) {
+      this.#surfaces.add(this.#require_string(name));
+    }
+
+    get scalars() {
+      return Array.from(this.#scalars);
+    }
+
+    get curves() {
+      return Array.from(this.#curves);
+    }
+
+    get surfaces() {
+      return Array.from(this.#surfaces);
+    }
+
+    minimalParams(params_json) {
+      const obj = {
+        valuation_date: null,
+        scalars: {},
+        curves: {},
+        surfaces: {},
+        scenario_groups: [],
+      };
+
+      if ("valuation_date" in params_json) {
+        obj.valuation_date = params_json.valuation_date;
+      }
+
+      if ("scenario_groups" in params_json) {
+        obj.scenario_groups = params_json.scenario_groups;
+      }
+
+      if ("scalars" in params_json) {
+        for (const s of this.#scalars) {
+          if (s in params_json.scalars) obj.scalars[s] = params_json.scalars[s];
+        }
+      }
+
+      if ("curves" in params_json) {
+        for (const c of this.#curves) {
+          if (c in params_json.curves) obj.curves[c] = params_json.curves[c];
+        }
+      }
+
+      if ("surfaces" in params_json) {
+        for (const s of this.#surfaces) {
+          if (s in params_json.surfaces)
+            obj.surfaces[s] = params_json.surfaces[s];
+        }
+      }
+
+      return new library.Params(obj);
+    }
+  }
+
+  library.Deps = Deps;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  const require_string = function (name) {
+    if (typeof name !== "string")
+      throw new Error("Params: name must be a string");
+    if (name === "") throw new Error("Params: name must be nonempty");
+    return name;
   };
 
-  /**
-   * ...
-   * @param {object} params parameter
-   * @memberof library
-   * @public
-   */
-  function name_to_moneyness(str) {
+  const name_to_moneyness = function (str) {
     var s = str.toLowerCase();
     if (s.endsWith("atm")) return 0; //ATM surface
     var n = s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
     if (n.length < 2) return null;
     return n[1] / 10000;
-  }
+  };
 
-  /**
-   * ...
-   * @param {object} params parameter
-   * @memberof library
-   * @public
-   */
-  function find_smile(name, list) {
+  const find_smile = function (name, list) {
     var res = [],
       moneyness;
     for (var i = 0; i < list.length; i++) {
@@ -3610,195 +3738,179 @@
       return a.moneyness - b.moneyness;
     });
     return res;
-  }
+  };
 
-  library.store_params = function (params) {
-    stored_params = {
-      vector_length: 1,
-      scalars: {},
-      curves: {},
-      surfaces: {},
-      scenario_groups: [],
-    };
+  class Params {
+    #valuation_date = null;
+    #scalars = {};
+    #curves = {};
+    #surfaces = {};
+    #scenario_groups = [];
+    #num_scenarios = 1; // without any scenarios, num_scenarios is one since a base scenario is implicitly included
 
-    var keys, i;
-    //valuation date
-    stored_params.valuation_date = library.get_safe_date(params.valuation_date);
-    //scalars
-    if (typeof params.scalars === "object") {
-      keys = Object.keys(params.scalars);
-      for (i = 0; i < keys.length; i++) {
-        stored_params.scalars[keys[i]] = normalise_scalar(
-          params.scalars[keys[i]],
-          keys[i],
-        );
-        update_vector_length(stored_params.scalars[keys[i]].value.length);
-      }
-    }
-    //curves
-    if (typeof params.curves === "object") {
-      keys = Object.keys(params.curves);
-      var obj, len;
-      for (i = 0; i < keys.length; i++) {
-        obj = normalise_curve(params.curves[keys[i]], keys[i]);
-        stored_params.curves[keys[i]] = obj;
-        len = obj.dfs ? obj.dfs.length : obj.zcs.length;
-        update_vector_length(len);
-      }
-    }
+    constructor(obj) {
+      // valuation date
+      if (!("valuation_date" in obj))
+        throw new Error("Params: must contain a valuation_date property");
+      this.#valuation_date = library.get_safe_date(obj.valuation_date);
 
-    //surfaces
-    var smile, j;
-    if (typeof params.surfaces === "object") {
-      keys = Object.keys(params.surfaces);
-      for (i = 0; i < keys.length; i++) {
-        stored_params.surfaces[keys[i]] = normalise_surface(
-          params.surfaces[keys[i]],
-          keys[i],
-        );
-        update_vector_length(stored_params.surfaces[keys[i]].values.length);
+      // scalars
+      if ("scalars" in obj) {
+        for (const [key, value] of Object.entries(obj.scalars)) {
+          // make shallow copy for adding name
+          const temp = Object.assign({}, value);
+          temp.name = key;
+          this.#scalars[key] = new library.Scalar(temp);
+        }
       }
-      //link smile surfaces to their atm surface
-      for (i = 0; i < keys.length; i++) {
-        smile = find_smile(keys[i], keys);
-        if (smile.length > 0) {
-          stored_params.surfaces[keys[i]].smile = [];
-          stored_params.surfaces[keys[i]].moneyness = [];
-          for (j = 0; j < smile.length; j++) {
-            stored_params.surfaces[keys[i]].smile.push(
-              stored_params.surfaces[smile[j].name],
-            );
-            stored_params.surfaces[keys[i]].moneyness.push(smile[j].moneyness);
+
+      // curves
+      if ("curves" in obj) {
+        for (const [key, value] of Object.entries(obj.curves)) {
+          // make shallow copy for adding name
+          const temp = Object.assign({}, value);
+          temp.name = key;
+          this.#curves[key] = new library.Curve(temp);
+        }
+      }
+
+      // surfaces
+      if ("surfaces" in obj) {
+        //link smile surfaces to their atm surface
+        const keys = Object.keys(obj.surfaces);
+        for (const key of keys) {
+          // make shallow copy of surface for adding name and smile
+          const temp = Object.assign({}, obj.surfaces[key]);
+          temp.name = key;
+          const smile = find_smile(key, keys);
+          if (smile.length > 0) {
+            temp.smile = [];
+            temp.moneyness = [];
+            for (const s of smile) {
+              const { name, moneyness } = s;
+              temp.smile.push(obj.surfaces[name]);
+              temp.moneyness.push(moneyness);
+            }
           }
+          this.#surfaces[key] = new library.Surface(temp);
+        }
+      }
+
+      // scenario groups
+      if ("scenario_groups" in obj) {
+        if (!Array.isArray(obj.scenario_groups))
+          throw new Error("Params: scenario_groups must be an array");
+        this.#scenario_groups = obj.scenario_groups;
+        for (const group of this.#scenario_groups) {
+          if (!Array.isArray(group))
+            throw new Error(
+              "Params: each group in scenario_groups must be an array.",
+            );
+          this.#num_scenarios += group.length;
+        }
+      }
+
+      // calendars are actually stored within the library and not in this object
+      if ("calendars" in obj) {
+        if (typeof obj.calendars !== "object")
+          throw new Error("Params: Calendars object is invalid");
+        for (const [calname, cal] of Object.entries(obj.calendars)) {
+          library.add_calendar(calname, cal.dates);
         }
       }
     }
 
-    //calendars
-    var cal;
-    if (typeof params.calendars === "object") {
-      keys = Object.keys(params.calendars);
-      for (i = 0; i < keys.length; i++) {
-        cal = params.calendars[keys[i]];
-        library.add_calendar(keys[i], cal.dates);
+    get valuation_date() {
+      return this.#valuation_date;
+    }
+
+    get num_scenarios() {
+      return this.#num_scenarios;
+    }
+
+    getScalar(name) {
+      const n = require_string(name);
+      if (!(n in this.#scalars)) throw new Error(`Params: no such scalar ${n}`);
+      return this.#scalars[n];
+    }
+
+    getCurve(name) {
+      const n = require_string(name);
+      if (!(n in this.#curves)) throw new Error(`Params: no such curve ${n}`);
+      return this.#curves[n];
+    }
+
+    getSurface(name) {
+      const n = require_string(name);
+      if (!(n in this.#surfaces))
+        throw new Error(`Params: no such surface ${n}`);
+      return this.#surfaces[n];
+    }
+
+    detachScenarios() {
+      for (const container of [this.#scalars, this.#curves, this.#surfaces]) {
+        for (const item of Object.values(container)) {
+          item.detachRule();
+        }
       }
     }
 
-    //scenario groups
-    if (Array.isArray(params.scenario_groups)) {
-      stored_params.scenario_groups = params.scenario_groups;
-      var l = 0;
-      for (i = 0; i < params.scenario_groups.length; i++) {
-        if (!Array.isArray(params.scenario_groups[i]))
-          throw new Error(
-            "vector_pricing: invalid parameters, scenario groups must be arrays.",
-          );
-        l += params.scenario_groups[i].length;
+    getScenario(n) {
+      if (n === 0) return null;
+      let i = 0;
+      for (const group of this.#scenario_groups) {
+        for (const scenario of group) {
+          i++;
+          if (n === i) return scenario;
+        }
       }
-      // scenarios do not include base scenario, so length is sum of array lenghts plus one
-      update_vector_length(l + 1);
+      return null;
     }
-  };
 
-  /**
-   * ...
-   * @returns {object} parameter
-   * @memberof library
-   * @public
-   */
-  library.get_params = function () {
-    return stored_params;
-  };
+    attachScenario(n) {
+      const scenario = this.getScenario(n);
+      if (!scenario) return this.detachScenarios();
+      const rules = scenario.rules;
 
-  /**
-   * ...
-   * @param {object} params parameter
-   * @returns {object} ...
-   * @memberof library
-   * @public
-   */
-  library.set_params = function (params) {
-    if (typeof params !== "object")
-      throw new Error(
-        "vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.",
-      );
-    if (typeof params.vector_length !== "number")
-      throw new Error(
-        "vector_pricing: try to hard set invalid parameters. Use store_params to normalize and store params.",
-      );
-    stored_params = params;
-  };
+      // attach scenario if one of the rules match
+      const match = function (item, rule) {
+        if (Array.isArray(rule.risk_factors)) {
+          // match by risk factors
+          if (rule.risk_factors.indexOf(item.name) > -1) {
+            return true;
+          }
+        }
+        if (Array.isArray(rule.tags)) {
+          // if no exact match by risk factors, all tags of that rule must match
+          var found = true;
+          for (const tag of rule.tags) {
+            if (!item.hasTag(tag)) found = false;
+          }
+          // if tag list is empty, no matching by tags at all
+          if (rule.tags.length === 0) found = false;
+          if (found) {
+            return true;
+          }
+        }
+        return false;
+      };
 
-  /**
-   * ...
-   * @param {object} vec_scalar
-   * @param {object} i
-   * @returns {object} scalar
-   * @memberof library
-   * @private
-   */
-  var get_scalar_scalar = function (vec_scalar, i) {
-    if (!vec_scalar) return null;
-    return {
-      name: vec_scalar.name || null,
-      tags: vec_scalar.tags || null,
-      value: vec_scalar.value[vec_scalar.value.length > 1 ? i : 0],
-    };
-  };
-
-  /**
-   * ...
-   * @param {object} vec_curve
-   * @param {object} i
-   * @returns {object} curve
-   * @memberof library
-   * @private
-   */
-  var get_scalar_curve = function (vec_curve, i) {
-    if (!vec_curve) return null;
-
-    return Object.assign({}, vec_curve, {
-      dfs: vec_curve.dfs
-        ? vec_curve.dfs[vec_curve.dfs.length > 1 ? i : 0]
-        : null,
-      zcs: vec_curve.zcs
-        ? vec_curve.zcs[vec_curve.zcs.length > 1 ? i : 0]
-        : null,
-    });
-  };
-
-  /**
-   * ...
-   * @param {object} vec_surface
-   * @param {object} i
-   * @returns {object} surface
-   * @memberof library
-   * @private
-   */
-  var get_scalar_surface = function (vec_surface, i, nosmile) {
-    if (!vec_surface) return null;
-    var values = vec_surface.values[vec_surface.values.length > 1 ? i : 0];
-    var smile = null,
-      moneyness = null,
-      j;
-    if (
-      nosmile !== true &&
-      Array.isArray(vec_surface.smile) &&
-      Array.isArray(vec_surface.moneyness)
-    ) {
-      moneyness = vec_surface.moneyness;
-      smile = [];
-      for (j = 0; j < vec_surface.smile.length; j++) {
-        smile.push(get_scalar_surface(vec_surface.smile[j], i, true));
+      for (const container of [this.#scalars, this.#curves, this.#surfaces]) {
+        for (const item of Object.values(container)) {
+          for (const rule of rules) {
+            if (match(item, rule)) {
+              item.attachRule(rule);
+              break;
+            }
+          }
+        }
       }
     }
-    return Object.assign({}, vec_surface, {
-      values: values,
-      moneyness: moneyness,
-      smile: smile,
-    });
-  };
+  }
 
+  library.Params = Params;
+})(this.JsonRisk || module.exports);
+(function (library) {
   /**
    * read instrument type for given instrument and create internal instrument
    * @param {object} instrument any instrument
@@ -3833,47 +3945,14 @@
    * @memberof library
    * @public
    */
-  library.vector_pricer = function (instrument) {
-    var simulation_once = function () {
+  library.vector_pricer = function (instrument_json, params_json) {
+    const simulation_once = function () {
       this.results.present_value = new Array(this.num_scenarios);
     };
 
-    var simulation_scenario = function () {
-      var i = this.idx_scen;
-      var dc = this.dc;
-      var sc = this.sc;
-      var fc = this.fc;
-      var su = this.su;
-      var qu = this.qu;
-      switch (this.instrument.type.toLowerCase()) {
-        case "bond":
-        case "floater":
-        case "fxterm":
-        case "irregular_bond":
-          this.results.present_value[i] = this.object.present_value(dc, sc, fc);
-          break;
-        case "swap":
-        case "swaption":
-          this.results.present_value[i] = this.object.present_value(dc, fc, su);
-          break;
-        case "callable_bond":
-          this.results.present_value[i] = this.object.present_value(
-            dc,
-            sc,
-            fc,
-            su,
-          );
-          break;
-        case "equity":
-          this.results.present_value[i] = this.object.present_value(qu);
-          break;
-      }
-      // if currency is provided and not EUR, convert or throw error
-      if (!this.instrument.currency) return;
-      if (this.instrument.currency === "EUR") return;
-      this.results.present_value[i] /= library
-        .get_safe_scalar(this.fx)
-        .get_value();
+    const simulation_scenario = function () {
+      const i = this.idx_scen;
+      this.results.present_value[i] = this.instrument.evaluate(this.params);
     };
 
     var module = {
@@ -3881,7 +3960,8 @@
       simulation_scenario: simulation_scenario,
     };
 
-    return library.simulation(instrument, [module]).present_value;
+    return library.simulation(instrument_json, params_json, [module])
+      .present_value;
   };
 
   /**
@@ -3892,66 +3972,44 @@
    * @memberof library
    * @public
    */
-  library.simulation = function (instrument, modules) {
-    if (typeof instrument.type !== "string")
-      throw new Error(
-        "vector_pricer: instrument object must contain valid type",
-      );
-    library.valuation_date = stored_params.valuation_date;
+  library.simulation = function (instrument_json, params_json, modules) {
+    if (typeof instrument_json.type !== "string")
+      throw new Error("simulation: instrument object must contain valid type");
+    library.valuation_date = library.get_safe_date(params_json.valuation_date);
 
     // create context for module execution
     var context = {
-      instrument: instrument,
-      object: library.get_internal_object(instrument),
-      params: stored_params,
-      num_scen: stored_params.vector_length,
+      instrument_json: instrument_json,
+      instrument: library.get_internal_object(instrument_json),
+      params_json: params_json,
+      params: null,
       idx_scen: 0,
-      dc: null,
-      sc: null,
-      fc: null,
-      su: null,
-      qu: null,
-      fx: null,
       results: {},
     };
 
-    var vec_dc = stored_params.curves[instrument.disc_curve || ""] || null;
-    var vec_sc = stored_params.curves[instrument.spread_curve || ""] || null;
-    var vec_fc = stored_params.curves[instrument.fwd_curve || ""] || null;
-    var vec_surface = stored_params.surfaces[instrument.surface || ""] || null;
-    var vec_qu = stored_params.scalars[instrument.quote || ""] || {
-      value: [1],
-    };
-    var vec_fx = stored_params.scalars[instrument.currency || ""] || {
-      value: [1],
-    };
-    var j;
-    for (var i = 0; i < stored_params.vector_length; i++) {
-      // update context with curves
-      context.dc = get_scalar_curve(vec_dc, i);
-      context.sc = get_scalar_curve(vec_sc, i);
-      context.fc = get_scalar_curve(vec_fc, i);
-      context.su = get_scalar_surface(vec_surface, i);
-      context.qu = get_scalar_scalar(vec_qu, i);
-      context.fx = get_scalar_scalar(vec_fx, i);
+    // obtain dependencies on parameters
+    const deps = new library.Deps();
+    context.instrument.add_deps(deps);
+
+    // obtain required set of params
+    context.params = deps.minimalParams(params_json);
+    context.num_scenarios = context.params.num_scenarios;
+
+    for (let i = 0; i < context.num_scenarios; i++) {
+      // update context for scenario
       context.idx_scen = i;
 
-      // attach scenarios to curves
-      if (context.dc) attach_scenario(i, context.dc);
-      if (context.sc) attach_scenario(i, context.sc);
-      if (context.fc) attach_scenario(i, context.fc);
-      if (context.su) attach_scenario(i, context.su);
-      if (context.qu) attach_scenario(i, context.qu);
-      if (context.fx) attach_scenario(i, context.fx);
+      // attach scenarios to params
+      context.params.attachScenario(i);
 
       // call simulation_once for all modules for i=0
-      for (j = 0; j < modules.length; j++) {
+      for (let j = 0; j < modules.length; j++) {
         if (0 === i && "function" === typeof modules[j].simulation_once)
           modules[j].simulation_once.call(context);
       }
 
       // call simulation_scenario for all modules for i=0
-      for (j = 0; j < modules.length; j++) {
+      for (let j = 0; j < modules.length; j++) {
         if ("function" === typeof modules[j].simulation_scenario)
           modules[j].simulation_scenario.call(context);
       }

@@ -10,6 +10,7 @@
     this.near_leg = new library.fixed_income({
       notional: instrument.notional, // negative if first leg is pay leg
       maturity: instrument.maturity,
+      disc_curve: instrument.disc_curve || "",
       fixed_rate: 0,
       tenor: 0,
     });
@@ -22,6 +23,7 @@
       this.far_leg = new library.fixed_income({
         notional: instrument.notional_2, // negative if second leg is pay leg
         maturity: instrument.maturity_2,
+        disc_curve: instrument.disc_curve || "",
         fixed_rate: 0,
         tenor: 0,
       });
@@ -41,6 +43,19 @@
     res += this.near_leg.present_value(disc_curve, null, null);
     if (this.far_leg) res += this.far_leg.present_value(disc_curve, null, null);
     return res;
+  };
+
+  library.fxterm.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+    this.near_leg.add_deps(deps);
+  };
+
+  library.fxterm.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.near_leg.disc_curve);
+    return this.present_value(disc_curve);
   };
 
   /**

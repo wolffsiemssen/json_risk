@@ -10,269 +10,297 @@
   library.get_const_surface = function (value, type) {
     if (typeof value !== "number")
       throw new Error("get_const_surface: input must be number.");
-    return library.get_safe_surface({
+    return new library.Surface({
       type: type || "",
       expiries: [1],
       terms: [1],
       values: [[value]],
     });
   };
-  /**
-   * ...
-   * @param {object} surface surface
-   * @param {number} i
-   * @returns {number} term at time i
-   * @memberof library
-   * @private
-   */
-  function get_term_at(surface, i) {
-    //construct terms from labels_term if terms are not defined
-    if (surface.terms) return surface.terms[i];
-    if (surface.labels_term)
-      return library.period_str_to_time(surface.labels_term[i]);
-    throw new Error("get_term_at: invalid surface, cannot derive terms");
-  }
-  /**
-   * ...
-   * @param {object} surface surface
-   * @param {number} i
-   * @returns {number} expiry at time i
-   * @memberof library
-   * @private
-   */
-  function get_expiry_at(surface, i) {
-    //construct expiries from labels_expiry if expiries are not defined
-    if (surface.expiries) return surface.expiries[i];
-    if (surface.labels_expiry)
-      return library.period_str_to_time(surface.labels_expiry[i]);
-    throw new Error("get_expiry_at: invalid surface, cannot derive expiries");
-  }
-  /**
-   * ...
-   * @param {object} surface surface
-   * @returns {object} surface
-   * @memberof library
-   * @public
-   */
-  library.get_safe_surface = function (surface) {
-    //if valid surface is given, attach get_rate function and handle scenarios
-    //if null or other falsy argument is given, returns constant zero surface
-    if (!surface) return library.get_const_surface(0.0);
 
-    // apply scenario rule if present
-    var scen = null;
-    if (typeof surface._rule === "object") {
-      scen = {
-        labels_expiry: surface._rule.labels_y,
-        labels_term: surface._rule.labels_x,
-        values: surface._rule.values,
-      };
-      if (scen.labels_expiry.length !== scen.values.length)
-        throw new Error(
-          "get_safe_surface: length of scenario labels_y must match length of scenario values outer array",
-        );
-      if (scen.labels_term.length !== scen.values[0].length)
-        throw new Error(
-          "get_safe_surface: length of scenario labels_x must match length of scenario values inner arrays",
-        );
-
-      if (surface._rule.model === "multiplicative")
-        surface.get_rate = function (t_expiry, t_term) {
-          return (
-            get_surface_rate(surface, t_expiry, t_term) *
-            get_surface_rate(scen, t_expiry, t_term)
-          );
-        };
-      if (surface._rule.model === "additive")
-        surface.get_rate = function (t_expiry, t_term) {
-          return (
-            get_surface_rate(surface, t_expiry, t_term) +
-            get_surface_rate(scen, t_expiry, t_term)
-          );
-        };
-      if (surface._rule.model === "absolute")
-        surface.get_rate = function (t_expiry, t_term) {
-          return get_surface_rate(scen, t_expiry, t_term);
-        };
-    } else {
-      // no scenario
-      surface.get_rate = function (t_expiry, t_term) {
-        return get_surface_rate(surface, t_expiry, t_term);
-      };
+  // helper function for constructor
+  const get_times = function (labels) {
+    //construct times from labels
+    let res = null;
+    if (Array.isArray(labels)) {
+      res = labels.map((label) => library.period_str_to_time(label));
     }
-
-    if (surface.moneyness && surface.smile) {
-      if (!surface.moneyness.length || !surface.smile.length)
-        throw new Error(
-          "get_cube_rate: invalid cube, moneyness and smile must be arrays",
-        );
-      for (var i = 0; i < surface.smile.length; i++) {
-        library.get_safe_surface(surface.smile[i]);
-      }
-    }
-
-    return surface;
-  };
-  /**
-   * ...
-   * @param {object} surface
-   * @param {date} i_expiry
-   * @param {} t_term
-   * @param {} imin
-   * @param {} imax
-   * @returns {number} slice rate
-   * @memberof library
-   * @privat
-   */
-  function get_slice_rate(surface, i_expiry, t_term) {
-    var imin = 0;
-    var imax = (surface.terms || surface.labels_term || []).length - 1;
-
-    var sl = surface.values[i_expiry];
-    if (!Array.isArray(sl))
+    if (!res)
       throw new Error(
-        "get_slice_rate: invalid surface, values property must be an array of arrays",
+        "Surface: invalid surface, does not have times and no valid labels",
       );
-    //slice only has one value left
-    if (imin === imax) return sl[imin];
-    var tmin = get_term_at(surface, imin);
-    var tmax = get_term_at(surface, imax);
-    //extrapolation (constant)
-    if (t_term < get_term_at(surface, imin)) return sl[imin];
-    if (t_term > get_term_at(surface, imax)) return sl[imax];
-    // binary search
-    var imed, tmed;
-    while (imin + 1 !== imax) {
-      imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
-      tmed = get_term_at(surface, imed);
-      if (t_term > tmed) {
-        tmin = tmed;
-        imin = imed;
-      } else {
-        tmax = tmed;
-        imax = imed;
-      }
-    }
-    //interpolation (linear)
-    if (tmax - tmin < 1 / 512)
-      throw new Error(
-        "get_slice_rate: invalid surface, support points must be increasing and differ at least one day",
-      );
-    var temp = 1 / (tmax - tmin);
-    return (sl[imin] * (tmax - t_term) + sl[imax] * (t_term - tmin)) * temp;
-  }
-  /**
-   * ...
-   * @param {object} surface
-   * @param {date} t_expiry
-   * @param {} t_term
-   * @returns {number} surface rate
-   */
-  function get_surface_rate(surface, t_expiry, t_term) {
-    var imin = 0;
-    var imax = (surface.expiries || surface.labels_expiry || []).length - 1;
-
-    // surface only has one slice left
-    if (imin === imax) return get_slice_rate(surface, imin, t_term);
-    var tmin = get_expiry_at(surface, imin);
-    var tmax = get_expiry_at(surface, imax);
-    // extrapolation (constant)
-    if (t_expiry < tmin) return get_slice_rate(surface, imin, t_term);
-    if (t_expiry > tmax) return get_slice_rate(surface, imax, t_term);
-    // binary search
-    var imed, tmed;
-    while (imin + 1 !== imax) {
-      // truncate the mean time down to the closest integer
-      imed = ((imin + imax) / 2.0) | 0;
-      tmed = get_expiry_at(surface, imed);
-      if (t_expiry > tmed) {
-        tmin = tmed;
-        imin = imed;
-      } else {
-        tmax = tmed;
-        imax = imed;
-      }
-    }
-    // interpolation (linear)
-    if (tmax - tmin < 1 / 512)
-      throw new Error(
-        "get_surface_rate: invalid surface, support points must be increasing and differ at least one day",
-      );
-    var temp = 1 / (tmax - tmin);
-    return (
-      (get_slice_rate(surface, imin, t_term) * (tmax - t_expiry) +
-        get_slice_rate(surface, imax, t_term) * (t_expiry - tmin)) *
-      temp
-    );
-  }
-
-  /**
-   * ...
-   * @param {object} surface
-   * @param {date} t_expiry
-   * @param {} t_term
-   * @returns {number} surface rate
-   */
-  library.get_surface_rate = function (surface, t_expiry, t_term) {
-    if (surface.get_rate instanceof Function)
-      return surface.get_rate(t_expiry, t_term);
-    return library.get_safe_surface(surface).get_rate(t_expiry, t_term);
+    return res;
   };
 
-  library.get_cube_rate = function (cube, t_expiry, t_term, m) {
-    var atm = library.get_surface_rate(cube, t_expiry, t_term);
-    if (cube.moneyness && cube.smile) {
-      if (!cube.moneyness.length || !cube.smile.length)
+  // helper function for constructor
+  const get_values = function (values, num_expiries, num_terms) {
+    let res = new Array();
+    if (!Array.isArray(values))
+      throw new Error("Surface: values must be an array");
+    if (values.length !== num_expiries)
+      throw new Error("Surface: values do not have the right length.");
+    for (const slice of values) {
+      if (!Array.isArray(slice))
+        throw new Error("Surface: values must be an array of arrays");
+      if (slice.length !== num_terms)
         throw new Error(
-          "get_cube_rate: invalid cube, moneyness and smile must be arrays",
+          "Surface: one of the slices does not have the right length.",
         );
-      var imin = 0;
-      var imax = cube.moneyness.length - 1;
+      for (const value of slice) {
+        if (!(typeof value === "number"))
+          throw new Error(
+            `Surface: values must be an array of arrays of numbers, but contains invalid value ${value}`,
+          );
+      }
+      // slice is valid, make a copy of the values
+      res.push(Array.from(slice));
+    }
+    return res;
+  };
 
-      //surface only has one slice left
-      if (imin === imax)
-        return (
-          atm + library.get_surface_rate(cube.smile[imin], t_expiry, t_term)
+  class Surface extends library.Simulatable {
+    #type = "bachelier";
+    #expiries = null;
+    #terms = null;
+    #values = null;
+    #moneyness = [];
+    #smile = [];
+    #get_surface_rate_scenario = null;
+    constructor(obj) {
+      super(obj);
+
+      // type
+      if (typeof obj.type === "string") this.#type = obj.type;
+
+      // expiries
+      if ("expiries" in obj) {
+        this.#expiries = library.get_safe_number_vector(obj.expiries);
+      } else {
+        this.#expiries = get_times(obj.labels_expiry);
+      }
+
+      // terms
+      if ("terms" in obj) {
+        this.#terms = library.get_safe_number_vector(obj.terms);
+      } else {
+        this.#terms = get_times(obj.labels_term);
+      }
+      // values
+      this.#values = get_values(
+        obj.values,
+        this.#expiries.length,
+        this.#terms.length,
+      );
+
+      // moneyness
+      if ("moneyness" in obj) {
+        this.#moneyness = library.get_safe_number_vector(obj.moneyness);
+      }
+
+      // smile
+      if ("smile" in obj) {
+        if (!Array.isArray(obj.smile))
+          throw new Error("Surface: smile must be an array");
+        this.#smile = obj.smile.map((s) => {
+          if (!(s instanceof library.Surface)) {
+            // no recursions, smile surfaces must not have smiles themselves
+            let temp = Object.assign({}, s);
+            delete temp.moneyness;
+            delete temp.smile;
+
+            // make surface
+            return new library.Surface(temp);
+          } else {
+            return s;
+          }
+        });
+      }
+
+      // check consistency
+      if (this.#moneyness.length !== this.#smile.length)
+        throw new Error(
+          "Surface: smile and moneyness must have the same length",
         );
-      var mmin = cube.moneyness[imin];
-      var mmax = cube.moneyness[imax];
+
+      // scenario dependent surface evaluation
+      this.#get_surface_rate_scenario = this.get_surface_rate;
+    }
+
+    // getter functions
+    get type() {
+      return this.#type;
+    }
+
+    // detach scenario rule
+    detachRule() {
+      this.#get_surface_rate_scenario = this.get_surface_rate;
+    }
+
+    // attach scenario ruls
+    attachRule(rule) {
+      if (typeof rule === "object") {
+        const scen = new library.Surface({
+          labels_expiry: rule.labels_y,
+          labels_term: rule.labels_x,
+          values: rule.values,
+        });
+
+        if (rule.model === "multiplicative") {
+          this.#get_surface_rate_scenario = function (t_expiry, t_term) {
+            return (
+              this.get_surface_rate(t_expiry, t_term) *
+              scen.get_surface_rate(t_expiry, t_term)
+            );
+          };
+        }
+        if (rule.model === "additive") {
+          this.#get_surface_rate_scenario = function (t_expiry, t_term) {
+            return (
+              this.get_surface_rate(t_expiry, t_term) +
+              scen.get_surface_rate(t_expiry, t_term)
+            );
+          };
+        }
+        if (rule.model === "absolute") {
+          this.#get_surface_rate_scenario = function (t_expiry, t_term) {
+            return scen.get_surface_rate(t_expiry, t_term);
+          };
+        }
+      } else {
+        this.detachRule();
+      }
+    }
+
+    // interpolaton function for single slice
+    #get_slice_rate(i_expiry, t_term) {
+      let imin = 0;
+      let imax = this.#terms.length - 1;
+
+      const slice = this.#values[i_expiry];
+
+      //slice only has one value left
+      if (imin === imax) return slice[imin];
+      var tmin = this.#terms[imin];
+      var tmax = this.#terms[imax];
       //extrapolation (constant)
-      if (m < mmin)
-        return (
-          atm + library.get_surface_rate(cube.smile[imin], t_expiry, t_term)
-        );
-      if (m > mmax)
-        return (
-          atm + library.get_surface_rate(cube.smile[imax], t_expiry, t_term)
-        );
+      if (t_term < tmin) return slice[imin];
+      if (t_term > tmax) return slice[imax];
       // binary search
-      var imed, mmed;
+      let imed, tmed;
       while (imin + 1 !== imax) {
         imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
-        mmed = cube.moneyness[imed];
-        if (m > mmed) {
-          mmin = mmed;
+        tmed = this.#terms[imed];
+        if (t_term > tmed) {
+          tmin = tmed;
           imin = imed;
         } else {
-          mmax = mmed;
+          tmax = tmed;
           imax = imed;
         }
       }
       //interpolation (linear)
-      if (mmax - mmin < 1e-15)
+      if (tmax - tmin < 1 / 512)
         throw new Error(
-          "get_cube_rate: invalid cube, moneyness must be nondecreasing",
+          "get_slice_rate: invalid surface, support points must be increasing and differ at least one day",
         );
-      var temp = 1 / (mmax - mmin);
+      var temp = 1 / (tmax - tmin);
       return (
-        atm +
-        (library.get_surface_rate(cube.smile[imin], t_expiry, t_term) *
-          (mmax - m) +
-          library.get_surface_rate(cube.smile[imax], t_expiry, t_term) *
-            (m - mmin)) *
-          temp
+        (slice[imin] * (tmax - t_term) + slice[imax] * (t_term - tmin)) * temp
       );
     }
-    return atm;
-  };
+
+    // interpolation function for surface
+    get_surface_rate(t_expiry, t_term) {
+      var imin = 0;
+      var imax = this.#expiries.length - 1;
+
+      // surface only has one slice left
+      if (imin === imax) return this.#get_slice_rate(imin, t_term);
+      var tmin = this.#expiries[imin];
+      var tmax = this.#expiries[imax];
+      // extrapolation (constant)
+      if (t_expiry < tmin) return this.#get_slice_rate(imin, t_term);
+      if (t_expiry > tmax) return this.#get_slice_rate(imax, t_term);
+      // binary search
+      var imed, tmed;
+      while (imin + 1 !== imax) {
+        // truncate the mean time down to the closest integer
+        imed = ((imin + imax) / 2.0) | 0;
+        tmed = this.#expiries[imed];
+        if (t_expiry > tmed) {
+          tmin = tmed;
+          imin = imed;
+        } else {
+          tmax = tmed;
+          imax = imed;
+        }
+      }
+      // interpolation (linear)
+      if (tmax - tmin < 1 / 512)
+        throw new Error(
+          "get_surface_rate: invalid surface, support points must be increasing and differ at least one day",
+        );
+      var temp = 1 / (tmax - tmin);
+      return (
+        (this.#get_slice_rate(imin, t_term) * (tmax - t_expiry) +
+          this.#get_slice_rate(imax, t_term) * (t_expiry - tmin)) *
+        temp
+      );
+    }
+
+    // interpolation function for cube
+    get_rate(t_expiry, t_term, fwd, strike) {
+      // atm rate can have a scenario
+      var atm = this.#get_surface_rate_scenario(t_expiry, t_term);
+
+      // optionally, we consider a smile on the surface
+      if (this.#smile.length > 0) {
+        let imin = 0;
+        let imax = this.#smile.length - 1;
+
+        // smile only has one extra surface
+        if (imin === imax)
+          return atm + this.#smile[imin].get_surface_rate(t_expiry, t_term);
+
+        // determine moneyness
+        let m = strike - fwd;
+        let mmin = this.#moneyness[imin];
+        let mmax = this.#moneyness[imax];
+        //extrapolation (constant)
+        if (m < mmin)
+          return atm + this.#smile[imin].get_surface_rate(t_expiry, t_term);
+        if (m > mmax)
+          return atm + this.#smile[imax].get_surface_rate(t_expiry, t_term);
+
+        // binary search
+        let imed, mmed;
+        while (imin + 1 !== imax) {
+          imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
+          mmed = this.#moneyness[imed];
+          if (m > mmed) {
+            mmin = mmed;
+            imin = imed;
+          } else {
+            mmax = mmed;
+            imax = imed;
+          }
+        }
+        //interpolation (linear)
+        if (mmax - mmin < 1e-15)
+          throw new Error(
+            "get_cube_rate: invalid cube, moneyness must be nondecreasing",
+          );
+        var temp = 1 / (mmax - mmin);
+        return (
+          atm +
+          (this.#smile[imin].get_surface_rate(t_expiry, t_term) * (mmax - m) +
+            this.#smile[imax].get_surface_rate(t_expiry, t_term) * (m - mmin)) *
+            temp
+        );
+      }
+      return atm;
+    }
+  }
+
+  library.Surface = Surface;
 })(this.JsonRisk || module.exports);

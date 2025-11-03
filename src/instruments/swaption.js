@@ -37,7 +37,11 @@
       float_dcc: instrument.float_dcc,
       float_current_rate: instrument.float_current_rate,
       adjust_accrual_periods: instrument.adjust_accrual_periods,
+      disc_curve: instrument.disc_curve || "",
+      fwd_curve: instrument.fwd_curve || "",
     });
+
+    this.surface = instrument.surface || "";
   };
   /**
    * calculates the present value for internal swaption (object)
@@ -55,6 +59,15 @@
   ) {
     library.require_vd();
 
+    if (!(disc_curve instanceof library.Curve))
+      disc_curve = new library.Curve(disc_curve);
+
+    if (!(fwd_curve instanceof library.Curve))
+      fwd_curve = new library.Curve(fwd_curve);
+
+    if (!(vol_surface instanceof library.Surface))
+      vol_surface = new library.Surface(vol_surface);
+
     //obtain times
     var t_maturity = library.time_from_now(this.maturity);
     var t_first_exercise_date = library.time_from_now(this.first_exercise_date);
@@ -69,11 +82,11 @@
     //obtain time-scaled volatility
     if (typeof vol_surface !== "object" || vol_surface === null)
       throw new Error("swaption.present_value: must provide valid surface");
-    this.vol = library.get_cube_rate(
-      vol_surface,
+    this.vol = vol_surface.get_rate(
       t_first_exercise_date,
       t_term,
-      this.moneyness,
+      this.fair_rate, // fwd rate
+      this.swap.fixed_rate, // strike
     );
     this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
 
@@ -95,6 +108,24 @@
     res *= this.sign;
     return res;
   };
+
+  library.swaption.prototype.add_deps = function (deps) {
+    if ((!deps) instanceof library.Deps)
+      throw new Error("add_deps: deps must be of type Deps");
+
+    this.swap.add_deps(deps);
+    deps.addSurface(this.surface);
+  };
+
+  library.swaption.prototype.evaluate = function (params) {
+    if ((!params) instanceof library.Params)
+      throw new Error("evaluate: params must be of type Params");
+    const disc_curve = params.getCurve(this.swap.float_leg.disc_curve);
+    const fwd_curve = params.getCurve(this.swap.float_leg.fwd_curve);
+    const surface = params.getSurface(this.surface);
+    return this.present_value(disc_curve, fwd_curve, surface);
+  };
+
   /**
    * ...
    * @param {object} swaption Instrument
