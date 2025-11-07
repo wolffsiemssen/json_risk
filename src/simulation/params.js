@@ -118,34 +118,34 @@
       return this.#num_scenarios;
     }
 
-    getScalar(name) {
+    get_scalar(name) {
       const n = require_string(name);
       if (!(n in this.#scalars)) throw new Error(`Params: no such scalar ${n}`);
       return this.#scalars[n];
     }
 
-    getCurve(name) {
+    get_curve(name) {
       const n = require_string(name);
       if (!(n in this.#curves)) throw new Error(`Params: no such curve ${n}`);
       return this.#curves[n];
     }
 
-    getSurface(name) {
+    get_surface(name) {
       const n = require_string(name);
       if (!(n in this.#surfaces))
         throw new Error(`Params: no such surface ${n}`);
       return this.#surfaces[n];
     }
 
-    detachScenarios() {
+    detach_scenarios() {
       for (const container of [this.#scalars, this.#curves, this.#surfaces]) {
         for (const item of Object.values(container)) {
-          item.detachRule();
+          item.detach_rule();
         }
       }
     }
 
-    getScenario(n) {
+    get_scenario(n) {
       if (n === 0) return null;
       let i = 0;
       for (const group of this.#scenario_groups) {
@@ -157,9 +157,9 @@
       return null;
     }
 
-    attachScenario(n) {
-      const scenario = this.getScenario(n);
-      if (!scenario) return this.detachScenarios();
+    attach_scenario(n) {
+      const scenario = this.get_scenario(n);
+      if (!scenario) return this.detach_scenarios();
       const rules = scenario.rules;
 
       // attach scenario if one of the rules match
@@ -174,7 +174,7 @@
           // if no exact match by risk factors, all tags of that rule must match
           var found = true;
           for (const tag of rule.tags) {
-            if (!item.hasTag(tag)) found = false;
+            if (!item.has_tag(tag)) found = false;
           }
           // if tag list is empty, no matching by tags at all
           if (rule.tags.length === 0) found = false;
@@ -189,7 +189,7 @@
         for (const item of Object.values(container)) {
           for (const rule of rules) {
             if (match(item, rule)) {
-              item.attachRule(rule);
+              item.attach_rule(rule);
               break;
             }
           }

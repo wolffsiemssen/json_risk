@@ -15,48 +15,107 @@ if (typeof module === "object" && typeof exports !== "undefined") {
 test.execute = function (TestFramework, JsonRisk) {
   /*!
 
-
     Test bond Valuation
 
-     */
-  var curve = JsonRisk.get_const_curve(0.05);
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
-  var bond = {
+  */
+
+  const params_json = {
+    curves: {
+      const: {
+        times: [1.0],
+        zcs: [0.0],
+      },
+      nullcurve: {
+        times: [1.0],
+        zcs: [0.0],
+      },
+      swap: {
+        times: [1 / 12, 3 / 12, 6 / 12, 1, 2, 3, 4, 5],
+        zcs: [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.007],
+      },
+      swap_up: {
+        times: [1 / 12, 3 / 12, 6 / 12, 1, 2, 3, 4, 5],
+        zcs: [0.011, 0.012, 0.013, 0.014, 0.015, 0.016, 0.017, 0.017],
+      },
+    },
+    scenario_groups: [
+      [
+        {
+          name: "UP",
+          rules: [
+            {
+              model: "additive",
+              risk_factors: ["const"],
+              labels_x: ["1Y"],
+              labels_y: ["1Y"],
+              values: [[0.0001]],
+            },
+          ],
+        },
+        {
+          name: "DOWN",
+          rules: [
+            {
+              model: "additive",
+              risk_factors: ["const"],
+              labels_x: ["1Y"],
+              labels_y: ["1Y"],
+              values: [[-0.0001]],
+            },
+          ],
+        },
+      ],
+    ],
+  };
+
+  const setBaseRateLevel = function (rate) {
+    params_json.curves.const.zcs[0] = rate;
+  };
+
+  const setValuationDate = function (date) {
+    JsonRisk.valuation_date = JsonRisk.get_safe_date(date);
+    params_json.valuation_date = date;
+  };
+
+  setBaseRateLevel(0.05);
+  setValuationDate("2000/01/17");
+
+  let bond = {
     maturity: "2010-01-18",
     notional: 100,
     fixed_rate: 0.05,
     tenor: 12,
     bdc: "unadjusted",
+    disc_curve: "const",
   };
-  console.log(JsonRisk.pricer_bond(bond, curve, null, null));
 
+  let params = new JsonRisk.Params(params_json);
   TestFramework.assert(
-    "105.0" === JsonRisk.pricer_bond(bond, curve, null, null).toFixed(1),
+    "105.0" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
     "bond valuation (1)",
   );
 
   bond.settlement_days = 1;
-
   TestFramework.assert(
-    "100.0" === JsonRisk.pricer_bond(bond, curve, null, null).toFixed(1),
+    "100.0" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
     "bond valuation (2)",
   );
 
   bond.tenor = 6;
   TestFramework.assert(
-    "100.5" === JsonRisk.pricer_bond(bond, curve, null, null).toFixed(1),
+    "100.5" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
     "bond valuation (3)",
   );
 
   bond.tenor = 3;
   TestFramework.assert(
-    "100.7" === JsonRisk.pricer_bond(bond, curve, null, null).toFixed(1),
+    "100.7" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
     "bond valuation (4)",
   );
 
-  //reale bundesanleihen, kurse und renditen vom 23.02.2018
+  //reale bundesanleihen, kurse und IrrQuoten vom 23.02.2018
   /*
-    Kupon	Bez	Mat	        Kurs Clean	Rendite	Kurs Dirty
+    Kupon	Bez	Mat	        Kurs Clean	IrrQuote	Kurs Dirty
     1.750	Bund 14	15.02.2024	109.338	        0.18	109.396
     1.500	Bund 14	15.05.2024	107.930	        0.21	109.114
     1.000	Bund 14	15.08.2024	104.830	        0.25	105.367
@@ -71,8 +130,10 @@ test.execute = function (TestFramework, JsonRisk) {
     1.250	Bund 17	15.08.2048	97.695	        1.34	98.366
      */
 
-  var Kupon = [1.75, 1.5, 1.0, 0.5, 1.0, 0.5, 4.25, 4.75, 3.25, 2.5, 2.5, 1.25];
-  var Maturity = [
+  let Coupon = [
+    1.75, 1.5, 1.0, 0.5, 1.0, 0.5, 4.25, 4.75, 3.25, 2.5, 2.5, 1.25,
+  ];
+  let Maturity = [
     "15.02.2024",
     "15.05.2024",
     "15.08.2024",
@@ -86,110 +147,99 @@ test.execute = function (TestFramework, JsonRisk) {
     "15.08.2046",
     "15.08.2048",
   ];
-  var Kurs_Dirty = [
+  let DirtyPrice = [
     109.396, 109.114, 105.367, 101.279, 105.139, 100.49, 161.156, 173.187,
     144.244, 128.6, 129.562, 98.366,
   ];
-  var Rendite = [
+  let IrrQuote = [
     0.18, 0.21, 0.25, 0.32, 0.37, 0.44, 1.15, 1.17, 1.24, 1.29, 1.31, 1.34,
   ];
 
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2018, 1, 23);
+  setValuationDate("2018/02/23");
 
-  var bonds = [];
-  for (i = 0; i < Kupon.length; i++) {
-    bonds.push({
+  for (let i = 0; i < Coupon.length; i++) {
+    bond = {
+      type: "bond",
       maturity: Maturity[i],
       notional: 100.0,
-      fixed_rate: Kupon[i] / 100,
+      fixed_rate: Coupon[i] / 100,
       tenor: 12,
       bdc: "following",
       dcc: "act/act",
       calendar: "TARGET",
       settlement_days: 2,
-    });
-  }
+      disc_curve: "const",
+      spread_curve: "nullcurve",
+    };
 
-  var pu, pd, i, r;
-  var null_curve = JsonRisk.get_const_curve(0.0);
-  //evaluate with yield curve
-  for (i = 0; i < Kupon.length; i++) {
-    r = Rendite[i] / 100;
-    curve_down = JsonRisk.get_const_curve(r - 0.0001);
-    curve_up = JsonRisk.get_const_curve(r + 0.0001);
-    pu = JsonRisk.pricer_bond(bonds[i], curve_up, null, null);
-    pd = JsonRisk.pricer_bond(bonds[i], curve_down, null, null);
+    let r = IrrQuote[i] / 100;
+    setBaseRateLevel(r);
+
+    //evaluate with disc curve
+    let [base, pUp, pDown] = JsonRisk.vector_pricer(bond, params_json);
     console.log(
-      "JSON Risk Price one basis point cheaper:        " + pu.toFixed(3),
+      "JSON Risk Price one basis point cheaper:        " + pUp.toFixed(3),
     );
     console.log(
       "Quote from www.bundesbank.de:                   " +
-        Kurs_Dirty[i].toFixed(3),
+        DirtyPrice[i].toFixed(3),
     );
     console.log(
-      "JSON Risk Price one basis point more expensive: " + pd.toFixed(3),
+      "JSON Risk Price one basis point more expensive: " + pDown.toFixed(3),
     );
 
     TestFramework.assert(
-      pu < Kurs_Dirty[i] && Kurs_Dirty[i] < pd,
+      pUp < DirtyPrice[i] && DirtyPrice[i] < pDown,
       "Bond Valuation (Real BUND Bonds using yield curve, " + (i + 1) + ")",
     );
-  }
-  //evaluate with spread curve
-  for (i = 0; i < Kupon.length; i++) {
-    r = Rendite[i] / 100;
-    curve_down = JsonRisk.get_const_curve(r - 0.0001);
-    curve_up = JsonRisk.get_const_curve(r + 0.0001);
-    pu = JsonRisk.pricer_bond(bonds[i], null_curve, curve_up, null);
-    pd = JsonRisk.pricer_bond(bonds[i], null_curve, curve_down, null);
+
+    //evaluate with spread curve
+    bond.disc_curve = "nullcurve";
+    bond.spread_curve = "const";
+    [base, pUp, pDown] = JsonRisk.vector_pricer(bond, params_json);
     TestFramework.assert(
-      pu < Kurs_Dirty[i] && Kurs_Dirty[i] < pd,
+      pUp < DirtyPrice[i] && DirtyPrice[i] < pDown,
       "Bond Valuation (Real BUND Bonds using spread curve, " + (i + 1) + ")",
     );
   }
 
   //Real prices at interest payment date minus settlement days
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2018, 0, 2);
-
-  Kupon = [3.75, 4.0];
+  setValuationDate("2.1.2018");
+  Coupon = [3.75, 4.0];
   Maturity = ["04.01.2019", "04.01.2037"];
-  Kurs_Dirty = [104.468, 152.42];
-  Rendite = [-0.69, 0.97];
+  DirtyPrice = [104.468, 152.42];
+  IrrQuote = [-0.69, 0.97];
 
-  bonds = [];
-  for (i = 0; i < Kupon.length; i++) {
-    bonds.push({
+  //evaluate with yield curve
+  for (i = 0; i < Coupon.length; i++) {
+    let bond = {
+      type: "bond",
       maturity: Maturity[i],
       notional: 100.0,
-      fixed_rate: Kupon[i] / 100,
+      fixed_rate: Coupon[i] / 100,
       tenor: 12,
       bdc: "following",
       dcc: "act/act",
       calendar: "TARGET",
       settlement_days: 2,
-    });
-  }
-
-  //evaluate with yield curve
-  for (i = 0; i < Kupon.length; i++) {
-    r = Rendite[i] / 100;
-    curve_down = JsonRisk.get_const_curve(r - 0.0001);
-    curve_up = JsonRisk.get_const_curve(r + 0.0001);
-    pu = JsonRisk.pricer_bond(bonds[i], curve_up, null, null);
-    pd = JsonRisk.pricer_bond(bonds[i], curve_down, null, null);
+      disc_curve: "const",
+    };
+    let r = IrrQuote[i] / 100;
+    setBaseRateLevel(r);
+    [base, pUp, pDown] = JsonRisk.vector_pricer(bond, params_json);
     console.log(
-      "JSON Risk Price one basis point cheaper:        " + pu.toFixed(3),
+      "JSON Risk Price one basis point cheaper:        " + pUp.toFixed(3),
     );
     console.log(
       "Quote from www.bundesbank.de:                   " +
-        Kurs_Dirty[i].toFixed(3),
+        DirtyPrice[i].toFixed(3),
     );
     console.log(
-      "JSON Risk Price one basis point more expensive: " + pd.toFixed(3),
+      "JSON Risk Price one basis point more expensive: " + pDown.toFixed(3),
     );
 
     TestFramework.assert(
-      pu < Kurs_Dirty[i] && Kurs_Dirty[i] < pd,
+      pUp < DirtyPrice[i] && DirtyPrice[i] < pDown,
       "Bond Valuation (Real BUND Bonds at interest payment date minus settlement days, " +
         (i + 1) +
         ")",
@@ -198,30 +248,43 @@ test.execute = function (TestFramework, JsonRisk) {
 
   //Real prices before interest payment date minus settlement
   JsonRisk.valuation_date = TestFramework.get_utc_date(2017, 11, 31);
+  setValuationDate("31.12.2017");
 
-  Kurs_Dirty = [108.23, 157.199];
-  Rendite = [-0.7, 0.93];
+  DirtyPrice = [108.23, 157.199];
+  IrrQuote = [-0.7, 0.93];
 
   //evaluate with yield curve
-  for (i = 0; i < Kupon.length; i++) {
-    r = Rendite[i] / 100;
-    curve_down = JsonRisk.get_const_curve(r - 0.0001);
-    curve_up = JsonRisk.get_const_curve(r + 0.0001);
-    pu = JsonRisk.pricer_bond(bonds[i], curve_up, null, null);
-    pd = JsonRisk.pricer_bond(bonds[i], curve_down, null, null);
+  for (i = 0; i < Coupon.length; i++) {
+    let bond = {
+      type: "bond",
+      maturity: Maturity[i],
+      notional: 100.0,
+      fixed_rate: Coupon[i] / 100,
+      tenor: 12,
+      bdc: "following",
+      dcc: "act/act",
+      calendar: "TARGET",
+      settlement_days: 2,
+      disc_curve: "const",
+    };
+
+    let r = IrrQuote[i] / 100;
+    setBaseRateLevel(r);
+    [base, pUp, pDown] = JsonRisk.vector_pricer(bond, params_json);
+
     console.log(
-      "JSON Risk Price one basis point cheaper:        " + pu.toFixed(3),
+      "JSON Risk Price one basis point cheaper:        " + pUp.toFixed(3),
     );
     console.log(
       "Quote from www.bundesbank.de:                   " +
-        Kurs_Dirty[i].toFixed(3),
+        DirtyPrice[i].toFixed(3),
     );
     console.log(
-      "JSON Risk Price one basis point more expensive: " + pd.toFixed(3),
+      "JSON Risk Price one basis point more expensive: " + pDown.toFixed(3),
     );
 
     TestFramework.assert(
-      pu < Kurs_Dirty[i] && Kurs_Dirty[i] < pd,
+      pUp < DirtyPrice[i] && DirtyPrice[i] < pDown,
       "Bond Valuation (Real BUND Bonds just before interest payment date minus settlement days, " +
         (i + 1) +
         ")",
@@ -295,7 +358,9 @@ test.execute = function (TestFramework, JsonRisk) {
     res += 100 * kup * (t - t_last) * Math.pow(1.1, -t);
     return res;
   };
-  curve = JsonRisk.get_const_curve(0.1); // 10 percent discount
+
+  setBaseRateLevel(0.1); // 10 percent discount
+  params = new JsonRisk.Params(params_json);
   for (i = 0; i < Kupon.length; i++) {
     bond = {
       effective_date: JsonRisk.valuation_date,
@@ -307,16 +372,17 @@ test.execute = function (TestFramework, JsonRisk) {
       dcc: "act/365",
       calendar: "TARGET",
       adjust_accrual_periods: false,
+      disc_curve: "const",
     };
 
     //unadjusted periods
-    pv = JsonRisk.pricer_bond(bond, curve, null, null);
+    pv = new JsonRisk.FixedIncome(bond).value(params);
     pv_ref = pv_func(Maturity[i], Kupon[i] / 100);
     console.log(
-      "Bond without adjusted periods                 " + pv.toFixed(8),
+      "Bond without adjusted periods                  " + pv.toFixed(8),
     );
     console.log(
-      "Bond without adjusted periods, reference price" + pv_ref.toFixed(8),
+      "Bond without adjusted periods, reference price " + pv_ref.toFixed(8),
     );
     TestFramework.assert(
       pv.toFixed(8) === pv_ref.toFixed(8),
@@ -327,11 +393,11 @@ test.execute = function (TestFramework, JsonRisk) {
 
     //adjusted periods
     bond.adjust_accrual_periods = true;
-    pv = JsonRisk.pricer_bond(bond, curve, null, null);
+    pv = new JsonRisk.FixedIncome(bond).value(params);
     pv_ref = pv_func_adj(Maturity[i], Kupon[i] / 100);
-    console.log("Bond with adjusted periods                 " + pv.toFixed(8));
+    console.log("Bond with adjusted periods                  " + pv.toFixed(8));
     console.log(
-      "Bond with adjusted periods, reference price" + pv_ref.toFixed(8),
+      "Bond with adjusted periods, reference price " + pv_ref.toFixed(8),
     );
     TestFramework.assert(
       pv.toFixed(8) === pv_ref.toFixed(8),
@@ -342,7 +408,7 @@ test.execute = function (TestFramework, JsonRisk) {
   }
 
   //evaluate floaters
-  Kupon = [1.75, 1.5, 1.0, 0.5, 1.0, 0.5, 4.25, 4.75, 3.25, 2.5, 2.5, 1.25];
+  Coupon = [1.75, 1.5, 1.0, 0.5, 1.0, 0.5, 4.25, 4.75, 3.25, 2.5, 2.5, 1.25];
   Maturity = [
     "15.02.2024",
     "15.05.2024",
@@ -357,18 +423,19 @@ test.execute = function (TestFramework, JsonRisk) {
     "15.08.2046",
     "15.08.2048",
   ];
-  Kurs_Dirty = [
+  DirtyPrice = [
     109.396, 109.114, 105.367, 101.279, 105.139, 100.49, 161.156, 173.187,
     144.244, 128.6, 129.562, 98.366,
   ];
-  Rendite = [
+  IrrQuote = [
     0.18, 0.21, 0.25, 0.32, 0.37, 0.44, 1.15, 1.17, 1.24, 1.29, 1.31, 1.34,
   ];
 
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2018, 1, 23);
-  var floaters = [];
+  setValuationDate("2018-02-23");
+
   for (i = 0; i < Kupon.length; i++) {
-    floaters.push({
+    let floater = {
+      type: "floater",
       maturity: Maturity[i],
       notional: 100.0,
       float_spread: Kupon[i] / 100,
@@ -378,57 +445,28 @@ test.execute = function (TestFramework, JsonRisk) {
       dcc: "act/act",
       calendar: "TARGET",
       settlement_days: 2,
-    });
-  }
-  var fwd_curve = JsonRisk.get_const_curve(0.0);
+      disc_curve: "const",
+      fwd_curve: "nullcurve",
+    };
+    r = IrrQuote[i] / 100;
+    setBaseRateLevel(r);
 
-  for (i = 0; i < Kupon.length; i++) {
-    r = Rendite[i] / 100;
-    curve_down = JsonRisk.get_const_curve(r - 0.0001);
-    curve_up = JsonRisk.get_const_curve(r + 0.0001);
-    pu = JsonRisk.pricer_floater(floaters[i], curve_up, null, fwd_curve);
-    pd = JsonRisk.pricer_floater(floaters[i], curve_down, null, fwd_curve);
+    [base, pUp, pDown] = JsonRisk.vector_pricer(floater, params_json);
+
     console.log(
-      "JSON Risk Price one basis point cheaper:        " + pu.toFixed(3),
+      "JSON Risk Price one basis point cheaper:        " + pUp.toFixed(3),
     );
     console.log(
       "Quote from www.bundesbank.de:                   " +
-        Kurs_Dirty[i].toFixed(3),
+        DirtyPrice[i].toFixed(3),
     );
     console.log(
-      "JSON Risk Price one basis point more expensive: " + pd.toFixed(3),
+      "JSON Risk Price one basis point more expensive: " + pDown.toFixed(3),
     );
 
     TestFramework.assert(
-      pu < Kurs_Dirty[i] && Kurs_Dirty[i] < pd,
+      pUp < DirtyPrice[i] && DirtyPrice[i] < pDown,
       "Floater Valuation (using constant forward curve with rate 0.0 and a positive float_spread, " +
-        (i + 1) +
-        ")",
-    );
-  }
-
-  for (i = 0; i < Kupon.length; i++) {
-    floaters[i].float_spread = 0;
-    floaters[i].float_current_rate = Kupon[i] / 100;
-    fwd_curve = JsonRisk.get_const_curve(Kupon[i] / 100);
-    r = Rendite[i] / 100;
-    curve_down = JsonRisk.get_const_curve(r - 0.0001);
-    curve_up = JsonRisk.get_const_curve(r + 0.0001);
-    pu = JsonRisk.pricer_floater(floaters[i], curve_up, null, fwd_curve);
-    pd = JsonRisk.pricer_floater(floaters[i], curve_down, null, fwd_curve);
-    console.log(
-      "JSON Risk Price one basis point cheaper:        " + pu.toFixed(3),
-    );
-    console.log(
-      "Quote from www.bundesbank.de:                   " +
-        Kurs_Dirty[i].toFixed(3),
-    );
-    console.log(
-      "JSON Risk Price one basis point more expensive: " + pd.toFixed(3),
-    );
-    TestFramework.assert(
-      pu < Kurs_Dirty[i] && Kurs_Dirty[i] < pd,
-      "Floater Valuation (using constant forward curve with rate reflecting Bund coupon and a zero float_spread, " +
         (i + 1) +
         ")",
     );
@@ -443,24 +481,10 @@ test.execute = function (TestFramework, JsonRisk) {
 
   var months = [6, 12, 24, 48, 72, 120];
   var tenors = [1, 3, 6, 12];
-  var times = [1 / 12, 3 / 12, 6 / 12, 1, 2, 3, 4, 5];
-  var zcs = [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.007];
-  var zcs_up = [0.011, 0.012, 0.013, 0.014, 0.015, 0.016, 0.017, 0.017];
-  curve = {
-    times: times,
-    zcs: zcs,
-  };
-  curve_up = {
-    times: times,
-    zcs: zcs_up,
-  };
-  var swap, swap_up;
-  var p_up, p, p_diff;
 
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2018, 1, 23);
   for (i = 0; i < months.length; i++) {
     for (j = 0; j < tenors.length; j++) {
-      swap = {
+      const swap = {
         is_payer: true,
         maturity: JsonRisk.add_months(JsonRisk.valuation_date, months[i]),
         notional: 10000,
@@ -471,8 +495,10 @@ test.execute = function (TestFramework, JsonRisk) {
         float_current_rate: -0.005,
         dcc: "30e/360",
         float_dcc: "30e/360",
+        disc_curve: "swap",
+        fwd_curve: "swap",
       };
-      swap_up = {
+      const swap_up = {
         is_payer: true,
         maturity: JsonRisk.add_months(JsonRisk.valuation_date, months[i]),
         notional: 10000,
@@ -483,9 +509,12 @@ test.execute = function (TestFramework, JsonRisk) {
         float_current_rate: swap.float_current_rate + 1 / 100,
         dcc: "30e/360",
         float_dcc: "30e/360",
+        disc_curve: "swap",
+        fwd_curve: "swap_up",
       };
-      p = JsonRisk.pricer_swap(swap, curve, curve);
-      p_up = JsonRisk.pricer_swap(swap_up, curve, curve_up);
+      params = new JsonRisk.Params(params_json);
+      const p = new JsonRisk.Swap(swap).value(params);
+      const p_up = new JsonRisk.Swap(swap_up).value(params);
       p_diff = Math.abs(p - p_up);
       console.log("JSON Risk swap price:               " + p.toFixed(3));
       console.log("JSON Risk swap price with rates up: " + p_up.toFixed(3));

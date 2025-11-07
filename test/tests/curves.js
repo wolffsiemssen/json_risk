@@ -160,7 +160,7 @@ test.execute = function (TestFramework, JsonRisk) {
     values: [[0.02, 0.03, 0.032, 0.03, 0.02]],
   };
 
-  c.attachRule(absolute);
+  c.attach_rule(absolute);
   TestFramework.assert(
     0.02 === c.get_rate(1.0),
     "Yield Curve with absolute scenario (1)",
@@ -176,13 +176,13 @@ test.execute = function (TestFramework, JsonRisk) {
     "Yield Curve with absolute scenario (3)",
   );
 
-  c.attachRule(additive);
+  c.attach_rule(additive);
   TestFramework.assert(
     0.032 === c.get_rate(12.0),
     "Yield Curve with additive scenario (1)",
   );
 
-  c.attachRule(multiplicative);
+  c.attach_rule(multiplicative);
   TestFramework.assert(
     0.032 === c.get_rate(12.0),
     "Yield Curve with multiplicative scenario (1)",

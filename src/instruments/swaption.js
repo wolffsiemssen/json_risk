@@ -1,150 +1,115 @@
 (function (library) {
-  /**
-   * creates an internal swaption object (including swap) from input data
-   * @param {object} instrument instrument
-   * @memberof library
-   * @public
-   */
-  library.swaption = function (instrument) {
-    this.sign = library.get_safe_bool(instrument.is_short) ? -1 : 1;
+  class Swaption extends library.Instrument {
+    constructor(obj) {
+      super(obj);
+      this.sign = library.get_safe_bool(obj.is_short) ? -1 : 1;
 
-    //maturity of the underlying swap
-    this.maturity = library.get_safe_date(instrument.maturity);
-    if (!this.maturity)
-      throw new Error("swaption: must provide valid maturity date.");
+      //maturity of the underlying swap
+      this.maturity = library.get_safe_date(obj.maturity);
+      if (!this.maturity)
+        throw new Error("swaption: must provide valid maturity date.");
 
-    //first_exercise_date (a.k.a. expiry) of the swaption
-    this.first_exercise_date = library.get_safe_date(
-      instrument.first_exercise_date,
-    );
-    if (!this.first_exercise_date)
-      throw new Error("swaption: must provide valid first_exercise_date date.");
+      //first_exercise_date (a.k.a. expiry) of the swaption
+      this.first_exercise_date = library.get_safe_date(obj.first_exercise_date);
+      if (!this.first_exercise_date)
+        throw new Error(
+          "swaption: must provide valid first_exercise_date date.",
+        );
 
-    //underlying swap object
-    this.swap = new library.swap({
-      is_payer: instrument.is_payer,
-      notional: instrument.notional,
-      effective_date: this.first_exercise_date,
-      maturity: instrument.maturity,
-      fixed_rate: instrument.fixed_rate,
-      tenor: instrument.tenor,
-      calendar: instrument.calendar,
-      bdc: instrument.bdc,
-      dcc: instrument.dcc,
-      float_spread: instrument.float_spread,
-      float_tenor: instrument.float_tenor,
-      float_bdc: instrument.float_bdc,
-      float_dcc: instrument.float_dcc,
-      float_current_rate: instrument.float_current_rate,
-      adjust_accrual_periods: instrument.adjust_accrual_periods,
-      disc_curve: instrument.disc_curve || "",
-      fwd_curve: instrument.fwd_curve || "",
-    });
+      //underlying swap object
+      this.swap = new library.Swap({
+        is_payer: obj.is_payer,
+        notional: obj.notional,
+        effective_date: this.first_exercise_date,
+        maturity: obj.maturity,
+        fixed_rate: obj.fixed_rate,
+        tenor: obj.tenor,
+        calendar: obj.calendar,
+        bdc: obj.bdc,
+        dcc: obj.dcc,
+        float_spread: obj.float_spread,
+        float_tenor: obj.float_tenor,
+        float_bdc: obj.float_bdc,
+        float_dcc: obj.float_dcc,
+        float_current_rate: obj.float_current_rate,
+        adjust_accrual_periods: obj.adjust_accrual_periods,
+        disc_curve: obj.disc_curve || "",
+        fwd_curve: obj.fwd_curve || "",
+      });
 
-    this.surface = instrument.surface || "";
-  };
-  /**
-   * calculates the present value for internal swaption (object)
-   * @param {object} disc_curve discount curve
-   * @param {object} fwd_curve forward curve
-   * @param {object} vol_surface volatility surface
-   * @returns {number} present value
-   * @memberof library
-   * @public
-   */
-  library.swaption.prototype.present_value = function (
-    disc_curve,
-    fwd_curve,
-    vol_surface,
-  ) {
-    library.require_vd();
-
-    if (!(disc_curve instanceof library.Curve))
-      disc_curve = new library.Curve(disc_curve);
-
-    if (!(fwd_curve instanceof library.Curve))
-      fwd_curve = new library.Curve(fwd_curve);
-
-    if (!(vol_surface instanceof library.Surface))
-      vol_surface = new library.Surface(vol_surface);
-
-    //obtain times
-    var t_maturity = library.time_from_now(this.maturity);
-    var t_first_exercise_date = library.time_from_now(this.first_exercise_date);
-    var t_term = t_maturity - t_first_exercise_date;
-    if (t_term < 1 / 512) {
-      return 0;
+      this.surface = obj.surface || "";
     }
-    //obtain fwd rate, that is, fair swap rate
-    this.fair_rate = this.swap.fair_rate(disc_curve, fwd_curve);
-    this.moneyness = this.swap.fixed_rate - this.fair_rate;
 
-    //obtain time-scaled volatility
-    if (typeof vol_surface !== "object" || vol_surface === null)
-      throw new Error("swaption.present_value: must provide valid surface");
-    this.vol = vol_surface.get_rate(
-      t_first_exercise_date,
-      t_term,
-      this.fair_rate, // fwd rate
-      this.swap.fixed_rate, // strike
-    );
-    this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
+    present_value(disc_curve, fwd_curve, vol_surface) {
+      library.require_vd();
 
-    var res;
-    if (t_first_exercise_date < 0) {
-      //degenerate case where swaption has expired in the past
-      return 0;
-    } else if (t_first_exercise_date < 1 / 512 || this.std_dev < 0.000001) {
-      //degenerate case where swaption is almost expiring or volatility is very low
-      res = Math.max(this.swap.phi * this.moneyness, 0);
-    } else {
-      //bachelier formula
-      var d1 = this.moneyness / this.std_dev;
-      res =
-        this.swap.phi * this.moneyness * library.cndf(this.swap.phi * d1) +
-        this.std_dev * library.ndf(d1);
+      if (!(disc_curve instanceof library.Curve))
+        disc_curve = new library.Curve(disc_curve);
+
+      if (!(fwd_curve instanceof library.Curve))
+        fwd_curve = new library.Curve(fwd_curve);
+
+      if (!(vol_surface instanceof library.Surface))
+        vol_surface = new library.Surface(vol_surface);
+
+      //obtain times
+      var t_maturity = library.time_from_now(this.maturity);
+      var t_first_exercise_date = library.time_from_now(
+        this.first_exercise_date,
+      );
+      var t_term = t_maturity - t_first_exercise_date;
+      if (t_term < 1 / 512) {
+        return 0;
+      }
+      //obtain fwd rate, that is, fair swap rate
+      this.fair_rate = this.swap.fair_rate(disc_curve, fwd_curve);
+      this.moneyness = this.swap.fixed_rate - this.fair_rate;
+
+      //obtain time-scaled volatility
+      if (typeof vol_surface !== "object" || vol_surface === null)
+        throw new Error("swaption.present_value: must provide valid surface");
+      this.vol = vol_surface.get_rate(
+        t_first_exercise_date,
+        t_term,
+        this.fair_rate, // fwd rate
+        this.swap.fixed_rate, // strike
+      );
+      this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
+
+      var res;
+      if (t_first_exercise_date < 0) {
+        //degenerate case where swaption has expired in the past
+        return 0;
+      } else if (t_first_exercise_date < 1 / 512 || this.std_dev < 0.000001) {
+        //degenerate case where swaption is almost expiring or volatility is very low
+        res = Math.max(this.swap.phi * this.moneyness, 0);
+      } else {
+        //bachelier formula
+        var d1 = this.moneyness / this.std_dev;
+        res =
+          this.swap.phi * this.moneyness * library.cndf(this.swap.phi * d1) +
+          this.std_dev * library.ndf(d1);
+      }
+      res *= this.swap.annuity(disc_curve);
+      res *= this.sign;
+      return res;
     }
-    res *= this.swap.annuity(disc_curve);
-    res *= this.sign;
-    return res;
-  };
 
-  library.swaption.prototype.add_deps = function (deps) {
-    if ((!deps) instanceof library.Deps)
-      throw new Error("add_deps: deps must be of type Deps");
+    add_deps_impl(deps) {
+      this.swap.add_deps_impl(deps);
+      deps.add_surface(this.surface);
+    }
 
-    this.swap.add_deps(deps);
-    deps.addSurface(this.surface);
-  };
+    value_impl(params) {
+      const disc_curve = params.get_curve(this.swap.float_leg.disc_curve);
+      const fwd_curve = params.get_curve(this.swap.float_leg.fwd_curve);
+      const surface = params.get_surface(this.surface);
+      return this.present_value(disc_curve, fwd_curve, surface);
+    }
+  }
 
-  library.swaption.prototype.evaluate = function (params) {
-    if ((!params) instanceof library.Params)
-      throw new Error("evaluate: params must be of type Params");
-    const disc_curve = params.getCurve(this.swap.float_leg.disc_curve);
-    const fwd_curve = params.getCurve(this.swap.float_leg.fwd_curve);
-    const surface = params.getSurface(this.surface);
-    return this.present_value(disc_curve, fwd_curve, surface);
-  };
+  library.Swaption = Swaption;
 
-  /**
-   * ...
-   * @param {object} swaption Instrument
-   * @param {object} disc_curve discount curve
-   * @param {object} fwd_curve forward curve
-   * @param {object} vol_surface volatility surface
-   * @returns {number} present value
-   * @memberof library
-   * @public
-   */
-  library.pricer_swaption = function (
-    swaption,
-    disc_curve,
-    fwd_curve,
-    vol_surface,
-  ) {
-    var swaption_internal = new library.swaption(swaption);
-    return swaption_internal.present_value(disc_curve, fwd_curve, vol_surface);
-  };
   /**
    * ...
    * @param {object} cf_obj cash flow object
@@ -220,10 +185,10 @@
 
     //brief function to compute forward effective duration
     var ed = function (bond) {
-      var bond_internal = new library.fixed_income(bond);
-      npv_up = bond_internal.present_value(cup);
+      var fi = new library.FixedIncome(bond);
+      npv_up = fi.present_value(cup);
       npv_up /= cup.get_df(tte);
-      npv_down = bond_internal.present_value(cdown);
+      npv_down = fi.present_value(cdown);
       npv_down /= cdown.get_df(tte);
       var res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
       return res;

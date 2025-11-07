@@ -172,12 +172,12 @@
     }
 
     // detach scenario rule
-    detachRule() {
+    detach_rule() {
       this.#get_rate_scenario = this.#get_rate;
     }
 
     // attach scenario rule
-    attachRule(rule) {
+    attach_rule(rule) {
       if (typeof rule === "object") {
         var scenario = new library.Curve({
           labels: rule.labels_x,
@@ -197,7 +197,7 @@
             return scenario.get_rate(t);
           };
       } else {
-        this.detachRule();
+        this.detach_rule();
       }
     }
     // define get_rate aware of attached scenario

@@ -105,7 +105,7 @@ test.execute = function (TestFramework, JsonRisk) {
 
   for (i = 0; i < expiries.length; i++) {
     swaption = JsonRisk.create_equivalent_regular_swaption(cf_obj, expiries[i]);
-    cf_regular = new JsonRisk.fixed_income(swaption).get_cash_flows();
+    cf_regular = new JsonRisk.FixedIncome(swaption).get_cash_flows();
 
     lgm_xi = 0.0004 * yf(JsonRisk.valuation_date, expiries[i]);
 

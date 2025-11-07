@@ -1,32 +1,5 @@
 (function (library) {
   /**
-   * read instrument type for given instrument and create internal instrument
-   * @param {object} instrument any instrument
-   * @returns {object} internal instrument
-   * @memberof library
-   * @public
-   */
-  library.get_internal_object = function (instrument) {
-    switch (instrument.type.toLowerCase()) {
-      case "bond":
-      case "floater":
-        return new library.fixed_income(instrument);
-      case "swap":
-        return new library.swap(instrument);
-      case "swaption":
-        return new library.swaption(instrument);
-      case "fxterm":
-        return new library.fxterm(instrument);
-      case "callable_bond":
-        return new library.callable_fixed_income(instrument);
-      case "equity":
-        return new library.equity(instrument);
-      default:
-        throw new Error("get_internal_object: invalid instrument type");
-    }
-  };
-
-  /**
    * calculates the present value for any given supported instrument (bond, floater, fxterm, swap, swaption, callable_bond)
    * @param {object} instrument any instrument
    * @returns {number} present value
@@ -40,7 +13,7 @@
 
     const simulation_scenario = function () {
       const i = this.idx_scen;
-      this.results.present_value[i] = this.instrument.evaluate(this.params);
+      this.results.present_value[i] = this.instrument.value(this.params);
     };
 
     var module = {
@@ -68,7 +41,7 @@
     // create context for module execution
     var context = {
       instrument_json: instrument_json,
-      instrument: library.get_internal_object(instrument_json),
+      instrument: library.make_instrument(instrument_json),
       params_json: params_json,
       params: null,
       idx_scen: 0,
@@ -80,7 +53,7 @@
     context.instrument.add_deps(deps);
 
     // obtain required set of params
-    context.params = deps.minimalParams(params_json);
+    context.params = deps.minimal_params(params_json);
     context.num_scenarios = context.params.num_scenarios;
 
     for (let i = 0; i < context.num_scenarios; i++) {
@@ -88,7 +61,7 @@
       context.idx_scen = i;
 
       // attach scenarios to params
-      context.params.attachScenario(i);
+      context.params.attach_scenario(i);
 
       // call simulation_once for all modules for i=0
       for (let j = 0; j < modules.length; j++) {

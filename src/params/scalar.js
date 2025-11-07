@@ -2,28 +2,28 @@
   class Scalar extends library.Simulatable {
     static type = "scalar";
     #value = null;
-    #scenarioValue = null;
+    #scenario_value = null;
     constructor(obj) {
-      super();
+      super(obj);
       this.#value = library.get_safe_number(obj.value);
-      this.#scenarioValue = this.#value;
+      this.#scenario_value = this.#value;
     }
 
-    attachRule(rule) {
+    attach_rule(rule) {
       const scenval = rule.values[0][0];
       if (rule.model === "multiplicative")
-        this.#scenarioValue = this.#value * scenval;
+        this.#scenario_value = this.#value * scenval;
       if (rule.model === "additive")
-        this.#scenarioValue = this.#value + scenval;
-      if (rule.model === "absolute") this.#scenarioValue = scenval;
+        this.#scenario_value = this.#value + scenval;
+      if (rule.model === "absolute") this.#scenario_value = scenval;
     }
 
-    detachRule() {
-      this.#scenarioValue = this.#value;
+    detach_rule() {
+      this.#scenario_value = this.#value;
     }
 
     getValue() {
-      return this.#scenarioValue;
+      return this.#scenario_value;
     }
   }
 

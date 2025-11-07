@@ -21,26 +21,31 @@ test.execute = function (TestFramework, JsonRisk) {
 
   JsonRisk.valuation_date = TestFramework.get_utc_date(2017, 10, 30);
 
-  times = [1, 2, 3, 5];
-  dfs = [0.95, 0.91, 0.86, 0.78];
-  curve = {
+  const times = [1, 2, 3, 5];
+  const dfs = [0.95, 0.91, 0.86, 0.78];
+  const curve = {
     times: times,
     dfs: dfs,
   };
+  const params = new JsonRisk.Params({
+    valuation_date: JsonRisk.valuation_date,
+    curves: { curve: curve },
+  });
 
-  var fx_swapleg = {
+  const fx_swapleg = {
     notional: 100,
     maturity: TestFramework.get_utc_date(2018, 10, 30),
     notional_2: -100,
     maturity_2: TestFramework.get_utc_date(2019, 10, 30),
+    disc_curve: "curve",
   };
 
-  var pv = JsonRisk.pricer_fxterm(fx_swapleg, curve);
+  let pv = new JsonRisk.FxTerm(fx_swapleg).value(params);
   TestFramework.assert(pv.toFixed(2) === "4.00", "FX swap valuation (1)");
 
   fx_swapleg.maturity = TestFramework.get_utc_date(2020, 10, 29);
   fx_swapleg.maturity_2 = TestFramework.get_utc_date(2022, 10, 29);
 
-  var pv = JsonRisk.pricer_fxterm(fx_swapleg, curve);
+  pv = new JsonRisk.FxTerm(fx_swapleg).value(params);
   TestFramework.assert(pv.toFixed(2) === "8.00", "FX swap valuation (2)");
 };

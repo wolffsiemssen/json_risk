@@ -30,7 +30,7 @@
       return this.#name;
     }
 
-    hasTag(tag) {
+    has_tag(tag) {
       return this.#tags.has(tag);
     }
   }

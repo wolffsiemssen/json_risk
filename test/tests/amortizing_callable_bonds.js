@@ -18,10 +18,28 @@ test.execute = function (TestFramework, JsonRisk) {
     Test amortizing callable bonds consistency
 
      */
-  multi_callable_bonds = [];
-  var amortizing_bonds = [];
-  var accreting_bonds = [];
-  var Firstcall = [
+
+  const curve = { times: [1], zcs: [0.01] };
+  const surface = {
+    type: "bachelier",
+    expiries: [1, 2, 5],
+    terms: [1, 5, 10, 20],
+    values: [
+      [0.008, 0.0081, 0.0082, 0.008],
+      [0.0085, 0.0076, 0.0068, 0.0068],
+      [0.01, 0.0103, 0.012, 0.011],
+    ],
+  };
+  //surface=JsonRisk.get_const_surface(0.06);
+  JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
+
+  const params = new JsonRisk.Params({
+    valuation_date: JsonRisk.valuation_date,
+    curves: { curve: curve },
+    surfaces: { surface },
+  });
+
+  const Firstcall = [
     "15.02.2020",
     "22.05.2010",
     "15.08.2015",
@@ -38,10 +56,10 @@ test.execute = function (TestFramework, JsonRisk) {
     "15.06.2038",
     "18.07.2038",
   ];
-  var Tenor = [3, 3, 6, 6, 3, 3, 6, 6, 12, 12, 12, 12, 12, 1, 3];
-  var Calltenor = [1, 3, 6, 12, 3, 3, 6, 6, 12, 12, 12, 12, 12, 12, 12];
-  var curve = JsonRisk.get_const_curve(0.01);
-  Maturity = [
+  const Tenor = [3, 3, 6, 6, 3, 3, 6, 6, 12, 12, 12, 12, 12, 1, 3];
+  const Calltenor = [1, 3, 6, 12, 3, 3, 6, 6, 12, 12, 12, 12, 12, 12, 12];
+
+  const Maturity = [
     "15.02.2024",
     "15.05.2024",
     "15.08.2024",
@@ -58,21 +76,9 @@ test.execute = function (TestFramework, JsonRisk) {
     "15.08.2048",
     "15.08.2048",
   ];
-  surface = {
-    type: "bachelier",
-    expiries: [1, 2, 5],
-    terms: [1, 5, 10, 20],
-    values: [
-      [0.008, 0.0081, 0.0082, 0.008],
-      [0.0085, 0.0076, 0.0068, 0.0068],
-      [0.01, 0.0103, 0.012, 0.011],
-    ],
-  };
-  //surface=JsonRisk.get_const_surface(0.06);
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
 
   for (i = 0; i < Maturity.length; i++) {
-    amortizing_bonds.push({
+    const amortizing_callable_bond = new JsonRisk.CallableFixedIncome({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -83,9 +89,12 @@ test.execute = function (TestFramework, JsonRisk) {
       bdc: "m",
       dcc: "act/365",
       calendar: "TARGET",
+      disc_curve: "curve",
+      fwd_curve: "curve",
+      surface: "surface",
     });
 
-    accreting_bonds.push({
+    const accreting_callable_bond = new JsonRisk.CallableFixedIncome({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -96,9 +105,12 @@ test.execute = function (TestFramework, JsonRisk) {
       bdc: "m",
       dcc: "act/365",
       calendar: "TARGET",
+      disc_curve: "curve",
+      fwd_curve: "curve",
+      surface: "surface",
     });
 
-    multi_callable_bonds.push({
+    const callable_bond = new JsonRisk.CallableFixedIncome({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -108,29 +120,14 @@ test.execute = function (TestFramework, JsonRisk) {
       bdc: "m",
       dcc: "act/365",
       calendar: "TARGET",
+      disc_curve: "curve",
+      fwd_curve: "curve",
+      surface: "surface",
     });
 
-    result = JsonRisk.pricer_callable_bond(
-      multi_callable_bonds[i],
-      curve,
-      null,
-      curve,
-      surface,
-    );
-    result_accreting = JsonRisk.pricer_callable_bond(
-      accreting_bonds[i],
-      curve,
-      null,
-      curve,
-      surface,
-    );
-    result_amortizing = JsonRisk.pricer_callable_bond(
-      amortizing_bonds[i],
-      curve,
-      null,
-      curve,
-      surface,
-    );
+    result = callable_bond.value(params);
+    result_accreting = accreting_callable_bond.value(params);
+    result_amortizing = amortizing_callable_bond.value(params);
 
     console.log("Multi-callable amortizing bond price: " + result_amortizing);
     console.log("Multi-callable bullet bond price: " + result);

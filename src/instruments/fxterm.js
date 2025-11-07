@@ -1,73 +1,52 @@
 (function (library) {
-  /**
-   * creates an internal fxterm object (including swap resp. bonds) from input data
-   * @param {object} instrument instrument of type fxterm
-   * @memberof library
-   * @public
-   */
-  library.fxterm = function (instrument) {
-    //the near payment of the swap
-    this.near_leg = new library.fixed_income({
-      notional: instrument.notional, // negative if first leg is pay leg
-      maturity: instrument.maturity,
-      disc_curve: instrument.disc_curve || "",
-      fixed_rate: 0,
-      tenor: 0,
-    });
-
-    //the far payment of the swap
-    if (
-      typeof instrument.notional_2 === "number" &&
-      library.get_safe_date(instrument.maturity_2)
-    ) {
-      this.far_leg = new library.fixed_income({
-        notional: instrument.notional_2, // negative if second leg is pay leg
-        maturity: instrument.maturity_2,
-        disc_curve: instrument.disc_curve || "",
+  class FxTerm extends library.Instrument {
+    constructor(obj) {
+      super(obj);
+      //the near payment of the swap
+      this.near_leg = new library.FixedIncome({
+        notional: obj.notional, // negative if first leg is pay leg
+        maturity: obj.maturity,
+        disc_curve: obj.disc_curve || "",
         fixed_rate: 0,
         tenor: 0,
       });
-    } else {
-      this.far_leg = null;
+
+      //the far payment of the swap
+      if (
+        typeof obj.notional_2 === "number" &&
+        library.get_safe_date(obj.maturity_2)
+      ) {
+        this.far_leg = new library.FixedIncome({
+          notional: obj.notional_2, // negative if second leg is pay leg
+          maturity: obj.maturity_2,
+          disc_curve: obj.disc_curve || "",
+          fixed_rate: 0,
+          tenor: 0,
+        });
+      } else {
+        this.far_leg = null;
+      }
     }
-  };
-  /**
-   * calculates the present value for internal fxterm (object)
-   * @param {object} disc_curve discount curve
-   * @returns {number} present value
-   * @memberof library
-   * @public
-   */
-  library.fxterm.prototype.present_value = function (disc_curve) {
-    var res = 0;
-    res += this.near_leg.present_value(disc_curve, null, null);
-    if (this.far_leg) res += this.far_leg.present_value(disc_curve, null, null);
-    return res;
-  };
 
-  library.fxterm.prototype.add_deps = function (deps) {
-    if ((!deps) instanceof library.Deps)
-      throw new Error("add_deps: deps must be of type Deps");
-    this.near_leg.add_deps(deps);
-  };
+    present_value(disc_curve) {
+      var res = 0;
+      res += this.near_leg.present_value(disc_curve, null, null);
+      if (this.far_leg)
+        res += this.far_leg.present_value(disc_curve, null, null);
+      return res;
+    }
 
-  library.fxterm.prototype.evaluate = function (params) {
-    if ((!params) instanceof library.Params)
-      throw new Error("evaluate: params must be of type Params");
-    const disc_curve = params.getCurve(this.near_leg.disc_curve);
-    return this.present_value(disc_curve);
-  };
+    add_deps_impl(deps) {
+      this.near_leg.add_deps(deps);
+    }
 
-  /**
-   * calculates the present value for fxterm
-   * @param {object} fxterm instrument of type fxterm
-   * @param {object} disc_curve discount curve
-   * @returns {number} present value
-   * @memberof library
-   * @public
-   */
-  library.pricer_fxterm = function (fxterm, disc_curve) {
-    var fxterm_internal = new library.fxterm(fxterm);
-    return fxterm_internal.present_value(disc_curve);
-  };
+    value_impl(params) {
+      if ((!params) instanceof library.Params)
+        throw new Error("evaluate: params must be of type Params");
+      const disc_curve = params.get_curve(this.near_leg.disc_curve);
+      return this.present_value(disc_curve);
+    }
+  }
+
+  library.FxTerm = FxTerm;
 })(this.JsonRisk || module.exports);

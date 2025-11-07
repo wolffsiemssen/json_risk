@@ -6,21 +6,21 @@
     constructor() {}
 
     #require_string(name) {
-      if (typeof name !== "string")
-        throw new Error("Deps: name must be a string");
-      if (name === "") throw new Error("Deps: name must be nonempty");
-      return name;
+      return library.nonempty_string_or_throw(
+        name,
+        "Deps: name must be a string and cannot be empty",
+      );
     }
 
-    addScalar(name) {
+    add_scalar(name) {
       this.#scalars.add(this.#require_string(name));
     }
 
-    addCurve(name) {
+    add_curve(name) {
       this.#curves.add(this.#require_string(name));
     }
 
-    addSurface(name) {
+    add_surface(name) {
       this.#surfaces.add(this.#require_string(name));
     }
 
@@ -36,7 +36,7 @@
       return Array.from(this.#surfaces);
     }
 
-    minimalParams(params_json) {
+    minimal_params(params_json) {
       const obj = {
         valuation_date: null,
         scalars: {},

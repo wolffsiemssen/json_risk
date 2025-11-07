@@ -18,9 +18,9 @@ test.execute = function (TestFramework, JsonRisk) {
     Test callable bond Valuation
 
      */
-  var curve = JsonRisk.get_const_curve(0.01);
-  var curve_up = JsonRisk.get_const_curve(0.0101);
-  surface = {
+  const curve = { times: [1], zcs: [0.01] };
+  const curve_up = { times: [1], zcs: [0.0101] };
+  const surface = {
     type: "bachelier",
     expiries: [1, 2, 5],
     terms: [1, 5, 10, 20],
@@ -33,7 +33,19 @@ test.execute = function (TestFramework, JsonRisk) {
   //surface=JsonRisk.get_const_surface(0.06);
   JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
 
-  Maturity = [
+  const params = new JsonRisk.Params({
+    valuation_date: JsonRisk.valuation_date,
+    curves: { curve: curve },
+    surfaces: { surface },
+  });
+
+  const params_up = new JsonRisk.Params({
+    valuation_date: JsonRisk.valuation_date,
+    curves: { curve: curve_up },
+    surfaces: { surface },
+  });
+
+  const Maturity = [
     "15.02.2024",
     "15.05.2024",
     "15.08.2024",
@@ -50,7 +62,7 @@ test.execute = function (TestFramework, JsonRisk) {
     "15.08.2048",
     "15.08.2048",
   ];
-  var Firstcall = [
+  const Firstcall = [
     "15.02.2020",
     "22.05.2010",
     "15.08.2015",
@@ -67,15 +79,24 @@ test.execute = function (TestFramework, JsonRisk) {
     "15.06.2038",
     "18.07.2038",
   ];
-  var Tenor = [3, 3, 6, 6, 3, 3, 6, 6, 12, 12, 12, 12, 12, 1, 3];
-  var Calltenor = [1, 3, 6, 12, 3, 3, 6, 6, 12, 12, 12, 12, 12, 12, 12];
+  const Tenor = [3, 3, 6, 6, 3, 3, 6, 6, 12, 12, 12, 12, 12, 1, 3];
+  const Calltenor = [1, 3, 6, 12, 3, 3, 6, 6, 12, 12, 12, 12, 12, 12, 12];
 
-  swaptions = [];
-  var european_options = [];
-  var bermudan_options = [];
-  var result_european, result_bermudan, result_swaption;
   for (i = 0; i < Maturity.length; i++) {
-    european_options.push({
+    const bond = new JsonRisk.FixedIncome({
+      maturity: Maturity[i],
+      tenor: Tenor[i],
+      call_tenor: 0,
+      notional: 100.0,
+      fixed_rate: 0.01,
+      bdc: "m",
+      dcc: "act/365",
+      calendar: "TARGET",
+      exclude_base: true,
+      disc_curve: "curve",
+    });
+
+    const european = new JsonRisk.CallableFixedIncome({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -86,8 +107,11 @@ test.execute = function (TestFramework, JsonRisk) {
       dcc: "act/365",
       calendar: "TARGET",
       exclude_base: true,
+      disc_curve: "curve",
+      fwd_curve: "curve",
+      surface: "surface",
     });
-    bermudan_options.push({
+    const bermudan = new JsonRisk.CallableFixedIncome({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -98,8 +122,11 @@ test.execute = function (TestFramework, JsonRisk) {
       dcc: "act/365",
       calendar: "TARGET",
       exclude_base: true,
+      disc_curve: "curve",
+      fwd_curve: "curve",
+      surface: "surface",
     });
-    swaptions.push({
+    const swaption = new JsonRisk.Swaption({
       is_payer: false,
       is_short: true,
       maturity: Maturity[i],
@@ -115,35 +142,17 @@ test.execute = function (TestFramework, JsonRisk) {
       float_bdc: "m",
       dcc: "act/365",
       float_dcc: "act/365",
+      disc_curve: "curve",
+      fwd_curve: "curve",
+      surface: "surface",
     });
 
-    result_european = JsonRisk.pricer_callable_bond(
-      european_options[i],
-      curve,
-      null,
-      curve,
-      surface,
-    );
-    result_bermudan = JsonRisk.pricer_callable_bond(
-      bermudan_options[i],
-      curve,
-      null,
-      curve,
-      surface,
-    );
-    result_swaption = JsonRisk.pricer_swaption(
-      swaptions[i],
-      curve,
-      curve,
-      surface,
-    );
-    bpv =
-      JsonRisk.pricer_bond(european_options[i], curve_up, null) -
-      JsonRisk.pricer_bond(european_options[i], curve, null);
-    console.log(
-      "Non-callable bond price : " +
-        JsonRisk.pricer_bond(european_options[i], curve, null),
-    );
+    result_european = european.value(params);
+    result_bermudan = bermudan.value(params);
+    result_swaption = swaption.value(params);
+    result_bond = bond.value(params);
+    bpv = bond.value(params_up) - result_bond;
+    console.log("Non-callable bond price : " + result_bond);
     console.log("Explicit swaption price : " + result_swaption);
     console.log("Embedded bond option price     : " + result_european);
     console.log("Multi-callable bond option price: " + result_bermudan);

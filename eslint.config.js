@@ -9,7 +9,7 @@ module.exports = [
       },
     },
     rules: {
-      "no-unused-vars": "warn",
+      "no-unused-vars": ["warn",  { "argsIgnorePattern": "_not_used" } ],
       "no-undef": "warn",
     },
   },

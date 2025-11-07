@@ -22,13 +22,55 @@ test.execute = function (TestFramework, JsonRisk) {
   //test irregular bonds by checking that, regardless of the amortisation used, a bond with coupon r, when discounted at r, always values at par.
 
   var Repay_Total = [30, 70, 100];
-  var Repay_Tenor = [1, 3, 6, 6, 12];
-  var Tenor = [1, 3, 6, 6, 12, 12];
-  var IntCap = [true, false];
-  var Repay_Stub_Days = [1, 2, 3, 4, 5, 10, 15, 30];
+  const Repay_Tenor = [1, 3, 6, 6, 12];
+  const Tenor = [1, 3, 6, 6, 12, 12];
+  const IntCap = [true, false];
+  const Repay_Stub_Days = [1, 2, 3, 4, 5, 10, 15, 30];
   bonds = [];
   JsonRisk.valuation_date = TestFramework.get_utc_date(2017, 10, 30);
-  var discount_rate;
+  const params_json = {
+    valuation_date: JsonRisk.valuation_date,
+    curves: {
+      curve: { times: [1], zcs: [0] },
+      steep_curve: {
+        times: [1, 2, 3, 5],
+        dfs: [0.95, 0.91, 0.86, 0.78],
+      },
+      spread_curve: { times: [1], zcs: [0.05] },
+    },
+    scenario_groups: [
+      [
+        {
+          name: "UP",
+          rules: [
+            {
+              model: "additive",
+              risk_factors: ["curve"],
+              labels_x: ["1Y"],
+              labels_y: ["1Y"],
+              values: [[0.0001]],
+            },
+          ],
+        },
+        {
+          name: "DOWN",
+          rules: [
+            {
+              model: "additive",
+              risk_factors: ["curve"],
+              labels_x: ["1Y"],
+              labels_y: ["1Y"],
+              values: [[-0.0001]],
+            },
+          ],
+        },
+      ],
+    ],
+  };
+
+  const setBaseRateLevel = function (rate) {
+    params_json.curves.curve.zcs[0] = rate;
+  };
 
   Maturity = [
     "15.02.2024",
@@ -44,14 +86,15 @@ test.execute = function (TestFramework, JsonRisk) {
     "15.08.2046",
     "15.08.2048",
   ];
-  Kupon = [1.75, 1.5, 1.0, 0.5, 1.0, 0.5, 4.25, 4.75, 3.25, 2.5, 2.5, 1.25];
+  Coupon = [1.75, 1.5, 1.0, 0.5, 1.0, 0.5, 4.25, 4.75, 3.25, 2.5, 2.5, 1.25];
 
   for (i = 0; i < 400; i++) {
     bonds.push({
+      type: "bond",
       effective_date: JsonRisk.valuation_date,
       maturity: Maturity[i % Maturity.length],
       notional: 100.0,
-      fixed_rate: Kupon[i % Kupon.length] / 100,
+      fixed_rate: Coupon[i % Coupon.length] / 100,
       tenor: Tenor[i % Tenor.length], //(1+c*t/12)^(12/t)=1+c0
       repay_tenor: Repay_Tenor[i % Repay_Tenor.length],
       repay_next_to_last_date: JsonRisk.add_days(
@@ -67,38 +110,32 @@ test.execute = function (TestFramework, JsonRisk) {
           JsonRisk.get_safe_date(Maturity[i % Maturity.length]),
         ),
       interest_capitalization: IntCap[i % IntCap.length],
+      disc_curve: "curve",
     });
     //discount curves are always annual compounding act/365, so we need to adjust the rate according to the tenor in order to arrive at a par valuation
     discount_rate =
       Math.pow(
-        1 + ((Kupon[i % Kupon.length] / 100) * Tenor[i % Tenor.length]) / 12,
+        1 + ((Coupon[i % Coupon.length] / 100) * Tenor[i % Tenor.length]) / 12,
         12 / Tenor[i % Tenor.length],
       ) - 1;
+    setBaseRateLevel(discount_rate);
 
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    p1 = bond_internal.present_value({
-      times: [1],
-      zcs: [discount_rate - 0.0001],
-    });
+    let [base, pUp, pDown] = JsonRisk.vector_pricer(bonds[i], params_json);
     console.log(
       "JSON Risk irregular bond price discounted at coupon rate minus one basis point (" +
         (i + 1) +
         "): " +
-        p1.toFixed(3),
+        pDown.toFixed(3),
     );
 
-    p2 = bond_internal.present_value({
-      times: [1],
-      zcs: [discount_rate + 0.0001],
-    });
     console.log(
       "JSON Risk irregular bond price discounted at coupon rate plus one basis point (" +
         (i + 1) +
         "): " +
-        p2.toFixed(3),
+        pUp.toFixed(3),
     );
     TestFramework.assert(
-      p1 > 100 && p2 < 100,
+      pDown > 100 && pUp < 100,
       "Irregular bond valuation for amortising bonds (" + (i + 1) + ").",
     );
   }
@@ -113,34 +150,28 @@ test.execute = function (TestFramework, JsonRisk) {
     //discount curves are always annual compounding act/365, so we need to adjust the rate according to the tenor in order to arrive at a par valuation
     discount_rate =
       Math.pow(
-        1 + ((Kupon[i % Kupon.length] / 100) * Tenor[i % Tenor.length]) / 12,
+        1 + ((Coupon[i % Coupon.length] / 100) * Tenor[i % Tenor.length]) / 12,
         12 / Tenor[i % Tenor.length],
       ) - 1;
 
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    p1 = bond_internal.present_value({
-      times: [1],
-      zcs: [discount_rate - 0.0001],
-    });
+    setBaseRateLevel(discount_rate);
+
+    let [base, pUp, pDown] = JsonRisk.vector_pricer(bonds[i], params_json);
     console.log(
       "JSON Risk irregular bond price discounted at coupon rate minus one basis point (" +
         (i + 1) +
         "): " +
-        p1.toFixed(3),
+        pDown.toFixed(3),
     );
 
-    p2 = bond_internal.present_value({
-      times: [1],
-      zcs: [discount_rate + 0.0001],
-    });
     console.log(
       "JSON Risk irregular bond price discounted at coupon rate plus one basis point (" +
         (i + 1) +
         "): " +
-        p2.toFixed(3),
+        pUp.toFixed(3),
     );
     TestFramework.assert(
-      p1 > 100 && p2 < 100,
+      pDown > 100 && pUp < 100,
       "Irregular bond valuation with changing repay amounts (" + (i + 1) + ").",
     );
   }
@@ -157,34 +188,28 @@ test.execute = function (TestFramework, JsonRisk) {
     //discount curves are always annual compounding act/365, so we need to adjust the rate according to the tenor in order to arrive at a par valuation
     discount_rate =
       Math.pow(
-        1 + ((Kupon[i % Kupon.length] / 100) * Tenor[i % Tenor.length]) / 12,
+        1 + ((Coupon[i % Coupon.length] / 100) * Tenor[i % Tenor.length]) / 12,
         12 / Tenor[i % Tenor.length],
       ) - 1;
 
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    p1 = bond_internal.present_value({
-      times: [1],
-      zcs: [discount_rate - 0.0001],
-    });
+    setBaseRateLevel(discount_rate);
+
+    let [base, pUp, pDown] = JsonRisk.vector_pricer(bonds[i], params_json);
     console.log(
       "JSON Risk irregular bond price discounted at coupon rate minus one basis point (" +
         (i + 1) +
         "): " +
-        p1.toFixed(3),
+        pDown.toFixed(3),
     );
 
-    p2 = bond_internal.present_value({
-      times: [1],
-      zcs: [discount_rate + 0.0001],
-    });
     console.log(
       "JSON Risk irregular bond price discounted at coupon rate plus one basis point (" +
         (i + 1) +
         "): " +
-        p2.toFixed(3),
+        pUp.toFixed(3),
     );
     TestFramework.assert(
-      p1 > 100 && p2 < 100,
+      pDown > 100 && pUp < 100,
       "Irregular bond valuation with changing repay amounts (" + (i + 1) + ").",
     );
   }
@@ -192,11 +217,11 @@ test.execute = function (TestFramework, JsonRisk) {
   // test margins. Bond with margin should have the same principal cashflow as the same bond without margin
   var res = 0;
   for (i = 0; i < 400; i++) {
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    p1 = bond_internal.get_cash_flows().pmt_principal;
+    let bond = new JsonRisk.FixedIncome(bonds[i]);
+    p1 = bond.get_cash_flows().pmt_principal;
     bonds[i].excl_margin = 0.00125;
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    p2 = bond_internal.get_cash_flows().pmt_principal;
+    bond = new JsonRisk.FixedIncome(bonds[i]);
+    p2 = bond.get_cash_flows().pmt_principal;
     for (var j = 0; j < p1.length; j++) {
       res += Math.abs(p2[j] - p1[j]);
     }
@@ -209,23 +234,12 @@ test.execute = function (TestFramework, JsonRisk) {
   // test fair rate derivation for all kinds of amortizing bonds
 
   bonds = [];
-  times = [1, 2, 3, 5];
-  dfs = [0.95, 0.91, 0.86, 0.78];
-  curve = {
-    times: times,
-    dfs: dfs,
-  };
-  var spread_curve = {
-    times: [1],
-    zcs: [0.05],
-  };
-  var r;
   for (i = 0; i < 400; i++) {
     bonds.push({
       effective_date: JsonRisk.valuation_date,
       maturity: Maturity[i % Maturity.length],
       notional: 100.0,
-      fixed_rate: Kupon[i % Kupon.length] / 100,
+      fixed_rate: Coupon[i % Coupon.length] / 100,
       tenor: Tenor[i % Tenor.length], //(1+c*t/12)^(12/t)=1+c0
       repay_tenor: Repay_Tenor[i % Repay_Tenor.length],
       repay_next_to_last_date: JsonRisk.add_days(
@@ -242,15 +256,19 @@ test.execute = function (TestFramework, JsonRisk) {
           JsonRisk.get_safe_date(Maturity[i % Maturity.length]),
         ),
       interest_capitalization: false, //test can only work for non-capitalising instruments. For capitalising instruments, changing the rate would change the notional structure.
+      disc_curve: "steep_curve",
+      spread_curve: "spread_curve",
     });
 
     //fix rate
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    r = bond_internal.fair_rate_or_spread(curve, spread_curve, null);
+    let r = new JsonRisk.FixedIncome(bonds[i]).fair_rate_or_spread(
+      params_json.curves.steep_curve,
+      params_json.curves.spread_curve,
+      null,
+    );
 
     bonds[i].fixed_rate = r;
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    p1 = bond_internal.present_value(curve, spread_curve);
+    let p1 = new JsonRisk.FixedIncome(bonds[i]).value(params_json);
     console.log(
       "JSON Risk irregular bond fair rate        (" +
         (i + 1) +
@@ -273,12 +291,15 @@ test.execute = function (TestFramework, JsonRisk) {
     bonds[i].fixed_rate = null;
     bonds[i].float_current_rate = 0;
     bonds[i].float_spread = 0;
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    r = bond_internal.fair_rate_or_spread(curve, spread_curve, curve);
+    bonds[i].fwd_curve = "steep_curve";
+    r = new JsonRisk.FixedIncome(bonds[i]).fair_rate_or_spread(
+      params_json.curves.steep_curve,
+      params_json.curves.spread_curve,
+      params_json.curves.steep_curve,
+    );
 
     bonds[i].float_spread = r;
-    bond_internal = new JsonRisk.fixed_income(bonds[i]);
-    p1 = bond_internal.present_value(curve, spread_curve, curve);
+    p1 = new JsonRisk.FixedIncome(bonds[i]).value(params_json);
     console.log(
       "JSON Risk irregular floater fair spread        (" +
         (i + 1) +

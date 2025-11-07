@@ -18,78 +18,92 @@ test.execute = function (TestFramework, JsonRisk) {
     Test cashflow equivalent swaption generation
 
      */
+  JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
+  const params = {
+    valuation_date: TestFramework.get_utc_date(2000, 0, 17),
+    curves: {
+      curve: {
+        times: [1 / 12, 3 / 12, 6 / 12, 1, 2, 3, 4, 5],
+        zcs: [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.007],
+      },
+    },
+    surfaces: {
+      surface: {
+        type: "bachelier",
+        expiries: [1, 2, 3],
+        terms: [1, 2, 3, 4],
+        values: [
+          [0.01, 0.01, 0.02, 0.02],
+          [0.02, 0.02, 0.03, 0.03],
+          [0.03, 0.03, 0.04, 0.04],
+        ],
+      },
+    },
+  };
+
   var expiries = [0, 6, 12, 18, 24, 36, 48, 60, 72, 96, 120];
   var months = [6, 12, 24, 48, 72, 120];
-  var zcs = [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.007];
-  var times = [1 / 12, 3 / 12, 6 / 12, 1, 2, 3, 4, 5];
-  var first_exercise_date, swaption, swaption_internal, cfs, bond_internal;
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
-  curve = {
-    times: times,
-    zcs: zcs,
-  };
-  var surface = {
-    type: "bachelier",
-    expiries: [1, 2, 3],
-    terms: [1, 2, 3, 4],
-    values: [
-      [0.01, 0.01, 0.02, 0.02],
-      [0.02, 0.02, 0.03, 0.03],
-      [0.03, 0.03, 0.04, 0.04],
-    ],
-  };
   for (i = 0; i < months.length; i++) {
     for (j = 0; j < expiries.length; j++) {
-      first_exercise_date = JsonRisk.add_months(
+      const first_exercise_date = JsonRisk.add_months(
         JsonRisk.valuation_date,
         expiries[j],
       );
-      bond = {
-        maturity: JsonRisk.add_months(
-          JsonRisk.valuation_date,
-          expiries[j] + months[i],
-        ),
-        notional: j % 2 ? 10000 : 1000000000000,
-        fixed_rate: 0.02,
+      const bond_rate = 0.02;
+      const bond_maturity = JsonRisk.add_months(
+        JsonRisk.valuation_date,
+        expiries[j] + months[i],
+      );
+      const bond = new JsonRisk.FixedIncome({
+        maturity: bond_maturity,
+        notional: 10000000,
+        fixed_rate: bond_rate,
         tenor: 6,
         dcc: "act/365",
-      };
+        disc_curve: "curve",
+      });
 
-      bond_internal = new JsonRisk.fixed_income(bond);
-      p1 = bond_internal.present_value(curve, null);
+      const p1 = bond.value(params);
       console.log(
         "JSON Risk bond price:                           " + p1.toFixed(3),
       );
-      cfs = bond_internal.get_cash_flows();
-      swaption = JsonRisk.create_equivalent_regular_swaption(
+      const cfs = bond.get_cash_flows();
+      let swaption = JsonRisk.create_equivalent_regular_swaption(
         cfs,
         first_exercise_date,
         bond,
       );
-      p2 = JsonRisk.pricer_swaption(swaption, curve, curve, surface);
+      swaption_strike = swaption.fixed_rate;
+      swaption_maturity = swaption.maturity;
+
+      swaption.disc_curve = "curve";
+      swaption.fwd_curve = "curve";
+      swaption.surface = "surface";
+      swaption = new JsonRisk.Swaption(swaption);
+      p2 = swaption.value(params);
       console.log(
         "JSON Risk bond rate:                            " +
-          bond.fixed_rate.toFixed(8),
+          bond_rate.toFixed(8),
       );
       console.log(
         "JSON Risk equivalent regular swaption strike:   " +
-          swaption.fixed_rate.toFixed(8),
+          swaption_strike.toFixed(8),
       );
       console.log(
-        "JSON Risk bond maturity:                        " + bond.maturity,
+        "JSON Risk bond maturity:                        " + bond_maturity,
       );
       console.log(
-        "JSON Risk equivalent regular swaption maturity: " + swaption.maturity,
+        "JSON Risk equivalent regular swaption maturity: " + swaption_maturity,
       );
       console.log(
         "JSON Risk equivalent regular swaption price:    " + p2.toFixed(3),
       );
       TestFramework.assert(
-        swaption.maturity.getTime() === bond.maturity.getTime(),
+        swaption_maturity.getTime() === bond_maturity.getTime(),
         "Test equivalent swaption consistency for bullet bonds (maturity)",
       );
       TestFramework.assert(
-        swaption.fixed_rate.toFixed(5) === bond.fixed_rate.toFixed(5),
+        swaption_strike.toFixed(5) === bond_rate.toFixed(5),
         "Test equivalent swaption consistency for bullet bonds (rate)",
       );
       console.log("-----------------");

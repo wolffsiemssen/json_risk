@@ -132,12 +132,12 @@
     }
 
     // detach scenario rule
-    detachRule() {
+    detach_rule() {
       this.#get_surface_rate_scenario = this.get_surface_rate;
     }
 
     // attach scenario ruls
-    attachRule(rule) {
+    attach_rule(rule) {
       if (typeof rule === "object") {
         const scen = new library.Surface({
           labels_expiry: rule.labels_y,
@@ -167,7 +167,7 @@
           };
         }
       } else {
-        this.detachRule();
+        this.detach_rule();
       }
     }
 
