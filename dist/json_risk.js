@@ -3463,29 +3463,23 @@
   library.Surface = Surface;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  const error_message = "Deps: name must be a string and cannot be empty";
   class Deps {
     #scalars = new Set();
     #curves = new Set();
     #surfaces = new Set();
     constructor() {}
 
-    #require_string(name) {
-      return library.nonempty_string_or_throw(
-        name,
-        "Deps: name must be a string and cannot be empty",
-      );
-    }
-
     add_scalar(name) {
-      this.#scalars.add(this.#require_string(name));
+      this.#scalars.add(library.nonempty_string_or_throw(name, error_message));
     }
 
     add_curve(name) {
-      this.#curves.add(this.#require_string(name));
+      this.#curves.add(library.nonempty_string_or_throw(name, error_message));
     }
 
     add_surface(name) {
-      this.#surfaces.add(this.#require_string(name));
+      this.#surfaces.add(library.nonempty_string_or_throw(name, error_message));
     }
 
     get scalars() {
@@ -3543,13 +3537,6 @@
   library.Deps = Deps;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  const require_string = function (name) {
-    if (typeof name !== "string")
-      throw new Error("Params: name must be a string");
-    if (name === "") throw new Error("Params: name must be nonempty");
-    return name;
-  };
-
   const name_to_moneyness = function (str) {
     var s = str.toLowerCase();
     if (s.endsWith("atm")) return 0; //ATM surface
@@ -3663,19 +3650,28 @@
     }
 
     get_scalar(name) {
-      const n = require_string(name);
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_scalar: name must be nonempty string",
+      );
       if (!(n in this.#scalars)) throw new Error(`Params: no such scalar ${n}`);
       return this.#scalars[n];
     }
 
     get_curve(name) {
-      const n = require_string(name);
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_curve: name must be nonempty string",
+      );
       if (!(n in this.#curves)) throw new Error(`Params: no such curve ${n}`);
       return this.#curves[n];
     }
 
     get_surface(name) {
-      const n = require_string(name);
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_curve: name must be nonempty string",
+      );
       if (!(n in this.#surfaces))
         throw new Error(`Params: no such surface ${n}`);
       return this.#surfaces[n];

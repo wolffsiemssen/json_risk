@@ -1,27 +1,21 @@
 (function (library) {
+  const error_message = "Deps: name must be a string and cannot be empty";
   class Deps {
     #scalars = new Set();
     #curves = new Set();
     #surfaces = new Set();
     constructor() {}
 
-    #require_string(name) {
-      return library.nonempty_string_or_throw(
-        name,
-        "Deps: name must be a string and cannot be empty",
-      );
-    }
-
     add_scalar(name) {
-      this.#scalars.add(this.#require_string(name));
+      this.#scalars.add(library.nonempty_string_or_throw(name, error_message));
     }
 
     add_curve(name) {
-      this.#curves.add(this.#require_string(name));
+      this.#curves.add(library.nonempty_string_or_throw(name, error_message));
     }
 
     add_surface(name) {
-      this.#surfaces.add(this.#require_string(name));
+      this.#surfaces.add(library.nonempty_string_or_throw(name, error_message));
     }
 
     get scalars() {
