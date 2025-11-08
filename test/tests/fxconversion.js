@@ -23,7 +23,7 @@ test.execute = function (TestFramework, JsonRisk) {
     DKK: 7.5,
     NOK: 12.0,
     SEK: 11.0,
-    DEM: 1.9
+    DEM: 1.9,
   };
 
   let equity_json = {
@@ -36,7 +36,7 @@ test.execute = function (TestFramework, JsonRisk) {
     scalars: {
       stock: {
         value: 100.0,
-        tags:["stock"],
+        tags: ["stock"],
       },
       JPY: {
         value: currencies.JPY,
@@ -74,11 +74,11 @@ test.execute = function (TestFramework, JsonRisk) {
               tags: ["fx"],
               values: [[1.1]],
             },
-             {
+            {
               model: "multiplicative",
               tags: ["fx_inverse"],
               values: [[1.0 / 1.1]],
-            }
+            },
           ],
         },
         {
@@ -94,11 +94,11 @@ test.execute = function (TestFramework, JsonRisk) {
               tags: ["fx"],
               values: [[0.9]],
             },
-             {
+            {
               model: "multiplicative",
               tags: ["fx_inverse"],
               values: [[1.0 / 0.9]],
-            }
+            },
           ],
         },
       ],
