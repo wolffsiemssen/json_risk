@@ -27,6 +27,7 @@
     add_deps(deps) {
       if (!(deps instanceof library.Deps))
         throw new Error("add_deps: deps must be of type Deps");
+      if (this.#currency != "") deps.add_currency(this.#currency);
       this.add_deps_impl(deps);
     }
 
@@ -38,9 +39,13 @@
       const p =
         params instanceof library.Params ? params : new library.Params(params);
 
-      const val = this.value_impl(p, extras);
+      let val = this.value_impl(p, extras);
 
-      // todo: FX conversion et al.
+      if ("" != this.#currency) {
+        const fx = p.get_fx_rate(this.#currency, p.main_currency);
+        val *= fx;
+      }
+
       return val;
     }
   }

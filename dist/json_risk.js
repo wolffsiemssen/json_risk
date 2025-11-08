@@ -106,6 +106,7 @@
     add_deps(deps) {
       if (!(deps instanceof library.Deps))
         throw new Error("add_deps: deps must be of type Deps");
+      if (this.#currency != "") deps.add_currency(this.#currency);
       this.add_deps_impl(deps);
     }
 
@@ -117,9 +118,13 @@
       const p =
         params instanceof library.Params ? params : new library.Params(params);
 
-      const val = this.value_impl(p, extras);
+      let val = this.value_impl(p, extras);
 
-      // todo: FX conversion et al.
+      if ("" != this.#currency) {
+        const fx = p.get_fx_rate(this.#currency, p.main_currency);
+        val *= fx;
+      }
+
       return val;
     }
   }
@@ -378,7 +383,7 @@
 
     value_impl(params, extras_not_used) {
       const quote = params.get_scalar(this.#quote);
-      if ("" == this.#disc_curve) return this.quantity * quote.getValue();
+      if ("" == this.#disc_curve) return this.quantity * quote.get_value();
       library.require_vd();
       const spot_date = library.add_business_days(
         library.valuation_date,
@@ -388,7 +393,7 @@
 
       const dc = params.get_curve(this.#disc_curve);
       const discounted_quote =
-        quote.getValue() * dc.get_df(library.time_from_now(spot_date));
+        quote.get_value() * dc.get_df(library.time_from_now(spot_date));
       return this.quantity * discounted_quote;
     }
   }
@@ -3149,7 +3154,7 @@
       this.#scenario_value = this.#value;
     }
 
-    getValue() {
+    get_value() {
       return this.#scenario_value;
     }
   }
@@ -3468,6 +3473,7 @@
     #scalars = new Set();
     #curves = new Set();
     #surfaces = new Set();
+    #currencies = new Set();
     constructor() {}
 
     add_scalar(name) {
@@ -3482,6 +3488,12 @@
       this.#surfaces.add(library.nonempty_string_or_throw(name, error_message));
     }
 
+    add_currency(name) {
+      this.#currencies.add(
+        library.nonempty_string_or_throw(name, error_message),
+      );
+    }
+
     get scalars() {
       return Array.from(this.#scalars);
     }
@@ -3494,9 +3506,14 @@
       return Array.from(this.#surfaces);
     }
 
+    get currencies() {
+      return Array.from(this.#currencies);
+    }
+
     minimal_params(params_json) {
       const obj = {
         valuation_date: null,
+        main_currency: null,
         scalars: {},
         curves: {},
         surfaces: {},
@@ -3507,13 +3524,28 @@
         obj.valuation_date = params_json.valuation_date;
       }
 
-      if ("scenario_groups" in params_json) {
-        obj.scenario_groups = params_json.scenario_groups;
+      if ("main_currency" in params_json) {
+        obj.main_currency = params_json.main_currency;
       }
+
+      const main_currency = new library.Params(obj).main_currency;
 
       if ("scalars" in params_json) {
         for (const s of this.#scalars) {
           if (s in params_json.scalars) obj.scalars[s] = params_json.scalars[s];
+        }
+
+        for (const c of this.#currencies) {
+          if (c in params_json.scalars) obj.scalars[c] = params_json.scalars[c];
+          for (const delim of ["", "/", "_", "-"]) {
+            for (const name of [
+              c + delim + main_currency,
+              main_currency + delim + c,
+            ]) {
+              if (name in params_json.scalars)
+                obj.scalars[name] = params_json.scalars[name];
+            }
+          }
         }
       }
 
@@ -3528,6 +3560,10 @@
           if (s in params_json.surfaces)
             obj.surfaces[s] = params_json.surfaces[s];
         }
+      }
+
+      if ("scenario_groups" in params_json) {
+        obj.scenario_groups = params_json.scenario_groups;
       }
 
       return new library.Params(obj);
@@ -3563,6 +3599,7 @@
 
   class Params {
     #valuation_date = null;
+    #main_currency = "EUR";
     #scalars = {};
     #curves = {};
     #surfaces = {};
@@ -3574,6 +3611,15 @@
       if (!("valuation_date" in obj))
         throw new Error("Params: must contain a valuation_date property");
       this.#valuation_date = library.get_safe_date(obj.valuation_date);
+
+      // main currency
+      if (typeof obj.main_currrency === "string") {
+        if (obj.main_currency.length != 3)
+          throw new Error(
+            "Params: main_currency must be a three-letter currency code.",
+          );
+        this.#main_currency = obj.main_currency;
+      }
 
       // scalars
       if ("scalars" in obj) {
@@ -3645,6 +3691,10 @@
       return this.#valuation_date;
     }
 
+    get main_currency() {
+      return this.#main_currency;
+    }
+
     get num_scenarios() {
       return this.#num_scenarios;
     }
@@ -3675,6 +3725,30 @@
       if (!(n in this.#surfaces))
         throw new Error(`Params: no such surface ${n}`);
       return this.#surfaces[n];
+    }
+
+    #value_in_main_currency(cur) {
+      let mcur = this.#main_currency;
+      if (cur == mcur) return 1.0;
+      if (cur in this.#scalars) return 1.0 / this.#scalars[cur].get_value();
+      const delimiters = ["", "/", "_", "-"];
+      for (const d of delimiters) {
+        const name = cur + d + mcur;
+        if (name in this.#scalars) return this.#scalars[name].get_value();
+        const inverse = mcur + d + cur;
+        if (inverse in this.#scalars)
+          return 1.0 / this.#scalars[inverse].get_value();
+      }
+      throw new Error(
+        `Params: no scalar found that converts ${cur} to ${mcur}`,
+      );
+    }
+
+    get_fx_rate(from, to) {
+      if (from === to) return 1.0;
+      return (
+        this.#value_in_main_currency(from) / this.#value_in_main_currency(to)
+      );
     }
 
     detach_scenarios() {

@@ -25,6 +25,7 @@
 
   class Params {
     #valuation_date = null;
+    #main_currency = "EUR";
     #scalars = {};
     #curves = {};
     #surfaces = {};
@@ -36,6 +37,15 @@
       if (!("valuation_date" in obj))
         throw new Error("Params: must contain a valuation_date property");
       this.#valuation_date = library.get_safe_date(obj.valuation_date);
+
+      // main currency
+      if (typeof obj.main_currrency === "string") {
+        if (obj.main_currency.length != 3)
+          throw new Error(
+            "Params: main_currency must be a three-letter currency code.",
+          );
+        this.#main_currency = obj.main_currency;
+      }
 
       // scalars
       if ("scalars" in obj) {
@@ -107,6 +117,10 @@
       return this.#valuation_date;
     }
 
+    get main_currency() {
+      return this.#main_currency;
+    }
+
     get num_scenarios() {
       return this.#num_scenarios;
     }
@@ -137,6 +151,30 @@
       if (!(n in this.#surfaces))
         throw new Error(`Params: no such surface ${n}`);
       return this.#surfaces[n];
+    }
+
+    #value_in_main_currency(cur) {
+      let mcur = this.#main_currency;
+      if (cur == mcur) return 1.0;
+      if (cur in this.#scalars) return 1.0 / this.#scalars[cur].get_value();
+      const delimiters = ["", "/", "_", "-"];
+      for (const d of delimiters) {
+        const name = cur + d + mcur;
+        if (name in this.#scalars) return this.#scalars[name].get_value();
+        const inverse = mcur + d + cur;
+        if (inverse in this.#scalars)
+          return 1.0 / this.#scalars[inverse].get_value();
+      }
+      throw new Error(
+        `Params: no scalar found that converts ${cur} to ${mcur}`,
+      );
+    }
+
+    get_fx_rate(from, to) {
+      if (from === to) return 1.0;
+      return (
+        this.#value_in_main_currency(from) / this.#value_in_main_currency(to)
+      );
     }
 
     detach_scenarios() {

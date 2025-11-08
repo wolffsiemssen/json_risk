@@ -22,7 +22,7 @@
       this.#scenario_value = this.#value;
     }
 
-    getValue() {
+    get_value() {
       return this.#scenario_value;
     }
   }
