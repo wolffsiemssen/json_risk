@@ -48,6 +48,10 @@
         return new library.CallableFixedIncome(obj);
       case "equity":
         return new library.Equity(obj);
+      case "equity_future":
+        return new library.EquityFuture(obj);
+      case "equity_forward":
+        return new library.EquityForward(obj);
       default:
         throw new Error("make_instrument: invalid instrument type");
     }
@@ -376,6 +380,23 @@
       return this.#spot_days;
     }
 
+    spot_date() {
+      library.require_vd();
+      return library.add_business_days(
+        library.valuation_date,
+        this.#spot_days,
+        this.#is_holiday_func,
+      );
+    }
+
+    forward(spot, fwd_date, disc_curve, repo_curve) {
+      const tspot = library.time_from_now(this.spot_date());
+      const tfwd = library.time_from_now(fwd_date);
+      const discounted_spot = spot * disc_curve.get_df(tspot);
+      const res = discounted_spot / repo_curve.get_df(tfwd);
+      return res;
+    }
+
     add_deps_impl(deps) {
       deps.add_scalar(this.#quote);
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
@@ -385,11 +406,7 @@
       const quote = params.get_scalar(this.#quote);
       if ("" == this.#disc_curve) return this.quantity * quote.get_value();
       library.require_vd();
-      const spot_date = library.add_business_days(
-        library.valuation_date,
-        this.#spot_days,
-        this.#is_holiday_func,
-      );
+      const spot_date = this.spot_date();
 
       const dc = params.get_curve(this.#disc_curve);
       const discounted_quote =
@@ -399,6 +416,80 @@
   }
 
   library.Equity = Equity;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class EquityForward extends library.Equity {
+    #expiry = null;
+    #repo_curve = "";
+    #price = 0.0;
+    constructor(obj) {
+      super(obj);
+      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#repo_curve = library.string_or_empty(obj.repo_curve);
+      this.#price = library.get_safe_number(obj.price) || 0.0;
+    }
+
+    get repo_curve() {
+      return this.#repo_curve;
+    }
+
+    add_deps_impl(deps) {
+      super.add_deps_impl(deps);
+      if ("" != this.#repo_curve) deps.add_curve(this.#repo_curve);
+    }
+
+    value_impl(params, extras_not_used) {
+      library.require_vd();
+      if (library.valuation_date >= this.#expiry) return 0.0;
+      const quote = params.get_scalar(this.quote);
+      const dc = params.get_curve(this.disc_curve);
+      const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
+
+      const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
+      return (
+        this.quantity *
+        (forward - this.#price) *
+        dc.get_df(library.time_from_now(this.#expiry))
+      );
+    }
+  }
+
+  library.EquityForward = EquityForward;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class EquityFuture extends library.Equity {
+    #expiry = null;
+    #repo_curve = "";
+    #price = 0.0;
+    constructor(obj) {
+      super(obj);
+      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#repo_curve = library.string_or_empty(obj.repo_curve);
+      this.#price = library.get_safe_number(obj.price) || 0.0;
+    }
+
+    get repo_curve() {
+      return this.#repo_curve;
+    }
+
+    add_deps_impl(deps) {
+      super.add_deps_impl(deps);
+      if ("" != this.#repo_curve) deps.add_curve(this.#repo_curve);
+    }
+
+    value_impl(params, extras_not_used) {
+      library.require_vd();
+      if (library.valuation_date >= this.#expiry) return 0.0;
+      const quote = params.get_scalar(this.quote);
+      const dc = params.get_curve(this.disc_curve);
+      const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
+
+      const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
+      return this.quantity * (forward - this.#price);
+    }
+  }
+
+  library.EquityFuture = EquityFuture;
 })(this.JsonRisk || module.exports);
 (function (library) {
   class FixedIncome extends library.Instrument {

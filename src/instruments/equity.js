@@ -26,6 +26,23 @@
       return this.#spot_days;
     }
 
+    spot_date() {
+      library.require_vd();
+      return library.add_business_days(
+        library.valuation_date,
+        this.#spot_days,
+        this.#is_holiday_func,
+      );
+    }
+
+    forward(spot, fwd_date, disc_curve, repo_curve) {
+      const tspot = library.time_from_now(this.spot_date());
+      const tfwd = library.time_from_now(fwd_date);
+      const discounted_spot = spot * disc_curve.get_df(tspot);
+      const res = discounted_spot / repo_curve.get_df(tfwd);
+      return res;
+    }
+
     add_deps_impl(deps) {
       deps.add_scalar(this.#quote);
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
@@ -35,11 +52,7 @@
       const quote = params.get_scalar(this.#quote);
       if ("" == this.#disc_curve) return this.quantity * quote.get_value();
       library.require_vd();
-      const spot_date = library.add_business_days(
-        library.valuation_date,
-        this.#spot_days,
-        this.#is_holiday_func,
-      );
+      const spot_date = this.spot_date();
 
       const dc = params.get_curve(this.#disc_curve);
       const discounted_quote =

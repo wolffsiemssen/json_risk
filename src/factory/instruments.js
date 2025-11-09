@@ -21,6 +21,10 @@
         return new library.CallableFixedIncome(obj);
       case "equity":
         return new library.Equity(obj);
+      case "equity_future":
+        return new library.EquityFuture(obj);
+      case "equity_forward":
+        return new library.EquityForward(obj);
       default:
         throw new Error("make_instrument: invalid instrument type");
     }
