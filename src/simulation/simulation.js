@@ -36,7 +36,7 @@
   library.simulation = function (instrument_json, params_json, modules) {
     if (typeof instrument_json.type !== "string")
       throw new Error("simulation: instrument object must contain valid type");
-    library.valuation_date = library.get_safe_date(params_json.valuation_date);
+    library.set_valuation_date(params_json.valuation_date);
 
     // create context for module execution
     var context = {

@@ -18,7 +18,7 @@ test.execute = function (TestFramework, JsonRisk) {
     Test LGM option pricing
 
      */
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2019, 0, 1);
+  JsonRisk.set_valuation_date("2019/01/01");
   yf = JsonRisk.year_fraction_factory("");
   var cf_obj = {
     date_pmt: [

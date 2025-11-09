@@ -19,7 +19,7 @@ test.execute = function (TestFramework, JsonRisk) {
 
      */
 
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2017, 10, 30);
+  JsonRisk.set_valuation_date("30.11.2017");
 
   const times = [1, 2, 3, 5];
   const dfs = [0.95, 0.91, 0.86, 0.78];

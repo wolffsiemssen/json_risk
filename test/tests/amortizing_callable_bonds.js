@@ -31,7 +31,7 @@ test.execute = function (TestFramework, JsonRisk) {
     ],
   };
   //surface=JsonRisk.get_const_surface(0.06);
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
+  JsonRisk.set_valuation_date("17.01.2000");
 
   const params = new JsonRisk.Params({
     valuation_date: JsonRisk.valuation_date,

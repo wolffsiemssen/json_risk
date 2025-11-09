@@ -18,7 +18,7 @@ test.execute = function (TestFramework, JsonRisk) {
     Test Swaptions
 
      */
-
+  JsonRisk.set_valuation_date("2000/01/17");
   var params = {
     surfaces: {
       surface: {
@@ -39,11 +39,7 @@ test.execute = function (TestFramework, JsonRisk) {
       },
     },
   };
-  params.valuation_date = JsonRisk.valuation_date = TestFramework.get_utc_date(
-    2000,
-    0,
-    17,
-  );
+  params.valuation_date = JsonRisk.valuation_date;
   params = new JsonRisk.Params(params);
 
   const expiries = [0, 6, 12, 18, 24, 36, 48, 60, 72, 96, 120];

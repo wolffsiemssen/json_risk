@@ -19,7 +19,7 @@ test.execute = function (TestFramework, JsonRisk) {
 
      */
 
-  JsonRisk.valuation_date = JsonRisk.get_safe_date("2000/01/01");
+  JsonRisk.set_valuation_date("2000/01/01");
 
   const equity_json = {
     type: "equity",

@@ -496,7 +496,6 @@
    * @public
    */
   library.lgm_calibrate = function (basket, disc_curve, fwd_curve, surface) {
-    library.require_vd();
     var xi,
       xi_vec = [];
     var cf_obj,

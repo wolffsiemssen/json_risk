@@ -27,7 +27,6 @@
     }
 
     spot_date() {
-      library.require_vd();
       return library.add_business_days(
         library.valuation_date,
         this.#spot_days,
@@ -51,7 +50,6 @@
     value_impl(params, extras_not_used) {
       const quote = params.get_scalar(this.#quote);
       if ("" == this.#disc_curve) return this.quantity * quote.get_value();
-      library.require_vd();
       const spot_date = this.spot_date();
 
       const dc = params.get_curve(this.#disc_curve);

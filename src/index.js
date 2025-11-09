@@ -14,13 +14,19 @@
     root.JsonRisk = factory();
   }
 })(this, function () {
+  var valuation_date = null;
   var JsonRisk = {
-    valuation_date: null,
+    get valuation_date() {
+      if (!(valuation_date instanceof Date))
+        throw new Error("JsonRisk: valuation_date must be set");
+      return valuation_date;
+    },
   };
 
-  JsonRisk.require_vd = function () {
-    if (!(JsonRisk.valuation_date instanceof Date))
-      throw new Error("JsonRisk: valuation_date must be set");
+  JsonRisk.set_valuation_date = function (d) {
+    valuation_date = JsonRisk.get_safe_date(d);
+    if (null === valuation_date)
+      throw new Error("JsonRisk: trying to set invalid valuation_date");
   };
 
   return JsonRisk;

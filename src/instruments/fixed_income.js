@@ -208,8 +208,6 @@
     }
 
     initialize_cash_flows() {
-      library.require_vd(); //valuation date must be set
-
       var date_accrual_start = new Array(this.schedule.length);
       var date_accrual_end = new Array(this.schedule.length);
       var is_interest_date = new Array(this.schedule.length);
@@ -358,8 +356,6 @@
     }
 
     finalize_cash_flows(fwd_curve, override_rate_or_spread) {
-      library.require_vd(); //valuation date must be set
-
       var c = this.cash_flows;
       var n = c.date_accrual_start.length;
       var current_principal = new Array(n);
@@ -595,8 +591,6 @@
     }
 
     fair_rate_or_spread(disc_curve, spread_curve, fwd_curve) {
-      library.require_vd(); //valuation date must be set
-
       if (!(disc_curve instanceof library.Curve))
         disc_curve = new library.Curve(disc_curve);
 

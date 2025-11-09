@@ -18,7 +18,7 @@ test.execute = function (TestFramework, JsonRisk) {
     Test cashflow equivalent swaption generation
 
      */
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2000, 0, 17);
+  JsonRisk.set_valuation_date("17.01.2000");
   const params = {
     valuation_date: TestFramework.get_utc_date(2000, 0, 17),
     curves: {

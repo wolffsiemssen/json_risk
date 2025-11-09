@@ -348,7 +348,6 @@
    * @public
    */
   library.time_from_now = function (d) {
-    library.require_vd();
     return yf_act365(library.valuation_date, d);
   };
 

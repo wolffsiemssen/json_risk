@@ -73,8 +73,8 @@ test.execute = function (TestFramework, JsonRisk) {
   };
 
   const setValuationDate = function (date) {
-    JsonRisk.valuation_date = JsonRisk.get_safe_date(date);
-    params_json.valuation_date = date;
+    JsonRisk.set_valuation_date(date);
+    params_json.valuation_date = JsonRisk.valuation_date;
   };
 
   setBaseRateLevel(0.05);
@@ -247,7 +247,6 @@ test.execute = function (TestFramework, JsonRisk) {
   }
 
   //Real prices before interest payment date minus settlement
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2017, 11, 31);
   setValuationDate("31.12.2017");
 
   DirtyPrice = [108.23, 157.199];
@@ -316,7 +315,7 @@ test.execute = function (TestFramework, JsonRisk) {
       JsonRisk.is_holiday_factory("TARGET"),
     );
   };
-  JsonRisk.valuation_date = adj(TestFramework.get_utc_date(1900, 0, 1));
+  JsonRisk.set_valuation_date(adj(TestFramework.get_utc_date(1900, 0, 1)));
 
   var pv = 0,
     pv_ref = 0;

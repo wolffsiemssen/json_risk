@@ -14,13 +14,19 @@
     root.JsonRisk = factory();
   }
 })(this, function () {
+  var valuation_date = null;
   var JsonRisk = {
-    valuation_date: null,
+    get valuation_date() {
+      if (!(valuation_date instanceof Date))
+        throw new Error("JsonRisk: valuation_date must be set");
+      return valuation_date;
+    },
   };
 
-  JsonRisk.require_vd = function () {
-    if (!(JsonRisk.valuation_date instanceof Date))
-      throw new Error("JsonRisk: valuation_date must be set");
+  JsonRisk.set_valuation_date = function (d) {
+    valuation_date = JsonRisk.get_safe_date(d);
+    if (null === valuation_date)
+      throw new Error("JsonRisk: trying to set invalid valuation_date");
   };
 
   return JsonRisk;
@@ -254,7 +260,6 @@
       var res = 0;
       var i;
       //eliminate past call dates and derive time to exercise
-      library.require_vd(); //valuation date must be set
       var t_exercise = [],
         tte;
       for (i = 0; i < this.call_schedule.length; i++) {
@@ -381,7 +386,6 @@
     }
 
     spot_date() {
-      library.require_vd();
       return library.add_business_days(
         library.valuation_date,
         this.#spot_days,
@@ -405,7 +409,6 @@
     value_impl(params, extras_not_used) {
       const quote = params.get_scalar(this.#quote);
       if ("" == this.#disc_curve) return this.quantity * quote.get_value();
-      library.require_vd();
       const spot_date = this.spot_date();
 
       const dc = params.get_curve(this.#disc_curve);
@@ -439,7 +442,6 @@
     }
 
     value_impl(params, extras_not_used) {
-      library.require_vd();
       if (library.valuation_date >= this.#expiry) return 0.0;
       const quote = params.get_scalar(this.quote);
       const dc = params.get_curve(this.disc_curve);
@@ -478,7 +480,6 @@
     }
 
     value_impl(params, extras_not_used) {
-      library.require_vd();
       if (library.valuation_date >= this.#expiry) return 0.0;
       const quote = params.get_scalar(this.quote);
       const dc = params.get_curve(this.disc_curve);
@@ -701,8 +702,6 @@
     }
 
     initialize_cash_flows() {
-      library.require_vd(); //valuation date must be set
-
       var date_accrual_start = new Array(this.schedule.length);
       var date_accrual_end = new Array(this.schedule.length);
       var is_interest_date = new Array(this.schedule.length);
@@ -851,8 +850,6 @@
     }
 
     finalize_cash_flows(fwd_curve, override_rate_or_spread) {
-      library.require_vd(); //valuation date must be set
-
       var c = this.cash_flows;
       var n = c.date_accrual_start.length;
       var current_principal = new Array(n);
@@ -1088,8 +1085,6 @@
     }
 
     fair_rate_or_spread(disc_curve, spread_curve, fwd_curve) {
-      library.require_vd(); //valuation date must be set
-
       if (!(disc_curve instanceof library.Curve))
         disc_curve = new library.Curve(disc_curve);
 
@@ -1353,8 +1348,6 @@
     }
 
     present_value(disc_curve, fwd_curve, vol_surface) {
-      library.require_vd();
-
       if (!(disc_curve instanceof library.Curve))
         disc_curve = new library.Curve(disc_curve);
 
@@ -1452,7 +1445,6 @@
       throw new Error(
         "create_equivalent_regular_swaption: invalid cashflow object",
       );
-    library.require_vd(); //valuation date must be set
     if (!conventions) conventions = {};
     var tenor = conventions.tenor || 6;
     var bdc = conventions.bdc || "unadjusted";
@@ -2077,7 +2069,6 @@
                 
                 */
 
-    library.require_vd(); //valuation date must be set
     //curve initialisation and fallbacks
     if (typeof residual_spread !== "number") residual_spread = 0;
     disc_curve = disc_curve || library.get_const_curve(0);
@@ -2120,7 +2111,6 @@
    * @public
    */
   library.irr = function (cf_obj, settlement_date, payment_on_settlement_date) {
-    library.require_vd(); //valuation date must be set
     if (!payment_on_settlement_date) payment_on_settlement_date = 0;
 
     var tset = library.time_from_now(settlement_date);
@@ -2633,7 +2623,6 @@
    * @public
    */
   library.lgm_calibrate = function (basket, disc_curve, fwd_curve, surface) {
-    library.require_vd();
     var xi,
       xi_vec = [];
     var cf_obj,
@@ -3943,7 +3932,7 @@
   library.simulation = function (instrument_json, params_json, modules) {
     if (typeof instrument_json.type !== "string")
       throw new Error("simulation: instrument object must contain valid type");
-    library.valuation_date = library.get_safe_date(params_json.valuation_date);
+    library.set_valuation_date(params_json.valuation_date);
 
     // create context for module execution
     var context = {
@@ -4515,7 +4504,6 @@
    * @public
    */
   library.time_from_now = function (d) {
-    library.require_vd();
     return yf_act365(library.valuation_date, d);
   };
 

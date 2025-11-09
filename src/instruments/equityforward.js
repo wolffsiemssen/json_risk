@@ -20,7 +20,6 @@
     }
 
     value_impl(params, extras_not_used) {
-      library.require_vd();
       if (library.valuation_date >= this.#expiry) return 0.0;
       const quote = params.get_scalar(this.quote);
       const dc = params.get_curve(this.disc_curve);

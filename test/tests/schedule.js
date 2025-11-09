@@ -279,7 +279,7 @@ test.execute = function (TestFramework, JsonRisk) {
     TestFramework.get_utc_date(1983, 0, 1),
     TestFramework.get_utc_date(1984, 0, 1),
   ];
-  JsonRisk.valuation_date = TestFramework.get_utc_date(1980, 6, 1);
+  JsonRisk.set_valuation_date("1980/07/01");
   sched = JsonRisk.schedule(
     null,
     TestFramework.get_utc_date(1984, 0, 1),

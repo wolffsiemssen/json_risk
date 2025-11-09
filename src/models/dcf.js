@@ -28,7 +28,6 @@
                 
                 */
 
-    library.require_vd(); //valuation date must be set
     //curve initialisation and fallbacks
     if (typeof residual_spread !== "number") residual_spread = 0;
     disc_curve = disc_curve || library.get_const_curve(0);
@@ -71,7 +70,6 @@
    * @public
    */
   library.irr = function (cf_obj, settlement_date, payment_on_settlement_date) {
-    library.require_vd(); //valuation date must be set
     if (!payment_on_settlement_date) payment_on_settlement_date = 0;
 
     var tset = library.time_from_now(settlement_date);

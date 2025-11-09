@@ -27,7 +27,7 @@ test.execute = function (TestFramework, JsonRisk) {
   const IntCap = [true, false];
   const Repay_Stub_Days = [1, 2, 3, 4, 5, 10, 15, 30];
   bonds = [];
-  JsonRisk.valuation_date = TestFramework.get_utc_date(2017, 10, 30);
+  JsonRisk.set_valuation_date("2017/11/30");
   const params_json = {
     valuation_date: JsonRisk.valuation_date,
     curves: {

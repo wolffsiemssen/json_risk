@@ -117,7 +117,6 @@
       var res = 0;
       var i;
       //eliminate past call dates and derive time to exercise
-      library.require_vd(); //valuation date must be set
       var t_exercise = [],
         tte;
       for (i = 0; i < this.call_schedule.length; i++) {

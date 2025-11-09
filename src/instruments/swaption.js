@@ -41,8 +41,6 @@
     }
 
     present_value(disc_curve, fwd_curve, vol_surface) {
-      library.require_vd();
-
       if (!(disc_curve instanceof library.Curve))
         disc_curve = new library.Curve(disc_curve);
 
@@ -140,7 +138,6 @@
       throw new Error(
         "create_equivalent_regular_swaption: invalid cashflow object",
       );
-    library.require_vd(); //valuation date must be set
     if (!conventions) conventions = {};
     var tenor = conventions.tenor || 6;
     var bdc = conventions.bdc || "unadjusted";
