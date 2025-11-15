@@ -1381,20 +1381,20 @@
       );
       this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
 
-      var res;
-      if (t_first_exercise_date < 0) {
-        //degenerate case where swaption has expired in the past
-        return 0;
-      } else if (t_first_exercise_date < 1 / 512 || this.std_dev < 0.000001) {
-        //degenerate case where swaption is almost expiring or volatility is very low
-        res = Math.max(this.swap.phi * this.moneyness, 0);
+      let res = 0.0;
+
+      if (this.swap.phi === -1) {
+        res = new library.BachelierModel(
+          t_first_exercise_date,
+          this.vol,
+        ).call_price(this.fair_rate, this.swap.fixed_rate);
       } else {
-        //bachelier formula
-        var d1 = this.moneyness / this.std_dev;
-        res =
-          this.swap.phi * this.moneyness * library.cndf(this.swap.phi * d1) +
-          this.std_dev * library.ndf(d1);
+        res = new library.BachelierModel(
+          t_first_exercise_date,
+          this.vol,
+        ).put_price(this.fair_rate, this.swap.fixed_rate);
       }
+
       res *= this.swap.annuity(disc_curve);
       res *= this.sign;
       return res;
@@ -2161,6 +2161,96 @@
     if (iter <= 0)
       throw new Error("find_root_ridders: failed, too many iterations");
   };
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class BachelierModel {
+    #impl = null;
+    #std_dev = 0.0;
+    constructor(time, volatility) {
+      this.#std_dev = volatility * Math.sqrt(time);
+      if (time < 0) {
+        this.#impl = function (
+          phi_not_used,
+          forward_not_used,
+          strike_not_used,
+        ) {
+          // expired option
+          return 0.0;
+        };
+      } else if (time < 1 / 512 || this.#std_dev < 0.000001) {
+        this.#impl = function (phi, forward, strike) {
+          // expiring option or very lw volatility, return inner value
+          return Math.max(phi * (forward - strike), 0);
+        };
+      } else {
+        // regular case - bachelier formula
+        this.#impl = this.#bachelier_formula;
+      }
+    }
+
+    #bachelier_formula(phi, forward, strike) {
+      const d1 = (forward - strike) / this.#std_dev;
+      return (
+        phi * (forward - strike) * library.cndf(phi * d1) +
+        this.#std_dev * library.ndf(d1)
+      );
+    }
+
+    put_price(forward, strike) {
+      return this.#impl(-1, forward, strike);
+    }
+
+    call_price(forward, strike) {
+      return this.#impl(1, forward, strike);
+    }
+  }
+  library.BachelierModel = BachelierModel;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class BlackModel {
+    #impl = null;
+    #std_dev = 0.0;
+    constructor(time, volatility) {
+      this.#std_dev = volatility * Math.sqrt(time);
+      if (time <= 0) {
+        this.#impl = function (
+          phi_not_used,
+          forward_not_used,
+          strike_not_used,
+        ) {
+          // expired option
+          return 0.0;
+        };
+      } else if (time < 1 / 512 || this.#std_dev < 0.000001) {
+        this.#impl = function (phi, forward, strike) {
+          // expiring option or very lw volatility, return inner value
+          return Math.max(phi * (forward - strike), 0);
+        };
+      } else {
+        // regular case - black formula
+        this.#impl = this.#black_formula;
+      }
+    }
+
+    #black_formula(phi, forward, strike) {
+      const temp = Math.log(forward / strike) / this.#std_dev;
+      const d1 = temp + 0.5 * this.#std_dev;
+      const d2 = temp - 0.5 * this.#std_dev;
+      return (
+        phi * forward * library.cndf(phi * d1) -
+        phi * strike * library.cndf(phi * d2)
+      );
+    }
+
+    put_price(forward, strike) {
+      return this.#impl(-1, forward, strike);
+    }
+
+    call_price(forward, strike) {
+      return this.#impl(1, forward, strike);
+    }
+  }
+  library.BlackModel = BlackModel;
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**

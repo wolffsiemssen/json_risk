@@ -74,20 +74,20 @@
       );
       this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
 
-      var res;
-      if (t_first_exercise_date < 0) {
-        //degenerate case where swaption has expired in the past
-        return 0;
-      } else if (t_first_exercise_date < 1 / 512 || this.std_dev < 0.000001) {
-        //degenerate case where swaption is almost expiring or volatility is very low
-        res = Math.max(this.swap.phi * this.moneyness, 0);
+      let res = 0.0;
+
+      if (this.swap.phi === -1) {
+        res = new library.BachelierModel(
+          t_first_exercise_date,
+          this.vol,
+        ).call_price(this.fair_rate, this.swap.fixed_rate);
       } else {
-        //bachelier formula
-        var d1 = this.moneyness / this.std_dev;
-        res =
-          this.swap.phi * this.moneyness * library.cndf(this.swap.phi * d1) +
-          this.std_dev * library.ndf(d1);
+        res = new library.BachelierModel(
+          t_first_exercise_date,
+          this.vol,
+        ).put_price(this.fair_rate, this.swap.fixed_rate);
       }
+
       res *= this.swap.annuity(disc_curve);
       res *= this.sign;
       return res;
