@@ -1636,8 +1636,8 @@
     return [x_, y_];
   };
 
-  const linear_interpolation = function (x, y) {
-    // private function that makes no more checks and copies
+  library.linear_interpolation = function (x, y) {
+    // function that makes no more checks and copies
     if (1 === x.length) {
       const y0 = y[0];
       return function (s_not_used) {
@@ -1655,7 +1655,7 @@
 
   library.linear_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
-    return linear_interpolation(x_, y_);
+    return library.linear_interpolation(x_, y_);
   };
 
   library.linear_xy_interpolation_factory = function (x, y) {
@@ -1670,7 +1670,7 @@
     for (let i = 0; i < x_.length; i++) {
       xy_[i] = x_[i] * y_[i];
     }
-    const linear = linear_interpolation(x_, xy_);
+    const linear = library.linear_interpolation(x_, xy_);
     return function (s) {
       if (s <= 0)
         throw new Error(
@@ -1685,7 +1685,7 @@
     const n = x_.length;
     // need at least three support points, otherwise fall back to linear
     if (n < 3) {
-      return linear_interpolation(x_, y_);
+      return library.linear_interpolation(x_, y_);
     }
 
     const dx = new Float64Array(n);
@@ -1730,6 +1730,105 @@
       const i = find_index(x_, s);
       const ds = s - x_[i];
       return y_[i] + ds * (b[i] + ds * (c[i] + ds * d[i]));
+    };
+  };
+})(this.JsonRisk || module.exports);
+(function (library) {
+  "use strict";
+
+  const copy_and_check_arrays = function (x1, x2, y) {
+    if (!Array.isArray(x1) || !Array.isArray(x2) || !Array.isArray(y))
+      throw new Error(
+        "interpolation2d_factory: invalid input, input must be arrays.",
+      );
+    const n1 = x1.length;
+    const n2 = x2.length;
+    if (0 === n1 || 0 === n2)
+      throw new Error(
+        "interpolation2d_factory: invalid input, x1 and x2 cannot be empty.",
+      );
+    if (y.length !== n1)
+      throw new Error(
+        "interpolation2d_factory: invalid input, y must have the same length as x1",
+      );
+    const x1_ = new Float64Array(n1);
+    const x2_ = new Float64Array(n2);
+    const y_ = new Float64Array(n1 * n2);
+
+    for (let i1 = 0; i1 < n1; i1++) {
+      if (i1 > 0 && x1[i1] <= x1[i1 - 1])
+        throw new Error(
+          "interpolation2d_factory: invalid input, x1 must be increasing",
+        );
+      x1_[i1] = x1[i1];
+      if (!Array.isArray(y[i1]) || n2 !== y[i1].length)
+        throw new Error(
+          "interpolation2d_factory: invalid input, each element of y must be an array and have the same length as x1",
+        );
+
+      for (let i2 = 0; i2 < n2; i2++) {
+        if (i1 === 0) {
+          x2_[i2] = x2[i2];
+          if (i2 > 0 && x2[i2] <= x2[i2 - 1])
+            throw new Error(
+              "interpolation2d_factory: invalid input, x2 must be increasing",
+            );
+        }
+        if (typeof y[i1][i2] !== "number")
+          throw new Error(
+            "interpolation2d_factory: invalid input, each element of each array in y must be a number.",
+          );
+        y_[i1 * n2 + i2] = y[i1][i2];
+      }
+    }
+    return [x1_, x2_, y_, n1, n2];
+  };
+
+  library.interpolation2d_factory = function (x1, x2, y) {
+    const [x1_, x2_, y_, n1, n2] = copy_and_check_arrays(x1, x2, y);
+
+    // 1xN, covers 1x! as well
+    if (n1 === 1) {
+      const interpolation = library.linear_interpolation(x2_, y_);
+      return function (s1_not_used, s2) {
+        if (s2 <= x2_[0]) return y_[0];
+        if (s2 >= x2_[n2 - 1]) return y_[n2 - 1];
+        return interpolation(s2);
+      };
+    }
+    // Nx1
+    if (n2 === 1) {
+      const interpolation = library.linear_interpolation(x1_, y_);
+      return function (s1, s2_not_used) {
+        if (s1 <= x1_[0]) return y_[0];
+        if (s1 >= x1_[n1 - 1]) return y_[n1 - 1];
+        return interpolation(s1);
+      };
+    }
+    // NxN
+    return function (s1, s2) {
+      if (s1 < x1_[0]) s1 = x1_[0];
+      else if (s1 > x1_[n1 - 1]) s1 = x1_[n1 - 1];
+
+      if (s2 < x2_[0]) s2 = x2_[0];
+      else if (s2 > x2_[n2 - 1]) s2 = x2_[n2 - 1];
+
+      const i1 = library.find_index(x1_, s1);
+      const i2 = library.find_index(x2_, s2);
+      const v11 = y_[i1 * n2 + i2];
+      const v12 = y_[i1 * n2 + n2 + i2];
+      const v21 = y_[i1 * n2 + i2 + 1];
+      const v22 = y_[i1 * n2 + n2 + i2 + 1];
+
+      const w1 = (s1 - x1_[i1]) / (x1_[i1 + 1] - x1_[i1]);
+      const w2 = (s2 - x2_[i2]) / (x2_[i2 + 1] - x2_[i2]);
+
+      return (
+        (1 - w1) * (1 - w2) * v11 +
+        (1 - w1) * w2 * v21 +
+        w1 * (1 - w2) * v12 +
+        w1 * w2 * v22
+      );
     };
   };
 })(this.JsonRisk || module.exports);
@@ -3235,6 +3334,145 @@
   library.Curve = Curve;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  // helper function for constructor
+  const get_times = function (labels) {
+    //construct times from labels
+    let res = null;
+    if (Array.isArray(labels)) {
+      res = labels.map((label) => library.period_str_to_time(label));
+    }
+    if (!res)
+      throw new Error(
+        "Surface: invalid surface, does not have times and no valid labels",
+      );
+    return res;
+  };
+
+  class ExpiryStrikeSurface extends library.Simulatable {
+    #type = "";
+    #expiries = null;
+    #moneyness = [];
+    get_surface_rate_scenario = null;
+    constructor(obj) {
+      super(obj);
+
+      if (obj.type !== "expiry_rel_strike" && obj.type !== "expiry_abs_strike")
+        throw new Error(
+          "ExpirySmileSurface: type must be expiry_rel_strike or expiry_abs_strike",
+        );
+
+      // expiries
+      if ("expiries" in obj) {
+        this.#expiries = library.get_safe_number_vector(obj.expiries);
+      } else {
+        this.#expiries = get_times(obj.labels_expiry);
+      }
+
+      // moneyness
+      if ("moneyness" in obj) {
+        this.#moneyness = library.get_safe_number_vector(obj.moneyness);
+      }
+
+      // interpolation
+      this.get_surface_rate = library.interpolation2d_factory(
+        this.#expiries,
+        this.#moneyness,
+        obj.values,
+      );
+
+      // scenario dependent surface evaluation
+      this.get_surface_rate_scenario = this.get_surface_rate;
+    }
+
+    // getter functions
+    get type() {
+      return this.#type;
+    }
+
+    // detach scenario rule
+    detach_rule() {
+      this.get_surface_rate_scenario = this.get_surface_rate;
+    }
+
+    // attach scenario ruls
+    attach_rule(rule) {
+      if (typeof rule === "object") {
+        const scen = new library.ExpiryStrikeSurface({
+          labels_expiry: rule.labels_y,
+          moneyness: [0.0],
+          values: [rule.values[0]],
+        });
+
+        if (rule.model === "multiplicative") {
+          this.get_surface_rate_scenario = function (t_expiry, t_moneyness) {
+            return (
+              this.get_surface_rate(t_expiry, t_moneyness) *
+              scen.get_surface_rate(t_expiry, t_moneyness)
+            );
+          };
+        }
+        if (rule.model === "additive") {
+          this.get_surface_rate_scenario = function (t_expiry, t_moneyness) {
+            return (
+              this.get_surface_rate(t_expiry, t_moneyness) +
+              scen.get_surface_rate(t_expiry, t_moneyness)
+            );
+          };
+        }
+        if (rule.model === "absolute") {
+          this.get_surface_rate_scenario = function (t_expiry, t_moneyness) {
+            return scen.get_surface_rate(t_expiry, t_moneyness);
+          };
+        }
+      } else {
+        this.detach_rule();
+      }
+    }
+
+    // interpolation function for cube
+    get_rate(
+      t_expiry_not_used,
+      t_term_not_used,
+      fwd_not_used,
+      strike_not_used,
+    ) {
+      throw new Error(
+        "ExpiryStrikeSurface: get_rate not implemented, use ExpiryRelStrikeSurface or ExpiryAbsStrikeSurface",
+      );
+    }
+  }
+
+  class ExpiryAbsStrikeSurface extends ExpiryStrikeSurface {
+    constructor(obj) {
+      super(obj);
+      if (obj.type !== "expiry_abs_strike")
+        throw new Error(
+          "ExpiryAbsStrikeSurface: type must be expiry_abs_strike",
+        );
+    }
+    get_rate(t_expiry, t_term_not_used, fwd_not_used, strike) {
+      return this.get_surface_rate_scenario(t_expiry, strike);
+    }
+  }
+
+  class ExpiryRelStrikeSurface extends ExpiryStrikeSurface {
+    constructor(obj) {
+      super(obj);
+      if (obj.type !== "expiry_rel_strike")
+        throw new Error(
+          "ExpiryRelStrikeSurface: type must be expiry_rel_strike",
+        );
+    }
+
+    get_rate(t_expiry, t_term_not_used, fwd, strike) {
+      return this.get_surface_rate_scenario(t_expiry, strike - fwd);
+    }
+  }
+
+  library.ExpiryAbsStrikeSurface = ExpiryAbsStrikeSurface;
+  library.ExpiryRelStrikeSurface = ExpiryRelStrikeSurface;
+})(this.JsonRisk || module.exports);
+(function (library) {
   class Scalar extends library.Simulatable {
     static type = "scalar";
     #value = null;
@@ -3299,37 +3537,10 @@
     return res;
   };
 
-  // helper function for constructor
-  const get_values = function (values, num_expiries, num_terms) {
-    let res = new Array();
-    if (!Array.isArray(values))
-      throw new Error("Surface: values must be an array");
-    if (values.length !== num_expiries)
-      throw new Error("Surface: values do not have the right length.");
-    for (const slice of values) {
-      if (!Array.isArray(slice))
-        throw new Error("Surface: values must be an array of arrays");
-      if (slice.length !== num_terms)
-        throw new Error(
-          "Surface: one of the slices does not have the right length.",
-        );
-      for (const value of slice) {
-        if (!(typeof value === "number"))
-          throw new Error(
-            `Surface: values must be an array of arrays of numbers, but contains invalid value ${value}`,
-          );
-      }
-      // slice is valid, make a copy of the values
-      res.push(Array.from(slice));
-    }
-    return res;
-  };
-
   class Surface extends library.Simulatable {
     #type = "bachelier";
     #expiries = null;
     #terms = null;
-    #values = null;
     #moneyness = [];
     #smile = [];
     #get_surface_rate_scenario = null;
@@ -3352,11 +3563,12 @@
       } else {
         this.#terms = get_times(obj.labels_term);
       }
-      // values
-      this.#values = get_values(
+
+      // interpolation
+      this.get_surface_rate = library.interpolation2d_factory(
+        this.#expiries,
+        this.#terms,
         obj.values,
-        this.#expiries.length,
-        this.#terms.length,
       );
 
       // moneyness
@@ -3436,83 +3648,6 @@
       } else {
         this.detach_rule();
       }
-    }
-
-    // interpolaton function for single slice
-    #get_slice_rate(i_expiry, t_term) {
-      let imin = 0;
-      let imax = this.#terms.length - 1;
-
-      const slice = this.#values[i_expiry];
-
-      //slice only has one value left
-      if (imin === imax) return slice[imin];
-      var tmin = this.#terms[imin];
-      var tmax = this.#terms[imax];
-      //extrapolation (constant)
-      if (t_term < tmin) return slice[imin];
-      if (t_term > tmax) return slice[imax];
-      // binary search
-      let imed, tmed;
-      while (imin + 1 !== imax) {
-        imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
-        tmed = this.#terms[imed];
-        if (t_term > tmed) {
-          tmin = tmed;
-          imin = imed;
-        } else {
-          tmax = tmed;
-          imax = imed;
-        }
-      }
-      //interpolation (linear)
-      if (tmax - tmin < 1 / 512)
-        throw new Error(
-          "get_slice_rate: invalid surface, support points must be increasing and differ at least one day",
-        );
-      var temp = 1 / (tmax - tmin);
-      return (
-        (slice[imin] * (tmax - t_term) + slice[imax] * (t_term - tmin)) * temp
-      );
-    }
-
-    // interpolation function for surface
-    get_surface_rate(t_expiry, t_term) {
-      var imin = 0;
-      var imax = this.#expiries.length - 1;
-
-      // surface only has one slice left
-      if (imin === imax) return this.#get_slice_rate(imin, t_term);
-      var tmin = this.#expiries[imin];
-      var tmax = this.#expiries[imax];
-      // extrapolation (constant)
-      if (t_expiry < tmin) return this.#get_slice_rate(imin, t_term);
-      if (t_expiry > tmax) return this.#get_slice_rate(imax, t_term);
-      // binary search
-      var imed, tmed;
-      while (imin + 1 !== imax) {
-        // truncate the mean time down to the closest integer
-        imed = ((imin + imax) / 2.0) | 0;
-        tmed = this.#expiries[imed];
-        if (t_expiry > tmed) {
-          tmin = tmed;
-          imin = imed;
-        } else {
-          tmax = tmed;
-          imax = imed;
-        }
-      }
-      // interpolation (linear)
-      if (tmax - tmin < 1 / 512)
-        throw new Error(
-          "get_surface_rate: invalid surface, support points must be increasing and differ at least one day",
-        );
-      var temp = 1 / (tmax - tmin);
-      return (
-        (this.#get_slice_rate(imin, t_term) * (tmax - t_expiry) +
-          this.#get_slice_rate(imax, t_term) * (t_expiry - tmin)) *
-        temp
-      );
     }
 
     // interpolation function for cube

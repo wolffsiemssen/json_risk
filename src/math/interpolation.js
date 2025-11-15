@@ -36,8 +36,8 @@
     return [x_, y_];
   };
 
-  const linear_interpolation = function (x, y) {
-    // private function that makes no more checks and copies
+  library.linear_interpolation = function (x, y) {
+    // function that makes no more checks and copies
     if (1 === x.length) {
       const y0 = y[0];
       return function (s_not_used) {
@@ -55,7 +55,7 @@
 
   library.linear_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
-    return linear_interpolation(x_, y_);
+    return library.linear_interpolation(x_, y_);
   };
 
   library.linear_xy_interpolation_factory = function (x, y) {
@@ -70,7 +70,7 @@
     for (let i = 0; i < x_.length; i++) {
       xy_[i] = x_[i] * y_[i];
     }
-    const linear = linear_interpolation(x_, xy_);
+    const linear = library.linear_interpolation(x_, xy_);
     return function (s) {
       if (s <= 0)
         throw new Error(
@@ -85,7 +85,7 @@
     const n = x_.length;
     // need at least three support points, otherwise fall back to linear
     if (n < 3) {
-      return linear_interpolation(x_, y_);
+      return library.linear_interpolation(x_, y_);
     }
 
     const dx = new Float64Array(n);

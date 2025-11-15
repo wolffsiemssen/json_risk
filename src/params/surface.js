@@ -32,37 +32,10 @@
     return res;
   };
 
-  // helper function for constructor
-  const get_values = function (values, num_expiries, num_terms) {
-    let res = new Array();
-    if (!Array.isArray(values))
-      throw new Error("Surface: values must be an array");
-    if (values.length !== num_expiries)
-      throw new Error("Surface: values do not have the right length.");
-    for (const slice of values) {
-      if (!Array.isArray(slice))
-        throw new Error("Surface: values must be an array of arrays");
-      if (slice.length !== num_terms)
-        throw new Error(
-          "Surface: one of the slices does not have the right length.",
-        );
-      for (const value of slice) {
-        if (!(typeof value === "number"))
-          throw new Error(
-            `Surface: values must be an array of arrays of numbers, but contains invalid value ${value}`,
-          );
-      }
-      // slice is valid, make a copy of the values
-      res.push(Array.from(slice));
-    }
-    return res;
-  };
-
   class Surface extends library.Simulatable {
     #type = "bachelier";
     #expiries = null;
     #terms = null;
-    #values = null;
     #moneyness = [];
     #smile = [];
     #get_surface_rate_scenario = null;
@@ -85,11 +58,12 @@
       } else {
         this.#terms = get_times(obj.labels_term);
       }
-      // values
-      this.#values = get_values(
+
+      // interpolation
+      this.get_surface_rate = library.interpolation2d_factory(
+        this.#expiries,
+        this.#terms,
         obj.values,
-        this.#expiries.length,
-        this.#terms.length,
       );
 
       // moneyness
@@ -169,83 +143,6 @@
       } else {
         this.detach_rule();
       }
-    }
-
-    // interpolaton function for single slice
-    #get_slice_rate(i_expiry, t_term) {
-      let imin = 0;
-      let imax = this.#terms.length - 1;
-
-      const slice = this.#values[i_expiry];
-
-      //slice only has one value left
-      if (imin === imax) return slice[imin];
-      var tmin = this.#terms[imin];
-      var tmax = this.#terms[imax];
-      //extrapolation (constant)
-      if (t_term < tmin) return slice[imin];
-      if (t_term > tmax) return slice[imax];
-      // binary search
-      let imed, tmed;
-      while (imin + 1 !== imax) {
-        imed = ((imin + imax) / 2.0) | 0; // truncate the mean time down to the closest integer
-        tmed = this.#terms[imed];
-        if (t_term > tmed) {
-          tmin = tmed;
-          imin = imed;
-        } else {
-          tmax = tmed;
-          imax = imed;
-        }
-      }
-      //interpolation (linear)
-      if (tmax - tmin < 1 / 512)
-        throw new Error(
-          "get_slice_rate: invalid surface, support points must be increasing and differ at least one day",
-        );
-      var temp = 1 / (tmax - tmin);
-      return (
-        (slice[imin] * (tmax - t_term) + slice[imax] * (t_term - tmin)) * temp
-      );
-    }
-
-    // interpolation function for surface
-    get_surface_rate(t_expiry, t_term) {
-      var imin = 0;
-      var imax = this.#expiries.length - 1;
-
-      // surface only has one slice left
-      if (imin === imax) return this.#get_slice_rate(imin, t_term);
-      var tmin = this.#expiries[imin];
-      var tmax = this.#expiries[imax];
-      // extrapolation (constant)
-      if (t_expiry < tmin) return this.#get_slice_rate(imin, t_term);
-      if (t_expiry > tmax) return this.#get_slice_rate(imax, t_term);
-      // binary search
-      var imed, tmed;
-      while (imin + 1 !== imax) {
-        // truncate the mean time down to the closest integer
-        imed = ((imin + imax) / 2.0) | 0;
-        tmed = this.#expiries[imed];
-        if (t_expiry > tmed) {
-          tmin = tmed;
-          imin = imed;
-        } else {
-          tmax = tmed;
-          imax = imed;
-        }
-      }
-      // interpolation (linear)
-      if (tmax - tmin < 1 / 512)
-        throw new Error(
-          "get_surface_rate: invalid surface, support points must be increasing and differ at least one day",
-        );
-      var temp = 1 / (tmax - tmin);
-      return (
-        (this.#get_slice_rate(imin, t_term) * (tmax - t_expiry) +
-          this.#get_slice_rate(imax, t_term) * (t_expiry - tmin)) *
-        temp
-      );
     }
 
     // interpolation function for cube

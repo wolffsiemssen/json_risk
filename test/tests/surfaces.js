@@ -208,4 +208,68 @@ test.execute = function (TestFramework, JsonRisk) {
     (3.5 * 2).toFixed(10) === s.get_rate(2.5, 3.5, 0, 0.015).toFixed(10),
     "Cube interpolation +150BP (4)",
   );
+
+  // Relstrike and Absstrike 2d surfaces
+  rel = new JsonRisk.ExpiryRelStrikeSurface({
+    type: "expiry_rel_strike",
+    expiries: [1, 2, 3],
+    moneyness: [-0.02, -0.01, 0.0, 0.01, 0.02],
+    values: [
+      [1, 1, 2, 3, 3],
+      [2, 2, 3, 4, 4],
+      [3, 3, 4, 5, 5],
+    ],
+  });
+
+  // Relstrike and Absstrike 2d surfaces
+  abs = new JsonRisk.ExpiryAbsStrikeSurface({
+    type: "expiry_abs_strike",
+    expiries: [1, 2, 3],
+    moneyness: [-0.01, 0.0, 0.01, 0.02, 0.03],
+    values: [
+      [1, 1, 2, 3, 3],
+      [2, 2, 3, 4, 4],
+      [3, 3, 4, 5, 5],
+    ],
+  });
+
+  TestFramework.assert(
+    (1.5).toFixed(10) === rel.get_rate(1.5, null, 0.01, -0.005).toFixed(10),
+    "ExpiryRelStrike Surface (1)",
+  );
+
+  TestFramework.assert(
+    (2.0).toFixed(10) === rel.get_rate(1.5, null, 0.01, 0.005).toFixed(10),
+    "ExpiryRelStrike Surface (2)",
+  );
+
+  TestFramework.assert(
+    (4.0).toFixed(10) === rel.get_rate(2.5, null, 0.01, 0.015).toFixed(10),
+    "ExpiryRelStrike Surface (3)",
+  );
+
+  TestFramework.assert(
+    (4.5).toFixed(10) === rel.get_rate(2.5, null, 0.01, 0.025).toFixed(10),
+    "ExpiryRelStrike Surface (4)",
+  );
+
+  TestFramework.assert(
+    (1.5).toFixed(10) === abs.get_rate(1.5, null, 0.01, -0.005).toFixed(10),
+    "ExpiryAbsStrike Surface (1)",
+  );
+
+  TestFramework.assert(
+    (2.0).toFixed(10) === abs.get_rate(1.5, null, 0.01, 0.005).toFixed(10),
+    "ExpiryAbsStrike Surface (2)",
+  );
+
+  TestFramework.assert(
+    (4.0).toFixed(10) === abs.get_rate(2.5, null, 0.01, 0.015).toFixed(10),
+    "ExpiryAbsStrike Surface (3)",
+  );
+
+  TestFramework.assert(
+    (4.5).toFixed(10) === abs.get_rate(2.5, null, 0.01, 0.025).toFixed(10),
+    "ExpiryAbsStrike Surface (4)",
+  );
 };
