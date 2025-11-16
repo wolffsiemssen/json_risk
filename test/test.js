@@ -97,6 +97,7 @@ if (typeof require === "function") {
     "fx_term.js",
     "fxconversion.js",
     "equities.js",
+    "equityvanillaoption.js",
     "irregular_bonds.js",
     "lgm_option_pricing.js",
     "callable_bond_valuation.js",

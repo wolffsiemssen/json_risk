@@ -25,6 +25,8 @@
         return new library.EquityFuture(obj);
       case "equity_forward":
         return new library.EquityForward(obj);
+      case "equity_option":
+        return new library.EquityOption(obj);
       default:
         throw new Error("make_instrument: invalid instrument type");
     }

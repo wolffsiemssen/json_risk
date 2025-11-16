@@ -25,6 +25,10 @@
     }
 
     #black_formula(phi, forward, strike) {
+      if (!(forward > 0.0))
+        throw new Error("Black76 model: forward must be positive");
+      if (!(strike > 0.0))
+        throw new Error("Black76 model: strike must be positive");
       const temp = Math.log(forward / strike) / this.#std_dev;
       const d1 = temp + 0.5 * this.#std_dev;
       const d2 = temp - 0.5 * this.#std_dev;

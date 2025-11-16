@@ -85,7 +85,7 @@
               temp.moneyness.push(moneyness);
             }
           }
-          this.#surfaces[key] = new library.Surface(temp);
+          this.#surfaces[key] = library.make_surface(temp);
         }
       }
 

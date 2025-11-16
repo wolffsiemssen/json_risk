@@ -58,8 +58,22 @@
         return new library.EquityFuture(obj);
       case "equity_forward":
         return new library.EquityForward(obj);
+      case "equity_option":
+        return new library.EquityOption(obj);
       default:
         throw new Error("make_instrument: invalid instrument type");
+    }
+  };
+})(this.JsonRisk || module.exports);
+(function (library) {
+  library.make_surface = function (obj) {
+    switch (obj.type.toLowerCase()) {
+      case "equity_rel_strike":
+        return new library.ExpiryRelStrkeSurface(obj);
+      case "expiry_abs_strike":
+        return new library.ExpiryAbsStrikeSurface(obj);
+      default:
+        return new library.Surface(obj);
     }
   };
 })(this.JsonRisk || module.exports);
@@ -491,6 +505,53 @@
   }
 
   library.EquityFuture = EquityFuture;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class EquityOption extends library.Equity {
+    #expiry = null;
+    #repo_curve = "";
+    #surface = "";
+    #strike = 0.0;
+    #is_call = true;
+    constructor(obj) {
+      super(obj);
+      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#repo_curve = library.string_or_empty(obj.repo_curve);
+      this.#surface = library.string_or_empty(obj.surface);
+      this.#strike = library.get_safe_number(obj.strike) || 0.0;
+      this.#is_call = library.get_safe_bool(obj.is_call);
+    }
+
+    get repo_curve() {
+      return this.#repo_curve;
+    }
+
+    add_deps_impl(deps) {
+      super.add_deps_impl(deps);
+      if ("" != this.#repo_curve) deps.add_curve(this.#repo_curve);
+      if ("" != this.#surface) deps.add_surface(this.#surface);
+    }
+
+    value_impl(params, extras_not_used) {
+      if (library.valuation_date >= this.#expiry) return 0.0;
+      const quote = params.get_scalar(this.quote);
+      const dc = params.get_curve(this.disc_curve);
+      const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
+      const surface = params.get_surface(this.#surface);
+
+      const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
+      const t = library.time_from_now(this.#expiry);
+      const vol = surface.get_rate(t, null, forward, this.#strike);
+
+      const model = new library.BlackModel(t, vol);
+      const val = this.#is_call
+        ? model.call_price(forward, this.#strike)
+        : model.put_price(forward, this.#strike);
+      return this.quantity * val * dc.get_df(t);
+    }
+  }
+
+  library.EquityOption = EquityOption;
 })(this.JsonRisk || module.exports);
 (function (library) {
   class FixedIncome extends library.Instrument {
@@ -2233,6 +2294,10 @@
     }
 
     #black_formula(phi, forward, strike) {
+      if (!(forward > 0.0))
+        throw new Error("Black76 model: forward must be positive");
+      if (!(strike > 0.0))
+        throw new Error("Black76 model: strike must be positive");
       const temp = Math.log(forward / strike) / this.#std_dev;
       const d1 = temp + 0.5 * this.#std_dev;
       const d2 = temp - 0.5 * this.#std_dev;
@@ -3988,7 +4053,7 @@
               temp.moneyness.push(moneyness);
             }
           }
-          this.#surfaces[key] = new library.Surface(temp);
+          this.#surfaces[key] = library.make_surface(temp);
         }
       }
 
