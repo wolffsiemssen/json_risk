@@ -9,7 +9,7 @@
       super(obj);
       this.#quote = library.string_or_empty(obj.quote);
       this.#disc_curve = library.string_or_empty(obj.disc_curve);
-      this.#spot_days = library.get_safe_natural(obj.spot_days) || 0;
+      this.#spot_days = library.natural_number_or_null(obj.spot_days) || 0;
       this.#calendar = library.string_or_empty(obj.calendar);
       this.#is_holiday_func = library.is_holiday_factory(this.#calendar);
     }

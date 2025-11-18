@@ -8,7 +8,7 @@
       this.#currency = library.string_or_empty(obj.currency);
 
       if ("quantity" in obj) {
-        this.#quantity = library.get_safe_number(obj.quantity);
+        this.#quantity = library.number_or_null(obj.quantity);
       }
     }
 

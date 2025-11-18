@@ -5,9 +5,9 @@
     #price = 0.0;
     constructor(obj) {
       super(obj);
-      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#expiry = library.date_or_null(obj.expiry);
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#price = library.get_safe_number(obj.price) || 0.0;
+      this.#price = library.number_or_null(obj.price) || 0.0;
     }
 
     get repo_curve() {

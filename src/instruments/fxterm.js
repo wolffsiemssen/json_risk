@@ -14,7 +14,7 @@
       //the far payment of the swap
       if (
         typeof obj.notional_2 === "number" &&
-        library.get_safe_date(obj.maturity_2)
+        library.date_or_null(obj.maturity_2)
       ) {
         this.far_leg = new library.FixedIncome({
           notional: obj.notional_2, // negative if second leg is pay leg

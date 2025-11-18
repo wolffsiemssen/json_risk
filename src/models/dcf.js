@@ -31,7 +31,7 @@
     //curve initialisation and fallbacks
     if (typeof residual_spread !== "number") residual_spread = 0;
     disc_curve = disc_curve || library.get_const_curve(0);
-    var sd = library.get_safe_date(settlement_date);
+    var sd = library.date_or_null(settlement_date);
     if (!sd) sd = library.valuation_date;
     var tset = library.time_from_now(sd);
 

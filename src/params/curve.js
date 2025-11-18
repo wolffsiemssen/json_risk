@@ -31,8 +31,8 @@
       if (curve.dates) {
         default_yf = default_yf || library.year_fraction_factory("a/365");
         return default_yf(
-          library.get_safe_date(curve.dates[0]),
-          library.get_safe_date(curve.dates[i]),
+          library.date_or_null(curve.dates[0]),
+          library.date_or_null(curve.dates[i]),
         );
       }
       if (curve.labels) return library.period_str_to_time(curve.labels[i]);
@@ -62,8 +62,8 @@
     // extract times, rates and discount factors from curve and store in hidden function scope
     let times = get_times(curve);
     let size = times.length;
-    let zcs = library.get_safe_number_vector(curve.zcs);
-    let dfs = library.get_safe_number_vector(curve.dfs);
+    let zcs = library.number_vector_or_null(curve.zcs);
+    let dfs = library.number_vector_or_null(curve.dfs);
 
     if (null === zcs) {
       if (null === dfs)

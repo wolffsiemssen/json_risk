@@ -19,19 +19,19 @@ test.execute = function (TestFramework, JsonRisk) {
 
 	*/
 
-  for (var b of JsonRisk.get_safe_bool_vector(
+  for (var b of JsonRisk.make_bool_vector(
     "True   TRUE yes YES 1  1   1.0 0.999E10",
   )) {
     TestFramework.assert(true === b, "Boolean conversion (true)");
   }
 
-  for (var b of JsonRisk.get_safe_bool_vector(
+  for (var b of JsonRisk.make_bool_vector(
     "False   FALSE no NOTTRUE 0  0.0   0.000E10",
   )) {
     TestFramework.assert(false === b, "Boolean conversion (false)");
   }
 
-  for (var n of JsonRisk.get_safe_number_vector("1 1.0 100%")) {
+  for (var n of JsonRisk.number_vector_or_null("1 1.0 100%")) {
     TestFramework.assert(1 === n, "Number conversion (one)");
   }
 };

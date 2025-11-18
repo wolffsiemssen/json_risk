@@ -36,7 +36,7 @@
       // valuation date
       if (!("valuation_date" in obj))
         throw new Error("Params: must contain a valuation_date property");
-      this.#valuation_date = library.get_safe_date(obj.valuation_date);
+      this.#valuation_date = library.date_or_null(obj.valuation_date);
 
       // main currency
       if (typeof obj.main_currrency === "string") {

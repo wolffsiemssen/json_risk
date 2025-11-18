@@ -7,11 +7,11 @@
     #is_call = true;
     constructor(obj) {
       super(obj);
-      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#expiry = library.date_or_null(obj.expiry);
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
       this.#surface = library.string_or_empty(obj.surface);
-      this.#strike = library.get_safe_number(obj.strike) || 0.0;
-      this.#is_call = library.get_safe_bool(obj.is_call);
+      this.#strike = library.number_or_null(obj.strike) || 0.0;
+      this.#is_call = library.make_bool(obj.is_call);
     }
 
     get repo_curve() {

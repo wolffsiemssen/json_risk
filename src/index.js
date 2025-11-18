@@ -24,7 +24,7 @@
   };
 
   JsonRisk.set_valuation_date = function (d) {
-    valuation_date = JsonRisk.get_safe_date(d);
+    valuation_date = JsonRisk.date_or_null(d);
     if (null === valuation_date)
       throw new Error("JsonRisk: trying to set invalid valuation_date");
   };

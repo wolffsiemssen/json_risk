@@ -2,7 +2,7 @@
   class Swap extends library.Instrument {
     constructor(obj) {
       super(obj);
-      this.phi = library.get_safe_bool(obj.is_payer) ? -1 : 1;
+      this.phi = library.make_bool(obj.is_payer) ? -1 : 1;
 
       this.fixed_rate = obj.fixed_rate;
       //the fixed leg of the swap

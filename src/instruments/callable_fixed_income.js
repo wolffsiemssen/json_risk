@@ -4,17 +4,17 @@
       super(obj);
 
       //only fixed rate instruments
-      if (!library.get_safe_number_vector(obj.fixed_rate))
+      if (!library.number_vector_or_null(obj.fixed_rate))
         throw new Error(
           "callable_fixed_income: must provide valid fixed_rate.",
         );
 
-      var fcd = library.get_safe_date(obj.first_exercise_date);
+      var fcd = library.date_or_null(obj.first_exercise_date);
       if (null === fcd)
         throw new Error("callable_fixed_income: must provide first call date");
 
-      this.mean_reversion = library.get_safe_number(obj.mean_reversion); // null allowed
-      this.hull_white_volatility = library.get_safe_number(
+      this.mean_reversion = library.number_or_null(obj.mean_reversion); // null allowed
+      this.hull_white_volatility = library.number_or_null(
         obj.hull_white_volatility,
       ); // null allowed
 
@@ -28,10 +28,10 @@
         throw new Error(
           "callable_fixed_income: callable instruments must exchange notionals",
         );
-      var call_tenor = library.get_safe_natural(obj.call_tenor);
+      var call_tenor = library.natural_number_or_null(obj.call_tenor);
       this.call_schedule = library.schedule(
         fcd,
-        library.get_safe_date(obj.maturity),
+        library.date_or_null(obj.maturity),
         call_tenor || 0, //european call by default
         this.base.adj,
         null,
@@ -47,9 +47,9 @@
         this.call_schedule[i] = this.base.adj(this.call_schedule[i]);
       }
       this.opportunity_spread =
-        library.get_safe_number(obj.opportunity_spread) || 0.0;
-      this.exclude_base = library.get_safe_bool(obj.exclude_base);
-      this.simple_calibration = library.get_safe_bool(obj.simple_calibration);
+        library.number_or_null(obj.opportunity_spread) || 0.0;
+      this.exclude_base = library.make_bool(obj.exclude_base);
+      this.simple_calibration = library.make_bool(obj.simple_calibration);
 
       //truncate call dates as soon as principal has been redeemed
       var cf_obj = this.base.get_cash_flows();

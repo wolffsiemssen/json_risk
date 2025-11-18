@@ -5,7 +5,7 @@
     #scenario_value = null;
     constructor(obj) {
       super(obj);
-      this.#value = library.get_safe_number(obj.value);
+      this.#value = library.number_or_null(obj.value);
       this.#scenario_value = this.#value;
     }
 

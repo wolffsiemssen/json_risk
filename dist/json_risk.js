@@ -24,13 +24,195 @@
   };
 
   JsonRisk.set_valuation_date = function (d) {
-    valuation_date = JsonRisk.get_safe_date(d);
+    valuation_date = JsonRisk.date_or_null(d);
     if (null === valuation_date)
       throw new Error("JsonRisk: trying to set invalid valuation_date");
   };
 
   return JsonRisk;
 });
+(function (library) {
+  /**
+   * Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
+   * @param {boolean} b
+   * @returns {boolean} boolean vector
+   * @memberof library
+   * @public
+   */
+  library.make_bool = function (b) {
+    if (typeof b === "boolean") return b;
+    if (typeof b === "number") return b !== 0;
+    if (typeof b === "string") {
+      const n = Number(b.trim()).valueOf();
+      if (0 === n) return false;
+      if (!isNaN(n)) return true;
+      const s = b.trim().toLowerCase();
+      if (s === "true" || s === "yes" || s === "t" || s === "y") return true;
+      return false;
+    }
+    return false;
+  };
+
+  /**
+   * Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
+   * @param {boolean} b
+   * @returns {boolean} boolean vector
+   * @memberof library
+   * @public
+   */
+  library.make_bool_vector = function (b) {
+    //returns vector of booleans when input can be converted to booleans.
+    if (typeof b === "boolean") return [b];
+    if (typeof b === "number") return [b !== 0];
+    var res;
+    if (typeof b === "string") {
+      res = b.split(/\s+/);
+    } else if (Array.isArray(b)) {
+      res = b.slice();
+    } else {
+      return [false];
+    }
+    for (var i = 0; i < res.length; i++) {
+      res[i] = library.make_bool(res[i]);
+    }
+    return res;
+  };
+})(this.JsonRisk || module.exports);
+(function (library) {
+  /**
+   * calculates the time in years from a given period string
+   * @param {string} str time string (xY, xM, xW, xD)
+   * @returns {number} time in years
+   * @memberof library
+   * @public
+   */
+  library.period_str_to_time = function (str) {
+    const num = parseInt(str, 10);
+    if (isNaN(num))
+      throw new Error(
+        "period_str_to_time - Invalid time period string: " + str,
+      );
+    const unit = str.charAt(str.length - 1);
+    if (unit === "Y" || unit === "y") return num;
+    if (unit === "M" || unit === "m") return num / 12;
+    if (unit === "W" || unit === "w") return num / 52;
+    if (unit === "D" || unit === "d") return num / 365;
+    throw new Error("period_str_to_time - Invalid time period string: " + str);
+  };
+
+  /**
+   * constructs a javascript date object from a JSON risk conformant date string
+   * @param {string} str date string
+   * @returns {date} javascript date object
+   * @memberof library
+   * @public
+   */
+  library.date_str_to_date = function (str) {
+    let rr = null,
+      d,
+      m,
+      y;
+    if (
+      (rr = /^([1-2][0-9]{3})[/-]([0-9]{1,2})[/-]([0-9]{1,2})/.exec(str)) !==
+      null
+    ) {
+      // YYYY/MM/DD or YYYY-MM-DD
+      y = parseInt(rr[1], 10);
+      m = parseInt(rr[2], 10) - 1;
+      d = parseInt(rr[3], 10);
+    } else if (
+      (rr = /^([0-9]{1,2})\.([0-9]{1,2})\.([1-2][0-9]{3})/.exec(str)) !== null
+    ) {
+      // DD.MM.YYYY
+      y = parseInt(rr[3], 10);
+      m = parseInt(rr[2], 10) - 1;
+      d = parseInt(rr[1], 10);
+    }
+    if (null === rr)
+      throw new Error("date_str_to_time - Invalid date string: " + str);
+    if (m < 0 || m > 11)
+      throw new Error(
+        "date_str_to_time - Invalid month in date string: " + str,
+      );
+    const days_in_month = new Date(y, m + 1, 0).getDate();
+    if (d < 0 || d > days_in_month)
+      throw new Error("date_str_to_time - Invalid day in date string: " + str);
+    return new Date(Date.UTC(y, m, d));
+  };
+
+  /**
+   * constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+   * @param {date} date object
+   * @returns {string} date string
+   * @memberof library
+   * @public
+   */
+  library.date_to_date_str = function (d) {
+    var dobj = library.date_or_null(d);
+    if (null === dobj) throw new Error("date_to_date_str: invalid input.");
+    return dobj.toISOString().slice(0, 10);
+  };
+
+  /**
+   * takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
+   * @param {date} d
+   * @returns {date} javascript date object
+   * @memberof library
+   * @public
+   */
+  library.date_or_null = function (d) {
+    if (!d) return null;
+    if (d instanceof Date) {
+      var h = d.getUTCHours();
+      var y = d.getUTCFullYear();
+      var m = d.getUTCMonth();
+      var t = d.getUTCDate();
+      if (h > 11) t++; // advance to next day UTC 0:00 date
+      return new Date(Date.UTC(y, m, t));
+    }
+    if (d instanceof String || typeof d === "string")
+      return library.date_str_to_date(d);
+    throw new Error("date_or_null: invalid input.");
+  };
+
+  /**
+   * takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
+   * @param {date} d
+   * @returns {date} javascript date object
+   * @memberof library
+   * @public
+   */
+  library.date_or_throw = function (d) {
+    const date_or_null = library.date_or_null(d);
+    if (null === date_or_null) throw new Error("date_or_throw: invalid input");
+    return date_or_null;
+  };
+
+  /**
+   * get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
+   * @param {date} d
+   * @returns {number} array of javascript date objects
+   * @memberof library
+   * @public
+   */
+  library.date_vector_or_null = function (d) {
+    if (d instanceof Date) return [library.date_or_throw(d)];
+    let res;
+    if (typeof d === "string") {
+      res = d.split(/\s+/);
+    } else if (Array.isArray(d) && d.length > 0) {
+      res = d.slice();
+    } else {
+      return null;
+    }
+    for (let i = 0; i < res.length; i++) {
+      res[i] = library.date_or_null(res[i]);
+      if (null === res[i])
+        throw new Error("date_vector_or_null: invalid input");
+    }
+    return res;
+  };
+})(this.JsonRisk || module.exports);
 (function (library) {
   /**
    * read instrument type for given instrument and create instrument object
@@ -63,6 +245,74 @@
       default:
         throw new Error("make_instrument: invalid instrument type");
     }
+  };
+})(this.JsonRisk || module.exports);
+(function (library) {
+  /**
+   * Returns a number if a valid number or numeric string is entered and null otherwise, does not throw
+   * @param {number} n
+   * @returns {number} number
+   * @memberof library
+   * @public
+   */
+  library.number_or_null = function (n) {
+    if (typeof n === "number") return n;
+    if (typeof n === "string") {
+      n = n.trim();
+      var res = parseFloat(n);
+      if (isNaN(res)) return null;
+      if (n.charAt(n.length - 1) === "%") res *= 0.01;
+      return res;
+    }
+    return null;
+  };
+  /**
+   * Returns positive number if a valid positive number or numeric string is entered and null otherwise, does not throw
+   * @param {number} n
+   * @returns {number} number
+   * @memberof library
+   * @public
+   */
+  library.positive_number_or_null = function (n) {
+    var res = library.number_or_null(n);
+    if (res <= 0) return null;
+    return res;
+  };
+  /**
+   * Returns natural number, zero allowed, if a valid natural number or numeric string is entered and null otherwise, does not throw
+   * @param {natural} n
+   * @returns {natural} natural vector
+   * @memberof library
+   * @public
+   */
+  library.natural_number_or_null = function (n) {
+    var res = library.number_or_null(n);
+    if (res < 0 || res !== Math.floor(res)) return null;
+    return res;
+  };
+  /**
+   * Returns vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
+   * @param {number} n
+   * @returns {number} number vector
+   * @memberof library
+   * @public
+   */
+  library.number_vector_or_null = function (n) {
+    if (typeof n === "number") return [n];
+    var res;
+    if (typeof n === "string") {
+      res = n.split(/\s+/);
+    } else if (Array.isArray(n)) {
+      res = n.slice();
+    } else {
+      return null;
+    }
+    for (var i = 0; i < res.length; i++) {
+      res[i] = library.number_or_null(res[i]);
+      if (null === res[i])
+        throw new Error("number_vector_or_null: invalid input");
+    }
+    return res;
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
@@ -111,7 +361,7 @@
       this.#currency = library.string_or_empty(obj.currency);
 
       if ("quantity" in obj) {
-        this.#quantity = library.get_safe_number(obj.quantity);
+        this.#quantity = library.number_or_null(obj.quantity);
       }
     }
 
@@ -161,17 +411,17 @@
       super(obj);
 
       //only fixed rate instruments
-      if (!library.get_safe_number_vector(obj.fixed_rate))
+      if (!library.number_vector_or_null(obj.fixed_rate))
         throw new Error(
           "callable_fixed_income: must provide valid fixed_rate.",
         );
 
-      var fcd = library.get_safe_date(obj.first_exercise_date);
+      var fcd = library.date_or_null(obj.first_exercise_date);
       if (null === fcd)
         throw new Error("callable_fixed_income: must provide first call date");
 
-      this.mean_reversion = library.get_safe_number(obj.mean_reversion); // null allowed
-      this.hull_white_volatility = library.get_safe_number(
+      this.mean_reversion = library.number_or_null(obj.mean_reversion); // null allowed
+      this.hull_white_volatility = library.number_or_null(
         obj.hull_white_volatility,
       ); // null allowed
 
@@ -185,10 +435,10 @@
         throw new Error(
           "callable_fixed_income: callable instruments must exchange notionals",
         );
-      var call_tenor = library.get_safe_natural(obj.call_tenor);
+      var call_tenor = library.natural_number_or_null(obj.call_tenor);
       this.call_schedule = library.schedule(
         fcd,
-        library.get_safe_date(obj.maturity),
+        library.date_or_null(obj.maturity),
         call_tenor || 0, //european call by default
         this.base.adj,
         null,
@@ -204,9 +454,9 @@
         this.call_schedule[i] = this.base.adj(this.call_schedule[i]);
       }
       this.opportunity_spread =
-        library.get_safe_number(obj.opportunity_spread) || 0.0;
-      this.exclude_base = library.get_safe_bool(obj.exclude_base);
-      this.simple_calibration = library.get_safe_bool(obj.simple_calibration);
+        library.number_or_null(obj.opportunity_spread) || 0.0;
+      this.exclude_base = library.make_bool(obj.exclude_base);
+      this.simple_calibration = library.make_bool(obj.simple_calibration);
 
       //truncate call dates as soon as principal has been redeemed
       var cf_obj = this.base.get_cash_flows();
@@ -382,7 +632,7 @@
       super(obj);
       this.#quote = library.string_or_empty(obj.quote);
       this.#disc_curve = library.string_or_empty(obj.disc_curve);
-      this.#spot_days = library.get_safe_natural(obj.spot_days) || 0;
+      this.#spot_days = library.natural_number_or_null(obj.spot_days) || 0;
       this.#calendar = library.string_or_empty(obj.calendar);
       this.#is_holiday_func = library.is_holiday_factory(this.#calendar);
     }
@@ -441,9 +691,9 @@
     #price = 0.0;
     constructor(obj) {
       super(obj);
-      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#expiry = library.date_or_null(obj.expiry);
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#price = library.get_safe_number(obj.price) || 0.0;
+      this.#price = library.number_or_null(obj.price) || 0.0;
     }
 
     get repo_curve() {
@@ -479,9 +729,9 @@
     #price = 0.0;
     constructor(obj) {
       super(obj);
-      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#expiry = library.date_or_null(obj.expiry);
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#price = library.get_safe_number(obj.price) || 0.0;
+      this.#price = library.number_or_null(obj.price) || 0.0;
     }
 
     get repo_curve() {
@@ -515,11 +765,11 @@
     #is_call = true;
     constructor(obj) {
       super(obj);
-      this.#expiry = library.get_safe_date(obj.expiry);
+      this.#expiry = library.date_or_null(obj.expiry);
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
       this.#surface = library.string_or_empty(obj.surface);
-      this.#strike = library.get_safe_number(obj.strike) || 0.0;
-      this.#is_call = library.get_safe_bool(obj.is_call);
+      this.#strike = library.number_or_null(obj.strike) || 0.0;
+      this.#is_call = library.make_bool(obj.is_call);
     }
 
     get repo_curve() {
@@ -557,18 +807,18 @@
   class FixedIncome extends library.Instrument {
     constructor(obj) {
       super(obj);
-      var maturity = library.get_safe_date(obj.maturity);
+      var maturity = library.date_or_null(obj.maturity);
       if (!maturity)
         throw new Error("fixed_income: must provide maturity date.");
 
-      var effective_date = library.get_safe_date(obj.effective_date); //null allowed
+      var effective_date = library.date_or_null(obj.effective_date); //null allowed
 
-      this.notional = library.get_safe_number(obj.notional);
+      this.notional = library.number_or_null(obj.notional);
       if (null === this.notional)
         throw new Error("fixed_income: must provide valid notional.");
 
       //include notional exchange unless explicitly set to false (e.g., for swaps)
-      this.notional_exchange = library.get_safe_bool(obj.notional_exchange);
+      this.notional_exchange = library.make_bool(obj.notional_exchange);
       if (
         null === obj.notional_exchange ||
         "" === obj.notional_exchange ||
@@ -577,15 +827,15 @@
         this.notional_exchange = true;
 
       //interest related fields
-      var tenor = library.get_safe_natural(obj.tenor);
+      var tenor = library.natural_number_or_null(obj.tenor);
       if (null === tenor)
         throw new Error("fixed_income: must provide valid tenor.");
 
-      var first_date = library.get_safe_date(obj.first_date); //null allowed
-      var next_to_last_date = library.get_safe_date(obj.next_to_last_date); //null allowed
-      var stub_end = library.get_safe_bool(obj.stub_end);
-      var stub_long = library.get_safe_bool(obj.stub_long);
-      this.excl_margin = library.get_safe_number(obj.excl_margin) || 0;
+      var first_date = library.date_or_null(obj.first_date); //null allowed
+      var next_to_last_date = library.date_or_null(obj.next_to_last_date); //null allowed
+      var stub_end = library.make_bool(obj.stub_end);
+      var stub_long = library.make_bool(obj.stub_long);
+      this.excl_margin = library.number_or_null(obj.excl_margin) || 0;
 
       //    this.current_accrued_interest = obj.current_accrued_interest || 0;
 
@@ -594,7 +844,7 @@
       this.is_holiday_func = library.is_holiday_factory(obj.calendar || "");
       this.year_fraction_func = library.year_fraction_factory(obj.dcc || "");
       this.bdc = obj.bdc || "";
-      this.adjust_accrual_periods = library.get_safe_bool(
+      this.adjust_accrual_periods = library.make_bool(
         obj.adjust_accrual_periods,
       );
 
@@ -605,29 +855,29 @@
       })(this.bdc, this.is_holiday_func);
 
       //amortisation related fields
-      var repay_tenor = library.get_safe_natural(obj.repay_tenor);
+      var repay_tenor = library.natural_number_or_null(obj.repay_tenor);
       if (null === repay_tenor) repay_tenor = tenor;
 
-      var linear_amortization = library.get_safe_bool(obj.linear_amortization);
+      var linear_amortization = library.make_bool(obj.linear_amortization);
 
-      this.repay_amount = library.get_safe_number_vector(obj.repay_amount) || [
+      this.repay_amount = library.number_vector_or_null(obj.repay_amount) || [
         0,
       ]; //array valued
 
-      this.interest_capitalization = library.get_safe_bool_vector(
+      this.interest_capitalization = library.make_bool_vector(
         obj.interest_capitalization,
       );
 
       var repay_first_date =
-        library.get_safe_date(obj.repay_first_date) || this.first_date;
+        library.date_or_null(obj.repay_first_date) || this.first_date;
       var repay_next_to_last_date =
-        library.get_safe_date(obj.repay_next_to_last_date) ||
+        library.date_or_null(obj.repay_next_to_last_date) ||
         this.next_to_last_date;
       var repay_stub_end = obj.stub_end || false;
       var repay_stub_long = obj.stub_long || false;
 
       //condition arrays
-      this.conditions_valid_until = library.get_safe_date_vector(
+      this.conditions_valid_until = library.date_vector_or_null(
         obj.conditions_valid_until,
       );
       if (this.conditions_valid_until) {
@@ -643,16 +893,17 @@
         this.conditions_valid_until = [maturity]; //by default, conditions do not change until maturity
       }
 
-      var settlement_days = library.get_safe_natural(obj.settlement_days) || 0;
+      var settlement_days =
+        library.natural_number_or_null(obj.settlement_days) || 0;
       this.settlement_date =
-        library.get_safe_date(obj.settlement_date) ||
+        library.date_or_null(obj.settlement_date) ||
         library.add_business_days(
           library.valuation_date,
           settlement_days,
           this.is_holiday_func,
         );
 
-      this.residual_spread = library.get_safe_number(obj.residual_spread) || 0;
+      this.residual_spread = library.number_or_null(obj.residual_spread) || 0;
 
       // interest rate schedule
       this.schedule = library.schedule(
@@ -670,7 +921,7 @@
       if (obj.fixed_rate || obj.fixed_rate === 0) {
         //fixed rate instrument
         this.is_float = false;
-        this.fixed_rate = library.get_safe_number_vector(obj.fixed_rate); //array valued
+        this.fixed_rate = library.number_vector_or_null(obj.fixed_rate); //array valued
         this.float_spread = 0;
         this.cap_rate = [0];
         this.floor_rate = [0];
@@ -679,11 +930,11 @@
         //floating rate instrument
         this.is_float = true;
         this.fixed_rate = null;
-        this.float_spread = library.get_safe_number_vector(
-          obj.float_spread,
-        ) || [0]; // can be number or array, arrays to be impleented
+        this.float_spread = library.number_vector_or_null(obj.float_spread) || [
+          0,
+        ]; // can be number or array, arrays to be impleented
 
-        this.float_current_rate = library.get_safe_number(
+        this.float_current_rate = library.number_or_null(
           obj.float_current_rate,
         );
         if (this.float_current_rate === null)
@@ -693,13 +944,13 @@
 
         //fixing schedule related fields
 
-        var fixing_tenor = library.get_safe_natural(obj.fixing_tenor);
+        var fixing_tenor = library.natural_number_or_null(obj.fixing_tenor);
         if (null === fixing_tenor) fixing_tenor = tenor;
 
         var fixing_first_date =
-          library.get_safe_date(obj.fixing_first_date) || this.first_date;
+          library.date_or_null(obj.fixing_first_date) || this.first_date;
         var fixing_next_to_last_date =
-          library.get_safe_date(obj.fixing_next_to_last_date) ||
+          library.date_or_null(obj.fixing_next_to_last_date) ||
           this.next_to_last_date;
         var fixing_stub_end = obj.fixing_stub_end || false;
         var fixing_stub_long = obj.fixing_stub_long || false;
@@ -1251,7 +1502,7 @@
       //the far payment of the swap
       if (
         typeof obj.notional_2 === "number" &&
-        library.get_safe_date(obj.maturity_2)
+        library.date_or_null(obj.maturity_2)
       ) {
         this.far_leg = new library.FixedIncome({
           notional: obj.notional_2, // negative if second leg is pay leg
@@ -1291,7 +1542,7 @@
   class Swap extends library.Instrument {
     constructor(obj) {
       super(obj);
-      this.phi = library.get_safe_bool(obj.is_payer) ? -1 : 1;
+      this.phi = library.make_bool(obj.is_payer) ? -1 : 1;
 
       this.fixed_rate = obj.fixed_rate;
       //the fixed leg of the swap
@@ -1370,15 +1621,15 @@
   class Swaption extends library.Instrument {
     constructor(obj) {
       super(obj);
-      this.sign = library.get_safe_bool(obj.is_short) ? -1 : 1;
+      this.sign = library.make_bool(obj.is_short) ? -1 : 1;
 
       //maturity of the underlying swap
-      this.maturity = library.get_safe_date(obj.maturity);
+      this.maturity = library.date_or_null(obj.maturity);
       if (!this.maturity)
         throw new Error("swaption: must provide valid maturity date.");
 
       //first_exercise_date (a.k.a. expiry) of the swaption
-      this.first_exercise_date = library.get_safe_date(obj.first_exercise_date);
+      this.first_exercise_date = library.date_or_null(obj.first_exercise_date);
       if (!this.first_exercise_date)
         throw new Error(
           "swaption: must provide valid first_exercise_date date.",
@@ -1913,121 +2164,6 @@
   var M5 = 16.064177579207;
   var M6 = 1.75566716318264;
   var M7 = 8.83883476483184e-2;
-  /**
-   * TODO
-   * @param {number} n
-   * @returns {number} number
-   * @memberof library
-   * @public
-   */
-  library.get_safe_number = function (n) {
-    if (typeof n === "number") return n;
-    if (typeof n === "string") {
-      n = n.trim();
-      var res = parseFloat(n);
-      if (isNaN(res)) return null;
-      if (n.charAt(n.length - 1) === "%") res *= 0.01;
-      return res;
-    }
-    return null;
-  };
-  /**
-   * TODO
-   * @param {number} n
-   * @returns {number} number
-   * @memberof library
-   * @public
-   */
-  library.get_safe_positive = function (n) {
-    //returns positive number if a valid positive number is entered and null otherwise
-    var res = library.get_safe_number(n);
-    if (res <= 0) return null;
-    return res;
-  };
-  /**
-   * TODO
-   * @param {natural} n
-   * @returns {natural} natural vector
-   * @memberof library
-   * @public
-   */
-  library.get_safe_natural = function (n) {
-    //returns natural number, zero allowed, if a valid natural number is entered and null otherwise
-    var res = library.get_safe_number(n);
-    if (res < 0 || res !== Math.floor(res)) return null;
-    return res;
-  };
-  /**
-   * TODO
-   * @param {number} n
-   * @returns {number} number vector
-   * @memberof library
-   * @public
-   */
-  library.get_safe_number_vector = function (n) {
-    //vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
-    if (typeof n === "number") return [n];
-    var res;
-    if (typeof n === "string") {
-      res = n.split(/\s+/);
-    } else if (Array.isArray(n)) {
-      res = n.slice();
-    } else {
-      return null;
-    }
-    for (var i = 0; i < res.length; i++) {
-      res[i] = library.get_safe_number(res[i]);
-      if (null === res[i])
-        throw new Error("get_safe_number_vector: invalid input");
-    }
-    return res;
-  };
-
-  /**
-   * TODO
-   * @param {boolean} b
-   * @returns {boolean} boolean vector
-   * @memberof library
-   * @public
-   */
-  library.get_safe_bool = function (b) {
-    if (typeof b === "boolean") return b;
-    if (typeof b === "number") return b !== 0;
-    if (typeof b === "string") {
-      var n = Number(b.trim()).valueOf();
-      if (0 === n) return false;
-      if (!isNaN(n)) return true;
-      var s = b.trim().toLowerCase();
-      if (s === "true" || s === "yes" || s === "t" || s === "y") return true;
-      return false;
-    }
-    return false;
-  };
-
-  /**
-   * TODO
-   * @param {boolean} b
-   * @returns {boolean} boolean vector
-   * @memberof library
-   * @public
-   */
-  library.get_safe_bool_vector = function (b) {
-    //returns vector of booleans when input can be converted to booleans. Returns single-entry array [false] otherwise
-    if (typeof b === "boolean") return [b];
-    if (typeof b === "number") return [b !== 0];
-    var res;
-    if (typeof b === "string") {
-      res = b.split(/\s+/);
-    } else if (Array.isArray(b)) {
-      res = b.slice();
-    } else {
-      return [false];
-    }
-    for (var i = 0; i < res.length; i++) {
-      res[i] = library.get_safe_bool(res[i]);
-    }
-    return res;
-  };
 
   /**
    * ...
@@ -2350,7 +2486,7 @@
     //curve initialisation and fallbacks
     if (typeof residual_spread !== "number") residual_spread = 0;
     disc_curve = disc_curve || library.get_const_curve(0);
-    var sd = library.get_safe_date(settlement_date);
+    var sd = library.date_or_null(settlement_date);
     if (!sd) sd = library.valuation_date;
     var tset = library.time_from_now(sd);
 
@@ -3277,8 +3413,8 @@
       if (curve.dates) {
         default_yf = default_yf || library.year_fraction_factory("a/365");
         return default_yf(
-          library.get_safe_date(curve.dates[0]),
-          library.get_safe_date(curve.dates[i]),
+          library.date_or_null(curve.dates[0]),
+          library.date_or_null(curve.dates[i]),
         );
       }
       if (curve.labels) return library.period_str_to_time(curve.labels[i]);
@@ -3308,8 +3444,8 @@
     // extract times, rates and discount factors from curve and store in hidden function scope
     let times = get_times(curve);
     let size = times.length;
-    let zcs = library.get_safe_number_vector(curve.zcs);
-    let dfs = library.get_safe_number_vector(curve.dfs);
+    let zcs = library.number_vector_or_null(curve.zcs);
+    let dfs = library.number_vector_or_null(curve.dfs);
 
     if (null === zcs) {
       if (null === dfs)
@@ -3518,14 +3654,14 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.get_safe_number_vector(obj.expiries);
+        this.#expiries = library.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.get_safe_number_vector(obj.moneyness);
+        this.#moneyness = library.number_vector_or_null(obj.moneyness);
       }
 
       // interpolation
@@ -3634,7 +3770,7 @@
     #scenario_value = null;
     constructor(obj) {
       super(obj);
-      this.#value = library.get_safe_number(obj.value);
+      this.#value = library.number_or_null(obj.value);
       this.#scenario_value = this.#value;
     }
 
@@ -3707,14 +3843,14 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.get_safe_number_vector(obj.expiries);
+        this.#expiries = library.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
 
       // terms
       if ("terms" in obj) {
-        this.#terms = library.get_safe_number_vector(obj.terms);
+        this.#terms = library.number_vector_or_null(obj.terms);
       } else {
         this.#terms = get_times(obj.labels_term);
       }
@@ -3728,7 +3864,7 @@
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.get_safe_number_vector(obj.moneyness);
+        this.#moneyness = library.number_vector_or_null(obj.moneyness);
       }
 
       // smile
@@ -4004,7 +4140,7 @@
       // valuation date
       if (!("valuation_date" in obj))
         throw new Error("Params: must contain a valuation_date property");
-      this.#valuation_date = library.get_safe_date(obj.valuation_date);
+      this.#valuation_date = library.date_or_null(obj.valuation_date);
 
       // main currency
       if (typeof obj.main_currrency === "string") {
@@ -4510,131 +4646,6 @@
     return new Date(y, m + 1, 0).getDate();
   }
 
-  /**
-   * calculates the time in years from a given period string
-   * @param {string} str time string (xY, xM, xW, xD)
-   * @returns {number} time in years
-   * @memberof library
-   * @public
-   */
-  library.period_str_to_time = function (str) {
-    var num = parseInt(str, 10);
-    if (isNaN(num))
-      throw new Error(
-        "period_str_to_time(str) - Invalid time period string: " + str,
-      );
-    var unit = str.charAt(str.length - 1);
-    if (unit === "Y" || unit === "y") return num;
-    if (unit === "M" || unit === "m") return num / 12;
-    if (unit === "W" || unit === "w") return num / 52;
-    if (unit === "D" || unit === "d") return num / 365;
-    throw new Error(
-      "period_str_to_time(str) - Invalid time period string: " + str,
-    );
-  };
-
-  /**
-   * constructs a javascript date object from a JSON risk conformant date string
-   * @param {string} str date string
-   * @returns {date} javascript date object
-   * @memberof library
-   * @public
-   */
-  library.date_str_to_date = function (str) {
-    var rr = null,
-      d,
-      m,
-      y;
-    if (
-      (rr = /^([1-2][0-9]{3})[/-]([0-9]{1,2})[/-]([0-9]{1,2})/.exec(str)) !==
-      null
-    ) {
-      // YYYY/MM/DD or YYYY-MM-DD
-      y = parseInt(rr[1], 10);
-      m = parseInt(rr[2], 10) - 1;
-      d = parseInt(rr[3], 10);
-    } else if (
-      (rr = /^([0-9]{1,2})\.([0-9]{1,2})\.([1-2][0-9]{3})/.exec(str)) !== null
-    ) {
-      // DD.MM.YYYY
-      y = parseInt(rr[3], 10);
-      m = parseInt(rr[2], 10) - 1;
-      d = parseInt(rr[1], 10);
-    }
-    if (null === rr)
-      throw new Error("date_str_to_time(str) - Invalid date string: " + str);
-    if (m < 0 || m > 11)
-      throw new Error(
-        "date_str_to_time(str) - Invalid month in date string: " + str,
-      );
-    if (d < 0 || d > days_in_month(y, m))
-      throw new Error(
-        "date_str_to_time(str) - Invalid day in date string: " + str,
-      );
-    return new Date(Date.UTC(y, m, d));
-  };
-
-  /**
-   * constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
-   * @param {date} date object
-   * @returns {string} date string
-   * @memberof library
-   * @public
-   */
-  library.date_to_date_str = function (d) {
-    var dobj = library.get_safe_date(d);
-    if (null === dobj) throw new Error("date_to_date_str: invalid input.");
-    return dobj.toISOString().slice(0, 10);
-  };
-
-  /**
-   * takes a valid date string, a javascript date object, or an undefined value and returns a javascript date object or null
-   * @param {date} d
-   * @returns {date} javascript date object
-   * @memberof library
-   * @public
-   */
-  library.get_safe_date = function (d) {
-    if (!d) return null;
-    if (d instanceof Date) {
-      var h = d.getUTCHours();
-      if (0 === h) return d; // valid UTC 0:00 date
-      var y = d.getUTCFullYear();
-      var m = d.getUTCMonth();
-      var t = d.getUTCDate();
-      if (h > 11) t++; // advance to next day UTC 0:00 date
-      return new Date(Date.UTC(y, m, t));
-    }
-    if (d instanceof String || typeof d === "string")
-      return library.date_str_to_date(d);
-    throw new Error("get_safe_date: invalid input.");
-  };
-
-  /**
-   * get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise
-   * @param {date} d
-   * @returns {number} array of javascript date objects
-   * @memberof library
-   * @public
-   */
-  library.get_safe_date_vector = function (d) {
-    if (d instanceof Date) return [d];
-    var res;
-    if (typeof d === "string") {
-      res = d.split(/\s+/);
-    } else if (Array.isArray(d)) {
-      res = d.slice();
-    } else {
-      return null;
-    }
-    for (var i = 0; i < res.length; i++) {
-      res[i] = library.get_safe_date(res[i]);
-      if (null === res[i])
-        throw new Error("get_safe_date_vector: invalid input");
-    }
-    return res;
-  };
-
   /*!
     
             Year Fractions
@@ -4982,7 +4993,7 @@
     var dt;
     //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
     for (i = 0; i < n; i++) {
-      dt = library.get_safe_date(dates[i]);
+      dt = library.date_or_null(dates[i]);
       if (!dt) continue;
       if (is_holiday_default(dt)) continue;
       holidays.push(dt);

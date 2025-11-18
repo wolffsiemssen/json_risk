@@ -2,15 +2,15 @@
   class Swaption extends library.Instrument {
     constructor(obj) {
       super(obj);
-      this.sign = library.get_safe_bool(obj.is_short) ? -1 : 1;
+      this.sign = library.make_bool(obj.is_short) ? -1 : 1;
 
       //maturity of the underlying swap
-      this.maturity = library.get_safe_date(obj.maturity);
+      this.maturity = library.date_or_null(obj.maturity);
       if (!this.maturity)
         throw new Error("swaption: must provide valid maturity date.");
 
       //first_exercise_date (a.k.a. expiry) of the swaption
-      this.first_exercise_date = library.get_safe_date(obj.first_exercise_date);
+      this.first_exercise_date = library.date_or_null(obj.first_exercise_date);
       if (!this.first_exercise_date)
         throw new Error(
           "swaption: must provide valid first_exercise_date date.",

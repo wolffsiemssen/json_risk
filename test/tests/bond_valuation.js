@@ -321,7 +321,7 @@ test.execute = function (TestFramework, JsonRisk) {
     pv_ref = 0;
   //brief function to calculate bond pv at 10% discount
   var pv_func = function (mat, kup) {
-    m = JsonRisk.get_safe_date(mat);
+    m = JsonRisk.date_or_null(mat);
     var i = 1;
     var t = JsonRisk.time_from_now(m);
     var t_pay = JsonRisk.time_from_now(adj(m));
@@ -341,7 +341,7 @@ test.execute = function (TestFramework, JsonRisk) {
   };
   //brief function to calculate bond pv at 10% discount, adjusted periods
   var pv_func_adj = function (mat, kup) {
-    m = JsonRisk.get_safe_date(mat);
+    m = JsonRisk.date_or_null(mat);
     var i = 1;
     var t = JsonRisk.time_from_now(adj(m));
     var t_last = JsonRisk.time_from_now(adj(JsonRisk.add_months(m, -i)));

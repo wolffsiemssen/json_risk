@@ -98,7 +98,7 @@ test.execute = function (TestFramework, JsonRisk) {
       tenor: Tenor[i % Tenor.length], //(1+c*t/12)^(12/t)=1+c0
       repay_tenor: Repay_Tenor[i % Repay_Tenor.length],
       repay_next_to_last_date: JsonRisk.add_days(
-        JsonRisk.get_safe_date(Maturity[i % Maturity.length]),
+        JsonRisk.date_or_null(Maturity[i % Maturity.length]),
         -Repay_Stub_Days[i % Repay_Stub_Days.length],
       ),
       bdc: "unadjusted",
@@ -107,7 +107,7 @@ test.execute = function (TestFramework, JsonRisk) {
         ((Repay_Total[i % Repay_Total.length] / 12) *
           Repay_Tenor[i % Repay_Tenor.length]) /
         JsonRisk.time_from_now(
-          JsonRisk.get_safe_date(Maturity[i % Maturity.length]),
+          JsonRisk.date_or_null(Maturity[i % Maturity.length]),
         ),
       interest_capitalization: IntCap[i % IntCap.length],
       disc_curve: "curve",
@@ -243,7 +243,7 @@ test.execute = function (TestFramework, JsonRisk) {
       tenor: Tenor[i % Tenor.length], //(1+c*t/12)^(12/t)=1+c0
       repay_tenor: Repay_Tenor[i % Repay_Tenor.length],
       repay_next_to_last_date: JsonRisk.add_days(
-        JsonRisk.get_safe_date(Maturity[i % Maturity.length]),
+        JsonRisk.date_or_null(Maturity[i % Maturity.length]),
         -Repay_Stub_Days[i % Repay_Stub_Days.length],
       ),
       bdc: "following",
@@ -253,7 +253,7 @@ test.execute = function (TestFramework, JsonRisk) {
         ((Repay_Total[i % Repay_Total.length] / 12) *
           Repay_Tenor[i % Repay_Tenor.length]) /
         JsonRisk.time_from_now(
-          JsonRisk.get_safe_date(Maturity[i % Maturity.length]),
+          JsonRisk.date_or_null(Maturity[i % Maturity.length]),
         ),
       interest_capitalization: false, //test can only work for non-capitalising instruments. For capitalising instruments, changing the rate would change the notional structure.
       disc_curve: "steep_curve",

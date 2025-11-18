@@ -2,18 +2,18 @@
   class FixedIncome extends library.Instrument {
     constructor(obj) {
       super(obj);
-      var maturity = library.get_safe_date(obj.maturity);
+      var maturity = library.date_or_null(obj.maturity);
       if (!maturity)
         throw new Error("fixed_income: must provide maturity date.");
 
-      var effective_date = library.get_safe_date(obj.effective_date); //null allowed
+      var effective_date = library.date_or_null(obj.effective_date); //null allowed
 
-      this.notional = library.get_safe_number(obj.notional);
+      this.notional = library.number_or_null(obj.notional);
       if (null === this.notional)
         throw new Error("fixed_income: must provide valid notional.");
 
       //include notional exchange unless explicitly set to false (e.g., for swaps)
-      this.notional_exchange = library.get_safe_bool(obj.notional_exchange);
+      this.notional_exchange = library.make_bool(obj.notional_exchange);
       if (
         null === obj.notional_exchange ||
         "" === obj.notional_exchange ||
@@ -22,15 +22,15 @@
         this.notional_exchange = true;
 
       //interest related fields
-      var tenor = library.get_safe_natural(obj.tenor);
+      var tenor = library.natural_number_or_null(obj.tenor);
       if (null === tenor)
         throw new Error("fixed_income: must provide valid tenor.");
 
-      var first_date = library.get_safe_date(obj.first_date); //null allowed
-      var next_to_last_date = library.get_safe_date(obj.next_to_last_date); //null allowed
-      var stub_end = library.get_safe_bool(obj.stub_end);
-      var stub_long = library.get_safe_bool(obj.stub_long);
-      this.excl_margin = library.get_safe_number(obj.excl_margin) || 0;
+      var first_date = library.date_or_null(obj.first_date); //null allowed
+      var next_to_last_date = library.date_or_null(obj.next_to_last_date); //null allowed
+      var stub_end = library.make_bool(obj.stub_end);
+      var stub_long = library.make_bool(obj.stub_long);
+      this.excl_margin = library.number_or_null(obj.excl_margin) || 0;
 
       //    this.current_accrued_interest = obj.current_accrued_interest || 0;
 
@@ -39,7 +39,7 @@
       this.is_holiday_func = library.is_holiday_factory(obj.calendar || "");
       this.year_fraction_func = library.year_fraction_factory(obj.dcc || "");
       this.bdc = obj.bdc || "";
-      this.adjust_accrual_periods = library.get_safe_bool(
+      this.adjust_accrual_periods = library.make_bool(
         obj.adjust_accrual_periods,
       );
 
@@ -50,29 +50,29 @@
       })(this.bdc, this.is_holiday_func);
 
       //amortisation related fields
-      var repay_tenor = library.get_safe_natural(obj.repay_tenor);
+      var repay_tenor = library.natural_number_or_null(obj.repay_tenor);
       if (null === repay_tenor) repay_tenor = tenor;
 
-      var linear_amortization = library.get_safe_bool(obj.linear_amortization);
+      var linear_amortization = library.make_bool(obj.linear_amortization);
 
-      this.repay_amount = library.get_safe_number_vector(obj.repay_amount) || [
+      this.repay_amount = library.number_vector_or_null(obj.repay_amount) || [
         0,
       ]; //array valued
 
-      this.interest_capitalization = library.get_safe_bool_vector(
+      this.interest_capitalization = library.make_bool_vector(
         obj.interest_capitalization,
       );
 
       var repay_first_date =
-        library.get_safe_date(obj.repay_first_date) || this.first_date;
+        library.date_or_null(obj.repay_first_date) || this.first_date;
       var repay_next_to_last_date =
-        library.get_safe_date(obj.repay_next_to_last_date) ||
+        library.date_or_null(obj.repay_next_to_last_date) ||
         this.next_to_last_date;
       var repay_stub_end = obj.stub_end || false;
       var repay_stub_long = obj.stub_long || false;
 
       //condition arrays
-      this.conditions_valid_until = library.get_safe_date_vector(
+      this.conditions_valid_until = library.date_vector_or_null(
         obj.conditions_valid_until,
       );
       if (this.conditions_valid_until) {
@@ -88,16 +88,17 @@
         this.conditions_valid_until = [maturity]; //by default, conditions do not change until maturity
       }
 
-      var settlement_days = library.get_safe_natural(obj.settlement_days) || 0;
+      var settlement_days =
+        library.natural_number_or_null(obj.settlement_days) || 0;
       this.settlement_date =
-        library.get_safe_date(obj.settlement_date) ||
+        library.date_or_null(obj.settlement_date) ||
         library.add_business_days(
           library.valuation_date,
           settlement_days,
           this.is_holiday_func,
         );
 
-      this.residual_spread = library.get_safe_number(obj.residual_spread) || 0;
+      this.residual_spread = library.number_or_null(obj.residual_spread) || 0;
 
       // interest rate schedule
       this.schedule = library.schedule(
@@ -115,7 +116,7 @@
       if (obj.fixed_rate || obj.fixed_rate === 0) {
         //fixed rate instrument
         this.is_float = false;
-        this.fixed_rate = library.get_safe_number_vector(obj.fixed_rate); //array valued
+        this.fixed_rate = library.number_vector_or_null(obj.fixed_rate); //array valued
         this.float_spread = 0;
         this.cap_rate = [0];
         this.floor_rate = [0];
@@ -124,11 +125,11 @@
         //floating rate instrument
         this.is_float = true;
         this.fixed_rate = null;
-        this.float_spread = library.get_safe_number_vector(
-          obj.float_spread,
-        ) || [0]; // can be number or array, arrays to be impleented
+        this.float_spread = library.number_vector_or_null(obj.float_spread) || [
+          0,
+        ]; // can be number or array, arrays to be impleented
 
-        this.float_current_rate = library.get_safe_number(
+        this.float_current_rate = library.number_or_null(
           obj.float_current_rate,
         );
         if (this.float_current_rate === null)
@@ -138,13 +139,13 @@
 
         //fixing schedule related fields
 
-        var fixing_tenor = library.get_safe_natural(obj.fixing_tenor);
+        var fixing_tenor = library.natural_number_or_null(obj.fixing_tenor);
         if (null === fixing_tenor) fixing_tenor = tenor;
 
         var fixing_first_date =
-          library.get_safe_date(obj.fixing_first_date) || this.first_date;
+          library.date_or_null(obj.fixing_first_date) || this.first_date;
         var fixing_next_to_last_date =
-          library.get_safe_date(obj.fixing_next_to_last_date) ||
+          library.date_or_null(obj.fixing_next_to_last_date) ||
           this.next_to_last_date;
         var fixing_stub_end = obj.fixing_stub_end || false;
         var fixing_stub_long = obj.fixing_stub_long || false;

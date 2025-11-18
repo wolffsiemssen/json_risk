@@ -1,0 +1,68 @@
+(function (library) {
+  /**
+   * Returns a number if a valid number or numeric string is entered and null otherwise, does not throw
+   * @param {number} n
+   * @returns {number} number
+   * @memberof library
+   * @public
+   */
+  library.number_or_null = function (n) {
+    if (typeof n === "number") return n;
+    if (typeof n === "string") {
+      n = n.trim();
+      var res = parseFloat(n);
+      if (isNaN(res)) return null;
+      if (n.charAt(n.length - 1) === "%") res *= 0.01;
+      return res;
+    }
+    return null;
+  };
+  /**
+   * Returns positive number if a valid positive number or numeric string is entered and null otherwise, does not throw
+   * @param {number} n
+   * @returns {number} number
+   * @memberof library
+   * @public
+   */
+  library.positive_number_or_null = function (n) {
+    var res = library.number_or_null(n);
+    if (res <= 0) return null;
+    return res;
+  };
+  /**
+   * Returns natural number, zero allowed, if a valid natural number or numeric string is entered and null otherwise, does not throw
+   * @param {natural} n
+   * @returns {natural} natural vector
+   * @memberof library
+   * @public
+   */
+  library.natural_number_or_null = function (n) {
+    var res = library.number_or_null(n);
+    if (res < 0 || res !== Math.floor(res)) return null;
+    return res;
+  };
+  /**
+   * Returns vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
+   * @param {number} n
+   * @returns {number} number vector
+   * @memberof library
+   * @public
+   */
+  library.number_vector_or_null = function (n) {
+    if (typeof n === "number") return [n];
+    var res;
+    if (typeof n === "string") {
+      res = n.split(/\s+/);
+    } else if (Array.isArray(n)) {
+      res = n.slice();
+    } else {
+      return null;
+    }
+    for (var i = 0; i < res.length; i++) {
+      res[i] = library.number_or_null(res[i]);
+      if (null === res[i])
+        throw new Error("number_vector_or_null: invalid input");
+    }
+    return res;
+  };
+})(this.JsonRisk || module.exports);

@@ -47,14 +47,14 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.get_safe_number_vector(obj.expiries);
+        this.#expiries = library.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
 
       // terms
       if ("terms" in obj) {
-        this.#terms = library.get_safe_number_vector(obj.terms);
+        this.#terms = library.number_vector_or_null(obj.terms);
       } else {
         this.#terms = get_times(obj.labels_term);
       }
@@ -68,7 +68,7 @@
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.get_safe_number_vector(obj.moneyness);
+        this.#moneyness = library.number_vector_or_null(obj.moneyness);
       }
 
       // smile

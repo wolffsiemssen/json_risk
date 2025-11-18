@@ -28,14 +28,14 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.get_safe_number_vector(obj.expiries);
+        this.#expiries = library.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.get_safe_number_vector(obj.moneyness);
+        this.#moneyness = library.number_vector_or_null(obj.moneyness);
       }
 
       // interpolation
