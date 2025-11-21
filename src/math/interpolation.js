@@ -1,10 +1,14 @@
 (function (library) {
   "use strict";
 
-  const find_index = function (x, s) {
-    let index = 0;
+  const find_index = function (x, s, guess = 0) {
+    let index = guess;
+    // find index such that x[index] <= s <= x[index+1]
     while (s > x[index + 1] && index < x.length - 2) {
       index++;
+    }
+    while (s < x[index] && index > 0) {
+      index--;
     }
     return index;
   };
@@ -44,8 +48,9 @@
         return y0;
       };
     }
+    let index = 0;
     return function (s) {
-      const index = find_index(x, s);
+      index = find_index(x, s, index);
       const temp = 1 / (x[index + 1] - x[index]);
       return (
         (y[index] * (x[index + 1] - s) + y[index + 1] * (s - x[index])) * temp
@@ -126,8 +131,9 @@
       d[i] = (b[i + 1] + b[i] - 2 * m) / dx[i + 1] / dx[i + 1];
     }
 
+    let i = 0;
     return function (s) {
-      const i = find_index(x_, s);
+      i = find_index(x_, s, i);
       const ds = s - x_[i];
       return y_[i] + ds * (b[i] + ds * (c[i] + ds * d[i]));
     };
