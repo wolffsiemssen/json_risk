@@ -27,6 +27,8 @@
         return new library.EquityForward(obj);
       case "equity_option":
         return new library.EquityOption(obj);
+      case "cds":
+        return new library.CreditDefaultSwap(obj);
       default:
         throw new Error("make_instrument: invalid instrument type");
     }
