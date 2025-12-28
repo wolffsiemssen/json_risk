@@ -26,7 +26,7 @@
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
-      return this.quantity * (forward - this.#price);
+      return forward - this.#price;
     }
   }
 

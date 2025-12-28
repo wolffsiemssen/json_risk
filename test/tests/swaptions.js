@@ -48,6 +48,7 @@ test.execute = function (TestFramework, JsonRisk) {
   for (i = 0; i < months.length; i++) {
     for (j = 0; j < expiries.length; j++) {
       const json = {
+        quantity: 1.0,
         is_payer: false,
         maturity: JsonRisk.add_months(
           JsonRisk.valuation_date,
@@ -76,11 +77,11 @@ test.execute = function (TestFramework, JsonRisk) {
 
       const p1 = new JsonRisk.Swap(json).value(params);
       console.log("JSON Risk forward receiver swap price:   " + p1.toFixed(3));
-      json.is_short = true;
+      json.quantity = -1.0;
       const p2 = new JsonRisk.Swaption(json).value(params);
       console.log("JSON Risk short receiver swaption price: " + p2.toFixed(3));
       json.is_payer = true;
-      json.is_short = false;
+      json.quantity = 1.0;
       const p3 = new JsonRisk.Swaption(json).value(params);
       console.log("JSON Risk long payer swaption price:     " + p3.toFixed(3));
       console.log(

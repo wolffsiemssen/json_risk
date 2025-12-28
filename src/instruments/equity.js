@@ -49,13 +49,13 @@
 
     value_impl(params, extras_not_used) {
       const quote = params.get_scalar(this.#quote);
-      if ("" == this.#disc_curve) return this.quantity * quote.get_value();
+      if ("" == this.#disc_curve) return quote.get_value();
       const spot_date = this.spot_date();
 
       const dc = params.get_curve(this.#disc_curve);
       const discounted_quote =
         quote.get_value() * dc.get_df(library.time_from_now(spot_date));
-      return this.quantity * discounted_quote;
+      return discounted_quote;
     }
   }
 

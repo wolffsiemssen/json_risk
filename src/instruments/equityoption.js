@@ -39,7 +39,7 @@
       const val = this.#is_call
         ? model.call_price(forward, this.#strike)
         : model.put_price(forward, this.#strike);
-      return this.quantity * val * dc.get_df(t);
+      return val * dc.get_df(t);
     }
   }
 

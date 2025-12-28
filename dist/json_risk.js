@@ -382,7 +382,8 @@
       this.#currency = library.string_or_empty(obj.currency);
 
       if ("quantity" in obj) {
-        this.#quantity = library.number_or_null(obj.quantity);
+        let q = library.number_or_null(obj.quantity);
+        if (null != q) this.#quantity = q;
       }
     }
 
@@ -413,8 +414,13 @@
       const p =
         params instanceof library.Params ? params : new library.Params(params);
 
+      // call sub-class valuation function
       let val = this.value_impl(p, extras);
 
+      // apply instument quantity
+      val *= this.quantity;
+
+      // apply fx rate if applicable
       if ("" != this.#currency) {
         const fx = p.get_fx_rate(this.#currency, p.main_currency);
         val *= fx;
@@ -841,13 +847,13 @@
 
     value_impl(params, extras_not_used) {
       const quote = params.get_scalar(this.#quote);
-      if ("" == this.#disc_curve) return this.quantity * quote.get_value();
+      if ("" == this.#disc_curve) return quote.get_value();
       const spot_date = this.spot_date();
 
       const dc = params.get_curve(this.#disc_curve);
       const discounted_quote =
         quote.get_value() * dc.get_df(library.time_from_now(spot_date));
-      return this.quantity * discounted_quote;
+      return discounted_quote;
     }
   }
 
@@ -882,9 +888,7 @@
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       return (
-        this.quantity *
-        (forward - this.#price) *
-        dc.get_df(library.time_from_now(this.#expiry))
+        (forward - this.#price) * dc.get_df(library.time_from_now(this.#expiry))
       );
     }
   }
@@ -919,7 +923,7 @@
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
-      return this.quantity * (forward - this.#price);
+      return forward - this.#price;
     }
   }
 
@@ -966,7 +970,7 @@
       const val = this.#is_call
         ? model.call_price(forward, this.#strike)
         : model.put_price(forward, this.#strike);
-      return this.quantity * val * dc.get_df(t);
+      return val * dc.get_df(t);
     }
   }
 
@@ -1790,7 +1794,6 @@
   class Swaption extends library.Instrument {
     constructor(obj) {
       super(obj);
-      this.sign = library.make_bool(obj.is_short) ? -1 : 1;
 
       //maturity of the underlying swap
       this.maturity = library.date_or_null(obj.maturity);
@@ -1877,7 +1880,6 @@
       }
 
       res *= this.swap.annuity(disc_curve);
-      res *= this.sign;
       return res;
     }
 

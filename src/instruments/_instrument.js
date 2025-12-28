@@ -8,7 +8,8 @@
       this.#currency = library.string_or_empty(obj.currency);
 
       if ("quantity" in obj) {
-        this.#quantity = library.number_or_null(obj.quantity);
+        let q = library.number_or_null(obj.quantity);
+        if (null != q) this.#quantity = q;
       }
     }
 
@@ -39,8 +40,13 @@
       const p =
         params instanceof library.Params ? params : new library.Params(params);
 
+      // call sub-class valuation function
       let val = this.value_impl(p, extras);
 
+      // apply instument quantity
+      val *= this.quantity;
+
+      // apply fx rate if applicable
       if ("" != this.#currency) {
         const fx = p.get_fx_rate(this.#currency, p.main_currency);
         val *= fx;

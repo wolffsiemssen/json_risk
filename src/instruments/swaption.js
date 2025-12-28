@@ -2,7 +2,6 @@
   class Swaption extends library.Instrument {
     constructor(obj) {
       super(obj);
-      this.sign = library.make_bool(obj.is_short) ? -1 : 1;
 
       //maturity of the underlying swap
       this.maturity = library.date_or_null(obj.maturity);
@@ -89,7 +88,6 @@
       }
 
       res *= this.swap.annuity(disc_curve);
-      res *= this.sign;
       return res;
     }
 

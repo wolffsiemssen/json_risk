@@ -128,7 +128,7 @@ test.execute = function (TestFramework, JsonRisk) {
     });
     const swaption = new JsonRisk.Swaption({
       is_payer: false,
-      is_short: true,
+      quantity: -1.0,
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       notional: 100,

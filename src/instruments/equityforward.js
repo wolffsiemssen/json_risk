@@ -27,9 +27,7 @@
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       return (
-        this.quantity *
-        (forward - this.#price) *
-        dc.get_df(library.time_from_now(this.#expiry))
+        (forward - this.#price) * dc.get_df(library.time_from_now(this.#expiry))
       );
     }
   }
