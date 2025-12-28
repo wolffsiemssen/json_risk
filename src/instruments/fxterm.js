@@ -1,50 +1,50 @@
 (function (library) {
-  class FxTerm extends library.Instrument {
+  class FxTerm extends library.LegInstrument {
     constructor(obj) {
-      super(obj);
-      //the near payment of the swap
-      this.near_leg = new library.FixedIncome({
-        notional: obj.notional, // negative if first leg is pay leg
-        maturity: obj.maturity,
-        disc_curve: obj.disc_curve || "",
-        fixed_rate: 0,
-        tenor: 0,
-      });
+      if (!Array.isArray(obj.legs)) {
+        // generate leg from terms and conditions, only one single currency leg with near and optonally far payment supported
+        const leg = {
+          currency: obj.currency,
+          disc_curve: obj.disc_curve,
+          payments: [],
+        };
 
-      //the far payment of the swap
-      if (
-        typeof obj.notional_2 === "number" &&
-        library.date_or_null(obj.maturity_2)
-      ) {
-        this.far_leg = new library.FixedIncome({
-          notional: obj.notional_2, // negative if second leg is pay leg
-          maturity: obj.maturity_2,
-          disc_curve: obj.disc_curve || "",
-          fixed_rate: 0,
-          tenor: 0,
+        // near payment
+        leg.payments.push({
+          type: "notional",
+          notional: obj.notional,
+          date_pmt: obj.maturity,
         });
+
+        // far payment
+        if (
+          typeof obj.notional_2 === "number" &&
+          library.date_or_null(obj.maturity_2)
+        ) {
+          leg.payments.push({
+            type: "notional",
+            notional: obj.notional_2,
+            date_pmt: obj.maturity_2,
+          });
+        }
+
+        // create shallow copy with leg and call constructor
+        const tempobj = Object.assign({ legs: [leg] }, obj);
+        super(tempobj);
       } else {
-        this.far_leg = null;
+        super(obj);
       }
-    }
 
-    present_value(disc_curve) {
-      var res = 0;
-      res += this.near_leg.present_value(disc_curve, null, null);
-      if (this.far_leg)
-        res += this.far_leg.present_value(disc_curve, null, null);
-      return res;
-    }
+      // consistency checks
+      if (1 !== this.legs.length && 2 !== this.legs.length)
+        throw new Error("FxTerm: must have one or two legs");
 
-    add_deps_impl(deps) {
-      this.near_leg.add_deps(deps);
-    }
-
-    value_impl(params) {
-      if ((!params) instanceof library.Params)
-        throw new Error("evaluate: params must be of type Params");
-      const disc_curve = params.get_curve(this.near_leg.disc_curve);
-      return this.present_value(disc_curve);
+      if (
+        2 === this.legs.length &&
+        this.legs[0].currency === this.legs[1].currency
+      ) {
+        throw new Error("FxTerm: Legs must have different currencies.");
+      }
     }
   }
 
