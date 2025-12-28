@@ -68,7 +68,10 @@ test.execute = function (TestFramework, JsonRisk) {
     const val = cds.value(params_json);
     const ref = testcases[i].pv;
     const msg = `CDS Valuation ${i}, value: ${val}, ref: ${ref}, diff: ${val - ref}`;
-    TestFramework.assert(Math.abs(ref - val) < testcases[i].notional * 0.0001 * 10, msg);
+    TestFramework.assert(
+      Math.abs(ref - val) < testcases[i].notional * 0.0001 * 10,
+      msg,
+    );
   }
 };
 
@@ -255,5 +258,5 @@ const testcases = [
     survival_curve: "survival",
     pv: 957541.78,
     prot: 4231712.36,
-  }
+  },
 ];
