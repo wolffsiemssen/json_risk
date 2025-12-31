@@ -343,6 +343,8 @@
         return new library.NotionalPayment(obj);
       case "fixed":
         return new library.FixedRatePayment(obj);
+      case "float":
+        return new library.FloatRatePayment(obj);
       default:
         throw new Error("make_payment: invalid payment type");
     }
@@ -2424,10 +2426,18 @@
     #currency = "";
     #disc_curve = "";
     #payments = [];
+    #indices = {};
     constructor(obj) {
       if ("payments" in obj && Array.isArray(obj.payments)) {
         this.#payments = obj.payments.map((pobj) => library.make_payment(pobj));
       }
+
+      if ("indices" in obj) {
+        for (const [key, value] of Object.entries(obj.indices)) {
+          this.#indices[key] = new library.SimpleIndex(value);
+        }
+      }
+
       this.#disc_curve = library.string_or_empty(obj.disc_curve);
       this.#currency = library.string_or_empty(obj.currency);
 
@@ -2460,12 +2470,20 @@
     add_deps(deps) {
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
       if ("" != this.#currency) deps.add_currency(this.#currency);
+
+      for (const idx of this.#indices) {
+        idx.add_deps(deps);
+      }
     }
 
     value(params) {
       const disc_curve = params.get_curve(this.#disc_curve);
       let res = 0;
       for (const p of this.#payments) {
+        // make projection for unfixed payments
+        if (!p.is_fixed) p.project(params, this.#indices);
+
+        // get amount and discount
         let amount = p.amount;
         let t = library.time_from_now(p.date_pmt);
         let df = disc_curve.get_df(t);
@@ -2512,6 +2530,9 @@
     }
 
     // getter functions
+    get is_fixed() {
+      return true;
+    }
     get date_pmt() {
       return this.#date_pmt;
     }
@@ -2538,17 +2559,15 @@
     }
   }
 
-  class FixedRatePayment extends NotionalPayment {
+  class RatePayment extends NotionalPayment {
     #date_start = null;
     #date_end = null;
     #ref_start = null;
     #ref_end = null;
-    #rate = null;
     #dcc = "";
     #yf = null;
     #yffunc = null;
     #capitalize = false;
-    #amount = 0.0;
     constructor(obj) {
       super(obj);
       // start and end dates
@@ -2564,22 +2583,15 @@
       this.#ref_start = library.date_or_null(obj.ref_start) || this.#date_start;
       this.#ref_end = library.date_or_null(obj.ref_end) || this.#date_end;
 
-      // rate
-      this.#rate = library.number_or_null(obj.rate);
-      if (this.#rate === null)
-        throw new Error("RatePayment: rate must be a valid number");
-
       // dcc and year fraction
       this.#dcc = library.string_or_empty(obj.dcc);
       this.#yffunc = library.year_fraction_factory(this.#dcc);
       this.#yf = this.#yffunc(this.#date_start, this.#date_end);
 
       // capitalization
-      this.#capitalize = library.make_bool(this.capitalize);
-
-      // amount
-      this.#amount = this.notional * this.#rate * this.#yf;
+      this.#capitalize = library.make_bool(obj.capitalize);
     }
+
     //getter functions
     get date_start() {
       return this.#date_start;
@@ -2596,33 +2608,183 @@
     get yf() {
       return this.#yf;
     }
+    get capitalize() {
+      return this.#capitalize;
+    }
+  }
+
+  class FixedRatePayment extends RatePayment {
+    #rate = null;
+    #amount = 0.0;
+    constructor(obj) {
+      super(obj);
+      // rate
+      this.#rate = library.number_or_null(obj.rate);
+      if (this.#rate === null)
+        throw new Error("FixedRatePayment: rate must be a valid number");
+
+      // amount
+      this.#amount = this.notional * this.#rate * this.yf;
+    }
+
+    //getter functions
     get rate() {
       return this.#rate;
     }
-
     get amount() {
-      return this.#capitalize ? 0.0 : this.#amount;
+      return this.capitalize ? 0.0 : this.#amount;
     }
     get amount_interest() {
       return this.#amount;
     }
     get amount_notional() {
-      return this.#capitalize ? -this.#amount : 0.0;
+      return this.capitalize ? -this.#amount : 0.0;
     }
 
+    // set notional must update amount as well
     set_notional(n) {
       super.set_notional(n);
-      this.#amount = this.notional * this.#rate * this.#yf;
+      this.#amount = this.notional * this.#rate * this.yf;
     }
   }
 
-  // FloatRatePayment(index_name, is_fixed, rate_spread)
+  class FloatRatePayment extends RatePayment {
+    #index = "";
+    #is_fixed = false;
+    #spread = 0.0;
+    #rate = 0.0;
+    #reset_start = null;
+    #reset_end = null;
+    constructor(obj) {
+      super(obj);
+
+      // index
+      this.#index = library.string_or_empty(obj.index);
+
+      // is fixed
+      this.#is_fixed = library.make_bool(obj.is_fixed);
+
+      // fixing
+      if (this.#is_fixed) {
+        this.#rate = library.number_or_null(obj.rate);
+        if (null === this.#rate)
+          throw new Error(
+            "FloatRatePayment: rate missing on payment that is already fixed",
+          );
+      }
+
+      // spread
+      this.#spread = library.number_or_null(obj.spread) || 0.0;
+
+      // optional dates
+      this.#reset_start =
+        library.date_or_null(obj.reset_start) || this.date_start;
+      this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
+    }
+
+    // getter functions
+    get is_fixed() {
+      return this.#is_fixed;
+    }
+    get index() {
+      return this.#index;
+    }
+    get rate() {
+      return this.#rate;
+    }
+    get amount() {
+      return this.capitalize ? 0.0 : this.amount_interest;
+    }
+    get amount_interest() {
+      return this.#rate * this.notional * this.yf;
+    }
+    get amount_notional() {
+      return this.capitalize ? -this.amount_interest : 0.0;
+    }
+
+    // project rate
+    project(params, indices) {
+      if (this.#is_fixed) return this.#rate;
+      if ("" === this.#index)
+        throw new Error("FloatRatePayment: no index defined");
+      const idx = indices[this.#index];
+      if (undefined === idx)
+        throw new Error(
+          `FloatRatePayment: index ${this.#index} was not supplied`,
+        );
+      if (!(idx instanceof library.SimpleIndex))
+        throw new Error(`FloatRatePayment: invalid index ${this.#index}`);
+      this.#rate = idx.fwd_rate(params, this.#reset_start, this.#reset_end);
+      this.#rate += this.#spread;
+      return this.#rate;
+    }
+  }
 
   // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
 
   // CapFloorPayment()
   library.NotionalPayment = NotionalPayment;
   library.FixedRatePayment = FixedRatePayment;
+  library.FloatRatePayment = FloatRatePayment;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class SimpleIndex {
+    #fwd_curve = "";
+    #surface = "";
+    #dcc = "";
+    #yffunc = null;
+    constructor(obj) {
+      // fwd_curve
+      this.#fwd_curve = library.string_or_empty(obj.fwd_curve);
+
+      // surface
+      this.#surface = library.string_or_empty(obj.surface);
+
+      // dcc and year fraction
+      this.#dcc = library.string_or_empty(obj.dcc);
+      this.#yffunc = library.year_fraction_factory(this.#dcc);
+    }
+
+    // getter functions
+    get fwd_curve() {
+      return this.#fwd_curve;
+    }
+
+    get surface() {
+      return this.#surface;
+    }
+
+    get dcc() {
+      return this.#dcc;
+    }
+
+    // forward rate
+    fwd_rate(params, start, end) {
+      if (start <= library.valuation_date)
+        throw new Error("SimpleIndex: Cannot project past fixings");
+      const fc = params.get_curve(this.#fwd_curve);
+      const tstart = library.time_from_now(start);
+      const tend = library.time_from_now(end);
+
+      // economically implied forward amount from curve
+      const amount = fc.get_fwd_amount(tstart, tend);
+
+      const yf = this.#yffunc(start, end);
+      if (yf <= 0.0)
+        throw new Error("SimpleIndex: Positive year fraction required");
+
+      // amount converted to a rate with the index day count method
+      return amount / yf;
+    }
+
+    // deps
+    add_deps(deps) {
+      if ("" != this.#fwd_curve) deps.add_curve(this.#fwd_curve);
+      if ("" != this.#surface) deps.add_surface(this.#surface);
+    }
+  }
+
+  library.SimpleIndex = SimpleIndex;
 })(this.JsonRisk || module.exports);
 (function (library) {
   "use strict";

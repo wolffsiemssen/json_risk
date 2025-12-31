@@ -12,6 +12,8 @@
         return new library.NotionalPayment(obj);
       case "fixed":
         return new library.FixedRatePayment(obj);
+      case "float":
+        return new library.FloatRatePayment(obj);
       default:
         throw new Error("make_payment: invalid payment type");
     }

@@ -33,6 +33,10 @@ test.execute = function (TestFramework, JsonRisk) {
         times: [1],
         zcs: [0.0],
       },
+      forward: {
+        times: [1],
+        zcs: [0.01],
+      },
     },
     scalars: {},
   };
@@ -60,8 +64,8 @@ test.execute = function (TestFramework, JsonRisk) {
     };
     legs.push(leg);
 
-    // add rate payment
-    let rate_payment = Object.assign(
+    // add fixed rate payment
+    let fixed_rate_payment = Object.assign(
       {
         type: "fixed",
         currency: currency,
@@ -71,7 +75,39 @@ test.execute = function (TestFramework, JsonRisk) {
       template,
     );
     refval += pmtval * rate;
-    leg.payments.push(rate_payment);
+    leg.payments.push(fixed_rate_payment);
+
+    // add float rate payment with fixing
+    let fixed_float_rate_payment = Object.assign(
+      {
+        type: "float",
+        currency: currency,
+        notional: pmtval * fxrate,
+        rate: rate*2, // includes spread when fixed
+        spread: rate,
+        is_fixed: true,
+      },
+      template,
+    );
+    refval += pmtval * rate * 2;
+    leg.payments.push(fixed_float_rate_payment);
+
+    // add float rate payment without fixing
+    let float_rate_payment = {
+      type: "float",
+      currency: currency,
+      notional: pmtval * fxrate,
+      rate: null,
+      spread: rate,
+      is_fixed: false,
+
+      date_pmt: "2010/01/02",
+      date_start: "2009/01/01",
+      date_end: "2010/01/01",
+      index: "index",
+    };
+    refval += pmtval * rate * 2.0;
+    leg.payments.push(float_rate_payment);
 
     // add notional payment
     let notional_payment = Object.assign(
@@ -84,6 +120,14 @@ test.execute = function (TestFramework, JsonRisk) {
     );
     refval += pmtval;
     leg.payments.push(notional_payment);
+
+    // add index
+    leg.indices = {
+      index: {
+        type: "simple",
+        fwd_curve: "forward",
+      },
+    };
   }
 
   for (const [currency, fxrate] of Object.entries(currencies)) {
