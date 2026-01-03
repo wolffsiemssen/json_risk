@@ -66,6 +66,9 @@
 
     // linear amortization flag
     specs.linear_amortization = library.make_bool(obj.linear_amortization);
+
+    // use forward curve as index name
+    specs.index_name = library.string_or_empty(obj.fwd_curve);
   }
 
   //
@@ -88,8 +91,9 @@
       );
     }
 
-    if (!conditions_valid_until) conditions_valid_until = [specs.maturity];
-
+    if (!conditions_valid_until) {
+      conditions_valid_until = [specs.maturity];
+    }
     const fixed_rate = library.number_vector_or_null(obj.fixed_rate) || [0.0]; //array valued
     const float_spread = library.number_vector_or_null(obj.float_spread) || [0];
     const cap_rate = library.number_vector_or_null(obj.cap_rate) || [Infinity];
@@ -234,7 +238,7 @@
     for (const dt of fixing_schedule) result.add(dt.getTime());
     for (const c of conditions) result.add(c.valid_until.getTime());
     timeline = Array.from(result);
-    timeline.sort();
+    timeline.sort((a, b) => a - b);
     timeline = timeline.map((t) => new Date(t));
   }
 
@@ -273,6 +277,7 @@
     res.reset_start = reset_start;
     res.reset_end = reset_end;
     res.spread = float_spread;
+    res.index = "index";
 
     // fixing
     if (reset_start <= library.valuation_date) {

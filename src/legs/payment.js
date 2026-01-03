@@ -86,6 +86,14 @@
       this.#ref_start = library.date_or_null(obj.ref_start) || this.#date_start;
       this.#ref_end = library.date_or_null(obj.ref_end) || this.#date_end;
 
+      // sanity checks
+      if (this.#date_start >= this.#date_end)
+        throw new Error("RatePayment: date_start must be before date_end");
+      if (this.#ref_start >= this.#ref_end)
+        throw new Error("RatePayment: ref_start must be before ref_end");
+      if (this.#date_start >= this.date_value)
+        throw new Error("RatePayment: date_start must be before date_value");
+
       // dcc and year fraction
       this.#dcc = library.string_or_empty(obj.dcc);
       this.#yffunc = library.year_fraction_factory(this.#dcc);
@@ -183,6 +191,10 @@
       this.#reset_start =
         library.date_or_null(obj.reset_start) || this.date_start;
       this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
+
+      // sanity checks
+      if (this.#reset_start >= this.#reset_end)
+        throw new Error("RatePayment: reset_start must be before reset_end");
     }
 
     // getter functions
@@ -206,7 +218,7 @@
     }
 
     // project rate
-    project(params, indices) {
+    project(indices) {
       if (this.#is_fixed) return this.#rate;
       if ("" === this.#index)
         throw new Error("FloatRatePayment: no index defined");
@@ -217,7 +229,7 @@
         );
       if (!(idx instanceof library.SimpleIndex))
         throw new Error(`FloatRatePayment: invalid index ${this.#index}`);
-      this.#rate = idx.fwd_rate(params, this.#reset_start, this.#reset_end);
+      this.#rate = idx.fwd_rate(this.#reset_start, this.#reset_end);
       this.#rate += this.#spread;
       return this.#rate;
     }

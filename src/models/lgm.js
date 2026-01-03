@@ -427,25 +427,52 @@
     swaption,
     disc_curve,
     fwd_curve,
-    fair_rate,
   ) {
     //correction for multi curve valuation - move basis spread to fixed leg
-    var swap_rate_singlecurve = swaption.swap.fair_rate(disc_curve, disc_curve);
-    var fixed_rate;
-    if (fair_rate) {
-      fixed_rate = swap_rate_singlecurve;
-    } else {
-      var swap_rate_multicurve = swaption.swap.fair_rate(disc_curve, fwd_curve);
-      fixed_rate =
-        swaption.swap.fixed_rate - swap_rate_multicurve + swap_rate_singlecurve;
-    }
-    //recalculate cash flow amounts to account for new fixed rate
-    var cf_obj = swaption.swap.fixed_leg.finalize_cash_flows(null, fixed_rate);
-    cf_obj.pmt_total[0] -= cf_obj.current_principal[1];
-    cf_obj.pmt_total[cf_obj.pmt_total.length - 1] +=
-      cf_obj.current_principal[cf_obj.pmt_total.length - 1];
+    const { fixed_leg, float_leg } = swaption.swap;
+    let fixed_rate = swaption.swap.fixed_rate();
+    const pv_float_singlecurve = float_leg.value_with_curves(
+      disc_curve,
+      disc_curve,
+    );
+    const pv_float_multicurve = float_leg.value_with_curves(
+      disc_curve,
+      fwd_curve,
+    );
+    const annuity = fixed_leg.annuity(disc_curve);
+    if (annuity != 0) {
+      // pv of original swap with multi curve valuation should be equal to pv of corrected swap with single curve valuation
+      // i.e.
+      // pv_fix_corrected + pv_float_singlecurve = pv_fix + pv_float_multicurve
+      // pv_fix_corrected - pv_fix = pv_float_multicorve - pv_float_singlecurve
+      // annuity * correction = pv_float_multicurve - pv_float_singlecurve
+      // correction = (pv_float_multicurve - pv_float_singlecurve) / annuity
 
-    return cf_obj;
+      fixed_rate += (pv_float_multicurve - pv_float_singlecurve) / annuity;
+    }
+
+    // calculate cash flow amounts to account for new fixed rate
+    const p1 = fixed_leg.payments[0];
+    const cf = {
+      current_principal: [0.0],
+      t_pmt: [library.time_from_now(p1.date_start)],
+      pmt_total: [-p1.notional],
+      pmt_interest: [0.0],
+    };
+
+    for (const p of swaption.swap.fixed_leg.payments) {
+      cf.current_principal.push(p.notional);
+      cf.t_pmt.push(library.time_from_now(p.date_pmt));
+      const amount = p.yf ? p.notional * p.yf * fixed_rate : 0.0;
+      cf.pmt_total.push(amount);
+      cf.pmt_interest.push(amount);
+    }
+
+    // add final principal exchange cash flows
+    cf.pmt_total[cf.pmt_total.length - 1] +=
+      cf.current_principal[cf.pmt_total.length - 1];
+
+    return cf;
   };
 
   /**
@@ -533,7 +560,6 @@
           basket[i],
           disc_curve,
           fwd_curve,
-          false,
         );
         discount_factors = get_discount_factors(
           cf_obj,
@@ -548,7 +574,7 @@
             cf_obj.pmt_total[j] * discount_factors[j] * h(cf_obj.t_pmt[j]);
         }
         //bachelier swaption price and std deviation
-        target = basket[i].present_value(disc_curve, fwd_curve, surface);
+        target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
         std_dev_bachelier = basket[i].std_dev;
 
         //initial guess
@@ -570,12 +596,11 @@
         //max value is value of the payoff without redemption payment
         max_value =
           min_value +
-          basket[i].swap.fixed_leg.notional *
+          basket[i].swap.fixed_leg.payments[0].notional *
             discount_factors[discount_factors.length - 1];
         //min value (attained at vola=0) is maximum of zero and current value of the payoff
         if (min_value < 0) min_value = 0;
 
-        target = basket[i].present_value(disc_curve, fwd_curve, surface);
         accuracy = target * 1e-7 + 1e-7;
 
         if (target <= min_value + accuracy || 0 === xi) {

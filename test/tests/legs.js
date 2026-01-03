@@ -83,7 +83,7 @@ test.execute = function (TestFramework, JsonRisk) {
         type: "float",
         currency: currency,
         notional: pmtval * fxrate,
-        rate: rate*2, // includes spread when fixed
+        rate: rate * 2, // includes spread when fixed
         spread: rate,
         is_fixed: true,
       },

@@ -1714,72 +1714,134 @@
   library.FxTerm = FxTerm;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  class Swap extends library.Instrument {
+  class Swap extends library.LegInstrument {
+    #fixed_leg = null;
+    #float_leg = null;
+    #is_fix_float = true;
     constructor(obj) {
-      super(obj);
-      this.phi = library.make_bool(obj.is_payer) ? -1 : 1;
+      if (!Array.isArray(obj.legs)) {
+        // generate legs from terms and conditions
+        const phi = library.make_bool(obj.is_payer) ? -1 : 1;
+        const fixed_leg = library.cashflow_generator({
+          notional: obj.notional * phi,
+          notional_exchange: false,
+          maturity: obj.maturity,
+          fixed_rate: obj.fixed_rate,
+          tenor: obj.tenor,
+          effective_date: obj.effective_date,
+          calendar: obj.calendar,
+          bdc: obj.bdc,
+          dcc: obj.dcc,
+          adjust_accrual_periods: obj.adjust_accrual_periods,
+          disc_curve: obj.disc_curve || "",
+        });
 
-      this.fixed_rate = obj.fixed_rate;
-      //the fixed leg of the swap
-      this.fixed_leg = new library.FixedIncome({
-        notional: obj.notional * this.phi,
-        notional_exchange: false,
-        maturity: obj.maturity,
-        fixed_rate: obj.fixed_rate,
-        tenor: obj.tenor,
-        effective_date: obj.effective_date,
-        calendar: obj.calendar,
-        bdc: obj.bdc,
-        dcc: obj.dcc,
-        adjust_accrual_periods: obj.adjust_accrual_periods,
-        disc_curve: obj.disc_curve || "",
-      });
+        const float_leg = library.cashflow_generator({
+          notional: -obj.notional * phi,
+          notional_exchange: false,
+          maturity: obj.maturity,
+          float_spread: obj.float_spread,
+          tenor: obj.float_tenor,
+          effective_date: obj.effective_date,
+          calendar: obj.calendar,
+          bdc: obj.float_bdc,
+          dcc: obj.float_dcc,
+          float_current_rate: obj.float_current_rate,
+          adjust_accrual_periods: obj.adjust_accrual_periods,
+          disc_curve: obj.disc_curve || "",
+          fwd_curve: obj.fwd_curve || "",
+        });
 
-      //the floating rate leg of the swap
-      this.float_leg = new library.FixedIncome({
-        notional: -obj.notional * this.phi,
-        notional_exchange: false,
-        maturity: obj.maturity,
-        float_spread: obj.float_spread,
-        tenor: obj.float_tenor,
-        effective_date: obj.effective_date,
-        calendar: obj.calendar,
-        bdc: obj.float_bdc,
-        dcc: obj.float_dcc,
-        float_current_rate: obj.float_current_rate,
-        adjust_accrual_periods: obj.adjust_accrual_periods,
-        disc_curve: obj.disc_curve || "",
-        fwd_curve: obj.fwd_curve || "",
-      });
+        const index = {
+          fwd_curve: obj.fwd_curve,
+          surface: obj.surface,
+          dcc: obj.dcc,
+        };
+
+        float_leg.indices = { index: index };
+
+        // create shallow copy and leave original object unchanged
+        const tempobj = Object.assign({ legs: [fixed_leg, float_leg] }, obj);
+        super(tempobj);
+      } else {
+        super(obj);
+      }
+
+      if (2 !== this.legs.length)
+        throw new Error("Swap: must have exactly two legs");
+
+      // inspect legs and decide if this is a fix-float-swap (one purely fixed leg, one purely floating leg) which allows derivation of a fair rate
+      for (const leg of this.legs) {
+        if (leg.has_capitalization)
+          throw new Error("Swap: Cannot have capitalizing rate payments");
+        if (leg.has_fixed_rate_payments) this.#fixed_leg = leg;
+        if (leg.has_float_rate_payments) this.#float_leg = leg;
+      }
+
+      if (null === this.#fixed_leg || null === this.#float_leg) {
+        this.#is_fix_float = false;
+      } else {
+        if (this.#fixed_leg.has_float_rate_payments) this.#is_fix_float = false;
+        if (this.#float_leg.has_fixed_rate_payments) this.#is_fix_float = false;
+      }
+    }
+
+    // getter functions
+    get fixed_leg() {
+      return this.#fixed_leg;
+    }
+    get float_leg() {
+      return this.#float_leg;
+    }
+    get is_fix_float() {
+      return this.#is_fix_float;
     }
 
     fair_rate(disc_curve, fwd_curve) {
-      //returns fair rate, that is, rate such that swap has zero present value
-      var pv_float = this.float_leg.present_value(disc_curve, null, fwd_curve);
-      if (0 === pv_float) return 0;
-      return (-this.phi * pv_float) / this.annuity(disc_curve);
+      if (this.#is_fix_float) {
+        //returns fair rate, that is, rate such that swap has zero present value
+        const pv_float = this.#float_leg.value_with_curves(
+          disc_curve,
+          fwd_curve,
+        );
+        const annuity = this.annuity(disc_curve);
+        if (0 === annuity) {
+          if (0 === pv_float) return 0.0;
+          throw new Error(
+            "Swap: Cannot determine fair rate for swap with zero annuity",
+          );
+        }
+        return -pv_float / annuity;
+      } else {
+        throw new Error(
+          "Swap: Cannot determine fair rate for swap that is not of fix-float type.",
+        );
+      }
+    }
+
+    fixed_rate() {
+      if (this.#is_fix_float) {
+        //returns first rate on the fixed leg
+        for (const p of this.#fixed_leg.payments) {
+          if (p instanceof library.FixedRatePayment) {
+            return p.rate;
+          }
+        }
+      } else {
+        throw new Error(
+          "Swap: Cannot determine fixed rate for swap that is not of fix-float type.",
+        );
+      }
     }
 
     annuity(disc_curve) {
-      //returns always positive annuity regardless of payer/receiver flag
-      return this.fixed_leg.annuity(disc_curve) * this.phi;
-    }
-
-    present_value(disc_curve, fwd_curve) {
-      var res = 0;
-      res += this.fixed_leg.present_value(disc_curve, null, null);
-      res += this.float_leg.present_value(disc_curve, null, fwd_curve);
-      return res;
-    }
-
-    add_deps_impl(deps) {
-      this.float_leg.add_deps_impl(deps);
-    }
-
-    value_impl(params) {
-      const disc_curve = params.get_curve(this.float_leg.disc_curve);
-      const fwd_curve = params.get_curve(this.float_leg.fwd_curve);
-      return this.present_value(disc_curve, fwd_curve);
+      if (this.#is_fix_float) {
+        return this.#fixed_leg.annuity(disc_curve);
+      } else {
+        throw new Error(
+          "Swap: Cannot determine annuity for swap that is not of fix-float type.",
+        );
+      }
     }
 
     get_cash_flows(fwd_curve) {
@@ -1831,17 +1893,37 @@
       });
 
       this.surface = obj.surface || "";
+      this.std_dev = 0.0;
     }
 
-    present_value(disc_curve, fwd_curve, vol_surface) {
-      if (!(disc_curve instanceof library.Curve))
-        disc_curve = new library.Curve(disc_curve);
+    add_deps_impl(deps) {
+      this.swap.add_deps_impl(deps);
+      deps.add_surface(this.surface);
+    }
 
-      if (!(fwd_curve instanceof library.Curve))
-        fwd_curve = new library.Curve(fwd_curve);
+    value_impl(params) {
+      // require fix-float swap
+      if (!this.swap.is_fix_float)
+        throw new Error("Swaption: Underlying swap must be of type fix-float");
 
-      if (!(vol_surface instanceof library.Surface))
-        vol_surface = new library.Surface(vol_surface);
+      const disc_curve = params.get_curve(this.swap.fixed_leg.disc_curve);
+      const surface = params.get_surface(this.surface);
+
+      // fwd curve from first index that can be found
+      let fwd_curve = null;
+      for (const idx of Object.values(this.swap.float_leg.indices)) {
+        fwd_curve = idx.fwd_curve;
+        break;
+      }
+      fwd_curve = params.get_curve(fwd_curve);
+
+      return this.value_with_curves(disc_curve, fwd_curve, surface);
+    }
+
+    value_with_curves(disc_curve, fwd_curve, surface) {
+      // require fix-float swap
+      if (!this.swap.is_fix_float)
+        throw new Error("Swaption: Underlying swap must be of type fix-float");
 
       //obtain times
       var t_maturity = library.time_from_now(this.maturity);
@@ -1853,48 +1935,34 @@
         return 0;
       }
       //obtain fwd rate, that is, fair swap rate
-      this.fair_rate = this.swap.fair_rate(disc_curve, fwd_curve);
-      this.moneyness = this.swap.fixed_rate - this.fair_rate;
+      const fair_rate = this.swap.fair_rate(disc_curve, fwd_curve);
+      const fixed_rate = this.swap.fixed_rate();
 
       //obtain time-scaled volatility
-      if (typeof vol_surface !== "object" || vol_surface === null)
-        throw new Error("swaption.present_value: must provide valid surface");
-      this.vol = vol_surface.get_rate(
+      this.vol = surface.get_rate(
         t_first_exercise_date,
         t_term,
-        this.fair_rate, // fwd rate
-        this.swap.fixed_rate, // strike
+        fair_rate, // fwd rate
+        fixed_rate, // strike
       );
       this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
 
-      let res = 0.0;
+      // initialize model
+      const model = new library.BachelierModel(t_first_exercise_date, this.vol);
 
-      if (this.swap.phi === -1) {
-        res = new library.BachelierModel(
-          t_first_exercise_date,
-          this.vol,
-        ).call_price(this.fair_rate, this.swap.fixed_rate);
+      const annuity = this.swap.annuity(disc_curve);
+      let res;
+      if (annuity > 0) {
+        // receiver swap is put option
+        res = model.put_price(fair_rate, fixed_rate);
+        res *= annuity;
       } else {
-        res = new library.BachelierModel(
-          t_first_exercise_date,
-          this.vol,
-        ).put_price(this.fair_rate, this.swap.fixed_rate);
+        // payer swap is call option
+        res = model.call_price(fair_rate, fixed_rate);
+        res *= -annuity;
       }
 
-      res *= this.swap.annuity(disc_curve);
       return res;
-    }
-
-    add_deps_impl(deps) {
-      this.swap.add_deps_impl(deps);
-      deps.add_surface(this.surface);
-    }
-
-    value_impl(params) {
-      const disc_curve = params.get_curve(this.swap.float_leg.disc_curve);
-      const fwd_curve = params.get_curve(this.swap.float_leg.fwd_curve);
-      const surface = params.get_surface(this.surface);
-      return this.present_value(disc_curve, fwd_curve, surface);
     }
   }
 
@@ -2106,6 +2174,9 @@
 
     // linear amortization flag
     specs.linear_amortization = library.make_bool(obj.linear_amortization);
+
+    // use forward curve as index name
+    specs.index_name = library.string_or_empty(obj.fwd_curve);
   }
 
   //
@@ -2128,8 +2199,9 @@
       );
     }
 
-    if (!conditions_valid_until) conditions_valid_until = [specs.maturity];
-
+    if (!conditions_valid_until) {
+      conditions_valid_until = [specs.maturity];
+    }
     const fixed_rate = library.number_vector_or_null(obj.fixed_rate) || [0.0]; //array valued
     const float_spread = library.number_vector_or_null(obj.float_spread) || [0];
     const cap_rate = library.number_vector_or_null(obj.cap_rate) || [Infinity];
@@ -2274,7 +2346,7 @@
     for (const dt of fixing_schedule) result.add(dt.getTime());
     for (const c of conditions) result.add(c.valid_until.getTime());
     timeline = Array.from(result);
-    timeline.sort();
+    timeline.sort((a, b) => a - b);
     timeline = timeline.map((t) => new Date(t));
   }
 
@@ -2313,6 +2385,7 @@
     res.reset_start = reset_start;
     res.reset_end = reset_end;
     res.spread = float_spread;
+    res.index = "index";
 
     // fixing
     if (reset_start <= library.valuation_date) {
@@ -2428,18 +2501,12 @@
     #payments = [];
     #indices = {};
     constructor(obj) {
+      this.#disc_curve = library.string_or_empty(obj.disc_curve);
+      this.#currency = library.string_or_empty(obj.currency);
+
       if ("payments" in obj && Array.isArray(obj.payments)) {
         this.#payments = obj.payments.map((pobj) => library.make_payment(pobj));
       }
-
-      if ("indices" in obj) {
-        for (const [key, value] of Object.entries(obj.indices)) {
-          this.#indices[key] = new library.SimpleIndex(value);
-        }
-      }
-
-      this.#disc_curve = library.string_or_empty(obj.disc_curve);
-      this.#currency = library.string_or_empty(obj.currency);
 
       // all payments must have the same or no currency
       for (const p of this.#payments) {
@@ -2454,6 +2521,41 @@
           );
         }
       }
+
+      // sort payments
+      this.#payments.sort(function (a, b) {
+        // most important: if the notional of a rate payment depends on another payment, that payment must be before the rate payment. Amortization features are implemented much more straightforward if this is guaranteed.
+        if (undefined !== b.date_start && b.date_start >= a.date_value)
+          return -1;
+        if (undefined !== a.date_start && a.date_start >= b.date_value)
+          return 1;
+
+        // sort independend payments by value date and payment date
+        if (a.date_value != b.date_value) return a.date_value - b.date_value;
+        if (a.date_pmt != b.date_pmt) return a.date_pmt - b.date_pmt;
+
+        // sort rate payments with the same value and payment dates by their end and start dates
+        if (
+          a instanceof library.RatePayment &&
+          b instanceof library.RatePayment
+        ) {
+          if (a.date_end != b.date.end) return a.date_end - b.date_end;
+          if (a.date_start != b.date.start) return a.date_start - b.date_start;
+        }
+
+        // sort the remaining payments by their type
+        const na = a.constructor.name;
+        const nb = b.constructor.name;
+        return na < nb ? 1 : na > nb ? -1 : 0;
+      });
+      Object.freeze(this.#payments);
+
+      if ("indices" in obj) {
+        for (const [key, value] of Object.entries(obj.indices)) {
+          this.#indices[key] = new library.SimpleIndex(value);
+        }
+      }
+      Object.freeze(this.#indices);
     }
 
     // getter functions
@@ -2464,28 +2566,110 @@
       return this.#disc_curve;
     }
     get payments() {
-      return Array.from(this.#payments);
+      return this.#payments;
+    }
+    get indices() {
+      return this.#indices;
     }
 
+    get has_notional_payments() {
+      for (const p of this.#payments) {
+        if (p.constructor === library.NotionalPayment) return true;
+      }
+      return false;
+    }
+    get has_capitalization() {
+      for (const p of this.#payments) {
+        if (p.capitalize) return true;
+      }
+      return false;
+    }
+    get has_fixed_rate_payments() {
+      for (const p of this.#payments) {
+        if (p instanceof library.FixedRatePayment) return true;
+      }
+      return false;
+    }
+    get has_float_rate_payments() {
+      for (const p of this.#payments) {
+        if (p instanceof library.FloatRatePayment) return true;
+      }
+      return false;
+    }
+    get has_embedded_options() {
+      // not supported yet
+      return false;
+    }
+    get has_constant_notional() {
+      if (!this.#payments.length) return true;
+      let notional = this.#payments[0].notional;
+      for (const p of this.#payments) {
+        if (p.notional != notional) return false;
+      }
+      return true;
+    }
+
+    // valuation functions
     add_deps(deps) {
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
       if ("" != this.#currency) deps.add_currency(this.#currency);
 
-      for (const idx of this.#indices) {
+      for (const idx of Object.values(this.#indices)) {
         idx.add_deps(deps);
       }
     }
 
-    value(params) {
-      const disc_curve = params.get_curve(this.#disc_curve);
+    #dcf(disc_curve) {
       let res = 0;
       for (const p of this.#payments) {
-        // make projection for unfixed payments
-        if (!p.is_fixed) p.project(params, this.#indices);
-
         // get amount and discount
         let amount = p.amount;
         let t = library.time_from_now(p.date_pmt);
+        if (t < 0) continue;
+        let df = disc_curve.get_df(t);
+        res += amount * df;
+      }
+      return res;
+    }
+
+    value(params) {
+      for (const idx of Object.values(this.#indices)) {
+        idx.link_curve(params);
+      }
+      for (const p of this.#payments) {
+        // make projection for unfixed payments
+        if (!p.is_fixed) p.project(this.#indices);
+      }
+      const disc_curve = params.get_curve(this.#disc_curve);
+      return this.#dcf(disc_curve);
+    }
+
+    value_with_curves(disc_curve, fwd_curve) {
+      for (const idx of Object.values(this.#indices)) {
+        idx.link_curve(fwd_curve);
+      }
+      for (const p of this.#payments) {
+        // make projection for unfixed payments
+        if (!p.is_fixed) p.project(this.#indices);
+      }
+      return this.#dcf(disc_curve);
+    }
+
+    // argument must be either a valid params object or a curve object
+    annuity(params_or_curve) {
+      const disc_curve =
+        params_or_curve instanceof library.Params
+          ? params_or_curve.get_curve(this.#disc_curve)
+          : params_or_curve;
+      let res = 0;
+      for (const p of this.#payments) {
+        if (!(p instanceof library.FixedRatePayment)) continue;
+
+        let t = library.time_from_now(p.date_pmt);
+        if (t < 0) continue;
+
+        // get amount based on 100 percent interest and discount
+        let amount = p.notional * p.yf;
         let df = disc_curve.get_df(t);
         res += amount * df;
       }
@@ -2582,6 +2766,14 @@
       // reference periods
       this.#ref_start = library.date_or_null(obj.ref_start) || this.#date_start;
       this.#ref_end = library.date_or_null(obj.ref_end) || this.#date_end;
+
+      // sanity checks
+      if (this.#date_start >= this.#date_end)
+        throw new Error("RatePayment: date_start must be before date_end");
+      if (this.#ref_start >= this.#ref_end)
+        throw new Error("RatePayment: ref_start must be before ref_end");
+      if (this.#date_start >= this.date_value)
+        throw new Error("RatePayment: date_start must be before date_value");
 
       // dcc and year fraction
       this.#dcc = library.string_or_empty(obj.dcc);
@@ -2680,6 +2872,10 @@
       this.#reset_start =
         library.date_or_null(obj.reset_start) || this.date_start;
       this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
+
+      // sanity checks
+      if (this.#reset_start >= this.#reset_end)
+        throw new Error("RatePayment: reset_start must be before reset_end");
     }
 
     // getter functions
@@ -2703,7 +2899,7 @@
     }
 
     // project rate
-    project(params, indices) {
+    project(indices) {
       if (this.#is_fixed) return this.#rate;
       if ("" === this.#index)
         throw new Error("FloatRatePayment: no index defined");
@@ -2714,7 +2910,7 @@
         );
       if (!(idx instanceof library.SimpleIndex))
         throw new Error(`FloatRatePayment: invalid index ${this.#index}`);
-      this.#rate = idx.fwd_rate(params, this.#reset_start, this.#reset_end);
+      this.#rate = idx.fwd_rate(this.#reset_start, this.#reset_end);
       this.#rate += this.#spread;
       return this.#rate;
     }
@@ -2733,6 +2929,7 @@
     #surface = "";
     #dcc = "";
     #yffunc = null;
+    #linked_curve = null;
     constructor(obj) {
       // fwd_curve
       this.#fwd_curve = library.string_or_empty(obj.fwd_curve);
@@ -2758,16 +2955,35 @@
       return this.#dcc;
     }
 
+    // link curve
+    link_curve(params_or_curve) {
+      if (params_or_curve instanceof library.Curve) {
+        this.#linked_curve = params_or_curve;
+        return;
+      }
+      if (params_or_curve instanceof library.Params) {
+        this.#linked_curve = params_or_curve.get_curve(this.#fwd_curve);
+        return;
+      }
+      throw new Error(
+        "SimpleIndex: Try to link curve with an invalid argument",
+      );
+    }
+
     // forward rate
-    fwd_rate(params, start, end) {
+    fwd_rate(start, end) {
       if (start <= library.valuation_date)
         throw new Error("SimpleIndex: Cannot project past fixings");
-      const fc = params.get_curve(this.#fwd_curve);
       const tstart = library.time_from_now(start);
       const tend = library.time_from_now(end);
 
+      if (!(this.#linked_curve instanceof library.Curve))
+        throw new Error(
+          "SimpleIndex: No curve linked, call link_curve before calling fwd_rate",
+        );
+
       // economically implied forward amount from curve
-      const amount = fc.get_fwd_amount(tstart, tend);
+      const amount = this.#linked_curve.get_fwd_amount(tstart, tend);
 
       const yf = this.#yffunc(start, end);
       if (yf <= 0.0)
@@ -2781,6 +2997,15 @@
     add_deps(deps) {
       if ("" != this.#fwd_curve) deps.add_curve(this.#fwd_curve);
       if ("" != this.#surface) deps.add_surface(this.#surface);
+    }
+
+    // serialisation
+    toJSON() {
+      return {
+        fwd_curve: this.#fwd_curve,
+        surface: this.#surface,
+        dcc: this.#dcc,
+      };
     }
   }
 
@@ -4041,25 +4266,52 @@
     swaption,
     disc_curve,
     fwd_curve,
-    fair_rate,
   ) {
     //correction for multi curve valuation - move basis spread to fixed leg
-    var swap_rate_singlecurve = swaption.swap.fair_rate(disc_curve, disc_curve);
-    var fixed_rate;
-    if (fair_rate) {
-      fixed_rate = swap_rate_singlecurve;
-    } else {
-      var swap_rate_multicurve = swaption.swap.fair_rate(disc_curve, fwd_curve);
-      fixed_rate =
-        swaption.swap.fixed_rate - swap_rate_multicurve + swap_rate_singlecurve;
-    }
-    //recalculate cash flow amounts to account for new fixed rate
-    var cf_obj = swaption.swap.fixed_leg.finalize_cash_flows(null, fixed_rate);
-    cf_obj.pmt_total[0] -= cf_obj.current_principal[1];
-    cf_obj.pmt_total[cf_obj.pmt_total.length - 1] +=
-      cf_obj.current_principal[cf_obj.pmt_total.length - 1];
+    const { fixed_leg, float_leg } = swaption.swap;
+    let fixed_rate = swaption.swap.fixed_rate();
+    const pv_float_singlecurve = float_leg.value_with_curves(
+      disc_curve,
+      disc_curve,
+    );
+    const pv_float_multicurve = float_leg.value_with_curves(
+      disc_curve,
+      fwd_curve,
+    );
+    const annuity = fixed_leg.annuity(disc_curve);
+    if (annuity != 0) {
+      // pv of original swap with multi curve valuation should be equal to pv of corrected swap with single curve valuation
+      // i.e.
+      // pv_fix_corrected + pv_float_singlecurve = pv_fix + pv_float_multicurve
+      // pv_fix_corrected - pv_fix = pv_float_multicorve - pv_float_singlecurve
+      // annuity * correction = pv_float_multicurve - pv_float_singlecurve
+      // correction = (pv_float_multicurve - pv_float_singlecurve) / annuity
 
-    return cf_obj;
+      fixed_rate += (pv_float_multicurve - pv_float_singlecurve) / annuity;
+    }
+
+    // calculate cash flow amounts to account for new fixed rate
+    const p1 = fixed_leg.payments[0];
+    const cf = {
+      current_principal: [0.0],
+      t_pmt: [library.time_from_now(p1.date_start)],
+      pmt_total: [-p1.notional],
+      pmt_interest: [0.0],
+    };
+
+    for (const p of swaption.swap.fixed_leg.payments) {
+      cf.current_principal.push(p.notional);
+      cf.t_pmt.push(library.time_from_now(p.date_pmt));
+      const amount = p.yf ? p.notional * p.yf * fixed_rate : 0.0;
+      cf.pmt_total.push(amount);
+      cf.pmt_interest.push(amount);
+    }
+
+    // add final principal exchange cash flows
+    cf.pmt_total[cf.pmt_total.length - 1] +=
+      cf.current_principal[cf.pmt_total.length - 1];
+
+    return cf;
   };
 
   /**
@@ -4147,7 +4399,6 @@
           basket[i],
           disc_curve,
           fwd_curve,
-          false,
         );
         discount_factors = get_discount_factors(
           cf_obj,
@@ -4162,7 +4413,7 @@
             cf_obj.pmt_total[j] * discount_factors[j] * h(cf_obj.t_pmt[j]);
         }
         //bachelier swaption price and std deviation
-        target = basket[i].present_value(disc_curve, fwd_curve, surface);
+        target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
         std_dev_bachelier = basket[i].std_dev;
 
         //initial guess
@@ -4184,12 +4435,11 @@
         //max value is value of the payoff without redemption payment
         max_value =
           min_value +
-          basket[i].swap.fixed_leg.notional *
+          basket[i].swap.fixed_leg.payments[0].notional *
             discount_factors[discount_factors.length - 1];
         //min value (attained at vola=0) is maximum of zero and current value of the payoff
         if (min_value < 0) min_value = 0;
 
-        target = basket[i].present_value(disc_curve, fwd_curve, surface);
         accuracy = target * 1e-7 + 1e-7;
 
         if (target <= min_value + accuracy || 0 === xi) {

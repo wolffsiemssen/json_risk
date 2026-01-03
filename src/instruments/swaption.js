@@ -37,17 +37,37 @@
       });
 
       this.surface = obj.surface || "";
+      this.std_dev = 0.0;
     }
 
-    present_value(disc_curve, fwd_curve, vol_surface) {
-      if (!(disc_curve instanceof library.Curve))
-        disc_curve = new library.Curve(disc_curve);
+    add_deps_impl(deps) {
+      this.swap.add_deps_impl(deps);
+      deps.add_surface(this.surface);
+    }
 
-      if (!(fwd_curve instanceof library.Curve))
-        fwd_curve = new library.Curve(fwd_curve);
+    value_impl(params) {
+      // require fix-float swap
+      if (!this.swap.is_fix_float)
+        throw new Error("Swaption: Underlying swap must be of type fix-float");
 
-      if (!(vol_surface instanceof library.Surface))
-        vol_surface = new library.Surface(vol_surface);
+      const disc_curve = params.get_curve(this.swap.fixed_leg.disc_curve);
+      const surface = params.get_surface(this.surface);
+
+      // fwd curve from first index that can be found
+      let fwd_curve = null;
+      for (const idx of Object.values(this.swap.float_leg.indices)) {
+        fwd_curve = idx.fwd_curve;
+        break;
+      }
+      fwd_curve = params.get_curve(fwd_curve);
+
+      return this.value_with_curves(disc_curve, fwd_curve, surface);
+    }
+
+    value_with_curves(disc_curve, fwd_curve, surface) {
+      // require fix-float swap
+      if (!this.swap.is_fix_float)
+        throw new Error("Swaption: Underlying swap must be of type fix-float");
 
       //obtain times
       var t_maturity = library.time_from_now(this.maturity);
@@ -59,48 +79,34 @@
         return 0;
       }
       //obtain fwd rate, that is, fair swap rate
-      this.fair_rate = this.swap.fair_rate(disc_curve, fwd_curve);
-      this.moneyness = this.swap.fixed_rate - this.fair_rate;
+      const fair_rate = this.swap.fair_rate(disc_curve, fwd_curve);
+      const fixed_rate = this.swap.fixed_rate();
 
       //obtain time-scaled volatility
-      if (typeof vol_surface !== "object" || vol_surface === null)
-        throw new Error("swaption.present_value: must provide valid surface");
-      this.vol = vol_surface.get_rate(
+      this.vol = surface.get_rate(
         t_first_exercise_date,
         t_term,
-        this.fair_rate, // fwd rate
-        this.swap.fixed_rate, // strike
+        fair_rate, // fwd rate
+        fixed_rate, // strike
       );
       this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
 
-      let res = 0.0;
+      // initialize model
+      const model = new library.BachelierModel(t_first_exercise_date, this.vol);
 
-      if (this.swap.phi === -1) {
-        res = new library.BachelierModel(
-          t_first_exercise_date,
-          this.vol,
-        ).call_price(this.fair_rate, this.swap.fixed_rate);
+      const annuity = this.swap.annuity(disc_curve);
+      let res;
+      if (annuity > 0) {
+        // receiver swap is put option
+        res = model.put_price(fair_rate, fixed_rate);
+        res *= annuity;
       } else {
-        res = new library.BachelierModel(
-          t_first_exercise_date,
-          this.vol,
-        ).put_price(this.fair_rate, this.swap.fixed_rate);
+        // payer swap is call option
+        res = model.call_price(fair_rate, fixed_rate);
+        res *= -annuity;
       }
 
-      res *= this.swap.annuity(disc_curve);
       return res;
-    }
-
-    add_deps_impl(deps) {
-      this.swap.add_deps_impl(deps);
-      deps.add_surface(this.surface);
-    }
-
-    value_impl(params) {
-      const disc_curve = params.get_curve(this.swap.float_leg.disc_curve);
-      const fwd_curve = params.get_curve(this.swap.float_leg.fwd_curve);
-      const surface = params.get_surface(this.surface);
-      return this.present_value(disc_curve, fwd_curve, surface);
     }
   }
 
