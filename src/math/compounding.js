@@ -1,6 +1,7 @@
 (function (library) {
   "use strict";
   const continuous = {
+    name: "c",
     df: function (t, zc) {
       return Math.exp(-t * zc);
     },
@@ -11,6 +12,7 @@
   };
 
   const annual = {
+    name: "a",
     df: function (t, zc) {
       return (1 + zc) ** -t;
     },

@@ -51,6 +51,7 @@
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
+      Object.freeze(this.#expiries);
 
       // terms
       if ("terms" in obj) {
@@ -58,6 +59,7 @@
       } else {
         this.#terms = get_times(obj.labels_term);
       }
+      Object.freeze(this.#terms);
 
       // interpolation
       this.get_surface_rate = library.interpolation2d_factory(
@@ -103,6 +105,14 @@
     // getter functions
     get type() {
       return this.#type;
+    }
+
+    get expiries() {
+      return this.#expiries;
+    }
+
+    get terms() {
+      return this.#terms;
     }
 
     // detach scenario rule
@@ -196,6 +206,19 @@
         );
       }
       return atm;
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res.expiries = this.#expiries;
+      res.terms = this.#terms;
+      res.values = res.expiries.map((expiry) => {
+        return res.terms.map((term) => {
+          return this.get_surface_rate(expiry, term);
+        });
+      });
+      return res;
     }
   }
 

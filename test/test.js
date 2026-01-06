@@ -105,6 +105,7 @@ if (typeof require === "function") {
     "callable_bond_valuation.js",
     "amortizing_callable_bonds.js",
     "vector_pricing_curve_scenarios.js",
+    "params.js",
   ];
 
   for (testfile of test_files) {

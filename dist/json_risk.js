@@ -320,8 +320,8 @@
 (function (library) {
   library.make_surface = function (obj) {
     switch (obj.type.toLowerCase()) {
-      case "equity_rel_strike":
-        return new library.ExpiryRelStrkeSurface(obj);
+      case "expiry_rel_strike":
+        return new library.ExpiryRelStrikeSurface(obj);
       case "expiry_abs_strike":
         return new library.ExpiryAbsStrikeSurface(obj);
       default:
@@ -3014,6 +3014,7 @@
 (function (library) {
   "use strict";
   const continuous = {
+    name: "c",
     df: function (t, zc) {
       return Math.exp(-t * zc);
     },
@@ -3024,6 +3025,7 @@
   };
 
   const annual = {
+    name: "a",
     df: function (t, zc) {
       return (1 + zc) ** -t;
     },
@@ -4666,7 +4668,6 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   class Simulatable {
-    static type = "simulatable";
     #name = "";
     #tags = new Set();
     constructor(obj) {
@@ -4696,8 +4697,16 @@
       return this.#name;
     }
 
+    get tags() {
+      return Array.from(this.#tags);
+    }
+
     has_tag(tag) {
       return this.#tags.has(tag);
+    }
+
+    toJSON() {
+      return { name: this.#name, tags: Array.from(this.#tags) };
     }
   }
 
@@ -4791,18 +4800,18 @@
    * @public
    */
   class Curve extends library.Simulatable {
-    #type = "yield";
+    static type = "yield";
     #times = null;
     #zcs = null;
     #intp = null;
     #compounding = null;
     #get_rate = null;
     #get_rate_scenario = null;
+    #short_end_flat = true;
+    #long_end_flat = true;
 
     constructor(obj) {
       super(obj);
-      // type
-      if (typeof obj.type === "string") this.#type = obj.type;
 
       // compounding
       this.#compounding = library.compounding_factory(obj.compounding);
@@ -4814,8 +4823,8 @@
 
       // extract times, rates and discount factors from curve and store in hidden function scope
       const [_size, _times, _zcs] = get_values(obj, this.#compounding);
-      this.#times = _times;
-      this.#zcs = _zcs;
+      this.#times = Object.freeze(_times);
+      this.#zcs = Object.freeze(_zcs);
 
       var _get_interpolated_rate;
       let _always_flat = false;
@@ -4846,6 +4855,7 @@
           break;
         default: {
           // interpolation on dfs
+          this.#intp = "linear_df";
           let _dfs = new Array(_size);
           for (let i = 0; i < _size; i++) {
             _dfs[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
@@ -4865,11 +4875,12 @@
       }
 
       // extrapolation
-      var _short_end_flat = !(obj.short_end_flat === false) || _always_flat;
-      var _long_end_flat = !(obj.long_end_flat === false) || _always_flat;
+      this.#short_end_flat = !(obj.short_end_flat === false) || _always_flat;
+      this.#long_end_flat = !(obj.long_end_flat === false) || _always_flat;
       this.#get_rate = function (t) {
-        if (t <= _times[0] && _short_end_flat) return _zcs[0];
-        if (t >= _times[_size - 1] && _long_end_flat) return _zcs[_size - 1];
+        if (t <= _times[0] && this.#short_end_flat) return _zcs[0];
+        if (t >= _times[_size - 1] && this.#long_end_flat)
+          return _zcs[_size - 1];
         return _get_interpolated_rate(t);
       };
 
@@ -4923,12 +4934,12 @@
 
     // reobtain copy of hidden times when needed
     get times() {
-      return Array.from(this.#times);
+      return this.#times;
     }
 
     // reobtain copy of hidden zcs when needed
     get zcs() {
-      return Array.from(this.#zcs);
+      return this.#zcs;
     }
 
     // reobtain copy of hidden dfs when needed
@@ -4940,8 +4951,18 @@
       return res;
     }
 
-    get type() {
-      return this.#type;
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res.times = this.times;
+      res.zcs = this.#zcs;
+      res.intp = this.#intp;
+      res.compounding = this.#compounding.name;
+      if (this.#intp !== "linear_rt" && this.#intp !== "linear_df") {
+        res.long_end_flat = this.#long_end_flat;
+        res.short_end_flat = this.#long_end_flat;
+      }
+      return res;
     }
   }
 
@@ -4972,8 +4993,9 @@
 
       if (obj.type !== "expiry_rel_strike" && obj.type !== "expiry_abs_strike")
         throw new Error(
-          "ExpirySmileSurface: type must be expiry_rel_strike or expiry_abs_strike",
+          "ExpiryStrikeSurface: type must be expiry_rel_strike or expiry_abs_strike",
         );
+      this.#type = obj.type;
 
       // expiries
       if ("expiries" in obj) {
@@ -4981,10 +5003,12 @@
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
+      Object.freeze(this.#expiries);
 
       // moneyness
       if ("moneyness" in obj) {
         this.#moneyness = library.number_vector_or_null(obj.moneyness);
+        Object.freeze(this.#expiries);
       }
 
       // interpolation
@@ -5003,12 +5027,20 @@
       return this.#type;
     }
 
+    get expiries() {
+      return this.#expiries;
+    }
+
+    get moneyness() {
+      return this.#moneyness;
+    }
+
     // detach scenario rule
     detach_rule() {
       this.get_surface_rate_scenario = this.get_surface_rate;
     }
 
-    // attach scenario ruls
+    // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
         const scen = new library.ExpiryStrikeSurface({
@@ -5053,6 +5085,19 @@
       throw new Error(
         "ExpiryStrikeSurface: get_rate not implemented, use ExpiryRelStrikeSurface or ExpiryAbsStrikeSurface",
       );
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res.expiries = this.#expiries;
+      res.moneyness = this.#moneyness;
+      res.values = res.expiries.map((expiry) => {
+        return res.moneyness.map((moneyness) => {
+          return this.get_surface_rate(expiry, moneyness);
+        });
+      });
+      return res;
     }
   }
 
@@ -5113,6 +5158,13 @@
     get_value() {
       return this.#scenario_value;
     }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res["value"] = this.#value;
+      return res;
+    }
   }
 
   library.Scalar = Scalar;
@@ -5170,6 +5222,7 @@
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
+      Object.freeze(this.#expiries);
 
       // terms
       if ("terms" in obj) {
@@ -5177,6 +5230,7 @@
       } else {
         this.#terms = get_times(obj.labels_term);
       }
+      Object.freeze(this.#terms);
 
       // interpolation
       this.get_surface_rate = library.interpolation2d_factory(
@@ -5222,6 +5276,14 @@
     // getter functions
     get type() {
       return this.#type;
+    }
+
+    get expiries() {
+      return this.#expiries;
+    }
+
+    get terms() {
+      return this.#terms;
     }
 
     // detach scenario rule
@@ -5315,6 +5377,19 @@
         );
       }
       return atm;
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res.expiries = this.#expiries;
+      res.terms = this.#terms;
+      res.values = res.expiries.map((expiry) => {
+        return res.terms.map((term) => {
+          return this.get_surface_rate(expiry, term);
+        });
+      });
+      return res;
     }
   }
 
@@ -5466,7 +5541,7 @@
       this.#valuation_date = library.date_or_null(obj.valuation_date);
 
       // main currency
-      if (typeof obj.main_currrency === "string") {
+      if (typeof obj.main_currency === "string") {
         if (obj.main_currency.length != 3)
           throw new Error(
             "Params: main_currency must be a three-letter currency code.",
@@ -5550,6 +5625,42 @@
 
     get num_scenarios() {
       return this.#num_scenarios;
+    }
+
+    get scalar_names() {
+      return Object.keys(this.#scalars);
+    }
+
+    get curve_names() {
+      return Object.keys(this.#curves);
+    }
+
+    get surface_names() {
+      return Object.keys(this.#surfaces);
+    }
+
+    has_scalar(name) {
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_scalar: name must be nonempty string",
+      );
+      return n in this.#scalars;
+    }
+
+    has_curve(name) {
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_scalar: name must be nonempty string",
+      );
+      return n in this.#curves;
+    }
+
+    has_surface(name) {
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_scalar: name must be nonempty string",
+      );
+      return n in this.#surfaces;
     }
 
     get_scalar(name) {
@@ -5662,6 +5773,20 @@
           }
         }
       }
+    }
+
+    toJSON() {
+      const mapper = ([key, value]) => [key, value.toJSON()];
+      const res = {
+        valuation_date: library.date_to_date_str(this.#valuation_date),
+        main_currency: this.#main_currency,
+        scalars: Object.fromEntries(Object.entries(this.#scalars).map(mapper)),
+        curves: Object.fromEntries(Object.entries(this.#curves).map(mapper)),
+        surfaces: Object.fromEntries(
+          Object.entries(this.#surfaces).map(mapper),
+        ),
+      };
+      return res;
     }
   }
 

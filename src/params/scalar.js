@@ -25,6 +25,13 @@
     get_value() {
       return this.#scenario_value;
     }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res["value"] = this.#value;
+      return res;
+    }
   }
 
   library.Scalar = Scalar;

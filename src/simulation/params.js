@@ -39,7 +39,7 @@
       this.#valuation_date = library.date_or_null(obj.valuation_date);
 
       // main currency
-      if (typeof obj.main_currrency === "string") {
+      if (typeof obj.main_currency === "string") {
         if (obj.main_currency.length != 3)
           throw new Error(
             "Params: main_currency must be a three-letter currency code.",
@@ -123,6 +123,42 @@
 
     get num_scenarios() {
       return this.#num_scenarios;
+    }
+
+    get scalar_names() {
+      return Object.keys(this.#scalars);
+    }
+
+    get curve_names() {
+      return Object.keys(this.#curves);
+    }
+
+    get surface_names() {
+      return Object.keys(this.#surfaces);
+    }
+
+    has_scalar(name) {
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_scalar: name must be nonempty string",
+      );
+      return n in this.#scalars;
+    }
+
+    has_curve(name) {
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_scalar: name must be nonempty string",
+      );
+      return n in this.#curves;
+    }
+
+    has_surface(name) {
+      const n = library.nonempty_string_or_throw(
+        name,
+        "get_scalar: name must be nonempty string",
+      );
+      return n in this.#surfaces;
     }
 
     get_scalar(name) {
@@ -235,6 +271,20 @@
           }
         }
       }
+    }
+
+    toJSON() {
+      const mapper = ([key, value]) => [key, value.toJSON()];
+      const res = {
+        valuation_date: library.date_to_date_str(this.#valuation_date),
+        main_currency: this.#main_currency,
+        scalars: Object.fromEntries(Object.entries(this.#scalars).map(mapper)),
+        curves: Object.fromEntries(Object.entries(this.#curves).map(mapper)),
+        surfaces: Object.fromEntries(
+          Object.entries(this.#surfaces).map(mapper),
+        ),
+      };
+      return res;
     }
   }
 

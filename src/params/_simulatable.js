@@ -1,6 +1,5 @@
 (function (library) {
   class Simulatable {
-    static type = "simulatable";
     #name = "";
     #tags = new Set();
     constructor(obj) {
@@ -30,8 +29,16 @@
       return this.#name;
     }
 
+    get tags() {
+      return Array.from(this.#tags);
+    }
+
     has_tag(tag) {
       return this.#tags.has(tag);
+    }
+
+    toJSON() {
+      return { name: this.#name, tags: Array.from(this.#tags) };
     }
   }
 

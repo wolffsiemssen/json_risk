@@ -23,8 +23,9 @@
 
       if (obj.type !== "expiry_rel_strike" && obj.type !== "expiry_abs_strike")
         throw new Error(
-          "ExpirySmileSurface: type must be expiry_rel_strike or expiry_abs_strike",
+          "ExpiryStrikeSurface: type must be expiry_rel_strike or expiry_abs_strike",
         );
+      this.#type = obj.type;
 
       // expiries
       if ("expiries" in obj) {
@@ -32,10 +33,12 @@
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
+      Object.freeze(this.#expiries);
 
       // moneyness
       if ("moneyness" in obj) {
         this.#moneyness = library.number_vector_or_null(obj.moneyness);
+        Object.freeze(this.#expiries);
       }
 
       // interpolation
@@ -54,12 +57,20 @@
       return this.#type;
     }
 
+    get expiries() {
+      return this.#expiries;
+    }
+
+    get moneyness() {
+      return this.#moneyness;
+    }
+
     // detach scenario rule
     detach_rule() {
       this.get_surface_rate_scenario = this.get_surface_rate;
     }
 
-    // attach scenario ruls
+    // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
         const scen = new library.ExpiryStrikeSurface({
@@ -104,6 +115,19 @@
       throw new Error(
         "ExpiryStrikeSurface: get_rate not implemented, use ExpiryRelStrikeSurface or ExpiryAbsStrikeSurface",
       );
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res.expiries = this.#expiries;
+      res.moneyness = this.#moneyness;
+      res.values = res.expiries.map((expiry) => {
+        return res.moneyness.map((moneyness) => {
+          return this.get_surface_rate(expiry, moneyness);
+        });
+      });
+      return res;
     }
   }
 

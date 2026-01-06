@@ -86,18 +86,18 @@
    * @public
    */
   class Curve extends library.Simulatable {
-    #type = "yield";
+    static type = "yield";
     #times = null;
     #zcs = null;
     #intp = null;
     #compounding = null;
     #get_rate = null;
     #get_rate_scenario = null;
+    #short_end_flat = true;
+    #long_end_flat = true;
 
     constructor(obj) {
       super(obj);
-      // type
-      if (typeof obj.type === "string") this.#type = obj.type;
 
       // compounding
       this.#compounding = library.compounding_factory(obj.compounding);
@@ -109,8 +109,8 @@
 
       // extract times, rates and discount factors from curve and store in hidden function scope
       const [_size, _times, _zcs] = get_values(obj, this.#compounding);
-      this.#times = _times;
-      this.#zcs = _zcs;
+      this.#times = Object.freeze(_times);
+      this.#zcs = Object.freeze(_zcs);
 
       var _get_interpolated_rate;
       let _always_flat = false;
@@ -141,6 +141,7 @@
           break;
         default: {
           // interpolation on dfs
+          this.#intp = "linear_df";
           let _dfs = new Array(_size);
           for (let i = 0; i < _size; i++) {
             _dfs[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
@@ -160,11 +161,12 @@
       }
 
       // extrapolation
-      var _short_end_flat = !(obj.short_end_flat === false) || _always_flat;
-      var _long_end_flat = !(obj.long_end_flat === false) || _always_flat;
+      this.#short_end_flat = !(obj.short_end_flat === false) || _always_flat;
+      this.#long_end_flat = !(obj.long_end_flat === false) || _always_flat;
       this.#get_rate = function (t) {
-        if (t <= _times[0] && _short_end_flat) return _zcs[0];
-        if (t >= _times[_size - 1] && _long_end_flat) return _zcs[_size - 1];
+        if (t <= _times[0] && this.#short_end_flat) return _zcs[0];
+        if (t >= _times[_size - 1] && this.#long_end_flat)
+          return _zcs[_size - 1];
         return _get_interpolated_rate(t);
       };
 
@@ -218,12 +220,12 @@
 
     // reobtain copy of hidden times when needed
     get times() {
-      return Array.from(this.#times);
+      return this.#times;
     }
 
     // reobtain copy of hidden zcs when needed
     get zcs() {
-      return Array.from(this.#zcs);
+      return this.#zcs;
     }
 
     // reobtain copy of hidden dfs when needed
@@ -235,8 +237,18 @@
       return res;
     }
 
-    get type() {
-      return this.#type;
+    toJSON() {
+      const res = super.toJSON();
+      res.type = this.type;
+      res.times = this.times;
+      res.zcs = this.#zcs;
+      res.intp = this.#intp;
+      res.compounding = this.#compounding.name;
+      if (this.#intp !== "linear_rt" && this.#intp !== "linear_df") {
+        res.long_end_flat = this.#long_end_flat;
+        res.short_end_flat = this.#long_end_flat;
+      }
+      return res;
     }
   }
 
