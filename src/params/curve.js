@@ -86,7 +86,6 @@
    * @public
    */
   class Curve extends library.Simulatable {
-    static type = "yield";
     #times = null;
     #zcs = null;
     #intp = null;
@@ -218,14 +217,33 @@
       return this.get_df(tstart) / this.get_df(tend) - 1;
     }
 
-    // reobtain copy of hidden times when needed
+    // getter functions
     get times() {
       return this.#times;
     }
 
-    // reobtain copy of hidden zcs when needed
     get zcs() {
       return this.#zcs;
+    }
+
+    get type() {
+      return "yield";
+    }
+
+    get intp() {
+      return this.#intp;
+    }
+
+    get long_end_flat() {
+      return this.#long_end_flat;
+    }
+
+    get short_end_flat() {
+      return this.#short_end_flat;
+    }
+
+    get compounding() {
+      return this.#compounding.name;
     }
 
     // reobtain copy of hidden dfs when needed

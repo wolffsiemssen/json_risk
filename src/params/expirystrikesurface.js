@@ -14,18 +14,11 @@
   };
 
   class ExpiryStrikeSurface extends library.Simulatable {
-    #type = "";
     #expiries = null;
     #moneyness = [];
     get_surface_rate_scenario = null;
     constructor(obj) {
       super(obj);
-
-      if (obj.type !== "expiry_rel_strike" && obj.type !== "expiry_abs_strike")
-        throw new Error(
-          "ExpiryStrikeSurface: type must be expiry_rel_strike or expiry_abs_strike",
-        );
-      this.#type = obj.type;
 
       // expiries
       if ("expiries" in obj) {
@@ -50,11 +43,6 @@
 
       // scenario dependent surface evaluation
       this.get_surface_rate_scenario = this.get_surface_rate;
-    }
-
-    // getter functions
-    get type() {
-      return this.#type;
     }
 
     get expiries() {
@@ -139,6 +127,10 @@
           "ExpiryAbsStrikeSurface: type must be expiry_abs_strike",
         );
     }
+    // getter functions
+    get type() {
+      return "expiry_abs_strike";
+    }
     get_rate(t_expiry, t_term_not_used, fwd_not_used, strike) {
       return this.get_surface_rate_scenario(t_expiry, strike);
     }
@@ -151,6 +143,10 @@
         throw new Error(
           "ExpiryRelStrikeSurface: type must be expiry_rel_strike",
         );
+    }
+    // getter functions
+    get type() {
+      return "expiry_rel_strike";
     }
 
     get_rate(t_expiry, t_term_not_used, fwd, strike) {

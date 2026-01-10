@@ -33,7 +33,6 @@
   };
 
   class Surface extends library.Simulatable {
-    #type = "bachelier";
     #expiries = null;
     #terms = null;
     #moneyness = [];
@@ -41,9 +40,6 @@
     #get_surface_rate_scenario = null;
     constructor(obj) {
       super(obj);
-
-      // type
-      if (typeof obj.type === "string") this.#type = obj.type;
 
       // expiries
       if ("expiries" in obj) {
@@ -104,7 +100,7 @@
 
     // getter functions
     get type() {
-      return this.#type;
+      return "expiry_term";
     }
 
     get expiries() {

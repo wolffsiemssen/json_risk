@@ -1,6 +1,5 @@
 (function (library) {
   class Scalar extends library.Simulatable {
-    static type = "scalar";
     #value = null;
     #scenario_value = null;
     constructor(obj) {
@@ -24,6 +23,10 @@
 
     get_value() {
       return this.#scenario_value;
+    }
+
+    get type() {
+      return "scalar";
     }
 
     toJSON() {

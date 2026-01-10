@@ -4800,7 +4800,6 @@
    * @public
    */
   class Curve extends library.Simulatable {
-    static type = "yield";
     #times = null;
     #zcs = null;
     #intp = null;
@@ -4932,14 +4931,33 @@
       return this.get_df(tstart) / this.get_df(tend) - 1;
     }
 
-    // reobtain copy of hidden times when needed
+    // getter functions
     get times() {
       return this.#times;
     }
 
-    // reobtain copy of hidden zcs when needed
     get zcs() {
       return this.#zcs;
+    }
+
+    get type() {
+      return "yield";
+    }
+
+    get intp() {
+      return this.#intp;
+    }
+
+    get long_end_flat() {
+      return this.#long_end_flat;
+    }
+
+    get short_end_flat() {
+      return this.#short_end_flat;
+    }
+
+    get compounding() {
+      return this.#compounding.name;
     }
 
     // reobtain copy of hidden dfs when needed
@@ -4984,18 +5002,11 @@
   };
 
   class ExpiryStrikeSurface extends library.Simulatable {
-    #type = "";
     #expiries = null;
     #moneyness = [];
     get_surface_rate_scenario = null;
     constructor(obj) {
       super(obj);
-
-      if (obj.type !== "expiry_rel_strike" && obj.type !== "expiry_abs_strike")
-        throw new Error(
-          "ExpiryStrikeSurface: type must be expiry_rel_strike or expiry_abs_strike",
-        );
-      this.#type = obj.type;
 
       // expiries
       if ("expiries" in obj) {
@@ -5020,11 +5031,6 @@
 
       // scenario dependent surface evaluation
       this.get_surface_rate_scenario = this.get_surface_rate;
-    }
-
-    // getter functions
-    get type() {
-      return this.#type;
     }
 
     get expiries() {
@@ -5109,6 +5115,10 @@
           "ExpiryAbsStrikeSurface: type must be expiry_abs_strike",
         );
     }
+    // getter functions
+    get type() {
+      return "expiry_abs_strike";
+    }
     get_rate(t_expiry, t_term_not_used, fwd_not_used, strike) {
       return this.get_surface_rate_scenario(t_expiry, strike);
     }
@@ -5122,6 +5132,10 @@
           "ExpiryRelStrikeSurface: type must be expiry_rel_strike",
         );
     }
+    // getter functions
+    get type() {
+      return "expiry_rel_strike";
+    }
 
     get_rate(t_expiry, t_term_not_used, fwd, strike) {
       return this.get_surface_rate_scenario(t_expiry, strike - fwd);
@@ -5133,7 +5147,6 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   class Scalar extends library.Simulatable {
-    static type = "scalar";
     #value = null;
     #scenario_value = null;
     constructor(obj) {
@@ -5157,6 +5170,10 @@
 
     get_value() {
       return this.#scenario_value;
+    }
+
+    get type() {
+      return "scalar";
     }
 
     toJSON() {
@@ -5204,7 +5221,6 @@
   };
 
   class Surface extends library.Simulatable {
-    #type = "bachelier";
     #expiries = null;
     #terms = null;
     #moneyness = [];
@@ -5212,9 +5228,6 @@
     #get_surface_rate_scenario = null;
     constructor(obj) {
       super(obj);
-
-      // type
-      if (typeof obj.type === "string") this.#type = obj.type;
 
       // expiries
       if ("expiries" in obj) {
@@ -5275,7 +5288,7 @@
 
     // getter functions
     get type() {
-      return this.#type;
+      return "expiry_term";
     }
 
     get expiries() {
