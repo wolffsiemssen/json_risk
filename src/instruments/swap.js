@@ -2,7 +2,6 @@
   class Swap extends library.LegInstrument {
     #fixed_leg = null;
     #float_leg = null;
-    #is_fix_float = true;
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate legs from terms and conditions
@@ -59,15 +58,16 @@
       for (const leg of this.legs) {
         if (leg.has_capitalization)
           throw new Error("Swap: Cannot have capitalizing rate payments");
-        if (leg.has_fixed_rate_payments) this.#fixed_leg = leg;
-        if (leg.has_float_rate_payments) this.#float_leg = leg;
+        const is_fix = leg.has_fixed_rate_payments;
+        const is_float = leg.has_float_rate_payments;
+        if (is_fix === true && is_float === false) this.#fixed_leg = leg;
+        if (is_fix === false && is_float === true) this.#float_leg = leg;
       }
 
       if (null === this.#fixed_leg || null === this.#float_leg) {
-        this.#is_fix_float = false;
-      } else {
-        if (this.#fixed_leg.has_float_rate_payments) this.#is_fix_float = false;
-        if (this.#float_leg.has_fixed_rate_payments) this.#is_fix_float = false;
+        throw new Error(
+          "Swap: must have one purely fix and one purely float leg.",
+        );
       }
     }
 
@@ -78,55 +78,32 @@
     get float_leg() {
       return this.#float_leg;
     }
-    get is_fix_float() {
-      return this.#is_fix_float;
-    }
 
     fair_rate(disc_curve, fwd_curve) {
-      if (this.#is_fix_float) {
-        //returns fair rate, that is, rate such that swap has zero present value
-        const pv_float = this.#float_leg.value_with_curves(
-          disc_curve,
-          fwd_curve,
-        );
-        const annuity = this.annuity(disc_curve);
-        if (0 === annuity) {
-          if (0 === pv_float) return 0.0;
-          throw new Error(
-            "Swap: Cannot determine fair rate for swap with zero annuity",
-          );
-        }
-        return -pv_float / annuity;
-      } else {
+      //returns fair rate, that is, rate such that swap has zero present value
+      const pv_float = this.#float_leg.value_with_curves(disc_curve, fwd_curve);
+      const annuity = this.annuity(disc_curve);
+      if (0 === annuity) {
+        if (0 === pv_float) return 0.0;
         throw new Error(
-          "Swap: Cannot determine fair rate for swap that is not of fix-float type.",
+          "Swap: Cannot determine fair rate for swap with zero annuity",
         );
       }
+      return -pv_float / annuity;
     }
 
     fixed_rate() {
-      if (this.#is_fix_float) {
-        //returns first rate on the fixed leg
-        for (const p of this.#fixed_leg.payments) {
-          if (p instanceof library.FixedRatePayment) {
-            return p.rate;
-          }
+      //returns first rate on the fixed leg
+      for (const p of this.#fixed_leg.payments) {
+        if (p instanceof library.FixedRatePayment) {
+          return p.rate;
         }
-      } else {
-        throw new Error(
-          "Swap: Cannot determine fixed rate for swap that is not of fix-float type.",
-        );
       }
     }
 
     annuity(disc_curve) {
-      if (this.#is_fix_float) {
-        return this.#fixed_leg.annuity(disc_curve);
-      } else {
-        throw new Error(
-          "Swap: Cannot determine annuity for swap that is not of fix-float type.",
-        );
-      }
+      // returns fixed rate annuity
+      return this.#fixed_leg.annuity(disc_curve);
     }
 
     get_cash_flows(fwd_curve) {

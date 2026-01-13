@@ -429,8 +429,8 @@
     fwd_curve,
   ) {
     //correction for multi curve valuation - move basis spread to fixed leg
-    const { fixed_leg, float_leg } = swaption.swap;
-    let fixed_rate = swaption.swap.fixed_rate();
+    const { fixed_leg, float_leg } = swaption;
+    let fixed_rate = swaption.fixed_rate();
     const pv_float_singlecurve = float_leg.value_with_curves(
       disc_curve,
       disc_curve,
@@ -460,7 +460,7 @@
       pmt_interest: [0.0],
     };
 
-    for (const p of swaption.swap.fixed_leg.payments) {
+    for (const p of swaption.fixed_leg.payments) {
       cf.current_principal.push(p.notional);
       cf.t_pmt.push(library.time_from_now(p.date_pmt));
       const amount = p.yf ? p.notional * p.yf * fixed_rate : 0.0;
@@ -579,7 +579,7 @@
 
         //initial guess
         xi = Math.pow(
-          (std_dev_bachelier * basket[i].swap.annuity(disc_curve)) / deno,
+          (std_dev_bachelier * basket[i].annuity(disc_curve)) / deno,
           2,
         );
 
@@ -596,7 +596,7 @@
         //max value is value of the payoff without redemption payment
         max_value =
           min_value +
-          basket[i].swap.fixed_leg.payments[0].notional *
+          basket[i].fixed_leg.payments[0].notional *
             discount_factors[discount_factors.length - 1];
         //min value (attained at vola=0) is maximum of zero and current value of the payoff
         if (min_value < 0) min_value = 0;

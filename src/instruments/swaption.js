@@ -1,61 +1,69 @@
 (function (library) {
-  class Swaption extends library.Instrument {
+  class Swaption extends library.Swap {
+    #first_exercise_date = null;
+    #maturity = null;
+    #surface = "";
+    #std_dev = 0.0;
+    #vol = 0.0;
     constructor(obj) {
-      super(obj);
-
-      //maturity of the underlying swap
-      this.maturity = library.date_or_null(obj.maturity);
-      if (!this.maturity)
-        throw new Error("swaption: must provide valid maturity date.");
-
       //first_exercise_date (a.k.a. expiry) of the swaption
-      this.first_exercise_date = library.date_or_null(obj.first_exercise_date);
-      if (!this.first_exercise_date)
+      let first_exercise_date = library.date_or_null(obj.first_exercise_date);
+      if (!first_exercise_date)
         throw new Error(
           "swaption: must provide valid first_exercise_date date.",
         );
 
-      //underlying swap object
-      this.swap = new library.Swap({
-        is_payer: obj.is_payer,
-        notional: obj.notional,
-        effective_date: this.first_exercise_date,
-        maturity: obj.maturity,
-        fixed_rate: obj.fixed_rate,
-        tenor: obj.tenor,
-        calendar: obj.calendar,
-        bdc: obj.bdc,
-        dcc: obj.dcc,
-        float_spread: obj.float_spread,
-        float_tenor: obj.float_tenor,
-        float_bdc: obj.float_bdc,
-        float_dcc: obj.float_dcc,
-        float_current_rate: obj.float_current_rate,
-        adjust_accrual_periods: obj.adjust_accrual_periods,
-        disc_curve: obj.disc_curve || "",
-        fwd_curve: obj.fwd_curve || "",
-      });
+      if (!Array.isArray(obj.legs)) {
+        // make temp object for the super class Swap to generate legs starting from first exercise date
+        const tempobj = Object.assign(obj);
+        tempobj.effective_date = first_exercise_date;
+        super(tempobj);
+      } else {
+        super(obj);
+      }
 
-      this.surface = obj.surface || "";
-      this.std_dev = 0.0;
+      this.#first_exercise_date = first_exercise_date;
+
+      //maturity of the underlying swap
+      this.#maturity = library.date_or_null(obj.maturity);
+      if (!this.#maturity)
+        throw new Error("swaption: must provide valid maturity date.");
+
+      // surface
+      this.#surface = obj.surface || "";
+    }
+
+    // getter functions
+    get first_exercise_date() {
+      return this.#first_exercise_date;
+    }
+
+    get surface() {
+      return this.#surface;
+    }
+
+    get vol() {
+      return this.#vol;
+    }
+
+    get std_dev() {
+      return this.#std_dev;
     }
 
     add_deps_impl(deps) {
-      this.swap.add_deps_impl(deps);
-      deps.add_surface(this.surface);
+      // swap legdependencies
+      super.add_deps_impl(deps);
+      // surface
+      if ("" != this.#surface) deps.add_surface(this.#surface);
     }
 
     value_impl(params) {
-      // require fix-float swap
-      if (!this.swap.is_fix_float)
-        throw new Error("Swaption: Underlying swap must be of type fix-float");
-
-      const disc_curve = params.get_curve(this.swap.fixed_leg.disc_curve);
-      const surface = params.get_surface(this.surface);
+      const disc_curve = params.get_curve(this.fixed_leg.disc_curve);
+      const surface = params.get_surface(this.#surface);
 
       // fwd curve from first index that can be found
       let fwd_curve = null;
-      for (const idx of Object.values(this.swap.float_leg.indices)) {
+      for (const idx of Object.values(this.float_leg.indices)) {
         fwd_curve = idx.fwd_curve;
         break;
       }
@@ -65,36 +73,32 @@
     }
 
     value_with_curves(disc_curve, fwd_curve, surface) {
-      // require fix-float swap
-      if (!this.swap.is_fix_float)
-        throw new Error("Swaption: Underlying swap must be of type fix-float");
-
       //obtain times
-      var t_maturity = library.time_from_now(this.maturity);
+      var t_maturity = library.time_from_now(this.#maturity);
       var t_first_exercise_date = library.time_from_now(
-        this.first_exercise_date,
+        this.#first_exercise_date,
       );
       var t_term = t_maturity - t_first_exercise_date;
       if (t_term < 1 / 512) {
         return 0;
       }
       //obtain fwd rate, that is, fair swap rate
-      const fair_rate = this.swap.fair_rate(disc_curve, fwd_curve);
-      const fixed_rate = this.swap.fixed_rate();
+      const fair_rate = this.fair_rate(disc_curve, fwd_curve);
+      const fixed_rate = this.fixed_rate();
 
       //obtain time-scaled volatility
-      this.vol = surface.get_rate(
+      this.#vol = surface.get_rate(
         t_first_exercise_date,
         t_term,
         fair_rate, // fwd rate
         fixed_rate, // strike
       );
-      this.std_dev = this.vol * Math.sqrt(t_first_exercise_date);
+      this.#std_dev = this.#vol * Math.sqrt(t_first_exercise_date);
 
       // initialize model
       const model = new library.BachelierModel(t_first_exercise_date, this.vol);
 
-      const annuity = this.swap.annuity(disc_curve);
+      const annuity = this.annuity(disc_curve);
       let res;
       if (annuity > 0) {
         // receiver swap is put option
@@ -105,7 +109,6 @@
         res = model.call_price(fair_rate, fixed_rate);
         res *= -annuity;
       }
-
       return res;
     }
   }
