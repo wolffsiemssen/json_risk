@@ -1,10 +1,9 @@
 (function (library) {
   /**
-   * calculates the time in years from a given period string
+   * @desc calculates the time in years from a given period string
    * @param {string} str time string (xY, xM, xW, xD)
    * @returns {number} time in years
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.period_str_to_time = function (str) {
     const num = parseInt(str, 10);
@@ -21,11 +20,10 @@
   };
 
   /**
-   * constructs a javascript date object from a JSON risk conformant date string
+   * @desc constructs a javascript date object from a JSON risk conformant date string
    * @param {string} str date string
    * @returns {date} javascript date object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_str_to_date = function (str) {
     let rr = null,
@@ -61,11 +59,10 @@
   };
 
   /**
-   * constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+   * @desc constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
    * @param {date} date object
    * @returns {string} date string
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_to_date_str = function (d) {
     var dobj = library.date_or_null(d);
@@ -74,11 +71,10 @@
   };
 
   /**
-   * takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
+   * @desc takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
    * @param {date} d
    * @returns {date} javascript date object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_or_null = function (d) {
     if (!d) return null;
@@ -96,11 +92,10 @@
   };
 
   /**
-   * takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
+   * @desc takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
    * @param {date} d
    * @returns {date} javascript date object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_or_throw = function (d) {
     const date_or_null = library.date_or_null(d);
@@ -112,8 +107,7 @@
    * get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
    * @param {date} d
    * @returns {number} array of javascript date objects
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_vector_or_null = function (d) {
     if (d instanceof Date) return [library.date_or_throw(d)];

@@ -1,6 +1,6 @@
 (function (library) {
   /**
-   * @memberof library
+   * @memberof JsonRisk
    */
 
   /*
@@ -19,7 +19,7 @@
    * checks if a year is a leap year
    * @param {number} y year
    * @returns {boolean} true, if leap year
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function is_leap_year(y) {
@@ -33,7 +33,7 @@
    * @param {number} y year
    * @param {number} m month
    * @returns {number} number of days in month
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function days_in_month(y, m) {
@@ -50,7 +50,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} days between from and to date
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function days_between(from, to) {
@@ -62,7 +62,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (act365)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_act365(from, to) {
@@ -74,7 +74,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (act360)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_act360(from, to) {
@@ -86,7 +86,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (30/360)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_30U360(from, to) {
@@ -105,7 +105,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (30E/360)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_30E360(from, to) {
@@ -123,7 +123,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (30E/360 ISDA)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_30G360(from, to) {
@@ -143,7 +143,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (act/act)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_actact(from, to) {
@@ -167,7 +167,7 @@
    * returns day count convention of param (multiple possibilities to deliver day count conventions)
    * @param {string} str
    * @returns {number} day count convention in library format
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.year_fraction_factory = function (str) {
@@ -219,7 +219,7 @@
    * Returns the time in years from library.valuation_date until the given date
    * @param {date} d
    * @returns {number} time in years from library.valuation_date until d
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.time_from_now = function (d) {
@@ -236,7 +236,7 @@
    * @param {date} from from date
    * @param {number} ndays days to be added
    * @returns {date} from date plus ndays
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_days = function (from, ndays) {
@@ -249,7 +249,7 @@
    * @param {number} nmonths number of months to be added
    * @param {object} roll_day
    * @returns {date} the date that is nmonths months from the from date.
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_months = function (from, nmonths, roll_day) {
@@ -277,7 +277,7 @@
    * @param {date} from
    * @param {string} str
    * @returns {date} from date plus the period given in the period string
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_period = function (from, str) {
@@ -305,7 +305,7 @@
    * determine easter sunday for a year
    * @param {number} y year
    * @returns {date} easter sunday for given year
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function easter_sunday(y) {
@@ -328,7 +328,7 @@
    * determine if a date is a saturday or sunday
    * @param {date} dt
    * @returns {boolean} true, if saturday or sunday
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function is_holiday_default(dt) {
@@ -342,7 +342,7 @@
    * determine, if date is a holiday according to the TARGET calendar
    * @param {date} dt
    * @returns {boolean} true, if holiday
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function is_holiday_target(dt) {
@@ -373,7 +373,7 @@
    * @param {string} name
    * @param {object} dates
    * @returns {object} the size of the hash table for holidays
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_calendar = function (name, dates) {
@@ -426,7 +426,7 @@
    * factory function for calendar functionality
    * @param {string} str a string representing a holiday calendar
    * @returns {function} a function that takes a date as input argument and returns true if that date is a holiday according to the supplied calendar and false otherwise
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.is_holiday_factory = function (str) {
@@ -463,7 +463,7 @@
    * @param {string} bdc business day convention, can be "unadjusted", "following", "modified following" or "preceding". Only the first character of the string is actually evaluated
    * @param {function} is_holiday_function a function that takes a date as input argument and returns true if that date is a holiday and false otherwise
    * @returns {date} adjusted date
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.adjust = function (dt, bdc, is_holiday_function) {
@@ -490,7 +490,7 @@
    * @param {number} n days to be added
    * @param {boolean} is_holiday_function a function that takes a date as input argument and returns true if that date is a holiday and false otherwise
    * @returns {date} date + n business days
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_business_days = function (from, n, is_holiday_function) {

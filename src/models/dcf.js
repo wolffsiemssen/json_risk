@@ -7,7 +7,7 @@
    * @param {number} residual_spread residual spread
    * @param {date} settlement_date settlement date
    * @returns {object} discounted cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.dcf = function (
@@ -66,7 +66,7 @@
    * @param {date} settlement_date
    * @param {date} payment_on_settlement_date
    * @returns {object} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.irr = function (cf_obj, settlement_date, payment_on_settlement_date) {

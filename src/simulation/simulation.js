@@ -3,7 +3,7 @@
    * calculates the present value for any given supported instrument (bond, floater, fxterm, swap, swaption, callable_bond)
    * @param {object} instrument any instrument
    * @returns {number} present value
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.vector_pricer = function (instrument_json, params_json) {
@@ -30,7 +30,7 @@
    * @param {object} instrument any instrument
    * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
    * @returns {object} results object
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.simulation = function (instrument_json, params_json, modules) {

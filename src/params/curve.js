@@ -1,14 +1,12 @@
 (function (library) {
-  /**
-   * @memberof library
-   */
   var default_yf = null;
   /**
    * returns a constant zero-rate curve
+   * @function get_const_curve
    * @param {number} value rate of curve
    * @param {string} type type of curve e.g. yield
    * @returns {object} constant curve with discount factors {type, times, dfs}
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.get_const_curve = function (value, type) {
@@ -79,11 +77,9 @@
   };
 
   /**
-   * attaches get_rate and other function to curve. If curve is null or falsy, create valid constant curve
-   * @param {object} curve curve
-   * @returns {object} curve
-   * @memberof library
-   * @public
+   * Class representing a curve
+   * @memberof JsonRisk
+   * @extends Simulatable
    */
   class Curve extends library.Simulatable {
     #times = null;
@@ -95,6 +91,20 @@
     #short_end_flat = true;
     #long_end_flat = true;
 
+    /**
+     * Create a Curve.
+     * @param {obj} obj A plain object representing a curve. Must contain either times, labels, days or dates, and either zcs or dfs.
+     * @param {Array} obj.times A vector of times
+     * @param {Array} obj.labels A vector of labels
+     * @param {Array} obj.days A vector of days
+     * @param {Array} obj.dates A vector of dates
+     * @param {Array} obj.zcs A vector of zero-coupon rates
+     * @param {Array} obj.dfs A vector of discount factors
+     * @param {String} obj.compounding Compounding method, valid values are "a", "annual", "c", "continuous", each case insensitive
+     * @param {String} obj.intp Interpolation method, either "linear_zc", "linear_df", "linear_rt", "bessel" or "hermite"
+     * @param {bool} obj.short_end_flat Extrapolation method is flat on zeros if this flag is true
+     * @param {bool} obj.long_end_flat Extrapolation method is flat on zeros if this flag is true
+     */
     constructor(obj) {
       super(obj);
 
@@ -201,52 +211,96 @@
         this.detach_rule();
       }
     }
-    // define get_rate aware of attached scenario
+
+    /**
+     * Get the zero coupon rate, aware of the attached scenario.
+     * @param {number} t the time
+     * @return {number} Zero-coupon rate for time t.
+     */
     get_rate(t) {
       return this.#get_rate_scenario(t);
     }
 
-    // define get_df based on zcs, aware of attached scenario
+    /**
+     * Get the discount factor, aware of the attached scenario.
+     * @param {number} t the time
+     * @return {number} Discount factor for time t.
+     */
     get_df(t) {
       return this.#compounding.df(t, this.#get_rate_scenario(t));
     }
 
-    // attach get_fwd_amount based on get_df
+    /**
+     * Get the forward amount for a future time period, aware of the attached scenario.
+     * @param {number} tstart the start time of the period
+     * @param {number} tend the end time of the peroid
+     * @return {number} Returns the forward amount per unit of notional when using the curve as a forward curve. The forward amount is defined as the discount factr at tstart, divided by the discount factor at tend, minus 1.
+     */
     get_fwd_amount(tstart, tend) {
       if (tend - tstart < 1 / 512) return 0.0;
       return this.get_df(tstart) / this.get_df(tend) - 1;
     }
 
-    // getter functions
+    /**
+     * Get the times.
+     * @type {Array}
+     */
     get times() {
       return this.#times;
     }
 
+    /**
+     * Get the zero coupon rates.
+     * @type {Array}
+     */
     get zcs() {
       return this.#zcs;
     }
 
+    /**
+     * Get the type, always returns "yield"
+     * @type {string}
+     */
     get type() {
       return "yield";
     }
 
+    /**
+     * Get the interpolation method
+     * @type {string}
+     */
     get intp() {
       return this.#intp;
     }
 
+    /**
+     * Get the long end extrapolation flag
+     * @type {boolean}
+     */
     get long_end_flat() {
       return this.#long_end_flat;
     }
 
+    /**
+     * Get the short end extrapolation flag
+     * @type {boolean}
+     */
     get short_end_flat() {
       return this.#short_end_flat;
     }
 
+    /**
+     * Get the compounding method
+     * @type {string}
+     */
     get compounding() {
       return this.#compounding.name;
     }
 
-    // reobtain copy of hidden dfs when needed
+    /**
+     * Get the discount factors.
+     * @type {Array}
+     */
     get dfs() {
       let res = new Array(this.#times.length);
       for (let i = 0; i < res.length; i++) {
@@ -255,6 +309,11 @@
       return res;
     }
 
+    /**
+     * Helper for cloning and serialisation
+     * @function
+     * @return {Object} A plain javascript object representing the curve
+     */
     toJSON() {
       const res = super.toJSON();
       res.type = this.type;

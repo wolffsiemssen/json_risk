@@ -1,10 +1,9 @@
 (function (library) {
   /**
-   * read instrument type for given instrument and create instrument object
+   * @desc read instrument type for given instrument and create instrument object
    * @param {object} obj any instrument JSON
    * @returns {object} instrument class object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.make_instrument = function (obj) {
     switch (obj.type.toLowerCase()) {

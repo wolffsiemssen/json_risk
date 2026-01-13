@@ -22,6 +22,12 @@
     },
   };
 
+  /**
+   * get a compounding method from string
+   * @param {string} str any string identifying a compounding method, valid values are "a", "annual" for annual compounding and "c", "continuous" for continuous compounding, case insensitive.
+   * @returns {object} compounding class object
+   * @memberof JsonRisk
+   */
   library.compounding_factory = function (str) {
     if (undefined === str) return annual;
     if (typeof str === "string") {

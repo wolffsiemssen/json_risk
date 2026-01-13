@@ -4,7 +4,7 @@
    * @param {number} value
    * @param {string} type
    * @returns {object} surface
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.get_const_surface = function (value, type) {
@@ -32,12 +32,27 @@
     return res;
   };
 
+  /**
+   * Class representing a surface parametrised by expiries and terms
+   * @memberof JsonRisk
+   * @extends Simulatable
+   */
   class Surface extends library.Simulatable {
     #expiries = null;
     #terms = null;
     #moneyness = [];
     #smile = [];
     #get_surface_rate_scenario = null;
+
+    /**
+     * Create a Surface parametrised by expiries and terms.
+     * @param {obj} obj A plain object representing a Surface. Must contain either expiries or labels_expiry, either terms or labels_term, and must contain values
+     * @param {Array} obj.expiries A vector of times, i.e., numbers corresponding to expiry
+     * @param {Array} obj.labels_expiry A vector of labels representing time to expiry
+     * @param {Array} obj.terms A vector of times, i.e., numbers, representing the underlying terms
+     * @param {Array} obj.labels_expiry A vector of labels representing the underlying terms
+     * @param {Array} obj.value A matrix of numbers representing volatility
+     */
     constructor(obj) {
       super(obj);
 

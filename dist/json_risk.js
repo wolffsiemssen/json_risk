@@ -5,6 +5,9 @@
 	License: MIT
 */
 
+/**
+ * @namespace JsonRisk
+ */
 (function (root, factory) {
   if (typeof module === "object" && typeof exports !== "undefined") {
     // Node
@@ -16,6 +19,11 @@
 })(this, function () {
   var valuation_date = null;
   var JsonRisk = {
+    /**
+     * @type {Date}
+     * @description Gets the library's current valution date if set.
+     * @memberof JsonRisk
+     */
     get valuation_date() {
       if (!(valuation_date instanceof Date))
         throw new Error("JsonRisk: valuation_date must be set");
@@ -23,6 +31,12 @@
     },
   };
 
+  /**
+   * @function
+   * @description Sets the library's valuation date.
+   * @param {Date|string} d - The Date to set, if a string is supplied, it is converted to a date if possible.
+   * @memberof JsonRisk
+   */
   JsonRisk.set_valuation_date = function (d) {
     valuation_date = JsonRisk.date_or_null(d);
     if (null === valuation_date)
@@ -33,11 +47,11 @@
 });
 (function (library) {
   /**
-   * Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
+   * @function
+   * @desc Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
    * @param {boolean} b
    * @returns {boolean} boolean vector
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.make_bool = function (b) {
     if (typeof b === "boolean") return b;
@@ -54,14 +68,13 @@
   };
 
   /**
-   * Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
+   * @function
+   * @desc Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
    * @param {boolean} b
    * @returns {boolean} boolean vector
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.make_bool_vector = function (b) {
-    //returns vector of booleans when input can be converted to booleans.
     if (typeof b === "boolean") return [b];
     if (typeof b === "number") return [b !== 0];
     var res;
@@ -80,11 +93,10 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * calculates the time in years from a given period string
+   * @desc calculates the time in years from a given period string
    * @param {string} str time string (xY, xM, xW, xD)
    * @returns {number} time in years
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.period_str_to_time = function (str) {
     const num = parseInt(str, 10);
@@ -101,11 +113,10 @@
   };
 
   /**
-   * constructs a javascript date object from a JSON risk conformant date string
+   * @desc constructs a javascript date object from a JSON risk conformant date string
    * @param {string} str date string
    * @returns {date} javascript date object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_str_to_date = function (str) {
     let rr = null,
@@ -141,11 +152,10 @@
   };
 
   /**
-   * constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+   * @desc constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
    * @param {date} date object
    * @returns {string} date string
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_to_date_str = function (d) {
     var dobj = library.date_or_null(d);
@@ -154,11 +164,10 @@
   };
 
   /**
-   * takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
+   * @desc takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
    * @param {date} d
    * @returns {date} javascript date object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_or_null = function (d) {
     if (!d) return null;
@@ -176,11 +185,10 @@
   };
 
   /**
-   * takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
+   * @desc takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
    * @param {date} d
    * @returns {date} javascript date object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_or_throw = function (d) {
     const date_or_null = library.date_or_null(d);
@@ -192,8 +200,7 @@
    * get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
    * @param {date} d
    * @returns {number} array of javascript date objects
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.date_vector_or_null = function (d) {
     if (d instanceof Date) return [library.date_or_throw(d)];
@@ -215,11 +222,10 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * read instrument type for given instrument and create instrument object
+   * @desc read instrument type for given instrument and create instrument object
    * @param {object} obj any instrument JSON
    * @returns {object} instrument class object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.make_instrument = function (obj) {
     switch (obj.type.toLowerCase()) {
@@ -251,11 +257,10 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * Returns a number if a valid number or numeric string is entered and null otherwise, does not throw
+   * @desc Returns a number if a valid number or numeric string is entered and null otherwise, does not throw
    * @param {number} n
    * @returns {number} number
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.number_or_null = function (n) {
     if (typeof n === "number") return n;
@@ -269,11 +274,10 @@
     return null;
   };
   /**
-   * Returns positive number if a valid positive number or numeric string is entered and null otherwise, does not throw
+   * @desc Returns positive number if a valid positive number or numeric string is entered and null otherwise, does not throw
    * @param {number} n
    * @returns {number} number
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.positive_number_or_null = function (n) {
     var res = library.number_or_null(n);
@@ -281,11 +285,10 @@
     return res;
   };
   /**
-   * Returns natural number, zero allowed, if a valid natural number or numeric string is entered and null otherwise, does not throw
+   * @desc Returns natural number, zero allowed, if a valid natural number or numeric string is entered and null otherwise, does not throw
    * @param {natural} n
    * @returns {natural} natural vector
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.natural_number_or_null = function (n) {
     var res = library.number_or_null(n);
@@ -293,11 +296,10 @@
     return res;
   };
   /**
-   * Returns vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
+   * @desc Returns vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
    * @param {number} n
    * @returns {number} number vector
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.number_vector_or_null = function (n) {
     if (typeof n === "number") return [n];
@@ -318,6 +320,12 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * @desc read surface type for given surface and create surface object
+   * @param {object} obj any surface JSON
+   * @returns {object} surface class object
+   * @memberof JsonRisk
+   */
   library.make_surface = function (obj) {
     switch (obj.type.toLowerCase()) {
       case "expiry_rel_strike":
@@ -334,8 +342,7 @@
    * read payment type for given payment and create payment object
    * @param {object} obj any payment JSON
    * @returns {object} payment class object
-   * @memberof library
-   * @public
+   * @memberof JsonRisk
    */
   library.make_payment = function (obj) {
     switch (obj.type.toLowerCase()) {
@@ -351,11 +358,24 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * @desc Returns a reference to the argument if the argument is a string, and an empty string otherwise
+   * @param {any} input argument that is typically expected to be a string
+   * @returns {string} the argument itself, or an empty string
+   * @memberof JsonRisk
+   */
   library.string_or_empty = function (input) {
     if (typeof input === "string") return input;
     return "";
   };
 
+  /**
+   * @desc Returns a reference to the argument if the argument is a string, and fallback string otherwise
+   * @param {any} input that is typically expected to be a string
+   * @param {string} fallback the fallback to return
+   * @returns {string} the argument itself, or the fallback
+   * @memberof JsonRisk
+   */
   library.string_or_fallback = function (input, fallback) {
     if (typeof input === "string") return input;
     if (typeof fallback !== "string")
@@ -363,11 +383,25 @@
     return fallback;
   };
 
+  /**
+   * @desc Returns a reference to the argument if the argument is a string, and throws the supplied error message otherwise
+   * @param {any} input that is typically expected to be a string
+   * @param {string} message the message to throw
+   * @returns {string} the argument supplied if it is a string
+   * @memberof JsonRisk
+   */
   library.string_or_throw = function (input, message) {
     if (typeof input !== "string") throw new Error(message);
     return input;
   };
 
+  /**
+   * @desc Returns a reference to the argument if the argument is a nonempty string, and throws the supplied error message otherwise
+   * @param {any} input that is typically expected to be a string
+   * @param {string} message the message to throw
+   * @returns {string} the argument supplied if it is a nonempty string
+   * @memberof JsonRisk
+   */
   library.nonempty_string_or_throw = function (input, message) {
     if (typeof input !== "string") throw new Error(message);
     if ("" === input) throw new Error(message);
@@ -1974,7 +2008,7 @@
    * @param {date} first_exercise_date first exercise date
    * @param {object} conventions conventions
    * @returns {object} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.create_equivalent_regular_swaption = function (
@@ -3035,6 +3069,12 @@
     },
   };
 
+  /**
+   * get a compounding method from string
+   * @param {string} str any string identifying a compounding method, valid values are "a", "annual" for annual compounding and "c", "continuous" for continuous compounding, case insensitive.
+   * @returns {object} compounding class object
+   * @memberof JsonRisk
+   */
   library.compounding_factory = function (str) {
     if (undefined === str) return annual;
     if (typeof str === "string") {
@@ -3323,7 +3363,7 @@
    * ...
    * @param {number} x
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.ndf = function (x) {
@@ -3334,7 +3374,7 @@
    * cumulative normal distribution function with double precision according to Graeme West, BETTER APPROXIMATIONS TO CUMULATIVE NORMAL FUNCTIONS, 2004
    * @param {number} x
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.cndf = function (x) {
@@ -3374,7 +3414,7 @@
    * fast cumulative normal distribution function according to Abramowitz and Stegun
    * @param {number} x
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.fast_cndf = function (x) {
@@ -3396,7 +3436,7 @@
    * @param {number} max_iter
    * @param {number} threshold
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.find_root_secant = function (func, start, next, max_iter, threshold) {
@@ -3436,7 +3476,7 @@
    * signum function
    * @param {number} x
    * @returns {number} signum
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function signum(x) {
@@ -3452,7 +3492,7 @@
    * @param {number} max_iter
    * @param {number} threshold
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.find_root_ridders = function (
@@ -3616,7 +3656,7 @@
    * @param {number} residual_spread residual spread
    * @param {date} settlement_date settlement date
    * @returns {object} discounted cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.dcf = function (
@@ -3675,7 +3715,7 @@
    * @param {date} settlement_date
    * @param {date} payment_on_settlement_date
    * @returns {object} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.irr = function (cf_obj, settlement_date, payment_on_settlement_date) {
@@ -3865,7 +3905,7 @@
    * Set mean reversion by activating a corresponding h function
    * @param {} mean_rev
    * @returns {} undefined
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
 
@@ -3890,7 +3930,7 @@
    * @param {} t_exercise the vector of exercise times
    * @params {} sigma the constant hull white volatility
    * @returns {} vector of xis for the LGM model
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
 
@@ -3910,7 +3950,7 @@
    * @param {object} spread_curve spread curve
    * @param {} residual_spread residual spread
    * @returns {object} discount factors
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function get_discount_factors(
@@ -3961,7 +4001,7 @@
    * @param {object} discount_factors
    * @param {} opportunity_spread
    * @returns {object} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function strike_adjustment(
@@ -4002,7 +4042,7 @@
    * @param {} state state vector
    * @param {} opportunity_spread opportunity spread
    * @returns {number} present value
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
 
@@ -4094,7 +4134,7 @@
    * @param {} opportunity_spread opportunity spread
    * @param {object} discount_factors_precalc
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_european_call_on_cf = function (
@@ -4261,7 +4301,7 @@
    * @param {object} fwd_curve forward curve
    * @param {} fair_rate fair rate
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_european_swaption_adjusted_cashflow = function (
@@ -4324,7 +4364,7 @@
    * @param {} xi
    * @param {object} fwd_curve forward curve
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_european_swaption = function (
@@ -4360,7 +4400,7 @@
    * @param {object} fwd_curve forward curve
    * @param {object} surface surface
    * @returns {} xi_vec
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_calibrate = function (basket, disc_curve, fwd_curve, surface) {
@@ -4482,7 +4522,7 @@
    * @param {} residual_spread
    * @param {} opportunity_spread
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_bermudan_call_on_cf = function (
@@ -4523,7 +4563,7 @@
     /**
      * Creates a new state vector
      * @returns {number} ...
-     * @memberof library
+     * @memberof JsonRisk
      * @private
      */
     function make_state_vector() {
@@ -4537,7 +4577,7 @@
     }
     /**
      * updates the value vector with the maximum of payof and hold for each state, inserts a discontinuity adjustment
-     * @memberof library
+     * @memberof JsonRisk
      * @private
      */
     function update_value() {
@@ -4569,7 +4609,7 @@
      * Performs numeric integration according to the LGM martingale formula
      * @param {} j state index
      * @returns {} ...
-     * @memberof library
+     * @memberof JsonRisk
      * @private
      */
     function numeric_integration(j) {
@@ -4667,9 +4707,19 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a parameters object, e.g., a scalar, curve, or surface, that allows name and tags for attachment of scenarios
+   * @memberof JsonRisk
+   */
   class Simulatable {
     #name = "";
     #tags = new Set();
+    /**
+     * Create a Simulatable.
+     * @param {obj} obj A plain object representing a Simulatable
+     * @param {Array} obj.tags a list of tags for the Simulatable, order is irrelevant
+     * @param {String} obj.name name for the Simulatable
+     */
     constructor(obj) {
       // if non-object is given, throw error
       if ("object" !== typeof obj)
@@ -4713,16 +4763,14 @@
   library.Simulatable = Simulatable;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  /**
-   * @memberof library
-   */
   var default_yf = null;
   /**
    * returns a constant zero-rate curve
+   * @function get_const_curve
    * @param {number} value rate of curve
    * @param {string} type type of curve e.g. yield
    * @returns {object} constant curve with discount factors {type, times, dfs}
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.get_const_curve = function (value, type) {
@@ -4793,11 +4841,9 @@
   };
 
   /**
-   * attaches get_rate and other function to curve. If curve is null or falsy, create valid constant curve
-   * @param {object} curve curve
-   * @returns {object} curve
-   * @memberof library
-   * @public
+   * Class representing a curve
+   * @memberof JsonRisk
+   * @extends Simulatable
    */
   class Curve extends library.Simulatable {
     #times = null;
@@ -4809,6 +4855,20 @@
     #short_end_flat = true;
     #long_end_flat = true;
 
+    /**
+     * Create a Curve.
+     * @param {obj} obj A plain object representing a curve. Must contain either times, labels, days or dates, and either zcs or dfs.
+     * @param {Array} obj.times A vector of times
+     * @param {Array} obj.labels A vector of labels
+     * @param {Array} obj.days A vector of days
+     * @param {Array} obj.dates A vector of dates
+     * @param {Array} obj.zcs A vector of zero-coupon rates
+     * @param {Array} obj.dfs A vector of discount factors
+     * @param {String} obj.compounding Compounding method, valid values are "a", "annual", "c", "continuous", each case insensitive
+     * @param {String} obj.intp Interpolation method, either "linear_zc", "linear_df", "linear_rt", "bessel" or "hermite"
+     * @param {bool} obj.short_end_flat Extrapolation method is flat on zeros if this flag is true
+     * @param {bool} obj.long_end_flat Extrapolation method is flat on zeros if this flag is true
+     */
     constructor(obj) {
       super(obj);
 
@@ -4915,52 +4975,96 @@
         this.detach_rule();
       }
     }
-    // define get_rate aware of attached scenario
+
+    /**
+     * Get the zero coupon rate, aware of the attached scenario.
+     * @param {number} t the time
+     * @return {number} Zero-coupon rate for time t.
+     */
     get_rate(t) {
       return this.#get_rate_scenario(t);
     }
 
-    // define get_df based on zcs, aware of attached scenario
+    /**
+     * Get the discount factor, aware of the attached scenario.
+     * @param {number} t the time
+     * @return {number} Discount factor for time t.
+     */
     get_df(t) {
       return this.#compounding.df(t, this.#get_rate_scenario(t));
     }
 
-    // attach get_fwd_amount based on get_df
+    /**
+     * Get the forward amount for a future time period, aware of the attached scenario.
+     * @param {number} tstart the start time of the period
+     * @param {number} tend the end time of the peroid
+     * @return {number} Returns the forward amount per unit of notional when using the curve as a forward curve. The forward amount is defined as the discount factr at tstart, divided by the discount factor at tend, minus 1.
+     */
     get_fwd_amount(tstart, tend) {
       if (tend - tstart < 1 / 512) return 0.0;
       return this.get_df(tstart) / this.get_df(tend) - 1;
     }
 
-    // getter functions
+    /**
+     * Get the times.
+     * @type {Array}
+     */
     get times() {
       return this.#times;
     }
 
+    /**
+     * Get the zero coupon rates.
+     * @type {Array}
+     */
     get zcs() {
       return this.#zcs;
     }
 
+    /**
+     * Get the type, always returns "yield"
+     * @type {string}
+     */
     get type() {
       return "yield";
     }
 
+    /**
+     * Get the interpolation method
+     * @type {string}
+     */
     get intp() {
       return this.#intp;
     }
 
+    /**
+     * Get the long end extrapolation flag
+     * @type {boolean}
+     */
     get long_end_flat() {
       return this.#long_end_flat;
     }
 
+    /**
+     * Get the short end extrapolation flag
+     * @type {boolean}
+     */
     get short_end_flat() {
       return this.#short_end_flat;
     }
 
+    /**
+     * Get the compounding method
+     * @type {string}
+     */
     get compounding() {
       return this.#compounding.name;
     }
 
-    // reobtain copy of hidden dfs when needed
+    /**
+     * Get the discount factors.
+     * @type {Array}
+     */
     get dfs() {
       let res = new Array(this.#times.length);
       for (let i = 0; i < res.length; i++) {
@@ -4969,6 +5073,11 @@
       return res;
     }
 
+    /**
+     * Helper for cloning and serialisation
+     * @function
+     * @return {Object} A plain javascript object representing the curve
+     */
     toJSON() {
       const res = super.toJSON();
       res.type = this.type;
@@ -5001,10 +5110,23 @@
     return res;
   };
 
+  /**
+   * Class representing a surface parametrised by expiries and absolute or relative strikes.
+   * @memberof JsonRisk
+   */
   class ExpiryStrikeSurface extends library.Simulatable {
     #expiries = null;
     #moneyness = [];
     get_surface_rate_scenario = null;
+
+    /**
+     * Create an ExpiryStrikeSurface.
+     * @param {obj} obj A plain object representing an ExpiryStrikeSurface. Must contain either expiries or labels_expiry, and must contain values
+     * @param {Array} obj.expiries A vector of times to expiry
+     * @param {Array} obj.labels_expiry A vector of labels representing time to expiry
+     * @param {Array} obj.moneyness A vector of numbers representing moneyness
+     * @param {Array} obj.value A matrix of numbers representing volatility
+     */
     constructor(obj) {
       super(obj);
 
@@ -5107,7 +5229,17 @@
     }
   }
 
+  /**
+   * Class representing a surface parametrised by expiries and absolute strikes
+   * @memberof JsonRisk
+   * @extends ExpiryStrikeSurface
+   */
   class ExpiryAbsStrikeSurface extends ExpiryStrikeSurface {
+    /**
+     * Create an ExpiryAbsStrikeSurface.
+     * @param {obj} obj A plain object representing an ExpiryAbsStrikeSurface. Must contain the required properties for ExpiryStrikeSurface
+     * @param {string} obj.type Type, must "be expiry_abs_strike"
+     */
     constructor(obj) {
       super(obj);
       if (obj.type !== "expiry_abs_strike")
@@ -5124,7 +5256,17 @@
     }
   }
 
+  /**
+   * Class representing a surface parametrised by expiries and absolute strikes
+   * @memberof JsonRisk
+   * @extends ExpiryStrikeSurface
+   */
   class ExpiryRelStrikeSurface extends ExpiryStrikeSurface {
+    /**
+     * Create an ExpiryRelStrikeSurface.
+     * @param {obj} obj A plain object representing an ExpiryRelStrikeSurface. Must contain the required properties for ExpiryStrikeSurface
+     * @param {string} obj.type Type, must "be expiry_abs_strike"
+     */
     constructor(obj) {
       super(obj);
       if (obj.type !== "expiry_rel_strike")
@@ -5146,9 +5288,19 @@
   library.ExpiryRelStrikeSurface = ExpiryRelStrikeSurface;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a scalar
+   * @memberof JsonRisk
+   * @extends Simulatable
+   */
   class Scalar extends library.Simulatable {
     #value = null;
     #scenario_value = null;
+    /**
+     * Create a Scalar.
+     * @param {obj} obj A plain object representing a scalar
+     * @param {number} obj.value The scalar value.
+     */
     constructor(obj) {
       super(obj);
       this.#value = library.number_or_null(obj.value);
@@ -5192,7 +5344,7 @@
    * @param {number} value
    * @param {string} type
    * @returns {object} surface
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.get_const_surface = function (value, type) {
@@ -5220,12 +5372,27 @@
     return res;
   };
 
+  /**
+   * Class representing a surface parametrised by expiries and terms
+   * @memberof JsonRisk
+   * @extends Simulatable
+   */
   class Surface extends library.Simulatable {
     #expiries = null;
     #terms = null;
     #moneyness = [];
     #smile = [];
     #get_surface_rate_scenario = null;
+
+    /**
+     * Create a Surface parametrised by expiries and terms.
+     * @param {obj} obj A plain object representing a Surface. Must contain either expiries or labels_expiry, either terms or labels_term, and must contain values
+     * @param {Array} obj.expiries A vector of times, i.e., numbers corresponding to expiry
+     * @param {Array} obj.labels_expiry A vector of labels representing time to expiry
+     * @param {Array} obj.terms A vector of times, i.e., numbers, representing the underlying terms
+     * @param {Array} obj.labels_expiry A vector of labels representing the underlying terms
+     * @param {Array} obj.value A matrix of numbers representing volatility
+     */
     constructor(obj) {
       super(obj);
 
@@ -5810,7 +5977,7 @@
    * calculates the present value for any given supported instrument (bond, floater, fxterm, swap, swaption, callable_bond)
    * @param {object} instrument any instrument
    * @returns {number} present value
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.vector_pricer = function (instrument_json, params_json) {
@@ -5837,7 +6004,7 @@
    * @param {object} instrument any instrument
    * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
    * @returns {object} results object
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.simulation = function (instrument_json, params_json, modules) {
@@ -5899,7 +6066,7 @@
    * @param {number} tenor tenor
    * @param {} adjust_func
    * @returns {object} schedule
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   var forward_rollout = function (start, end, tenor, adjust_func) {
@@ -5924,7 +6091,7 @@
    * @param {number} tenor tenor
    * @param {} adjust_func
    * @returns {object} schedule
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   var backward_rollout = function (start, end, tenor, adjust_func) {
@@ -5952,7 +6119,7 @@
    * @param {} stub_end
    * @param {} stub_long
    * @returns {} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.schedule = function (
@@ -6067,7 +6234,7 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * @memberof library
+   * @memberof JsonRisk
    */
 
   /*
@@ -6086,7 +6253,7 @@
    * checks if a year is a leap year
    * @param {number} y year
    * @returns {boolean} true, if leap year
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function is_leap_year(y) {
@@ -6100,7 +6267,7 @@
    * @param {number} y year
    * @param {number} m month
    * @returns {number} number of days in month
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function days_in_month(y, m) {
@@ -6117,7 +6284,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} days between from and to date
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function days_between(from, to) {
@@ -6129,7 +6296,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (act365)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_act365(from, to) {
@@ -6141,7 +6308,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (act360)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_act360(from, to) {
@@ -6153,7 +6320,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (30/360)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_30U360(from, to) {
@@ -6172,7 +6339,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (30E/360)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_30E360(from, to) {
@@ -6190,7 +6357,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (30E/360 ISDA)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_30G360(from, to) {
@@ -6210,7 +6377,7 @@
    * @param {date} from from date
    * @param {date} to to date
    * @returns {number} year fraction between from and to date (act/act)
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function yf_actact(from, to) {
@@ -6234,7 +6401,7 @@
    * returns day count convention of param (multiple possibilities to deliver day count conventions)
    * @param {string} str
    * @returns {number} day count convention in library format
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.year_fraction_factory = function (str) {
@@ -6286,7 +6453,7 @@
    * Returns the time in years from library.valuation_date until the given date
    * @param {date} d
    * @returns {number} time in years from library.valuation_date until d
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.time_from_now = function (d) {
@@ -6303,7 +6470,7 @@
    * @param {date} from from date
    * @param {number} ndays days to be added
    * @returns {date} from date plus ndays
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_days = function (from, ndays) {
@@ -6316,7 +6483,7 @@
    * @param {number} nmonths number of months to be added
    * @param {object} roll_day
    * @returns {date} the date that is nmonths months from the from date.
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_months = function (from, nmonths, roll_day) {
@@ -6344,7 +6511,7 @@
    * @param {date} from
    * @param {string} str
    * @returns {date} from date plus the period given in the period string
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_period = function (from, str) {
@@ -6372,7 +6539,7 @@
    * determine easter sunday for a year
    * @param {number} y year
    * @returns {date} easter sunday for given year
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function easter_sunday(y) {
@@ -6395,7 +6562,7 @@
    * determine if a date is a saturday or sunday
    * @param {date} dt
    * @returns {boolean} true, if saturday or sunday
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function is_holiday_default(dt) {
@@ -6409,7 +6576,7 @@
    * determine, if date is a holiday according to the TARGET calendar
    * @param {date} dt
    * @returns {boolean} true, if holiday
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function is_holiday_target(dt) {
@@ -6440,7 +6607,7 @@
    * @param {string} name
    * @param {object} dates
    * @returns {object} the size of the hash table for holidays
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_calendar = function (name, dates) {
@@ -6493,7 +6660,7 @@
    * factory function for calendar functionality
    * @param {string} str a string representing a holiday calendar
    * @returns {function} a function that takes a date as input argument and returns true if that date is a holiday according to the supplied calendar and false otherwise
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.is_holiday_factory = function (str) {
@@ -6530,7 +6697,7 @@
    * @param {string} bdc business day convention, can be "unadjusted", "following", "modified following" or "preceding". Only the first character of the string is actually evaluated
    * @param {function} is_holiday_function a function that takes a date as input argument and returns true if that date is a holiday and false otherwise
    * @returns {date} adjusted date
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.adjust = function (dt, bdc, is_holiday_function) {
@@ -6557,7 +6724,7 @@
    * @param {number} n days to be added
    * @param {boolean} is_holiday_function a function that takes a date as input argument and returns true if that date is a holiday and false otherwise
    * @returns {date} date + n business days
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.add_business_days = function (from, n, is_holiday_function) {

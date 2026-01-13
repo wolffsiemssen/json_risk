@@ -1,0 +1,13 @@
+{
+    "opts": {
+        "template": "templates/default",
+        "encoding": "utf8",
+        "destination": "./docs/jsdoc/", 
+        "recurse": true
+    },
+    "source": {
+        "include": ["src"],
+        "excludePattern": ""
+    },
+    "sourceType": "script"
+}

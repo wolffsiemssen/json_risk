@@ -24,7 +24,7 @@
    * Set mean reversion by activating a corresponding h function
    * @param {} mean_rev
    * @returns {} undefined
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
 
@@ -49,7 +49,7 @@
    * @param {} t_exercise the vector of exercise times
    * @params {} sigma the constant hull white volatility
    * @returns {} vector of xis for the LGM model
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
 
@@ -69,7 +69,7 @@
    * @param {object} spread_curve spread curve
    * @param {} residual_spread residual spread
    * @returns {object} discount factors
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function get_discount_factors(
@@ -120,7 +120,7 @@
    * @param {object} discount_factors
    * @param {} opportunity_spread
    * @returns {object} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function strike_adjustment(
@@ -161,7 +161,7 @@
    * @param {} state state vector
    * @param {} opportunity_spread opportunity spread
    * @returns {number} present value
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
 
@@ -253,7 +253,7 @@
    * @param {} opportunity_spread opportunity spread
    * @param {object} discount_factors_precalc
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_european_call_on_cf = function (
@@ -420,7 +420,7 @@
    * @param {object} fwd_curve forward curve
    * @param {} fair_rate fair rate
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_european_swaption_adjusted_cashflow = function (
@@ -483,7 +483,7 @@
    * @param {} xi
    * @param {object} fwd_curve forward curve
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_european_swaption = function (
@@ -519,7 +519,7 @@
    * @param {object} fwd_curve forward curve
    * @param {object} surface surface
    * @returns {} xi_vec
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_calibrate = function (basket, disc_curve, fwd_curve, surface) {
@@ -641,7 +641,7 @@
    * @param {} residual_spread
    * @param {} opportunity_spread
    * @returns {object} cash flow
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.lgm_bermudan_call_on_cf = function (
@@ -682,7 +682,7 @@
     /**
      * Creates a new state vector
      * @returns {number} ...
-     * @memberof library
+     * @memberof JsonRisk
      * @private
      */
     function make_state_vector() {
@@ -696,7 +696,7 @@
     }
     /**
      * updates the value vector with the maximum of payof and hold for each state, inserts a discontinuity adjustment
-     * @memberof library
+     * @memberof JsonRisk
      * @private
      */
     function update_value() {
@@ -728,7 +728,7 @@
      * Performs numeric integration according to the LGM martingale formula
      * @param {} j state index
      * @returns {} ...
-     * @memberof library
+     * @memberof JsonRisk
      * @private
      */
     function numeric_integration(j) {

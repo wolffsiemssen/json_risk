@@ -1,7 +1,17 @@
 (function (library) {
+  /**
+   * Class representing a parameters object, e.g., a scalar, curve, or surface, that allows name and tags for attachment of scenarios
+   * @memberof JsonRisk
+   */
   class Simulatable {
     #name = "";
     #tags = new Set();
+    /**
+     * Create a Simulatable.
+     * @param {obj} obj A plain object representing a Simulatable
+     * @param {Array} obj.tags a list of tags for the Simulatable, order is irrelevant
+     * @param {String} obj.name name for the Simulatable
+     */
     constructor(obj) {
       // if non-object is given, throw error
       if ("object" !== typeof obj)

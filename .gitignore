@@ -1,5 +1,6 @@
 README.md~
 node_modules
+docs/jsdoc
 examples/portfolio_pricing/data/instruments_large.csv
 examples/portfolio_pricing/data/instruments_huge.csv
 examples/rorac/downloads

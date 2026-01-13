@@ -13,10 +13,23 @@
     return res;
   };
 
+  /**
+   * Class representing a surface parametrised by expiries and absolute or relative strikes.
+   * @memberof JsonRisk
+   */
   class ExpiryStrikeSurface extends library.Simulatable {
     #expiries = null;
     #moneyness = [];
     get_surface_rate_scenario = null;
+
+    /**
+     * Create an ExpiryStrikeSurface.
+     * @param {obj} obj A plain object representing an ExpiryStrikeSurface. Must contain either expiries or labels_expiry, and must contain values
+     * @param {Array} obj.expiries A vector of times to expiry
+     * @param {Array} obj.labels_expiry A vector of labels representing time to expiry
+     * @param {Array} obj.moneyness A vector of numbers representing moneyness
+     * @param {Array} obj.value A matrix of numbers representing volatility
+     */
     constructor(obj) {
       super(obj);
 
@@ -119,7 +132,17 @@
     }
   }
 
+  /**
+   * Class representing a surface parametrised by expiries and absolute strikes
+   * @memberof JsonRisk
+   * @extends ExpiryStrikeSurface
+   */
   class ExpiryAbsStrikeSurface extends ExpiryStrikeSurface {
+    /**
+     * Create an ExpiryAbsStrikeSurface.
+     * @param {obj} obj A plain object representing an ExpiryAbsStrikeSurface. Must contain the required properties for ExpiryStrikeSurface
+     * @param {string} obj.type Type, must "be expiry_abs_strike"
+     */
     constructor(obj) {
       super(obj);
       if (obj.type !== "expiry_abs_strike")
@@ -136,7 +159,17 @@
     }
   }
 
+  /**
+   * Class representing a surface parametrised by expiries and absolute strikes
+   * @memberof JsonRisk
+   * @extends ExpiryStrikeSurface
+   */
   class ExpiryRelStrikeSurface extends ExpiryStrikeSurface {
+    /**
+     * Create an ExpiryRelStrikeSurface.
+     * @param {obj} obj A plain object representing an ExpiryRelStrikeSurface. Must contain the required properties for ExpiryStrikeSurface
+     * @param {string} obj.type Type, must "be expiry_abs_strike"
+     */
     constructor(obj) {
       super(obj);
       if (obj.type !== "expiry_rel_strike")

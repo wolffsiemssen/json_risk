@@ -23,7 +23,7 @@
    * ...
    * @param {number} x
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.ndf = function (x) {
@@ -34,7 +34,7 @@
    * cumulative normal distribution function with double precision according to Graeme West, BETTER APPROXIMATIONS TO CUMULATIVE NORMAL FUNCTIONS, 2004
    * @param {number} x
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.cndf = function (x) {
@@ -74,7 +74,7 @@
    * fast cumulative normal distribution function according to Abramowitz and Stegun
    * @param {number} x
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.fast_cndf = function (x) {
@@ -96,7 +96,7 @@
    * @param {number} max_iter
    * @param {number} threshold
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.find_root_secant = function (func, start, next, max_iter, threshold) {
@@ -136,7 +136,7 @@
    * signum function
    * @param {number} x
    * @returns {number} signum
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   function signum(x) {
@@ -152,7 +152,7 @@
    * @param {number} max_iter
    * @param {number} threshold
    * @returns {number} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.find_root_ridders = function (

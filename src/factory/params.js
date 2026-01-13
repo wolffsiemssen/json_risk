@@ -1,4 +1,10 @@
 (function (library) {
+  /**
+   * @desc read surface type for given surface and create surface object
+   * @param {object} obj any surface JSON
+   * @returns {object} surface class object
+   * @memberof JsonRisk
+   */
   library.make_surface = function (obj) {
     switch (obj.type.toLowerCase()) {
       case "expiry_rel_strike":

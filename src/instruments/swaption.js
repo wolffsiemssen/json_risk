@@ -118,7 +118,7 @@
    * @param {date} first_exercise_date first exercise date
    * @param {object} conventions conventions
    * @returns {object} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.create_equivalent_regular_swaption = function (

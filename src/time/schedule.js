@@ -12,7 +12,7 @@
    * @param {number} tenor tenor
    * @param {} adjust_func
    * @returns {object} schedule
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   var forward_rollout = function (start, end, tenor, adjust_func) {
@@ -37,7 +37,7 @@
    * @param {number} tenor tenor
    * @param {} adjust_func
    * @returns {object} schedule
-   * @memberof library
+   * @memberof JsonRisk
    * @private
    */
   var backward_rollout = function (start, end, tenor, adjust_func) {
@@ -65,7 +65,7 @@
    * @param {} stub_end
    * @param {} stub_long
    * @returns {} ...
-   * @memberof library
+   * @memberof JsonRisk
    * @public
    */
   library.schedule = function (

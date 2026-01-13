@@ -1,7 +1,17 @@
 (function (library) {
+  /**
+   * Class representing a scalar
+   * @memberof JsonRisk
+   * @extends Simulatable
+   */
   class Scalar extends library.Simulatable {
     #value = null;
     #scenario_value = null;
+    /**
+     * Create a Scalar.
+     * @param {obj} obj A plain object representing a scalar
+     * @param {number} obj.value The scalar value.
+     */
     constructor(obj) {
       super(obj);
       this.#value = library.number_or_null(obj.value);
