@@ -13,11 +13,22 @@ if (typeof module === "object" && typeof exports !== "undefined") {
 }
 
 test.execute = function (TestFramework, JsonRisk) {
-  /*
+  // test hull white vola insertion and extraction
+  for (let m = 0; m < 0.05; m += 0.01) {
+    const lgm = new JsonRisk.LGM(m);
+    for (let sref = 0; sref < 0.05; sref += 0.01) {
+      lgm.set_times_and_hull_white_volatility([1, 2, 3, 4, 5], sref);
+      const svec = lgm.hull_white_volatility;
+      for (let s of svec) {
+        TestFramework.assert(
+          Math.abs(s - sref) < 1e-12,
+          `LGM Hull-White vola parametrisation and extraction, Mean Rev:: ${m.toFixed(4)}, Sigma out: ${s.toFixed(4)}, Sigma in: ${sref.toFixed(4)}.`,
+        );
+      }
+    }
+  }
 
-    Test LGM option pricing
-
-     */
+  //Test LGM option pricing
   JsonRisk.set_valuation_date("2019/01/01");
   yf = JsonRisk.year_fraction_factory("");
   var cf_obj = {
@@ -54,7 +65,6 @@ test.execute = function (TestFramework, JsonRisk) {
     TestFramework.get_utc_date(2025, 0, 1),
   ];
   var lgm_xi;
-  var lgm_state;
   var result, result_orig, result_numeric, bpv;
   curve = JsonRisk.get_const_curve(0.01);
   curve_1bp = JsonRisk.get_const_curve(0.0101);
@@ -103,76 +113,88 @@ test.execute = function (TestFramework, JsonRisk) {
     curve_flattener.zcs.push(0.8 * 0.025 * sshort - 0.6 * 0.01 * slong);
   }
 
-  for (i = 0; i < expiries.length; i++) {
-    swaption = JsonRisk.create_equivalent_regular_swaption(cf_obj, expiries[i]);
-    cf_regular = new JsonRisk.FixedIncome(swaption).get_cash_flows();
+  for (let m = 0; m < 0.05; m += 0.01) {
+    const lgm = new JsonRisk.LGM(m);
+    for (i = 0; i < expiries.length; i++) {
+      swaption = JsonRisk.create_equivalent_regular_swaption(
+        cf_obj,
+        expiries[i],
+      );
+      cf_regular = new JsonRisk.FixedIncome(swaption).get_cash_flows();
 
-    lgm_xi = 0.0004 * yf(JsonRisk.valuation_date, expiries[i]);
+      lgm.set_times_and_hull_white_volatility(
+        [Math.max(yf(JsonRisk.valuation_date, expiries[i]), 0.0001)],
+        0.01,
+      );
+      lgm_xi = lgm.xi[0];
+      //cash flow PVs
+      result = JsonRisk.dcf(cf_regular, curve, null, null, expiries[i]);
+      bpv = Math.abs(
+        JsonRisk.dcf(cf_regular, curve_1bp, null, null, expiries[i]) - result,
+      );
 
-    //cash flow PVs
-    result = JsonRisk.dcf(cf_regular, curve, null, null, expiries[i]);
-    bpv = Math.abs(
-      JsonRisk.dcf(cf_regular, curve_1bp, null, null, expiries[i]) - result,
-    );
+      //option PVs
+      // Original Cash Flow
+      result_orig = lgm.european_call(
+        cf_obj,
+        yf(JsonRisk.valuation_date, expiries[i]),
+        curve,
+        lgm_xi,
+      );
 
-    //option PVs
-    result_orig = JsonRisk.lgm_european_call_on_cf(
-      cf_obj,
-      yf(JsonRisk.valuation_date, expiries[i]),
-      curve,
-      lgm_xi,
-    );
-    result = JsonRisk.lgm_european_call_on_cf(
-      cf_regular,
-      yf(JsonRisk.valuation_date, expiries[i]),
-      curve,
-      lgm_xi,
-    );
-    TestFramework.assert(
-      Math.abs(result - result_orig) / bpv < 1,
-      "LGM option price (equivalent regular vs original), first_exercise_date " +
-        (i + 1),
-    );
-    result = JsonRisk.lgm_bermudan_call_on_cf(
-      cf_obj,
-      [yf(JsonRisk.valuation_date, expiries[i])],
-      curve,
-      [lgm_xi],
-    );
-    console.log("NUMERIC ERROR: " + (result - result_orig) / bpv);
-    TestFramework.assert(
-      Math.abs(result - result_orig) / bpv < 1,
-      "LGM option price (numeric vs original), first_exercise_date " + (i + 1),
-    );
-    result_orig = JsonRisk.lgm_european_call_on_cf(
-      cf_obj,
-      yf(JsonRisk.valuation_date, expiries[i]),
-      curve_100bp,
-      lgm_xi,
-    );
-    result = JsonRisk.lgm_european_call_on_cf(
-      cf_regular,
-      yf(JsonRisk.valuation_date, expiries[i]),
-      curve_100bp,
-      lgm_xi,
-    );
-    TestFramework.assert(
-      Math.abs(result - result_orig) / bpv < 1,
-      "LGM option price curve up (equivalent regular vs original), first_exercise_date " +
-        (i + 1),
-    );
-    result = JsonRisk.lgm_bermudan_call_on_cf(
-      cf_obj,
-      [yf(JsonRisk.valuation_date, expiries[i])],
-      curve_100bp,
-      [lgm_xi],
-    );
-    TestFramework.assert(
-      Math.abs(result - result_orig) / bpv < 1,
-      "LGM option price curve up (numeric vs original), first_exercise_date " +
-        (i + 1),
-    );
+      // Equivalant regular cash flow
+      result = lgm.european_call(
+        cf_regular,
+        yf(JsonRisk.valuation_date, expiries[i]),
+        curve,
+        lgm_xi,
+      );
+      TestFramework.assert(
+        Math.abs(result - result_orig) / bpv < 1,
+        `LGM option price (equivalent regular vs original), Mean Rev ${m}, first_exercise_date ${i + 1}`,
+      );
 
-    console.log("--------------------------");
+      // Original Cash Flow numeric, using the bermudan engine
+      result = lgm.bermudan_call(
+        cf_obj,
+        [yf(JsonRisk.valuation_date, expiries[i])],
+        curve,
+        [lgm_xi],
+      );
+      TestFramework.assert(
+        Math.abs(result - result_orig) / bpv < 1,
+        `LGM option price (numeric vs. semianalytic), Mean Rev ${m}, first_exercise_date ${i + 1}`,
+      );
+
+      // Curve Up
+      result_orig = lgm.european_call(
+        cf_obj,
+        yf(JsonRisk.valuation_date, expiries[i]),
+        curve_100bp,
+        lgm_xi,
+      );
+      result = lgm.european_call(
+        cf_regular,
+        yf(JsonRisk.valuation_date, expiries[i]),
+        curve_100bp,
+        lgm_xi,
+      );
+      TestFramework.assert(
+        Math.abs(result - result_orig) / bpv < 1,
+        `LGM option price curve up (equivalent regular vs original), Mean Rev ${m}, first_exercise_date ${i + 1}`,
+      );
+      result = lgm.bermudan_call(
+        cf_obj,
+        [yf(JsonRisk.valuation_date, expiries[i])],
+        curve_100bp,
+        [lgm_xi],
+      );
+      TestFramework.assert(
+        Math.abs(result - result_orig) / bpv < 1,
+        `LGM option price curve up (numeric vs. semianalytic), Mean Rev ${m}, first_exercise_date ${i + 1}`,
+      );
+
+      console.log("--------------------------");
+    }
   }
 };

@@ -142,32 +142,27 @@
       } else {
         spread_curve = null;
       }
-      // set lgm mean reversion
-      library.lgm_set_mean_reversion(this.mean_reversion);
+      // get LGM model with desired mean reversion
+      const lgm = new library.LGM(this.mean_reversion);
 
-      //calibrate lgm model - returns xi for non-expired swaptions only
-      if (!(surface instanceof library.Surface))
-        surface = new library.Surface(surface);
-
-      var xi_vec;
       if (null == this.hull_white_volatility) {
-        xi_vec = library.lgm_calibrate(
-          this.basket,
-          disc_curve,
-          fwd_curve,
-          surface,
-        );
+        //calibrate lgm model - returns xi for non-expired swaptions only
+        if (!(surface instanceof library.Surface))
+          surface = new library.Surface(surface);
+
+        lgm.calibrate(this.basket, disc_curve, fwd_curve, surface);
       } else {
-        xi_vec = library.get_xi_from_hull_white_volatility(
+        lgm.set_times_and_hull_white_volatility(
           t_exercise,
           this.hull_white_volatility,
         );
       }
 
       //derive call option price
+      const xi_vec = lgm.xi;
       if (1 === xi_vec.length) {
         //european call, use closed formula
-        res = -library.lgm_european_call_on_cf(
+        res = -lgm.european_call(
           this.base.get_cash_flows(),
           t_exercise[0],
           disc_curve,
@@ -178,7 +173,7 @@
         );
       } else if (1 < xi_vec.length) {
         //bermudan call, use numeric integration
-        res = -library.lgm_bermudan_call_on_cf(
+        res = -lgm.bermudan_call(
           this.base.get_cash_flows(),
           t_exercise,
           disc_curve,
