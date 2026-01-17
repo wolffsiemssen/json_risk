@@ -3940,6 +3940,14 @@
     }
 
     /**
+     * Get a vector of exercise times from the parametrised model
+     * @type {Array} vector of times
+     */
+    get t_ex() {
+      return Array.from(this.#t_ex);
+    }
+
+    /**
      * Get a vector of LGM volatilities (xis) from the parametrised model
      * @type {Array} vector of volatilities for the LGM model
      */
