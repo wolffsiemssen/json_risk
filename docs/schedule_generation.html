@@ -1,0 +1,113 @@
+<h1>Schedule generation</h1>
+
+<p>This page describes how JSON risk generates interest rate schedules, fixing schedules and repayment schedules.</p>
+
+<p>Schedules are more or less regular streams of dates, typically beginning with the issue or effective date of a financial instrument and ending with its maturity.</p>
+
+<ul>
+<li>Interest rate schedules describe the dates when interest accrual periods start and end</li>
+<li>Fixing schedules describe when changing variable rates become effective</li>
+<li>Repayment schedules describe when pricipal is paid, i.e., amortization occurs</li>
+</ul>
+
+<p>JSON risk generates the three schedules independently from each other and merges the schedules for cash flow generation. While merging the schedules, JSON risk takes care of split interest accrual periods which arise whenever fixings or repayments occur between two dates of the interest rate schedule.</p>
+
+<h2>Relevant fields</h2>
+
+<p>The fields below are relevant for schedule generation.</p>
+
+<table class="table table-bordered table-hover">
+<thead>
+ <tr>
+  <th></th><th>Interest</th><th>Fixing</th><th>Repayment</th>
+ <tr>
+</thead>
+<tbody>
+ <tr>
+  <td>Beginning</td><td colspan="3"><code>effective_date</code></td>
+ </tr>
+ <tr>
+  <td>End</td><td colspan="3"><code>maturity</code></td>
+ <tr>
+  <td>Frequency</td><td><code>tenor</code></td><td><code>fixing_tenor</code></td><td><code>repay_tenor</code></td>
+ </tr>
+ <tr>
+  <td>Explicit initial stub</td><td><code>first_date</code></td><td><code>fixing_first_date</code></td><td><code>repay_first_date</code></td>
+ </tr>
+ <tr>
+  <td>Explicit final stub</td><td><code>next_to_last_date</code></td><td><code>fixing_next_to_last_date</code></td><td><code>repay_next_to_last_date</code></td>
+ </tr>
+ <tr>
+  <td>Implicit stub and rollout direction</td><td><code>stub_end</code></td><td><code>fixing_stub_end</code></td><td><code>repay_stub_end</code></td>
+ </tr>
+ <tr>
+  <td>Implicit stub long</td><td><code>stub_long</code></td><td><code>fixing_stub_long</code></td><td><code>repay_stub_long</code></td>
+ </tr>
+</tbody>
+</table>
+
+<h2>Generation logic</h2>
+
+<p>The sections below describe interest rate schedule generation logic in different constallations. For fixing and repayment schedule generation, the same logic is used.</p>
+
+<h3>Default behaviour</h3>
+
+<p>Per default, that is, when only <code>effective_date</code>, <code>maturity</code> and <code>term</code> are provided, JSON risk rolls out backward from <code>maturity</code> in regular monthly periods the length of which is determined by <code>term</code> until <code>effective_date</code> is reached or preceded. In the special case when <code>term</code> is zero, the schedule consists of <code>effective_date</code> and <code>maturity</code> only.</p>
+
+<p><img src="../pics/schedule_default.png" alt="Default" title="" /></p>
+
+<h3>Long implicit stub</h3>
+
+<p>When <code>stub_long</code> is true, the generated date just after <code>effective_date</code> is removed from the schedule, resulting in a long initial period.</p>
+
+<p><img src="../pics/schedule_longstub.png" alt="Long Stub" title="" /></p>
+
+<h3>Forward rollout</h3>
+
+<p>When <code>stub_end</code> is true, JSON risk rolls out forward from <code>effective_date</code> in regular monthly periods the length of which is determined by <code>term</code> until <code>maturity</code> is reached or exceded.</p>
+
+<p><img src="../pics/schedule_endstub.png" alt="End Stub" title="" /></p>
+
+<h3>Forward rollout with long implicit stub</h3>
+
+<p>When <code>stub_end</code> is true and <code>stub_long</code> is true, the generated date just before <code>maturity</code> is removed from the schedule, resulting in a long final period.</p>
+
+<p><img src="../pics/schedule_longendstub.png" alt="Long end stub" title="" /></p>
+
+<h3>Explicit final stub</h3>
+
+<p>when <code>next_to_last_date</code> is set, JSON risk rolls out backward from <code>next_to_last_date</code> in regular monthly periods the length of which is determined by <code>term</code> until <code>effective_date</code> is reached or preceded.</p>
+
+<p>Like in the case without <code>next_to_last_date</code> set, the field <code>stub_long</code> determines the length of the initial period.</p>
+
+<p><img src="../pics/schedule_nexttolastdate.png" alt="Next to last date" title="" /></p>
+
+<h3>Explicit initial stub</h3>
+
+<p>When <code>first_date</code> is set, JSON risk rolls out forward from <code>first_date</code> in regular monthly periods the length of which is determined by <code>term</code> until <code>maturity</code> is reached or preceded.</p>
+
+<p>Like in the standard forward rollout case, that is, when <code>stub_end</code> is true, but <code>first_date</code> is unset, the field <code>stub_long</code> determines the length of the final period.</p>
+
+<p><img src="../pics/schedule_firstdate.png" alt="First date" title="" /></p>
+
+<h3>Two explicit stubs</h3>
+
+<p>When both <code>first_date</code> and <code>next_to_last_date</code> are set, JSON risk rolls out backward from <code>next_to_last_date</code> in regular monthly periods the length of which is determined by <code>term</code> until <code>first_date</code> is reached or preceded. In this case, <code>next_to_last_date</code> and <code>first_date</code> are expected to regularly align with the monthly periods. If they do not, there will be an additional irregular period after <code>first_date</code>. The field <code>stub_long</code> determines the length of this period.</p>
+
+<p><img src="../pics/schedule_twostubs.png" alt="Two stubs" title="" /></p>
+
+<h3>Schedule generation without <code>effective_date</code> set</h3>
+
+<p>Even if <code>effective_date</code> is unset, JSON risk rolls out a decent schedule for fixed income instruments in many cases. This makes sense in analyses where past payments are not of interest and works under the following conditions:</p>
+
+<ul>
+<li>The valuation date <code>library.valuation_date</code> must be set</li>
+<li>The explicit initial stub date <code>first_date</code> must be unset</li>
+<li>The attribute <code>stub_end</code> must be false or unset unless <code>next_to_last_date</code> is set</li>
+</ul>
+
+<p>If any of these conditions are violated, JSON risk will throw an error. Otherwise, JSON risk first rolls out the interest rate schedule backward from <code>maturity</code> or <code>next_to_last_date</code> in regular monthly periods the length of which is determined by <code>term</code> until the valuation date is reached or preceded. This yields a schedule with a regular first period starting in the past or at valuation date.</p>
+
+<p>In the special case where <code>tenor</code> is zero, the resulting schedule consists of the valuation date and <code>maturity</code> only.</p>
+
+<p>If fixing or repayment schedules are required, these are rolled out with <code>effective_date</code> substituted by the first date in the interest rate schedule. Consequently, all three schedules start and end at the same dates.</p>

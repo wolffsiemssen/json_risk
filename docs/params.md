@@ -5,52 +5,53 @@ JSON Risk supports the parameter types below:
 - Curves
 - Surfaces
 
-
+A Parameter set stores the parameters above along with scenarios. Parameters and scenarios are described in this document.
+ 
 ## Parameter Field definitions
+
+### Fields for all parameter types
+The `tags` field is supported by all parameter types and is used for matching scenarios with params. It is an Array of strings.
+
 ### Scalars
 
 Fields:
 
-- type (JSON string, purely informative)
-- value (JSON number or, in the context of vector pricing, JSON array of numbers.)
+- type (string, SHOULD be "scalar")
+- value (`Number`)
 
-Regular example:
-
-        {
-                type: "FX",
-                value: [1.038]
-        }
-
-Vector pricing example with three scenarios:
+Example:
 
         {
-                type: "FX",
-                value: [1.038, 1.045, 0.9934]
+                type: "scalar",
+                value: 1.038
         }
-
 
 ### Curves
 
 Fields:
 
-- type (JSON string, purely informative)
-- times (JSON array of numbers) Note: If times are not provided, but optional days, dates or labels are provided, times are reconstructed from days (preferrably), dates (if days are not given) or labels (if neither times, days ot dates are given)
-- dfs (discount factors, JSON array of numbers) Note: If discount factors are not provided, but optional zero coupon rates are, then discount factors are calculated from zero coupon rates
+- type (``String``, SHOULD be "yield")
+- times (array of `Number`s) Note: If times are not provided, but optional days, dates or labels are provided, times are reconstructed from days (preferrably), dates (if days are not given) or labels (if neither times, days ot dates are given)
+- dfs (discount factors, array of `Number`s) Note: If discount factors are not provided, but optional zero coupon rates are, then discount factors are calculated from zero coupon rates
 
 Optional: 
 
-- days (JSON array of integers)
-- dates (JSON array of `Date`, first date must correspond to valuation date)
-- labels (JSON array of `Period string` values)
-- zcs (zero coupon rates, JSON array of number)
+- days (array of integers)
+- dates (array of `Date`, first date must correspond to valuation date)
+- labels (array of `Period string` values)
+- zcs (zero coupon rates, array of `Number`)
+- intp (`String`, must be "linear\_zc" for linear interpolation on zero coupon rates, "linear\_rt" for raw interpolation, or "linear\_df" for linear interpolation on discount factors, or "bessel" or "hermite", both referring to Bessel-Hermite cubic spline interpolation. Linear on discounts is the default. All these options are case insensitive.)
+- compounding (`String`, must be "a" or "annual" for annual compounding, or "c" or "continuous" for continuous compounding, all case insensitive.)
+- short\_end\_flat (`Boolean` flag indicating if extrapolation on the short end should be flat on zero rates instead of being implied by the interpolation method, defaults to true. When interpolation is linear on discounts or raw, extrapolation is always flat. )
+- long\_end\_flat (`Boolean` flag indicating if extrapolation on the long end should be flat on zero rates instead of being implied by the interpolation method, defaults to true.  When interpolation is linear on discounts or raw, extrapolation is always flat.)
 
-_All arrays must be sorted by times in ascending order_
+_Axis arrays must be sorted by times in ascending order_
 
 Example with times and discount factors:
 
         {
                 type: "yield",
-                days: [1, 2, 10],
+                times: [1.0, 2.0, 10.0],
                 dfs: [1.0003, 0.99994, 0.9992]
                 
         }
@@ -83,46 +84,46 @@ Example with labels and zero coupon rates:
                 
         }
 
-Vector pricing example with four scenarios:
+Example with interpolation, extrapolation and continuous compounding:
 
         {
                 type: "yield",
-                days: [1, 2, 10],
-                dfs: [
-                        [-0.00023, 0.00001, 0.0045],
-                        [-0.00024, 0.00001, 0.0045],
-                        [-0.00023, 0.00002, 0.0045],
-                        [-0.00023, 0.00001, 0.0046]
-                ]
-                
+                times: [1.0, 2.0, 10.0],
+                zcs: [-0.00023, 0.00001, 0.0045],
+                compounding: "c",
+                intp: "bessel",
+                short_end_flat: true,
+                long_end_flat: false
         }
 
-### Surfaces
+### Expiry-Term Surfaces
+
+This surface is used for the valuation of swaptions.
 
 Fields:
 
-- type (JSON string, purely informative)
-- expiries (JSON array of numbers) Note: If expiries are not provided, but optional labels\_expiry are provided, expiries are reconstructed from labels\_expiry
-- terms (JSON array of numbers) Note: If terms are not provided, but optional labels\_expiry are provided, terms are reconstructed from labels\_expiry
-- values (JSON array of arrays of numbers)
+- type (JSON `String`, SHOULD be "expiry_term")
+- expiries (JSON array of `Number`s) Note: If expiries are not provided, but optional labels\_expiry are provided, expiries are reconstructed from labels\_expiry
+- terms (JSON array of `Number`s) Note: If terms are not provided, but optional labels\_expiry are provided, terms are reconstructed from labels\_expiry
+- values (JSON array of arrays of `Number`s)
 
 Optional: 
 
 - labels_expiry (JSON array of `Period string` values)
 - labels_term (JSON array of `Period string` values)
 
-_All arrays must be sorted by times (expiry, term) in ascending order_
+_Axis arrays must be sorted by times (expiry, term) in ascending order_
 
 Example with expiries and terms:
 
         {
-                type: "swaption",
-                expiries: [1, 2, 5],
-                terms: [0.5, 1],
+                type: "expiry_term",
+                expiries: [1.0, 2.0, 5.0],
+                terms: [0.5, 1.0],
                 values: [
-                                [0.002, 0.003, 0.004],
-                                [0.0021, 0.0032, 0.0043],
-                                [0.0025, 0.0035, 0.0044],
+                                [0.002, 0.003],
+                                [0.0021, 0.0032],
+                                [0.0025, 0.0035],
                 ]
                 
         }
@@ -133,53 +134,118 @@ Example with labels:
 
 
         {
-                type: "swaption",
+                type: "expiry_term",
                 labels_expiry: ["1Y", "2Y", "5Y"],
                 labels_term: ["6M", "1Y"],
                 values: [
-                                [0.002, 0.003, 0.004],
-                                [0.0021, 0.0032, 0.0043],
-                                [0.0025, 0.0035, 0.0044],
+                                [0.002, 0.003],
+                                [0.0021, 0.0032],
+                                [0.0025, 0.0035],
                 ]
                 
         }
 
-Vector pricing example with two scenarios:
+### Expiry-Strike surfaces
+
+This surface is used for the valuation of caplets and floorlets as well as stock and index options. The type determines if moneyness is parametrised as relative or absolute strikes.
+
+Fields:
+
+- type (JSON `String`, MUST be "expiry\_rel\_strike" or "expiry\_abs\_strike")
+- expiries (JSON array of `Number`s) Note: If expiries are not provided, but optional labels\_expiry are provided, expiries are reconstructed from labels\_expiry
+- moneyness (JSON array of `Number`s)
+- values (JSON array of arrays of `Number`s)
+
+Optional: 
+
+- labels_expiry (JSON array of `Period string` values)
+
+_Axis arrays must be sorted by times (expiry) and moneyness in ascending order_
+
+Example with expiries and relative strikes:
 
         {
-                type: "swaption",
-                expiries: [1, 2, 5],
-                terms: [0.5, 1],
+                type: "expiry_rel_strike",
+                expiries: [1.0, 2.0, 5.0],
+                moneyness: [-0.01, -0.005, 0.0, 0.005, 0.001],
                 values: [
-                        [
-                                [0.002, 0.003, 0.004],
-                                [0.0021, 0.0032, 0.0043],
-                                [0.0025, 0.0035, 0.0044],
-                        ],
-                        [
-                                [0.0025, 0.0035, 0.0045],
-                                [0.0026, 0.0037, 0.0048],
-                                [0.0030, 0.0040, 0.0049],
-                        ]
-                ]
-                
+                                [0.002, 0.003, 0.004, 0.004],
+                                [0.0021, 0.0032, 0.0043, 0.0045],
+                                [0.0025, 0.0035, 0.0044, 0.0045],
+                ]                
         }
 
-## Conventions and pricing accuracy
 
-JSON risk interprets zero coupon rates with the convention `act/365` and annual compounding. That is, discount factors are calculated with the formula
 
-        dfs[i]=Math.pow(1 + zcs[i], -times[i])
+Example with labels and absolute strikes:
 
-when converting from zero coupon rates.
 
-Internally, JSON risk always calculates with times. Times represent years. JSON risk converts
+        {
+                type: "expiry_abs_strike",
+                labels_expiry: ["1Y", "2Y", "5Y"],
+                moneyness: [90.0, 95.0, 100.0, 105.0, 110.0],
+                values: [
+                                [0.002, 0.003, 0.004, 0.004],
+                                [0.0021, 0.0032, 0.0043, 0.0045],
+                                [0.0025, 0.0035, 0.0044, 0.0045],
+                ]
+        }
 
- - days to times by dividing by `365`, consistent with the `act/365` day count convention
- - dates to times by assigning the first date a value of zero and compute all other dates into times with the `act/365` day count convention
- - labels to times by parsing leading integers and dividing monthly values by `12`, weekly values by `52` and daily values by `365`, consistent with the `act/365` day count convention. Yearly values are not further converted, e.g., the period string `"1Y"` just represents one.
 
-When delivering yield curve or surface data from a source system, the easiest way to achieve maximum accuracy is to supply days and either discount factors or zero coupon rates with the convention `act/365` and annual compounding. Correct delivery of times or dates achieves the same accuracy. Labels are a convenient way for approximate pricing.
+## Scenarios
+
+### Defintion of a scenario group
+A scenario group must have a name that consists of letters, numbers, dashes and underscores only. A scenario group consists of one or more scenarios. A single scenario consists of a name and one or more rules. The rules are used to determine the risk factors (i.e., parameters) to which the scenarios should be applied and what shock to apply.
+
+Here is an outline of the structure of a scenario:
+ - **Scenario group**: A collection of scenarios
+ - **Scenario**: an object with a name (without blank spaces) and a collection of rules
+ - **Rule(s)**: an object that contains
+   - a list of **Risk factors**: The rule applies to each of the risk factors (i.e. scalars, curves, surfaces).
+   - a list of **Tags**: all scalars, curves and surfaces that have ALL of the tags in this list attached are affected by this rule.
+   - a **Model**: Either **additive**, **multiplicative** or **absolute**. If additive, the values of this rule are added to each affected risk factor. If multiplicative, the values of this rule are multiplied with the values of each affected risk factor. If absolute, the values of this rule replace the values of each affected risk factor.
+   - a **Values** table:
+     - **X-axis labels**: for curves these are the support points; for surfaces these are the expiries of the option. For scalars, only one label should be used.
+     - **Y-axis labels**: for curves these labels have no meaning; for surfaces these are the terms of the underlying of the option. For scalars, only one label should be used.
+     - **Values**: an array of arrays of values corresponding to labels.
+     
+## Example parameters set with scenarios
+Find below an example of a scenario group in JSON format.
+
+
+        [
+         {
+          "name": "EXAMPLE_SCENARIO",
+          "rules": [
+           {
+            "model": "additive",
+            "labels_x": [
+             "1W",
+             "3M"
+            ],
+            "labels_y": [
+             "1M"
+            ],
+            "values": [
+             [
+              0.0001,
+              0
+             ]
+            ],
+            "risk_factors": [
+             "TEST"
+            ],
+            "tags": [
+             "yield"
+            ],
+           },
+           {}
+          ]
+         },
+         {
+          ...
+         }
+        ]
 
 
 

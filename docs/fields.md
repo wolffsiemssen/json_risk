@@ -11,11 +11,11 @@ If `true`, interest is calculated on adjusted coupon periods, i.e., from start a
 ------------------------------------------------------------------------------
 ## bdc `String`
 ### Domain
-JSON Risk recognizes `unadjusted`, `following`, `modified following`, `preceding`. For convenience, JSON Risk interprets only the first letter and ignores case. That is, for `m` and `M`, JSON Risk assumes the modified folling business day convention.
+JSON Risk recognizes `unadjusted`, `following`, `modified following`, `preceding`. For convenience, JSON Risk interprets only the first letter and ignores case. For example, for `m` and `M`, JSON Risk assumes the modified folling business day convention.
 ### Instruments
 Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
 ### Meaning
-This field determines how dates generated within schedule generation are adjusted, dependent on the field `calendar`. Refer cash flow generation for details.
+This field determines how dates generated within schedule generation are adjusted, dependent on the field `calendar`. Refer to cash flow generation for details.
 
 
 ------------------------------------------------------------------------------
@@ -53,23 +53,30 @@ Specified the dates when conditions, e.g., `fixed_rate`, `float_spread` or `inte
 ------------------------------------------------------------------------------
 ## currency `String`
 ### Context
-Only relevant in the context of vector pricing.
+Determines the main currency of an instrument, that is, the currency in which present value of an instrument is expressed. For leg instruments, if a leg has a currency that is different from the instruments main currency, it is converted into the main currency. If the parameters object defines a main currency that is different from the instrument main currency, another conversion is done. Conversions require that a conversion rate can be found in the parameters object.
 ### Domain
-Any string representing any currency the conversion rate was previously registered in the parameters object for vector pricing.
+Any string representing any currency the conversion rate was previously registered in the parameters object.
 
 ------------------------------------------------------------------------------
 ## dcc
 ### Domain
-JSON Risk recognizes `Act/360`, `Act/365`, `30/360` and `Act/Act`. For convenience, JSON Risk ignores case and accepts the string `a` instead of `act`. The conventions `a/360`and `a/365` have the usual meaning, `a/a` refers to the Act/Act (ICMA) day count convention and `30/360` refers to the 30/360 European convention.
+JSON Risk supports the day count conventions
+
+ - act/act according to the ISDA 2006 rules in section 4.16 (b), also recognized by JSON Risk as actual/actual or a/a
+ - act/365 according to the ISDA 2006 rules in section 4.16 (d), also recognized by JSON Risk as actual/365, a/365, actual/365 (fixed) or act/365 (fixed)
+ - act/360 according to the ISDA 2006 rules in section 4.16 (e), also recognized by JSON Risk as actual/360, a/360, or french
+ - 30u/360 according to the ISDA 2006 rules in section 4.16 (f), also recognized by JSON Risk as 30/360, bond basis, or bond
+ - 30e/360 according to the ISDA 2006 rules in section 4.16 (g), also recognized by JSON Risk as eurobond basis or eurobond
+ - 30g/360 according to the ISDA 2006 rules in section 4.16 (h), also recognized by JSON Risk as 30e/360 (ISDA) or 30/360 German
+
+For convenience, JSON Risk ignores case.
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`, `cds`
 ### Meaning
 Determines how interest amounts are calculated for each accrual period generated within schedule generation.
 
 ------------------------------------------------------------------------------
 ## disc\_curve `String`
-### Context
-Only relevant in the context of vector pricing.
 ### Domain
 Any string representing any curve previously registered in the parameters object for vector pricing.
 ### Meaning
@@ -88,7 +95,7 @@ Start date for schedule generation.
 ### Instruments
 Relevant for `callable_bond`
 ### Meaning
-If `true`, present value returns only the embedded option price. Defaults to false.
+If `true`, the value method returns only the embedded option price. Defaults to false.
 
 ------------------------------------------------------------------------------
 ## first\_date `Date`
@@ -115,28 +122,28 @@ When the field `conditions_valid_until` is populated with a vector of dates, `fi
 ------------------------------------------------------------------------------
 ## fixing\_first\_date `Date`
 ### Instruments
-Relevant for all instruments paying floating rate coupons, i.e., `floater`, `swap`, `swaption`
+Relevant for all instruments of type `floater`.
 ### Meaning
 Used fo specifying an explicit initial stub for the fixing schedule. Marks the end date of the initial fixing period within schedule generation.
 
 ------------------------------------------------------------------------------
 ## fixing\_next\_to\_last\_date `Date`
 ### Instruments
-Relevant for all instruments paying floating rate coupons, i.e., `floater`, `swap`, `swaption`
+Relevant for all instruments of type `floater`.
 ### Meaning
 Used fo specifying an explicit final stub for the fixing schedule. Marks the start date of the final fixing period within schedule generation.
 
 ------------------------------------------------------------------------------
 ## fixing\_stub\_end `Boolean`
 ### Instruments
-Relevant for all instruments paying floating rate coupons, i.e., `floater`, `swap`, `swaption`
+Relevant for all instruments of type `floater`.
 ### Meaning
 Used fo specifying an implicit final stub for the fixing schedule. A value of `true` causes the fixing schedule to be rolled out forward within schedule generation. Ignored when `fixing_next_to_last_date` is populated.
 
 ------------------------------------------------------------------------------
 ## fixing\_stub\_long `Boolean`
 ### Instruments
-Relevant for all instruments paying floating rate coupons, i.e., `floater`, `swap`, `swaption`
+Relevant for all instruments of type `floater`.
 ### Meaning
 If start and end dates within fixing schedule generation are not aligned with `fixing_tenor`, a value of `true` specifies a long stub to be generated instead of a short stub.
 
@@ -189,8 +196,8 @@ This field has no meaning in the current implementation but is reserved for repr
 
 ------------------------------------------------------------------------------
 ## fwd\_curve `String`
-### Context
-Only relevant in the context of vector pricing.
+### Instruments
+Relevant for instruments with float rate payments or instruments that involve calibration to swaptions, e.g., `callable_bond`.
 ### Domain
 Any string representing any curve previously registered in the parameters object for vector pricing.
 
@@ -208,14 +215,7 @@ When the field `conditions_valid_until` is populated with a vector of dates, `in
 ### Instruments
 Relevant for `swap`, `swaption`
 ### Meaning
-A value of `true` marks a `swap`instrument as a payer swap and marks a `swaption` instrument as a payer swaption. Defaults to `false`, implying a receiver swap or, respecitvely, a receiver swaption.
-
-------------------------------------------------------------------------------
-## is\_short `Boolean`
-### Instruments
-Relevant for `swaption`
-### Meaning
-A value of `true` marks a swaption as short, that is, the counterparty holds th eexercise right.
+A value of `true` marks a `swap` instrument as a payer swap and marks a `swaption` instrument as a payer swaption. Defaults to `false`, implying a receiver swap or, respecitvely, a receiver swaption.
 
 ------------------------------------------------------------------------------
 ## linear\_amortization `Boolean`
@@ -267,7 +267,10 @@ Corresponds to the far leg notional of an `fxterm` instrument, i.e., the notiona
 
 ------------------------------------------------------------------------------
 ## quantity `Number`
-This field has no meaning in the current implementation but is reserved for representing the quantity for, e.g., an equity position.
+For all instruments, specifies the quantity of the position. Present values calculated are multiplied with this number. Examples:
+
+ - a quantity of -1 represents a short position in an asset.
+ - a `bond` with notional 100 and quantity 1 has the same value as the same `bond` with a notional of 1 and a quantity of 100.
 
 ------------------------------------------------------------------------------
 ## repay\_amount `Number`
@@ -276,7 +279,7 @@ Zero, positive and negative valued accepted.
 ### Instruments
 Relevant for `bond`, `floater`, `callable_bond`
 ### Meaning
-The amount repaid at each date implied by the repayment schedule. If `notional` is positive, a positive value marks cash inflows. If `notional` is negative, a positive value marks cash outflows. A zero value switsches off amortization.
+The amount repaid at each date implied by the repayment schedule. If `notional` is positive, a positive value marks cash inflows. If `notional` is negative, a positive value marks cash outflows. A zero value switches off amortization.
 
 When the field `conditions_valid_until` is populated with a vector of dates, `repay_amount` may contain a vector of numbers of the same length and each entry in `repay_amount` is considered valid until the corresponding entry in `conditions_valid_until`.
 
@@ -335,8 +338,6 @@ Within discounted cash flow valuation, this specifies a number of business days 
 
 ------------------------------------------------------------------------------
 ## spread\_curve `String`
-### Context
-Only relevant in the context of vector pricing
 ### Instruments
 Relevant for `bond`, `floater`, `callable_bond`
 ### Domain
@@ -360,8 +361,6 @@ If start and end dates within interest schedule generation are not aligned with 
 
 ------------------------------------------------------------------------------
 ## surface `String`
-### Context
-Only relevant in the context of vector pricing.
 ### Instruments
 Relevant for `swaption` and `callable_bond` instruments.
 ### Domain
@@ -380,20 +379,22 @@ A value of zero indicates interest is paid at maturity. Any other positive value
 
 ------------------------------------------------------------------------------
 ## type `String`
-### Context
-Only relevant in the context of vector pricing.
 ### Domain
 Either `bond`, `floater`, `swap`, `swaption`, `callable_bond` or `fxterm`
 ### Meaning
-The vector pricing algorithm uses this field to determine
+The `make_instrument` function and the `simulation` and `vector_pricer` functions use this identifier to determine which class to instantiate for an instrument JSON object. These are the supported types with their classes:
 
- - what internal class to use for pricing;
- - what parameters to assign and apply for pricing.
-
-For example, 
-
- - for a `bond` type instrument, a `fixed_income` internal object is created and a discount curve and a spread curve are assigned,
- - for a `swap` type instrument, a `swap` internal object is created and a discount curve and a forward curve are assigned,
- - for a `floater` type instrument, a `fixed_income` internal object is created and a discount curve, a spread curve and a forward curve are assigned,
- - for a `callable_bond` type instrument, a `callable_fixed_income` internal object is created and a discount curve, a forward curve, a spread curve and a surface are assigned.
+|type   |class   |category/superclass|
+|-------|--------|--------------------|
+|`bond` |Bond    |LegInstrument       |
+|`floater`|Bond  |LegInstrument       |
+|`swap` |Swap    |LegInstrument       |
+|`swaption`|Swaption|LegInstrument    |
+|`fxterm`|FxTerm|LegInstrument        |
+|`callable_bond`|CallableBond|LegInstrument|
+|`equity`|Equity|Equity|
+|`equity_future`|EquityFuture|Equity  |
+|`equity_forward`|EquityForward|Equity|
+|`equity_option`|EquityOption|Equity  |
+|`cds`  |CreditDefaultSwap|LegInstrument|
 

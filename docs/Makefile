@@ -1,4 +1,4 @@
-docs=instruments params fields datatypes
+docs=instruments params fields datatypes schedule_generation
 
 all: ${docs:=.html}
 

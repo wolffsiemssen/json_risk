@@ -18,7 +18,7 @@
 
 <h3>Domain</h3>
 
-<p>JSON Risk recognizes <code>unadjusted</code>, <code>following</code>, <code>modified following</code>, <code>preceding</code>. For convenience, JSON Risk interprets only the first letter and ignores case. That is, for <code>m</code> and <code>M</code>, JSON Risk assumes the modified folling business day convention.</p>
+<p>JSON Risk recognizes <code>unadjusted</code>, <code>following</code>, <code>modified following</code>, <code>preceding</code>. For convenience, JSON Risk interprets only the first letter and ignores case. For example, for <code>m</code> and <code>M</code>, JSON Risk assumes the modified folling business day convention.</p>
 
 <h3>Instruments</h3>
 
@@ -26,7 +26,7 @@
 
 <h3>Meaning</h3>
 
-<p>This field determines how dates generated within schedule generation are adjusted, dependent on the field <code>calendar</code>. Refer cash flow generation for details.</p>
+<p>This field determines how dates generated within schedule generation are adjusted, dependent on the field <code>calendar</code>. Refer to cash flow generation for details.</p>
 
 <hr />
 
@@ -89,11 +89,11 @@ If <code>call_tenor</code>is not zero, the bond is callable on the date represen
 
 <h3>Context</h3>
 
-<p>Only relevant in the context of vector pricing.</p>
+<p>Determines the main currency of an instrument, that is, the currency in which present value of an instrument is expressed. For leg instruments, if a leg has a currency that is different from the instruments main currency, it is converted into the main currency. If the parameters object defines a main currency that is different from the instrument main currency, another conversion is done. Conversions require that a conversion rate can be found in the parameters object.</p>
 
 <h3>Domain</h3>
 
-<p>Any string representing any currency the conversion rate was previously registered in the parameters object for vector pricing.</p>
+<p>Any string representing any currency the conversion rate was previously registered in the parameters object.</p>
 
 <hr />
 
@@ -101,11 +101,22 @@ If <code>call_tenor</code>is not zero, the bond is callable on the date represen
 
 <h3>Domain</h3>
 
-<p>JSON Risk recognizes <code>Act/360</code>, <code>Act/365</code>, <code>30/360</code> and <code>Act/Act</code>. For convenience, JSON Risk ignores case and accepts the string <code>a</code> instead of <code>act</code>. The conventions <code>a/360</code>and <code>a/365</code> have the usual meaning, <code>a/a</code> refers to the Act/Act (ICMA) day count convention and <code>30/360</code> refers to the 30/360 European convention.</p>
+<p>JSON Risk supports the day count conventions</p>
+
+<ul>
+<li>act/act according to the ISDA 2006 rules in section 4.16 (b), also recognized by JSON Risk as actual/actual or a/a</li>
+<li>act/365 according to the ISDA 2006 rules in section 4.16 (d), also recognized by JSON Risk as actual/365, a/365, actual/365 (fixed) or act/365 (fixed)</li>
+<li>act/360 according to the ISDA 2006 rules in section 4.16 (e), also recognized by JSON Risk as actual/360, a/360, or french</li>
+<li>30u/360 according to the ISDA 2006 rules in section 4.16 (f), also recognized by JSON Risk as 30/360, bond basis, or bond</li>
+<li>30e/360 according to the ISDA 2006 rules in section 4.16 (g), also recognized by JSON Risk as eurobond basis or eurobond</li>
+<li>30g/360 according to the ISDA 2006 rules in section 4.16 (h), also recognized by JSON Risk as 30e/360 (ISDA) or 30/360 German</li>
+</ul>
+
+<p>For convenience, JSON Risk ignores case.</p>
 
 <h3>Instruments</h3>
 
-<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code></p>
+<p>Relevant for most cash flow generating instruments, i.e., <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code>, <code>cds</code></p>
 
 <h3>Meaning</h3>
 
@@ -114,10 +125,6 @@ If <code>call_tenor</code>is not zero, the bond is callable on the date represen
 <hr />
 
 <h2>disc_curve <code>String</code></h2>
-
-<h3>Context</h3>
-
-<p>Only relevant in the context of vector pricing.</p>
 
 <h3>Domain</h3>
 
@@ -149,7 +156,7 @@ If <code>call_tenor</code>is not zero, the bond is callable on the date represen
 
 <h3>Meaning</h3>
 
-<p>If <code>true</code>, present value returns only the embedded option price. Defaults to false.</p>
+<p>If <code>true</code>, the value method returns only the embedded option price. Defaults to false.</p>
 
 <hr />
 
@@ -194,7 +201,7 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h3>Instruments</h3>
 
-<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+<p>Relevant for all instruments of type <code>floater</code>.</p>
 
 <h3>Meaning</h3>
 
@@ -206,7 +213,7 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h3>Instruments</h3>
 
-<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+<p>Relevant for all instruments of type <code>floater</code>.</p>
 
 <h3>Meaning</h3>
 
@@ -218,7 +225,7 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h3>Instruments</h3>
 
-<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+<p>Relevant for all instruments of type <code>floater</code>.</p>
 
 <h3>Meaning</h3>
 
@@ -230,7 +237,7 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h3>Instruments</h3>
 
-<p>Relevant for all instruments paying floating rate coupons, i.e., <code>floater</code>, <code>swap</code>, <code>swaption</code></p>
+<p>Relevant for all instruments of type <code>floater</code>.</p>
 
 <h3>Meaning</h3>
 
@@ -320,9 +327,9 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h2>fwd_curve <code>String</code></h2>
 
-<h3>Context</h3>
+<h3>Instruments</h3>
 
-<p>Only relevant in the context of vector pricing.</p>
+<p>Relevant for instruments with float rate payments or instruments that involve calibration to swaptions, e.g., <code>callable_bond</code>.</p>
 
 <h3>Domain</h3>
 
@@ -352,19 +359,7 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h3>Meaning</h3>
 
-<p>A value of <code>true</code> marks a <code>swap</code>instrument as a payer swap and marks a <code>swaption</code> instrument as a payer swaption. Defaults to <code>false</code>, implying a receiver swap or, respecitvely, a receiver swaption.</p>
-
-<hr />
-
-<h2>is_short <code>Boolean</code></h2>
-
-<h3>Instruments</h3>
-
-<p>Relevant for <code>swaption</code></p>
-
-<h3>Meaning</h3>
-
-<p>A value of <code>true</code> marks a swaption as short, that is, the counterparty holds th eexercise right.</p>
+<p>A value of <code>true</code> marks a <code>swap</code> instrument as a payer swap and marks a <code>swaption</code> instrument as a payer swaption. Defaults to <code>false</code>, implying a receiver swap or, respecitvely, a receiver swaption.</p>
 
 <hr />
 
@@ -450,7 +445,12 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h2>quantity <code>Number</code></h2>
 
-<p>This field has no meaning in the current implementation but is reserved for representing the quantity for, e.g., an equity position.</p>
+<p>For all instruments, specifies the quantity of the position. Present values calculated are multiplied with this number. Examples:</p>
+
+<ul>
+<li>a quantity of -1 represents a short position in an asset.</li>
+<li>a <code>bond</code> with notional 100 and quantity 1 has the same value as the same <code>bond</code> with a notional of 1 and a quantity of 100.</li>
+</ul>
 
 <hr />
 
@@ -466,7 +466,7 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h3>Meaning</h3>
 
-<p>The amount repaid at each date implied by the repayment schedule. If <code>notional</code> is positive, a positive value marks cash inflows. If <code>notional</code> is negative, a positive value marks cash outflows. A zero value switsches off amortization.</p>
+<p>The amount repaid at each date implied by the repayment schedule. If <code>notional</code> is positive, a positive value marks cash inflows. If <code>notional</code> is negative, a positive value marks cash outflows. A zero value switches off amortization.</p>
 
 <p>When the field <code>conditions_valid_until</code> is populated with a vector of dates, <code>repay_amount</code> may contain a vector of numbers of the same length and each entry in <code>repay_amount</code> is considered valid until the corresponding entry in <code>conditions_valid_until</code>.</p>
 
@@ -566,10 +566,6 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h2>spread_curve <code>String</code></h2>
 
-<h3>Context</h3>
-
-<p>Only relevant in the context of vector pricing</p>
-
 <h3>Instruments</h3>
 
 <p>Relevant for <code>bond</code>, <code>floater</code>, <code>callable_bond</code></p>
@@ -610,10 +606,6 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h2>surface <code>String</code></h2>
 
-<h3>Context</h3>
-
-<p>Only relevant in the context of vector pricing.</p>
-
 <h3>Instruments</h3>
 
 <p>Relevant for <code>swaption</code> and <code>callable_bond</code> instruments.</p>
@@ -646,28 +638,24 @@ When the field <code>conditions_valid_until</code> is populated with a vector of
 
 <h2>type <code>String</code></h2>
 
-<h3>Context</h3>
-
-<p>Only relevant in the context of vector pricing.</p>
-
 <h3>Domain</h3>
 
 <p>Either <code>bond</code>, <code>floater</code>, <code>swap</code>, <code>swaption</code>, <code>callable_bond</code> or <code>fxterm</code></p>
 
 <h3>Meaning</h3>
 
-<p>The vector pricing algorithm uses this field to determine</p>
+<p>The <code>make_instrument</code> function and the <code>simulation</code> and <code>vector_pricer</code> functions use this identifier to determine which class to instantiate for an instrument JSON object. These are the supported types with their classes:</p>
 
-<ul>
-<li>what internal class to use for pricing;</li>
-<li>what parameters to assign and apply for pricing.</li>
-</ul>
-
-<p>For example, </p>
-
-<ul>
-<li>for a <code>bond</code> type instrument, a <code>fixed_income</code> internal object is created and a discount curve and a spread curve are assigned,</li>
-<li>for a <code>swap</code> type instrument, a <code>swap</code> internal object is created and a discount curve and a forward curve are assigned,</li>
-<li>for a <code>floater</code> type instrument, a <code>fixed_income</code> internal object is created and a discount curve, a spread curve and a forward curve are assigned,</li>
-<li>for a <code>callable_bond</code> type instrument, a <code>callable_fixed_income</code> internal object is created and a discount curve, a forward curve, a spread curve and a surface are assigned.</li>
-</ul>
+<p>|type   |class   |category/superclass|
+|-------|--------|--------------------|
+|<code>bond</code> |Bond    |LegInstrument       |
+|<code>floater</code>|Bond  |LegInstrument       |
+|<code>swap</code> |Swap    |LegInstrument       |
+|<code>swaption</code>|Swaption|LegInstrument    |
+|<code>fxterm</code>|FxTerm|LegInstrument        |
+|<code>callable_bond</code>|CallableBond|LegInstrument|
+|<code>equity</code>|Equity|Equity|
+|<code>equity_future</code>|EquityFuture|Equity  |
+|<code>equity_forward</code>|EquityForward|Equity|
+|<code>equity_option</code>|EquityOption|Equity  |
+|<code>cds</code>  |CreditDefaultSwap|LegInstrument|</p>
