@@ -9,7 +9,7 @@ Here are three reasons for using a financial risk and pricing library in JavaScr
 
 ## How to include in node.js:
 
-        var JsonRisk=require('path/to/json_risk.js');
+        const JsonRisk=require('path/to/json_risk.js');
 
 
 ## How to include in browser:
@@ -19,31 +19,30 @@ Here are three reasons for using a financial risk and pricing library in JavaScr
 
 ## Exemplary use - present value of a bond
 
-	var bond= {
+	const bond = new JsonRisk.Bond({
 		maturity: new Date(2028,0,1),           //final maturity of the bond
 		notional: 100.0,                        //notional
 		fixed_rate: 0.05,                       //interest rate 5%
 		tenor: 12,                              //yearly interest payments
 		bdc: "following",                       //business day convention
 		dcc: "act/act",                         //day count convention
-		calendar: "TARGET"                      //holiday calendar
-	};
+		calendar: "TARGET",                     //holiday calendar
+		disc_curve: "DISCOUNT"                  //name reference to the discount curve
+	});
 
-	var discount_curve={
+	const discount_curve={
 		labels: ["1Y", "2Y", "3Y", "10Y"],      //times encoded as labels
 		zcs: [0.01, 0.02, 0.025, 0.1]           //zero-coupon rates act/365 annual compounding
 	};
+	
+	const params=new JsonRisk.Params({
+	    valuation_date: "2019/12/31",           //one of the supported date string formats
+	    curves: {
+	        "DISCOUNT": discount_curve          //the discount curve defined above
+	    }
+	});
 		
-
-	var spread_curve={
-		labels: ["1Y", "2Y", "3Y", "10Y"],      //times encoded as labels
-		zcs: [0.01, 0.011, 0.012, 0.11]         //zero-coupon rates act/365 annual compounding
-	};
-
-        
-	JsonRisk.valuation_date=new Date(2019,11,31);   //as-of date for calculation
-
-	var present_value=JsonRisk.pricer_bond(bond,discount_curve, spread_curve);
+	const present_value=bond.value(params);     
 
 See the [documentation](https://www.jsonrisk.de/01_Documentation.html) for details and examples.
 
@@ -57,12 +56,26 @@ JSON Risk supports the instrument types below:
   - Fixed rate bonds
   - Floating rate bonds
   - Interest rate swaps
-  - FX spot and forwards contracts
+  - Bespoke leg instruments
+- FX instruments
+  - FX spot
+  - FX forward
+  - Cross-Currency Swap
 - Callable fixed income instruments
   - Plain vanilla swaptions
+  - Bermudan swaptions
   - Single callable and multicallable bond
+  - Single callable and multicallable swaps
+- Equities
+  - Stock
+  - Stock/Index Future/Forward
+  - European Options
+- Credit
+  - Credit default swaps
+  
+Fixed income, FX and Credit instruments support cash flow generation from terms and conditions as well as pre-defined leg structures.
 
-Callable bond pricing is implemented with a Linear Gauss Markov (or, equivalently, Hull-White) model in the spirit of Hagan, Patrick; EVALUATING AND HEDGING EXOTIC SWAP INSTRUMENTS VIA LGM (2019).
+Pricing of complex interest rate derivatives is implemented with a Linear Gauss Markov (or, equivalently, Hull-White) model in the spirit of Hagan, Patrick; EVALUATING AND HEDGING EXOTIC SWAP INSTRUMENTS VIA LGM (2019).
 
 ### Amortization
 
@@ -108,7 +121,7 @@ JSON Risk supports one built-in calendar (TARGET) as of now.
 Adding custom calendars is as simple as
 
 
-	var holidays = [
+	const holidays = [
 		        new Date(2018,11,1), //javascript date object
 		        "2018/12/12",        //valid YYYY/MM/DD date string
 		        "2019-12-01",        //valid YYYY/MM/DD date string
