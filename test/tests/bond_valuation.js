@@ -91,25 +91,25 @@ test.execute = function (TestFramework, JsonRisk) {
 
   let params = new JsonRisk.Params(params_json);
   TestFramework.assert(
-    "105.0" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
+    "105.0" === new JsonRisk.Bond(bond).value(params).toFixed(1),
     "bond valuation (1)",
   );
 
-  bond.settlement_days = 1;
+  bond.acquire_date = JsonRisk.add_days(JsonRisk.valuation_date, 1);
   TestFramework.assert(
-    "100.0" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
+    "100.0" === new JsonRisk.Bond(bond).value(params).toFixed(1),
     "bond valuation (2)",
   );
 
   bond.tenor = 6;
   TestFramework.assert(
-    "100.5" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
+    "100.5" === new JsonRisk.Bond(bond).value(params).toFixed(1),
     "bond valuation (3)",
   );
 
   bond.tenor = 3;
   TestFramework.assert(
-    "100.7" === new JsonRisk.FixedIncome(bond).value(params).toFixed(1),
+    "100.7" === new JsonRisk.Bond(bond).value(params).toFixed(1),
     "bond valuation (4)",
   );
 
@@ -167,7 +167,7 @@ test.execute = function (TestFramework, JsonRisk) {
       bdc: "following",
       dcc: "act/act",
       calendar: "TARGET",
-      settlement_days: 2,
+      acquire_date: "2018/02/27",
       disc_curve: "const",
       spread_curve: "nullcurve",
     };
@@ -221,7 +221,7 @@ test.execute = function (TestFramework, JsonRisk) {
       bdc: "following",
       dcc: "act/act",
       calendar: "TARGET",
-      settlement_days: 2,
+      acquire_date: "04.01.2018",
       disc_curve: "const",
     };
     let r = IrrQuote[i] / 100;
@@ -263,7 +263,7 @@ test.execute = function (TestFramework, JsonRisk) {
       bdc: "following",
       dcc: "act/act",
       calendar: "TARGET",
-      settlement_days: 2,
+      acquire_date: "03.01.2018",
       disc_curve: "const",
     };
 
@@ -375,7 +375,7 @@ test.execute = function (TestFramework, JsonRisk) {
     };
 
     //unadjusted periods
-    pv = new JsonRisk.FixedIncome(bond).value(params);
+    pv = new JsonRisk.Bond(bond).value(params);
     pv_ref = pv_func(Maturity[i], Kupon[i] / 100);
     console.log(
       "Bond without adjusted periods                  " + pv.toFixed(8),
@@ -392,7 +392,7 @@ test.execute = function (TestFramework, JsonRisk) {
 
     //adjusted periods
     bond.adjust_accrual_periods = true;
-    pv = new JsonRisk.FixedIncome(bond).value(params);
+    pv = new JsonRisk.Bond(bond).value(params);
     pv_ref = pv_func_adj(Maturity[i], Kupon[i] / 100);
     console.log("Bond with adjusted periods                  " + pv.toFixed(8));
     console.log(
@@ -438,12 +438,12 @@ test.execute = function (TestFramework, JsonRisk) {
       maturity: Maturity[i],
       notional: 100.0,
       float_spread: Kupon[i] / 100,
-      float_current_rate: 0,
+      float_current_rate: 0.0,
       tenor: 12,
       bdc: "following",
       dcc: "act/act",
       calendar: "TARGET",
-      settlement_days: 2,
+      acquire_date: "2018-02-23",
       disc_curve: "const",
       fwd_curve: "nullcurve",
     };

@@ -80,6 +80,7 @@
     if (!d) return null;
     if (d instanceof Date) {
       var h = d.getUTCHours();
+      if (h === 0) return d;
       var y = d.getUTCFullYear();
       var m = d.getUTCMonth();
       var t = d.getUTCDate();

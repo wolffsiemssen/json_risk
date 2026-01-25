@@ -42,6 +42,12 @@
     get date_value() {
       return this.#date_value;
     }
+    get date_start() {
+      return this.#date_value;
+    }
+    get date_end() {
+      return this.#date_value;
+    }
     get notional() {
       return this.#notional;
     }
@@ -87,11 +93,11 @@
       this.#ref_end = library.date_or_null(obj.ref_end) || this.#date_end;
 
       // sanity checks
-      if (this.#date_start >= this.#date_end)
+      if (this.#date_start.getTime() >= this.#date_end.getTime())
         throw new Error("RatePayment: date_start must be before date_end");
-      if (this.#ref_start >= this.#ref_end)
+      if (this.#ref_start.getTime() >= this.#ref_end.getTime())
         throw new Error("RatePayment: ref_start must be before ref_end");
-      if (this.#date_start >= this.date_value)
+      if (this.#date_start.getTime() >= this.date_value.getTime())
         throw new Error("RatePayment: date_start must be before date_value");
 
       // dcc and year fraction
@@ -207,6 +213,9 @@
     get rate() {
       return this.#rate;
     }
+    get spread() {
+      return this.#spread;
+    }
     get amount() {
       return this.capitalize ? 0.0 : this.amount_interest;
     }
@@ -241,4 +250,25 @@
   library.NotionalPayment = NotionalPayment;
   library.FixedRatePayment = FixedRatePayment;
   library.FloatRatePayment = FloatRatePayment;
+
+  library.payment_compare = function (a, b) {
+    // sort by start date first while notional payments use date_value instead
+    const astart = a.date_start.getTime();
+    const bstart = b.date_start.getTime();
+    if (astart != bstart) return astart - bstart;
+
+    // sort by end date first while notional payments use date_value instead
+    const aend = a.date_end.getTime();
+    const bend = b.date_end.getTime();
+    if (aend != bend) return aend - bend;
+
+    // sort by value date
+    if (a.date_value.getTime() != b.date_value.getTime())
+      return a.date_value < b.date_value;
+
+    // sort the remaining payments by their type
+    const na = a.constructor.name;
+    const nb = b.constructor.name;
+    return na < nb ? 1 : na > nb ? -1 : 0;
+  };
 })(this.JsonRisk || module.exports);

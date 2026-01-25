@@ -1,0 +1,54 @@
+(function (library) {
+  class Bond extends library.LegInstrument {
+    constructor(obj) {
+      if (!Array.isArray(obj.legs)) {
+        // fixed rate must be set either as a number or as a vector
+        const f = library.number_vector_or_null(obj.fixed_rate);
+        if (null === f) throw new Error("Bond: must have fixed rate set");
+
+        // generate leg from terms and conditions
+        const leg = library.cashflow_generator(obj);
+
+        // create shallow copy and leave original object unchanged
+        const tempobj = Object.assign({ legs: [leg] }, obj);
+        super(tempobj);
+
+        // update notionals
+        this.legs[0].update_notionals();
+      } else {
+        super(obj);
+      }
+
+      // sanity checks
+      if (1 !== this.legs.length)
+        throw new Error("Bond: must have exactly one leg");
+
+      const leg = this.legs[0];
+      if (leg.has_float_rate_payments)
+        throw new Error("Bond: cannot have fixed rate payments");
+      if (false === leg.has_notional_payments)
+        throw new Error("Bond: must have notional payments");
+    }
+
+    fixed_rate() {
+      //returns first rate on the leg
+      for (const p of this.legs[0].payments) {
+        if (p instanceof library.FixedRatePayment) {
+          return p.rate;
+        }
+      }
+    }
+
+    fair_rate_or_spread(params) {
+      // returns the rate this bond would have to carry in order to have a par valuation
+      return this.legs[0].fair_rate_or_spread(params);
+    }
+
+    annuity(params) {
+      // returns fixed rate annuity
+      return this.legs[0].annuity(params);
+    }
+  }
+
+  library.Bond = Bond;
+})(this.JsonRisk || module.exports);

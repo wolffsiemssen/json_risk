@@ -31,7 +31,7 @@
       "" === obj.notional_exchange ||
       undefined === obj.notional_exchange
     )
-      this.notional_exchange = true;
+      specs.notional_exchange = true;
 
     specs.tenor = library.natural_number_or_null(obj.tenor);
     if (null === specs.tenor)
@@ -282,7 +282,7 @@
     // fixing
     if (reset_start <= library.valuation_date) {
       res.is_fixed = true;
-      res.rate = specs.float_current_rate;
+      res.rate = specs.float_current_rate + float_spread;
     } else {
       res.is_fixed = false;
     }
@@ -320,7 +320,7 @@
     // add outflow in the beginning
     let notional = specs.notional;
     if (specs.notional_exchange)
-      cashflows.push(pay_notional(timeline[0], -notional));
+      cashflows.push(pay_notional(date_start, -notional));
 
     // loop through timeline
     while (timeline.length >= 1) {
@@ -353,15 +353,24 @@
         ),
       );
 
-      // make notional payment if we are on a repay date. Do not worry about overpayments or capitalization. This is handled by the leg class.
+      // make notional payments if needed. Do not worry about overpayments with capitalization. This is handled by the leg class.
+      let n = 0;
       if (
-        date_end === date_next_repay &&
-        current_conditions.repay_amount !== 0.0
+        specs.notional_exchange &&
+        date_end.getTime() === date_next_repay.getTime()
       ) {
-        cashflows.push(
-          pay_notional(date_next_repay, current_conditions.repay_amount),
-        );
-        notional -= current_conditions.repay_amount;
+        if (timeline.length === 1) {
+          // pay full outstanding notional on the last date of the timeline.
+          n = notional;
+        } else {
+          // pay according to current repayment conditions
+          n = current_conditions.repay_amount;
+        }
+      }
+
+      if (n != 0) {
+        cashflows.push(pay_notional(date_next_repay, n));
+        notional -= n;
       }
 
       // move to next date
@@ -383,6 +392,8 @@
     return {
       payments: cashflows,
       disc_curve: library.string_or_empty(obj.disc_curve),
+      spread_curve: library.string_or_empty(obj.spread_curve),
+      residual_spread: library.number_or_null(obj.residual_spread) || 0.0,
     };
   };
 })(this.JsonRisk || module.exports);

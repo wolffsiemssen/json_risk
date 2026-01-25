@@ -217,11 +217,11 @@ test.execute = function (TestFramework, JsonRisk) {
   // test margins. Bond with margin should have the same principal cashflow as the same bond without margin
   var res = 0;
   for (i = 0; i < 400; i++) {
-    let bond = new JsonRisk.FixedIncome(bonds[i]);
-    p1 = bond.get_cash_flows().pmt_principal;
+    let bond = new JsonRisk.Bond(bonds[i]);
+    p1 = bond.legs[0].get_cash_flows().pmt_principal;
     bonds[i].excl_margin = 0.00125;
-    bond = new JsonRisk.FixedIncome(bonds[i]);
-    p2 = bond.get_cash_flows().pmt_principal;
+    bond = new JsonRisk.Bond(bonds[i]);
+    p2 = bond.legs[0].get_cash_flows().pmt_principal;
     for (var j = 0; j < p1.length; j++) {
       res += Math.abs(p2[j] - p1[j]);
     }
@@ -261,14 +261,11 @@ test.execute = function (TestFramework, JsonRisk) {
     });
 
     //fix rate
-    let r = new JsonRisk.FixedIncome(bonds[i]).fair_rate_or_spread(
-      params_json.curves.steep_curve,
-      params_json.curves.spread_curve,
-      null,
-    );
+    const params = new JsonRisk.Params(params_json);
+    let r = new JsonRisk.Bond(bonds[i]).fair_rate_or_spread(params);
 
     bonds[i].fixed_rate = r;
-    let p1 = new JsonRisk.FixedIncome(bonds[i]).value(params_json);
+    let p1 = new JsonRisk.Bond(bonds[i]).value(params);
     console.log(
       "JSON Risk irregular bond fair rate        (" +
         (i + 1) +
@@ -292,14 +289,10 @@ test.execute = function (TestFramework, JsonRisk) {
     bonds[i].float_current_rate = 0;
     bonds[i].float_spread = 0;
     bonds[i].fwd_curve = "steep_curve";
-    r = new JsonRisk.FixedIncome(bonds[i]).fair_rate_or_spread(
-      params_json.curves.steep_curve,
-      params_json.curves.spread_curve,
-      params_json.curves.steep_curve,
-    );
+    r = new JsonRisk.Floater(bonds[i]).fair_rate_or_spread(params);
 
     bonds[i].float_spread = r;
-    p1 = new JsonRisk.FixedIncome(bonds[i]).value(params_json);
+    p1 = new JsonRisk.Floater(bonds[i]).value(params);
     console.log(
       "JSON Risk irregular floater fair spread        (" +
         (i + 1) +

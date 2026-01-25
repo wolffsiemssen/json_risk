@@ -105,13 +105,6 @@
       // returns fixed rate annuity
       return this.#fixed_leg.annuity(disc_curve);
     }
-
-    get_cash_flows(fwd_curve) {
-      return {
-        fixed_leg: this.fixed_leg.get_cash_flows(),
-        float_leg: this.float_leg.get_cash_flows(fwd_curve),
-      };
-    }
   }
 
   library.Swap = Swap;

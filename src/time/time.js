@@ -37,7 +37,17 @@
    * @private
    */
   function days_in_month(y, m) {
-    return new Date(y, m + 1, 0).getDate();
+    switch (m) {
+      case 1:
+        return is_leap_year(y) ? 29 : 28;
+      case 3:
+      case 5:
+      case 8:
+      case 10:
+        return 30;
+      default:
+        return 31;
+    }
   }
 
   /*!

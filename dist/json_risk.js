@@ -173,6 +173,7 @@
     if (!d) return null;
     if (d instanceof Date) {
       var h = d.getUTCHours();
+      if (h === 0) return d;
       var y = d.getUTCFullYear();
       var m = d.getUTCMonth();
       var t = d.getUTCDate();
@@ -230,8 +231,9 @@
   library.make_instrument = function (obj) {
     switch (obj.type.toLowerCase()) {
       case "bond":
+        return new library.Bond(obj);
       case "floater":
-        return new library.FixedIncome(obj);
+        return new library.Floater(obj);
       case "swap":
         return new library.Swap(obj);
       case "swaption":
@@ -471,6 +473,7 @@
 (function (library) {
   class LegInstrument extends library.Instrument {
     #legs = [];
+    #acquire_date = new Date(Date.UTC(0, 0, 1));
 
     constructor(obj) {
       super(obj);
@@ -479,11 +482,19 @@
         this.#legs = obj.legs.map((legobj) => {
           return new library.Leg(legobj);
         });
+        Object.freeze(this.#legs);
       }
+
+      const ad = library.date_or_null(obj.acquire_date);
+      if (null !== ad) this.#acquire_date = ad;
     }
 
     get legs() {
-      return Array.from(this.#legs);
+      return this.#legs;
+    }
+
+    get acquire_date() {
+      return this.#acquire_date;
     }
 
     add_deps_impl(deps) {
@@ -495,7 +506,7 @@
     value_impl(params, extras_not_used) {
       let res = 0;
       for (const leg of this.#legs) {
-        let lv = leg.value(params);
+        let lv = leg.value(params, this.#acquire_date);
         if ("" != this.currency && "" != leg.currency) {
           const fx = params.get_fx_rate(leg.currency, this.currency);
           lv *= fx;
@@ -507,6 +518,60 @@
   }
 
   library.LegInstrument = LegInstrument;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  class Bond extends library.LegInstrument {
+    constructor(obj) {
+      if (!Array.isArray(obj.legs)) {
+        // fixed rate must be set either as a number or as a vector
+        const f = library.number_vector_or_null(obj.fixed_rate);
+        if (null === f) throw new Error("Bond: must have fixed rate set");
+
+        // generate leg from terms and conditions
+        const leg = library.cashflow_generator(obj);
+
+        // create shallow copy and leave original object unchanged
+        const tempobj = Object.assign({ legs: [leg] }, obj);
+        super(tempobj);
+
+        // update notionals
+        this.legs[0].update_notionals();
+      } else {
+        super(obj);
+      }
+
+      // sanity checks
+      if (1 !== this.legs.length)
+        throw new Error("Bond: must have exactly one leg");
+
+      const leg = this.legs[0];
+      if (leg.has_float_rate_payments)
+        throw new Error("Bond: cannot have fixed rate payments");
+      if (false === leg.has_notional_payments)
+        throw new Error("Bond: must have notional payments");
+    }
+
+    fixed_rate() {
+      //returns first rate on the leg
+      for (const p of this.legs[0].payments) {
+        if (p instanceof library.FixedRatePayment) {
+          return p.rate;
+        }
+      }
+    }
+
+    fair_rate_or_spread(params) {
+      // returns the rate this bond would have to carry in order to have a par valuation
+      return this.legs[0].fair_rate_or_spread(params);
+    }
+
+    annuity(params) {
+      // returns fixed rate annuity
+      return this.legs[0].annuity(params);
+    }
+  }
+
+  library.Bond = Bond;
 })(this.JsonRisk || module.exports);
 (function (library) {
   class CallableFixedIncome extends library.Instrument {
@@ -1691,6 +1756,65 @@
   library.FixedIncome = FixedIncome;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  class Floater extends library.LegInstrument {
+    constructor(obj) {
+      if (!Array.isArray(obj.legs)) {
+        // create shallow copy and leave original object unchanged
+        const tempobj = Object.assign({}, obj);
+
+        // remove fixed_rate so cash flow generator generates floating leg
+        delete tempobj.fixed_rate;
+
+        // generate leg from terms and conditions
+        const leg = library.cashflow_generator(tempobj);
+
+        // make simple index
+        const index = {
+          fwd_curve: obj.fwd_curve,
+          surface: obj.surface,
+          dcc: obj.dcc,
+        };
+
+        // attach index to leg json
+        leg.indices = { index: index };
+
+        // attach leg to instrument json
+        tempobj.legs = [leg];
+
+        super(tempobj);
+
+        // update notionals
+        this.legs[0].update_notionals();
+      } else {
+        super(obj);
+      }
+
+      // sanity checks
+      if (1 !== this.legs.length)
+        throw new Error("Floater: must have exactly one leg");
+
+      const leg = this.legs[0];
+      if (leg.has_fixed_rate_payments)
+        throw new Error("Floater: cannot have fixed rate payments");
+
+      if (false === leg.has_notional_payments)
+        throw new Error("Floater: must have notional payments");
+    }
+
+    fair_rate_or_spread(params) {
+      // returns the spread rate this bond would have to carry in order to have a par valuation
+      return this.legs[0].fair_rate_or_spread(params);
+    }
+
+    annuity(params) {
+      // returns spread rate annuity
+      return this.legs[0].annuity(params);
+    }
+  }
+
+  library.Floater = Floater;
+})(this.JsonRisk || module.exports);
+(function (library) {
   class FxTerm extends library.LegInstrument {
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
@@ -1848,13 +1972,6 @@
     annuity(disc_curve) {
       // returns fixed rate annuity
       return this.#fixed_leg.annuity(disc_curve);
-    }
-
-    get_cash_flows(fwd_curve) {
-      return {
-        fixed_leg: this.fixed_leg.get_cash_flows(),
-        float_leg: this.float_leg.get_cash_flows(fwd_curve),
-      };
     }
   }
 
@@ -2148,7 +2265,7 @@
       "" === obj.notional_exchange ||
       undefined === obj.notional_exchange
     )
-      this.notional_exchange = true;
+      specs.notional_exchange = true;
 
     specs.tenor = library.natural_number_or_null(obj.tenor);
     if (null === specs.tenor)
@@ -2399,7 +2516,7 @@
     // fixing
     if (reset_start <= library.valuation_date) {
       res.is_fixed = true;
-      res.rate = specs.float_current_rate;
+      res.rate = specs.float_current_rate + float_spread;
     } else {
       res.is_fixed = false;
     }
@@ -2437,7 +2554,7 @@
     // add outflow in the beginning
     let notional = specs.notional;
     if (specs.notional_exchange)
-      cashflows.push(pay_notional(timeline[0], -notional));
+      cashflows.push(pay_notional(date_start, -notional));
 
     // loop through timeline
     while (timeline.length >= 1) {
@@ -2470,15 +2587,24 @@
         ),
       );
 
-      // make notional payment if we are on a repay date. Do not worry about overpayments or capitalization. This is handled by the leg class.
+      // make notional payments if needed. Do not worry about overpayments with capitalization. This is handled by the leg class.
+      let n = 0;
       if (
-        date_end === date_next_repay &&
-        current_conditions.repay_amount !== 0.0
+        specs.notional_exchange &&
+        date_end.getTime() === date_next_repay.getTime()
       ) {
-        cashflows.push(
-          pay_notional(date_next_repay, current_conditions.repay_amount),
-        );
-        notional -= current_conditions.repay_amount;
+        if (timeline.length === 1) {
+          // pay full outstanding notional on the last date of the timeline.
+          n = notional;
+        } else {
+          // pay according to current repayment conditions
+          n = current_conditions.repay_amount;
+        }
+      }
+
+      if (n != 0) {
+        cashflows.push(pay_notional(date_next_repay, n));
+        notional -= n;
       }
 
       // move to next date
@@ -2500,6 +2626,8 @@
     return {
       payments: cashflows,
       disc_curve: library.string_or_empty(obj.disc_curve),
+      spread_curve: library.string_or_empty(obj.spread_curve),
+      residual_spread: library.number_or_null(obj.residual_spread) || 0.0,
     };
   };
 })(this.JsonRisk || module.exports);
@@ -2507,10 +2635,18 @@
   class Leg {
     #currency = "";
     #disc_curve = "";
+    #spread_curve = "";
+    #residual_spread = 0.0;
     #payments = [];
     #indices = {};
+    #update_notionals_if_needed = function () {
+      return;
+    };
     constructor(obj) {
       this.#disc_curve = library.string_or_empty(obj.disc_curve);
+      this.#spread_curve = library.string_or_empty(obj.spread_curve);
+      this.#residual_spread =
+        library.number_or_null(obj.residual_spread) || 0.0;
       this.#currency = library.string_or_empty(obj.currency);
 
       if ("payments" in obj && Array.isArray(obj.payments)) {
@@ -2531,32 +2667,16 @@
         }
       }
 
-      // sort payments
-      this.#payments.sort(function (a, b) {
-        // most important: if the notional of a rate payment depends on another payment, that payment must be before the rate payment. Amortization features are implemented much more straightforward if this is guaranteed.
-        if (undefined !== b.date_start && b.date_start >= a.date_value)
-          return -1;
-        if (undefined !== a.date_start && a.date_start >= b.date_value)
-          return 1;
-
-        // sort independend payments by value date and payment date
-        if (a.date_value != b.date_value) return a.date_value - b.date_value;
-        if (a.date_pmt != b.date_pmt) return a.date_pmt - b.date_pmt;
-
-        // sort rate payments with the same value and payment dates by their end and start dates
-        if (
-          a instanceof library.RatePayment &&
-          b instanceof library.RatePayment
-        ) {
-          if (a.date_end != b.date.end) return a.date_end - b.date_end;
-          if (a.date_start != b.date.start) return a.date_start - b.date_start;
+      // check if updating notionals is needed for each valuation (needed in case of capitalizing float rate payments, not unusual in banking book applications)
+      for (const p of this.#payments) {
+        if (p.capitalize && !p.is_fixed) {
+          this.#update_notionals_if_needed = this.update_notionals;
+          break;
         }
+      }
 
-        // sort the remaining payments by their type
-        const na = a.constructor.name;
-        const nb = b.constructor.name;
-        return na < nb ? 1 : na > nb ? -1 : 0;
-      });
+      // sort payments
+      this.#payments.sort(library.payment_compare);
       Object.freeze(this.#payments);
 
       if ("indices" in obj) {
@@ -2621,6 +2741,7 @@
     // valuation functions
     add_deps(deps) {
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
+      if ("" != this.#spread_curve) deps.add_curve(this.#spread_curve);
       if ("" != this.#currency) deps.add_currency(this.#currency);
 
       for (const idx of Object.values(this.#indices)) {
@@ -2628,20 +2749,48 @@
       }
     }
 
-    #dcf(disc_curve) {
+    #dcf(disc_curve, acquire_date = new Date(0.0)) {
       let res = 0;
+      const cutoff = Math.max(library.time_from_now(acquire_date), 0.0);
       for (const p of this.#payments) {
+        const d = p.date_pmt;
+        const t = library.time_from_now(d);
+
+        // exclude payments in the past and that occur on or before the date of acquisition
+        if (t <= cutoff) continue;
+
         // get amount and discount
-        let amount = p.amount;
-        let t = library.time_from_now(p.date_pmt);
-        if (t < 0) continue;
-        let df = disc_curve.get_df(t);
+        const amount = p.amount;
+        const df = disc_curve.get_df(t);
         res += amount * df;
       }
       return res;
     }
 
-    value(params) {
+    #discounter(params) {
+      const disc_curve = params.get_curve(this.#disc_curve);
+      const spread_curve =
+        this.#spread_curve !== "" ? params.get_curve(this.#spread_curve) : null;
+      if (spread_curve === null && this.#residual_spread === 0.0) {
+        // standard valuation
+        return disc_curve;
+      } else {
+        // valuation with spreads, return an object with a get_df method, simulating a yield curve
+        const compounding = library.compounding_factory("annual");
+        const residual_spread = this.#residual_spread;
+        return {
+          get_df: function (t) {
+            let df = disc_curve.get_df(t);
+            let zc = compounding.zc(t, df);
+            if (spread_curve) zc += spread_curve.get_rate(t);
+            zc += residual_spread;
+            return compounding.df(t, zc);
+          },
+        };
+      }
+    }
+
+    value(params, acquire_date) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(params);
       }
@@ -2649,8 +2798,11 @@
         // make projection for unfixed payments
         if (!p.is_fixed) p.project(this.#indices);
       }
-      const disc_curve = params.get_curve(this.#disc_curve);
-      return this.#dcf(disc_curve);
+
+      this.#update_notionals_if_needed();
+
+      const discounter = this.#discounter(params);
+      return this.#dcf(discounter, acquire_date);
     }
 
     value_with_curves(disc_curve, fwd_curve) {
@@ -2661,28 +2813,194 @@
         // make projection for unfixed payments
         if (!p.is_fixed) p.project(this.#indices);
       }
+
+      this.#update_notionals_if_needed();
+
       return this.#dcf(disc_curve);
     }
 
     // argument must be either a valid params object or a curve object
     annuity(params_or_curve) {
-      const disc_curve =
+      const discounter =
         params_or_curve instanceof library.Params
-          ? params_or_curve.get_curve(this.#disc_curve)
+          ? this.#discounter(params_or_curve)
           : params_or_curve;
       let res = 0;
       for (const p of this.#payments) {
-        if (!(p instanceof library.FixedRatePayment)) continue;
+        if (
+          p.constructor !== library.FixedRatePayment &&
+          p.constructor !== library.FloatRatePayment
+        )
+          continue;
 
         let t = library.time_from_now(p.date_pmt);
         if (t < 0) continue;
 
         // get amount based on 100 percent interest and discount
         let amount = p.notional * p.yf;
-        let df = disc_curve.get_df(t);
+        let df = discounter.get_df(t);
         res += amount * df;
       }
       return res;
+    }
+
+    // get outstanding balance  - all floating capitalizing payments must have been projected before by e.g. calling the value method
+    balance(d = library.valuation_date) {
+      let res = 0;
+      for (const p of this.#payments) {
+        if (p.date_value <= d) continue;
+        res += p.amount_notional;
+      }
+      return res;
+    }
+
+    // get fair rate or spread
+    fair_rate_or_spread(params) {
+      for (const idx of Object.values(this.#indices)) {
+        idx.link_curve(params);
+      }
+      for (const p of this.#payments) {
+        // make projection for unfixed payments
+        if (!p.is_fixed) p.project(this.#indices);
+      }
+
+      this.#update_notionals_if_needed();
+
+      const discounter = this.#discounter(params);
+
+      let res = 0; // res is present value without rates or spreads
+      for (const p of this.#payments) {
+        // exclude past payments
+        const d = p.date_pmt;
+        const t = library.time_from_now(d);
+        if (t <= 0) continue;
+
+        const df = discounter.get_df(t);
+
+        // include only notional and float rate payments
+        if (p.constructor === library.NotionalPayment) {
+          res += df * p.amount;
+        } else if (p.constructor === library.FloatRatePayment) {
+          // exclude spread for float rate payments
+          const spread = p.notional * p.yf * p.spread;
+          res += df * (p.amount - spread);
+        } else {
+          continue;
+        }
+      }
+
+      const annuity = this.annuity(params);
+      const balance = this.balance();
+      // fair rate means rate*annuity + res = balance, since res was value without rates or spreads. Equivalently, rat=(balance - res) / annuity
+      if (0 === annuity)
+        throw new Error(
+          "Leg: Could not determine fair rate or spread since annuity is zero",
+        );
+      return (balance - res) / annuity;
+    }
+
+    // update notionals - all floating capitalizing payments must have been projected before by e.g. calling the value method
+    update_notionals() {
+      // no amortization or capitalization if there is no or just one payment
+      const n = this.#payments.length;
+      if (n < 2) return;
+
+      // without any initial and final notional payments, no amortization or capitalization is supported
+      const p0 = this.#payments[0];
+      const pn1 = this.#payments[n - 1];
+      if (
+        p0.constructor !== library.NotionalPayment ||
+        pn1.constructor !== library.NotionalPayment
+      )
+        return;
+
+      // keep track of balance and payments with value date in the future
+      let balance = -p0.amount_notional;
+      const open_payments = new Set();
+
+      for (let i = 1; i < n; i++) {
+        const p = this.#payments[i];
+        const start = p.date_start;
+
+        // update balance for each payment by including all open payments with value date on or before start
+        for (const pp of open_payments) {
+          if (pp.date_value.getTime() > start.getTime()) continue;
+          balance -= pp.amount_notional;
+          open_payments.delete(pp);
+        }
+
+        if (p.constructor === library.NotionalPayment) {
+          // notional payments cannot change sign of balance, and final notional payment must clear balance
+          if (
+            (balance > 0 && p.notional > balance) ||
+            (balance < 0 && p.notional < balance) ||
+            i === n - 1
+          )
+            p.set_notional(balance);
+        } else {
+          // update notional on p for interest rate payments
+          p.set_notional(balance);
+        }
+
+        // add this payment to the list if it pays notional
+        if (p.amount_notional != 0) {
+          if (p.date_value.getTime() <= start.getTime()) {
+            // immediately reduce balance
+            balance -= p.amount_notional;
+          } else {
+            // payment reduces balance later
+            open_payments.add(p);
+          }
+        }
+      }
+    }
+
+    // get simple cash flow table
+    get_cash_flows() {
+      const pmap = new Map();
+      for (const p of this.#payments) {
+        const tpay = library.time_from_now(p.date_pmt);
+        const total = p.amount;
+        const notional = p.amount_notional;
+        let entry = pmap.get(tpay);
+        if (entry) {
+          // entry for this payment time exists already
+          entry[0] += total;
+          entry[1] += notional;
+        } else {
+          // create new entry
+          pmap.set(tpay, [total, notional]);
+        }
+      }
+      const times = Array.from(pmap.keys()).sort();
+      const n = times.length;
+
+      const t_pmt = new Float64Array(n);
+      const pmt_total = new Float64Array(n);
+      const pmt_interest = new Float64Array(n);
+      const pmt_principal = new Float64Array(n);
+      const current_principal = new Float64Array(n);
+
+      let cp = 0;
+      for (let i = 0; i < n; i++) {
+        const t = times[i];
+        const [total, notional] = pmap.get(t);
+
+        t_pmt[i] = t;
+        pmt_total[i] = total;
+        pmt_principal[i] = notional;
+        pmt_interest[i] = total - notional;
+        current_principal[i] = cp;
+        cp -= notional;
+      }
+
+      return {
+        t_pmt,
+        pmt_total,
+        pmt_principal,
+        pmt_interest,
+        current_principal,
+      };
     }
   }
 
@@ -2732,6 +3050,12 @@
     get date_value() {
       return this.#date_value;
     }
+    get date_start() {
+      return this.#date_value;
+    }
+    get date_end() {
+      return this.#date_value;
+    }
     get notional() {
       return this.#notional;
     }
@@ -2777,11 +3101,11 @@
       this.#ref_end = library.date_or_null(obj.ref_end) || this.#date_end;
 
       // sanity checks
-      if (this.#date_start >= this.#date_end)
+      if (this.#date_start.getTime() >= this.#date_end.getTime())
         throw new Error("RatePayment: date_start must be before date_end");
-      if (this.#ref_start >= this.#ref_end)
+      if (this.#ref_start.getTime() >= this.#ref_end.getTime())
         throw new Error("RatePayment: ref_start must be before ref_end");
-      if (this.#date_start >= this.date_value)
+      if (this.#date_start.getTime() >= this.date_value.getTime())
         throw new Error("RatePayment: date_start must be before date_value");
 
       // dcc and year fraction
@@ -2897,6 +3221,9 @@
     get rate() {
       return this.#rate;
     }
+    get spread() {
+      return this.#spread;
+    }
     get amount() {
       return this.capitalize ? 0.0 : this.amount_interest;
     }
@@ -2931,6 +3258,27 @@
   library.NotionalPayment = NotionalPayment;
   library.FixedRatePayment = FixedRatePayment;
   library.FloatRatePayment = FloatRatePayment;
+
+  library.payment_compare = function (a, b) {
+    // sort by start date first while notional payments use date_value instead
+    const astart = a.date_start.getTime();
+    const bstart = b.date_start.getTime();
+    if (astart != bstart) return astart - bstart;
+
+    // sort by end date first while notional payments use date_value instead
+    const aend = a.date_end.getTime();
+    const bend = b.date_end.getTime();
+    if (aend != bend) return aend - bend;
+
+    // sort by value date
+    if (a.date_value.getTime() != b.date_value.getTime())
+      return a.date_value < b.date_value;
+
+    // sort the remaining payments by their type
+    const na = a.constructor.name;
+    const nb = b.constructor.name;
+    return na < nb ? 1 : na > nb ? -1 : 0;
+  };
 })(this.JsonRisk || module.exports);
 (function (library) {
   class SimpleIndex {
@@ -6230,7 +6578,17 @@
    * @private
    */
   function days_in_month(y, m) {
-    return new Date(y, m + 1, 0).getDate();
+    switch (m) {
+      case 1:
+        return is_leap_year(y) ? 29 : 28;
+      case 3:
+      case 5:
+      case 8:
+      case 10:
+        return 30;
+      default:
+        return 31;
+    }
   }
 
   /*!

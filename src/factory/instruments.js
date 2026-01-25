@@ -8,8 +8,9 @@
   library.make_instrument = function (obj) {
     switch (obj.type.toLowerCase()) {
       case "bond":
+        return new library.Bond(obj);
       case "floater":
-        return new library.FixedIncome(obj);
+        return new library.Floater(obj);
       case "swap":
         return new library.Swap(obj);
       case "swaption":
