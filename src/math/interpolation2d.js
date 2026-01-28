@@ -52,7 +52,7 @@
   library.interpolation2d_factory = function (x1, x2, y) {
     const [x1_, x2_, y_, n1, n2] = copy_and_check_arrays(x1, x2, y);
 
-    // 1xN, covers 1x! as well
+    // 1xN, covers 1x1 as well
     if (n1 === 1) {
       const interpolation = library.linear_interpolation(x2_, y_);
       return function (s1_not_used, s2) {

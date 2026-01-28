@@ -25,7 +25,7 @@
 
       const leg = this.legs[0];
       if (leg.has_float_rate_payments)
-        throw new Error("Bond: cannot have fixed rate payments");
+        throw new Error("Bond: cannot have float rate payments");
       if (false === leg.has_notional_payments)
         throw new Error("Bond: must have notional payments");
     }
