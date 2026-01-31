@@ -83,7 +83,7 @@ test.execute = function (TestFramework, JsonRisk) {
   const Calltenor = [1, 3, 6, 12, 3, 3, 6, 6, 12, 12, 12, 12, 12, 12, 12];
 
   for (i = 0; i < Maturity.length; i++) {
-    const bond = new JsonRisk.FixedIncome({
+    const bond = new JsonRisk.Bond({
       maturity: Maturity[i],
       tenor: Tenor[i],
       call_tenor: 0,
@@ -96,7 +96,7 @@ test.execute = function (TestFramework, JsonRisk) {
       disc_curve: "curve",
     });
 
-    const european = new JsonRisk.CallableFixedIncome({
+    const european = new JsonRisk.CallableBond({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -111,7 +111,7 @@ test.execute = function (TestFramework, JsonRisk) {
       fwd_curve: "curve",
       surface: "surface",
     });
-    const bermudan = new JsonRisk.CallableFixedIncome({
+    const bermudan = new JsonRisk.CallableBond({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],

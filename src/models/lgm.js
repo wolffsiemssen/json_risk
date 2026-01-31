@@ -764,7 +764,7 @@
   ) {
     //correction for multi curve valuation - move basis spread to fixed leg
     const { fixed_leg, float_leg } = swaption;
-    let fixed_rate = swaption.fixed_rate();
+    let fixed_rate = swaption.fixed_rate;
     const pv_float_singlecurve = float_leg.value_with_curves(
       disc_curve,
       disc_curve,

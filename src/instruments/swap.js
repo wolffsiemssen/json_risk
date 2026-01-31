@@ -92,13 +92,16 @@
       return -pv_float / annuity;
     }
 
-    fixed_rate() {
+    get fixed_rate() {
       //returns first rate on the fixed leg
       for (const p of this.#fixed_leg.payments) {
         if (p instanceof library.FixedRatePayment) {
           return p.rate;
         }
       }
+      throw new Error(
+        "Swap: cannot determine fixed rate, fixed leg has no rate payments",
+      );
     }
 
     annuity(disc_curve) {

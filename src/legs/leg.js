@@ -61,6 +61,12 @@
     get disc_curve() {
       return this.#disc_curve;
     }
+    get spread_curve() {
+      return this.#spread_curve;
+    }
+    get residual_spread() {
+      return this.#residual_spread;
+    }
     get payments() {
       return this.#payments;
     }
@@ -98,9 +104,21 @@
     }
     get has_constant_notional() {
       if (!this.#payments.length) return true;
-      let notional = this.#payments[0].notional;
+      let notional = Math.abs(this.#payments[0].notional);
       for (const p of this.#payments) {
-        if (p.notional != notional) return false;
+        if (Math.abs(p.notional) != notional) return false;
+      }
+      return true;
+    }
+    get has_constant_rate() {
+      let rate = null;
+      for (const p of this.#payments) {
+        if (p.constructor != library.FixedRatePayment) continue;
+        if (rate === null) {
+          rate = p.rate;
+          continue;
+        }
+        if (rate !== p.rate) return false;
       }
       return true;
     }
@@ -221,6 +239,25 @@
       return res;
     }
 
+    // compute irr for some date
+    irr(d) {
+      const balance = this.balance(d);
+      const tset = library.time_from_now(d);
+      const payments = this.#payments;
+      const func = function (x) {
+        let res = -balance * Math.pow(1 + x, -tset);
+        for (const p of payments) {
+          if (p.date_value <= d) continue;
+          const t = library.time_from_now(p.date_pmt);
+          res += p.amount * Math.pow(1 + x, -t);
+        }
+        return res;
+      };
+
+      const res = library.find_root_secant(func, 0, 0.0001);
+      return res;
+    }
+
     // get fair rate or spread
     fair_rate_or_spread(params) {
       for (const idx of Object.values(this.#indices)) {
@@ -336,10 +373,12 @@
           entry[1] += notional;
         } else {
           // create new entry
-          pmap.set(tpay, [total, notional]);
+          pmap.set(tpay, [total, notional, p.date_pmt]);
         }
       }
-      const times = Array.from(pmap.keys()).sort();
+      const times = Array.from(pmap.keys()).sort(function (a, b) {
+        return a - b;
+      });
       const n = times.length;
 
       const t_pmt = new Float64Array(n);
@@ -347,22 +386,25 @@
       const pmt_interest = new Float64Array(n);
       const pmt_principal = new Float64Array(n);
       const current_principal = new Float64Array(n);
+      const date_pmt = new Array(n);
 
       let cp = 0;
       for (let i = 0; i < n; i++) {
         const t = times[i];
-        const [total, notional] = pmap.get(t);
+        const [total, notional, dt] = pmap.get(t);
 
         t_pmt[i] = t;
         pmt_total[i] = total;
         pmt_principal[i] = notional;
         pmt_interest[i] = total - notional;
         current_principal[i] = cp;
+        date_pmt[i] = dt;
         cp -= notional;
       }
 
       return {
         t_pmt,
+        date_pmt,
         pmt_total,
         pmt_principal,
         pmt_interest,

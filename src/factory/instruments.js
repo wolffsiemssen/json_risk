@@ -18,7 +18,7 @@
       case "fxterm":
         return new library.FxTerm(obj);
       case "callable_bond":
-        return new library.CallableFixedIncome(obj);
+        return new library.CallableBond(obj);
       case "equity":
         return new library.Equity(obj);
       case "equity_future":

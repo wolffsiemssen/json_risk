@@ -84,7 +84,7 @@
       }
       //obtain fwd rate, that is, fair swap rate
       const fair_rate = this.fair_rate(disc_curve, fwd_curve);
-      const fixed_rate = this.fixed_rate();
+      const fixed_rate = this.fixed_rate;
 
       //obtain time-scaled volatility
       this.#vol = surface.get_rate(
@@ -125,100 +125,105 @@
    * @public
    */
   library.create_equivalent_regular_swaption = function (
-    cf_obj,
-    first_exercise_date,
+    original_leg,
+    exercise_date,
     conventions,
   ) {
     //sanity checks
-    if (
-      undefined === cf_obj.date_pmt ||
-      undefined === cf_obj.pmt_total ||
-      undefined === cf_obj.current_principal
-    )
-      throw new Error(
-        "create_equivalent_regular_swaption: invalid cashflow object",
-      );
-    if (
-      cf_obj.t_pmt.length !== cf_obj.pmt_total.length ||
-      cf_obj.t_pmt.length !== cf_obj.current_principal.length
-    )
-      throw new Error(
-        "create_equivalent_regular_swaption: invalid cashflow object",
-      );
+    if (!(original_leg instanceof library.Leg))
+      throw new Error("create_equivalent_regular_swaption: invalid leg");
+
     if (!conventions) conventions = {};
     var tenor = conventions.tenor || 6;
     var bdc = conventions.bdc || "unadjusted";
     var calendar = conventions.calendar || "";
 
-    //retrieve outstanding principal on first_exercise_date (corresponds to regular swaption notional)
-    var outstanding_principal = 0;
-    var i = 0;
-    while (cf_obj.date_pmt[i] <= first_exercise_date) i++;
-    outstanding_principal = cf_obj.current_principal[i];
+    // rebuild leg with just a discount curve
+    const leg = new library.Leg({
+      disc_curve: "discount",
+      payments: original_leg.payments,
+    });
 
-    if (outstanding_principal === 0)
+    //retrieve outstanding principal on first_exercise_date (corresponds to regular swaption notional)
+    const balance = leg.balance(exercise_date);
+    if (balance === 0)
       throw new Error(
-        "create_equivalent_regular_swaption: invalid cashflow object or first_exercise_date, zero outstanding principal",
+        "create_equivalent_regular_swaption: invalid leg or first_exercise_date, zero outstanding principal",
       );
     //compute internal rate of return for remaining cash flow including settlement payment
-    var irr;
+    let irr = 0;
     try {
-      irr = library.irr(cf_obj, first_exercise_date, -outstanding_principal);
-    } catch (e) {
+      irr = leg.irr(exercise_date);
+    } catch (e_not_used) {
       // somtimes irr fails with degenerate options, e.g., on a last very short period
-      irr = 0;
     }
 
     //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
     irr = (12 / tenor) * (Math.pow(1 + irr, tenor / 12) - 1);
 
     //compute forward effective duration of remaining cash flow
-    var tte = library.time_from_now(first_exercise_date);
-    var cup = library.get_const_curve(irr + 0.0001);
-    var cdown = library.get_const_curve(irr - 0.0001);
-    var npv_up = library.dcf(cf_obj, cup, null, null, first_exercise_date);
-    npv_up /= cup.get_df(tte);
-    var npv_down = library.dcf(cf_obj, cdown, null, null, first_exercise_date);
-    npv_down /= cdown.get_df(tte);
-    var effective_duration_target =
-      (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
+    const params_up = new library.Params({
+      valuation_date: library.valuation_date,
+      curves: {
+        discount: {
+          type: "yield",
+          times: [1],
+          zcs: [irr + 0.0001],
+        },
+      },
+    });
+    const df_ex_up = params_up
+      .get_curve("discount")
+      .get_df(library.time_from_now(exercise_date));
 
-    // in some cases effective duration target is very short, make it at least one day
-    if (effective_duration_target < 1 / 365)
-      effective_duration_target = 1 / 365;
+    const params_down = new library.Params({
+      valuation_date: library.valuation_date,
+      curves: {
+        discount: {
+          type: "yield",
+          times: [1],
+          zcs: [irr - 0.0001],
+        },
+      },
+    });
+    const df_ex_down = params_down
+      .get_curve("discount")
+      .get_df(library.time_from_now(exercise_date));
 
-    //brief function to compute forward effective duration
-    var ed = function (bond) {
-      var fi = new library.FixedIncome(bond);
-      npv_up = fi.present_value(cup);
-      npv_up /= cup.get_df(tte);
-      npv_down = fi.present_value(cdown);
-      npv_down /= cdown.get_df(tte);
-      var res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
+    //brief function to compute forward effective duration on a leg
+    var ed = function (leg) {
+      const npv_up = leg.value(params_up, exercise_date) / df_ex_up;
+      const npv_down = leg.value(params_down, exercise_date) / df_ex_down;
+      const res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
       return res;
     };
 
+    // in some cases effective duration target is very short, make it at least one day
+    let effective_duration = ed(leg);
+    const effective_duration_target = Math.max(effective_duration, 1 / 365);
+
     //find bullet bond maturity that has approximately the same effective duration
     //start with simple estimate
-    var ttm_guess = effective_duration_target;
-    var ttm = ttm_guess;
-    var maturity = library.add_days(first_exercise_date, Math.round(ttm * 365));
+    const ttm_guess = effective_duration_target;
+    let ttm = ttm_guess;
+    let maturity = library.add_days(exercise_date, Math.round(ttm * 365));
 
-    var bond = {
+    const bond = {
       maturity: maturity,
-      effective_date: first_exercise_date,
-      settlement_date: library.adjust(
-        first_exercise_date,
+      effective_date: exercise_date,
+      acquire_date_: library.adjust(
+        exercise_date,
         bdc,
         library.is_holiday_factory(calendar),
       ), //exclude initial disboursement cashflow from valuation
-      notional: outstanding_principal,
+      notional: balance,
       fixed_rate: irr,
       tenor: tenor,
       calendar: calendar,
       bdc: bdc,
+      disc_curve: "discount",
     };
-    var effective_duration = ed(bond);
+    effective_duration = ed(new library.Bond(bond).legs[0]);
     var iter = 10;
 
     //alter maturity until we obtain effective duration target value
@@ -229,19 +234,20 @@
       ttm = (ttm * effective_duration_target) / effective_duration;
       // revert to best estimate when value is implausible
       if (isNaN(ttm) || ttm > 100 || ttm < 1 / 365) ttm = ttm_guess;
-      maturity = library.add_days(first_exercise_date, Math.round(ttm * 365));
+      maturity = library.add_days(exercise_date, Math.round(ttm * 365));
       bond.maturity = maturity;
-      effective_duration = ed(bond);
+      const leg = new library.Bond(bond).legs[0];
+      effective_duration = ed(leg);
       iter--;
     }
 
     return {
       is_payer: false,
       maturity: maturity,
-      first_exercise_date: first_exercise_date,
-      effective_date: first_exercise_date,
-      settlement_date: first_exercise_date,
-      notional: outstanding_principal,
+      first_exercise_date: exercise_date,
+      effective_date: exercise_date,
+      settlement_date: exercise_date,
+      notional: balance,
       fixed_rate: irr,
       tenor: tenor,
       float_spread: 0.0,

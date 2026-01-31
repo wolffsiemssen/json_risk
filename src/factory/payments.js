@@ -6,6 +6,7 @@
    * @memberof JsonRisk
    */
   library.make_payment = function (obj) {
+    if (obj instanceof library.NotionalPayment) return obj; // all leg payment types inherit from NotionalPayment
     switch (obj.type.toLowerCase()) {
       case "notional":
         return new library.NotionalPayment(obj);

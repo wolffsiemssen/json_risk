@@ -241,7 +241,7 @@
       case "fxterm":
         return new library.FxTerm(obj);
       case "callable_bond":
-        return new library.CallableFixedIncome(obj);
+        return new library.CallableBond(obj);
       case "equity":
         return new library.Equity(obj);
       case "equity_future":
@@ -347,6 +347,7 @@
    * @memberof JsonRisk
    */
   library.make_payment = function (obj) {
+    if (obj instanceof library.NotionalPayment) return obj; // all leg payment types inherit from NotionalPayment
     switch (obj.type.toLowerCase()) {
       case "notional":
         return new library.NotionalPayment(obj);
@@ -551,13 +552,16 @@
         throw new Error("Bond: must have notional payments");
     }
 
-    fixed_rate() {
+    get fixed_rate() {
       //returns first rate on the leg
       for (const p of this.legs[0].payments) {
         if (p instanceof library.FixedRatePayment) {
           return p.rate;
         }
       }
+      throw new Error(
+        "Bond: cannot retrieve fixed rate, bond has no rate payments",
+      );
     }
 
     fair_rate_or_spread(params) {
@@ -574,85 +578,86 @@
   library.Bond = Bond;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  class CallableFixedIncome extends library.Instrument {
+  class CallableBond extends library.Bond {
+    #call_schedule = null;
+    #mean_reversion = 0.0;
+    #hull_white_volatility = null;
+    #opportunity_spread = 0.0;
+    #exclude_base = false;
+    #basket = null;
+    #surface = "";
+    #fwd_curve = "";
     constructor(obj) {
+      // bond makes sure only fixed rate is supported
       super(obj);
 
-      //only fixed rate instruments
-      if (!library.number_vector_or_null(obj.fixed_rate))
-        throw new Error(
-          "callable_fixed_income: must provide valid fixed_rate.",
-        );
-
-      var fcd = library.date_or_null(obj.first_exercise_date);
+      // call schedule
+      const fcd = library.date_or_null(obj.first_exercise_date);
       if (null === fcd)
-        throw new Error("callable_fixed_income: must provide first call date");
+        throw new Error("CallableBond: must provide first call date");
+      const leg = this.legs[0];
+      const payments = leg.payments;
+      if (fcd.getTime() <= payments[0].date_start.getTime())
+        throw new Error("CallableBond: first call date before issue date");
 
-      this.mean_reversion = library.number_or_null(obj.mean_reversion); // null allowed
-      this.hull_white_volatility = library.number_or_null(
-        obj.hull_white_volatility,
-      ); // null allowed
-
-      if (null === this.mean_reversion) this.mean_reversion = 0.0;
-      this.base = new library.FixedIncome(obj);
-      if (fcd.getTime() <= this.base.schedule[0].getTime())
-        throw new Error(
-          "callable_fixed_income: first call date before issue date",
-        );
-      if (!this.base.notional_exchange)
-        throw new Error(
-          "callable_fixed_income: callable instruments must exchange notionals",
-        );
-      var call_tenor = library.natural_number_or_null(obj.call_tenor);
-      this.call_schedule = library.schedule(
+      const call_tenor = library.natural_number_or_null(obj.call_tenor) || 0; //european call by default
+      const date_end = payments[payments.length - 1].date_value;
+      const is_holiday_func = library.is_holiday_factory(obj.calendar);
+      const bdc = library.string_or_empty(obj.bdc);
+      const adjust = function (d) {
+        return library.adjust(d, bdc, is_holiday_func);
+      };
+      let call_schedule = library.schedule(
         fcd,
-        library.date_or_null(obj.maturity),
-        call_tenor || 0, //european call by default
-        this.base.adj,
+        date_end,
+        call_tenor,
+        adjust,
         null,
         null,
         true,
         false,
       );
-      this.call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
+      call_schedule.pop(); //pop removes maturity from call schedule as maturity is not really a call date
 
-      var i;
-      for (i = 0; i < this.call_schedule.length; i++) {
-        // adjust exercise dates according to business day rule
-        this.call_schedule[i] = this.base.adj(this.call_schedule[i]);
-      }
-      this.opportunity_spread =
-        library.number_or_null(obj.opportunity_spread) || 0.0;
-      this.exclude_base = library.make_bool(obj.exclude_base);
-      this.simple_calibration = library.make_bool(obj.simple_calibration);
+      call_schedule = call_schedule.map(function (dt) {
+        return adjust(dt);
+      }); // adjust call dates with calendar
 
       //truncate call dates as soon as principal has been redeemed
-      var cf_obj = this.base.get_cash_flows();
-      i = cf_obj.current_principal.length - 1;
-      while (cf_obj.current_principal[i] === 0) i--;
+      let i = payments.length - 1;
+      while (payments[i].notional === 0) i--;
       while (
-        this.call_schedule[this.call_schedule.length - 1] >= cf_obj.date_pmt[i]
+        call_schedule[call_schedule.length - 1].getTime() >=
+        payments[i].date_pmt.getTime()
       )
-        this.call_schedule.pop();
+        call_schedule.pop();
+
+      this.#call_schedule = call_schedule;
+
+      this.#mean_reversion = library.number_or_null(obj.mean_reversion) || 0.0; // null allowed
+      this.hull_white_volatility = library.number_or_null(
+        obj.hull_white_volatility,
+      ); // null allowed
+
+      this.#opportunity_spread =
+        library.number_or_null(obj.opportunity_spread) || 0.0;
+      this.#exclude_base = library.make_bool(obj.exclude_base);
+      const simple_calibration = library.make_bool(obj.simple_calibration);
 
       //basket generation
-      this.basket = new Array(this.call_schedule.length);
-      var temp;
-      for (i = 0; i < this.call_schedule.length; i++) {
+      this.#basket = new Array(call_schedule.length);
+      for (let i = 0; i < call_schedule.length; i++) {
         if (
-          (!this.base.is_amortizing && this.base.fixed_rate.length === 1) ||
-          this.simple_calibration
+          (leg.has_constant_notional && leg.has_constant_rate) ||
+          simple_calibration
         ) {
           //basket instruments are co-terminal swaptions with standard conditions
-          this.basket[i] = new library.Swaption({
+          this.#basket[i] = new library.Swaption({
             is_payer: false,
-            maturity: obj.maturity,
-            first_exercise_date: this.call_schedule[i],
-            notional: obj.notional,
-            fixed_rate:
-              this.base.fixed_rate[0] -
-              this.opportunity_spread -
-              this.base.excl_margin,
+            maturity: date_end,
+            first_exercise_date: this.#call_schedule[i],
+            notional: -payments[0].notional,
+            fixed_rate: this.fixed_rate - this.#opportunity_spread,
             tenor: 12,
             float_spread: 0.0,
             float_tenor: obj.float_tenor || 6,
@@ -665,9 +670,9 @@
           });
         } else {
           //basket instruments are equivalent regular swaptions with standard conditions
-          temp = library.create_equivalent_regular_swaption(
-            this.base.get_cash_flows(),
-            this.call_schedule[i],
+          const temp = library.create_equivalent_regular_swaption(
+            leg,
+            this.#call_schedule[i],
             {
               tenor: 12,
               float_spread: 0.0,
@@ -676,56 +681,38 @@
               bdc: obj.bdc,
             },
           );
-          temp.fixed_rate -= this.opportunity_spread;
-          this.basket[i] = new library.Swaption(temp);
+          temp.fixed_rate -= this.#opportunity_spread;
+          this.#basket[i] = new library.Swaption(temp);
         }
       }
 
       // market deps
-      this.disc_curve = obj.disc_curve || "";
-      this.spread_curve = obj.spread_curve || "";
-      this.fwd_curve = obj.fwd_curve || "";
-      this.surface = obj.surface || "";
+      this.#surface = obj.surface || "";
+      this.#fwd_curve = obj.fwd_curve || "";
     }
 
-    present_value(disc_curve, spread_curve, fwd_curve, surface) {
-      var res = 0;
-      var i;
+    value_impl(params) {
+      const leg = this.legs[0];
+      const disc_curve = params.get_curve(leg.disc_curve);
+      const spread_curve =
+        leg.spread_curve != "" ? params.get_curve(leg.spread_curve) : null;
+      const fwd_curve = params.get_curve(this.#fwd_curve);
+
       //eliminate past call dates and derive time to exercise
-      var t_exercise = [],
-        tte;
-      for (i = 0; i < this.call_schedule.length; i++) {
-        tte = library.time_from_now(this.call_schedule[i]);
+      const t_exercise = [];
+      for (const dt of this.#call_schedule) {
+        const tte = library.time_from_now(dt);
         if (tte > 1 / 512) t_exercise.push(tte); //non-expired call date
       }
 
-      if (typeof disc_curve !== "object" || disc_curve === null)
-        throw new Error(
-          "callable_fixed_income.present_value: must provide discount curve",
-        );
-      if (typeof fwd_curve !== "object" || fwd_curve === null)
-        throw new Error(
-          "callable_fixed_income.present_value: must provide forward curve for calibration",
-        );
-      if ((!disc_curve) instanceof library.Curve)
-        disc_curve = new library.Curve(disc_curve);
-      if ((!fwd_curve) instanceof library.Curve)
-        fwd_curve = new library.Curve(fwd_curve);
-      if (spread_curve) {
-        if ((!spread_curve) instanceof library.Curve)
-          spread_curve = new library.Curve(spread_curve);
-      } else {
-        spread_curve = null;
-      }
       // get LGM model with desired mean reversion
-      const lgm = new library.LGM(this.mean_reversion);
+      const lgm = new library.LGM(this.#mean_reversion);
 
-      if (null == this.hull_white_volatility) {
+      if (null == this.#hull_white_volatility) {
         //calibrate lgm model - returns xi for non-expired swaptions only
-        if (!(surface instanceof library.Surface))
-          surface = new library.Surface(surface);
+        const surface = params.get_surface(this.#surface);
 
-        lgm.calibrate(this.basket, disc_curve, fwd_curve, surface);
+        lgm.calibrate(this.#basket, disc_curve, fwd_curve, surface);
       } else {
         lgm.set_times_and_hull_white_volatility(
           t_exercise,
@@ -734,55 +721,45 @@
       }
 
       //derive call option price
+      let res = 0;
       const xi_vec = lgm.xi;
       if (1 === xi_vec.length) {
         //european call, use closed formula
         res = -lgm.european_call(
-          this.base.get_cash_flows(),
+          leg.get_cash_flows(),
           t_exercise[0],
           disc_curve,
           xi_vec[0],
           spread_curve,
-          this.base.residual_spread,
-          this.opportunity_spread,
+          leg.residual_spread,
+          this.#opportunity_spread,
         );
       } else if (1 < xi_vec.length) {
         //bermudan call, use numeric integration
         res = -lgm.bermudan_call(
-          this.base.get_cash_flows(),
+          leg.get_cash_flows(),
           t_exercise,
           disc_curve,
           xi_vec,
           spread_curve,
-          this.base.residual_spread,
-          this.opportunity_spread,
+          leg.residual_spread,
+          this.#opportunity_spread,
         );
       } //if xi_vec.length===0 all calls are expired, no value subtracted
 
       //add bond base price if not explicitly excluded
-      if (!this.exclude_base)
-        res += this.base.present_value(disc_curve, spread_curve, null);
+      if (!this.#exclude_base) res += this.legs[0].value(params);
       return res;
     }
 
     add_deps_impl(deps) {
-      deps.add_curve(this.disc_curve);
-      if (this.spread_curve != "") deps.add_curve(this.spread_curve);
-      deps.add_curve(this.fwd_curve);
-      deps.add_surface(this.surface);
-    }
-
-    value_impl(params) {
-      const disc_curve = params.get_curve(this.disc_curve);
-      const spread_curve =
-        this.spread_curve != "" ? params.get_curve(this.spread_curve) : null;
-      const fwd_curve = params.get_curve(this.fwd_curve);
-      const surface = params.get_surface(this.surface);
-      return this.present_value(disc_curve, spread_curve, fwd_curve, surface);
+      this.legs[0].add_deps(deps);
+      deps.add_curve(this.#fwd_curve);
+      deps.add_surface(this.#surface);
     }
   }
 
-  library.CallableFixedIncome = CallableFixedIncome;
+  library.CallableBond = CallableBond;
 })(this.JsonRisk || module.exports);
 (function (library) {
   class CreditDefaultSwap extends library.LegInstrument {
@@ -1073,689 +1050,6 @@
   library.EquityOption = EquityOption;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  class FixedIncome extends library.Instrument {
-    constructor(obj) {
-      super(obj);
-      var maturity = library.date_or_null(obj.maturity);
-      if (!maturity)
-        throw new Error("fixed_income: must provide maturity date.");
-
-      var effective_date = library.date_or_null(obj.effective_date); //null allowed
-
-      this.notional = library.number_or_null(obj.notional);
-      if (null === this.notional)
-        throw new Error("fixed_income: must provide valid notional.");
-
-      //include notional exchange unless explicitly set to false (e.g., for swaps)
-      this.notional_exchange = library.make_bool(obj.notional_exchange);
-      if (
-        null === obj.notional_exchange ||
-        "" === obj.notional_exchange ||
-        undefined === obj.notional_exchange
-      )
-        this.notional_exchange = true;
-
-      //interest related fields
-      var tenor = library.natural_number_or_null(obj.tenor);
-      if (null === tenor)
-        throw new Error("fixed_income: must provide valid tenor.");
-
-      var first_date = library.date_or_null(obj.first_date); //null allowed
-      var next_to_last_date = library.date_or_null(obj.next_to_last_date); //null allowed
-      var stub_end = library.make_bool(obj.stub_end);
-      var stub_long = library.make_bool(obj.stub_long);
-      this.excl_margin = library.number_or_null(obj.excl_margin) || 0;
-
-      //    this.current_accrued_interest = obj.current_accrued_interest || 0;
-
-      this.type = typeof obj.type === "string" ? obj.type : "unknown";
-
-      this.is_holiday_func = library.is_holiday_factory(obj.calendar || "");
-      this.year_fraction_func = library.year_fraction_factory(obj.dcc || "");
-      this.bdc = obj.bdc || "";
-      this.adjust_accrual_periods = library.make_bool(
-        obj.adjust_accrual_periods,
-      );
-
-      this.adj = (function (b, i) {
-        return function (d) {
-          return library.adjust(d, b, i);
-        };
-      })(this.bdc, this.is_holiday_func);
-
-      //amortisation related fields
-      var repay_tenor = library.natural_number_or_null(obj.repay_tenor);
-      if (null === repay_tenor) repay_tenor = tenor;
-
-      var linear_amortization = library.make_bool(obj.linear_amortization);
-
-      this.repay_amount = library.number_vector_or_null(obj.repay_amount) || [
-        0,
-      ]; //array valued
-
-      this.interest_capitalization = library.make_bool_vector(
-        obj.interest_capitalization,
-      );
-
-      var repay_first_date =
-        library.date_or_null(obj.repay_first_date) || this.first_date;
-      var repay_next_to_last_date =
-        library.date_or_null(obj.repay_next_to_last_date) ||
-        this.next_to_last_date;
-      var repay_stub_end = obj.stub_end || false;
-      var repay_stub_long = obj.stub_long || false;
-
-      //condition arrays
-      this.conditions_valid_until = library.date_vector_or_null(
-        obj.conditions_valid_until,
-      );
-      if (this.conditions_valid_until) {
-        if (
-          this.conditions_valid_until[
-            this.conditions_valid_until.length - 1
-          ].getTime() !== maturity.getTime()
-        )
-          throw new Error(
-            "fixed_income: last date provided under conditions_valid_until must match maturity",
-          );
-      } else {
-        this.conditions_valid_until = [maturity]; //by default, conditions do not change until maturity
-      }
-
-      var settlement_days =
-        library.natural_number_or_null(obj.settlement_days) || 0;
-      this.settlement_date =
-        library.date_or_null(obj.settlement_date) ||
-        library.add_business_days(
-          library.valuation_date,
-          settlement_days,
-          this.is_holiday_func,
-        );
-
-      this.residual_spread = library.number_or_null(obj.residual_spread) || 0;
-
-      // interest rate schedule
-      this.schedule = library.schedule(
-        effective_date,
-        maturity,
-        tenor,
-        this.adj,
-        first_date,
-        next_to_last_date,
-        stub_end,
-        stub_long,
-      );
-
-      // fixing schedule
-      if (obj.fixed_rate || obj.fixed_rate === 0) {
-        //fixed rate instrument
-        this.is_float = false;
-        this.fixed_rate = library.number_vector_or_null(obj.fixed_rate); //array valued
-        this.float_spread = 0;
-        this.cap_rate = [0];
-        this.floor_rate = [0];
-        this.fixing_schedule = [this.schedule[0], maturity];
-      } else {
-        //floating rate instrument
-        this.is_float = true;
-        this.fixed_rate = null;
-        this.float_spread = library.number_vector_or_null(obj.float_spread) || [
-          0,
-        ]; // can be number or array, arrays to be impleented
-
-        this.float_current_rate = library.number_or_null(
-          obj.float_current_rate,
-        );
-        if (this.float_current_rate === null)
-          throw new Error(
-            "fixed_income: must provide valid float_current_rate.",
-          );
-
-        //fixing schedule related fields
-
-        var fixing_tenor = library.natural_number_or_null(obj.fixing_tenor);
-        if (null === fixing_tenor) fixing_tenor = tenor;
-
-        var fixing_first_date =
-          library.date_or_null(obj.fixing_first_date) || this.first_date;
-        var fixing_next_to_last_date =
-          library.date_or_null(obj.fixing_next_to_last_date) ||
-          this.next_to_last_date;
-        var fixing_stub_end = obj.fixing_stub_end || false;
-        var fixing_stub_long = obj.fixing_stub_long || false;
-
-        this.cap_rate =
-          typeof obj.cap_rate === "number"
-            ? [obj.cap_rate]
-            : [Number.POSITIVE_INFINITY]; // can be number or array, arrays to be implemented
-        this.floor_rate =
-          typeof obj.floor_rate === "number"
-            ? [obj.floor_rate]
-            : [Number.POSITIVE_INFINITY]; // can be number or array, arrays to be implemented
-        this.fixing_schedule = library.schedule(
-          this.schedule[0],
-          maturity,
-          fixing_tenor,
-          this.adj,
-          fixing_first_date,
-          fixing_next_to_last_date,
-          fixing_stub_end,
-          fixing_stub_long,
-        );
-      }
-
-      // repay schedule
-      this.is_amortizing =
-        this.repay_amount.reduce(function (a, b) {
-          return Math.max(a * a, b * b);
-        }, 0) > 0 ||
-        this.interest_capitalization.reduce(function (a, b) {
-          return a || b;
-        }, false) ||
-        linear_amortization;
-
-      if (!this.is_amortizing) {
-        this.repay_schedule = [this.schedule[0], maturity];
-      } else {
-        this.repay_schedule = library.schedule(
-          this.schedule[0],
-          maturity,
-          repay_tenor,
-          this.adj,
-          repay_first_date,
-          repay_next_to_last_date,
-          repay_stub_end,
-          repay_stub_long,
-        );
-      }
-      if (linear_amortization)
-        this.repay_amount = [
-          Math.abs(this.notional) / (this.repay_schedule.length - 1),
-        ];
-
-      this.cash_flows = this.initialize_cash_flows(); // pre-initializes cash flow table
-
-      if (!this.is_float) this.cash_flows = this.finalize_cash_flows(null); // finalize cash flow table only for fixed rate instruments, for floaters this is done in present_value()
-
-      this.disc_curve = obj.disc_curve || "";
-      this.spread_curve = obj.spread_curve || "";
-      this.fwd_curve = obj.fwd_curve || "";
-    }
-
-    initialize_cash_flows() {
-      var date_accrual_start = new Array(this.schedule.length);
-      var date_accrual_end = new Array(this.schedule.length);
-      var is_interest_date = new Array(this.schedule.length);
-      var is_repay_date = new Array(this.schedule.length);
-      var is_fixing_date = new Array(this.schedule.length);
-      var is_condition_date = new Array(this.schedule.length);
-      /* arrays are possibly longer than schedule
-       as schedule is just the pure interest payment schedule.
-       for better performance, generate all other columns later when size is known.
-     */
-
-      //first line corresponds to effective date only and captures notional pay out (if any)
-      date_accrual_start[0] = this.schedule[0];
-      date_accrual_end[0] = this.schedule[0];
-      is_interest_date[0] = false;
-      is_repay_date[0] = false;
-      is_fixing_date[0] = true;
-      is_condition_date[0] = false;
-
-      var i = 1,
-        i_int = 1,
-        i_rep = 1,
-        i_fix = 1,
-        i_cond = 0,
-        i_max =
-          this.schedule.length +
-          this.repay_schedule.length +
-          this.fixing_schedule.length +
-          this.conditions_valid_until.length;
-      while (i < i_max) {
-        date_accrual_start[i] = date_accrual_end[i - 1];
-        date_accrual_end[i] = new Date(
-          Math.min(
-            this.schedule[i_int],
-            this.repay_schedule[i_rep],
-            this.fixing_schedule[i_fix],
-            this.conditions_valid_until[i_cond],
-          ),
-        );
-
-        //end date is interest date?
-        if (
-          i_int < this.schedule.length &&
-          date_accrual_end[i].getTime() === this.schedule[i_int].getTime()
-        ) {
-          is_interest_date[i] = true;
-          i_int++;
-        } else {
-          is_interest_date[i] = false;
-        }
-
-        //end date is repay date?
-        if (
-          i_rep < this.repay_schedule.length &&
-          date_accrual_end[i].getTime() === this.repay_schedule[i_rep].getTime()
-        ) {
-          is_repay_date[i] = true;
-          i_rep++;
-        } else {
-          is_repay_date[i] = false;
-        }
-
-        //end date is fixing date?
-        if (
-          i_fix < this.fixing_schedule.length &&
-          date_accrual_end[i].getTime() ===
-            this.fixing_schedule[i_fix].getTime()
-        ) {
-          is_fixing_date[i] = true;
-          i_fix++;
-        } else {
-          is_fixing_date[i] = false;
-        }
-
-        //end date is condition date?
-        if (
-          i_cond < this.conditions_valid_until.length &&
-          date_accrual_end[i].getTime() ===
-            this.conditions_valid_until[i_cond].getTime()
-        ) {
-          is_condition_date[i] = true;
-          i_cond++;
-        } else {
-          is_condition_date[i] = false;
-        }
-
-        if (
-          i_int === this.schedule.length &&
-          i_rep === this.repay_schedule.length &&
-          i_fix === this.fixing_schedule.length
-        )
-          break; // done when all schedules have reached their end
-
-        i++; //move to next date
-      }
-      //now, generate all other fields based on the dates generated above
-      var date_pmt = new Array(date_accrual_start.length);
-      var t_accrual_start = new Array(date_accrual_start.length);
-      var t_accrual_end = new Array(date_accrual_start.length);
-      var t_pmt = new Array(date_accrual_start.length);
-      var accrual_factor = new Array(date_accrual_start.length);
-
-      //populate rate-independent fields and adjust dates if necessary
-      for (i = 0; i < date_accrual_start.length; i++) {
-        if (this.adjust_accrual_periods) {
-          date_accrual_start[i] = this.adj(date_accrual_start[i]);
-          date_accrual_end[i] = this.adj(date_accrual_end[i]);
-        }
-        date_pmt[i] = this.adj(date_accrual_end[i]);
-        t_pmt[i] = library.time_from_now(date_pmt[i]);
-        t_accrual_start[i] = library.time_from_now(date_accrual_start[i]);
-        t_accrual_end[i] = library.time_from_now(date_accrual_end[i]);
-        accrual_factor[i] =
-          i === 0
-            ? 0
-            : this.year_fraction_func(
-                date_accrual_start[i],
-                date_accrual_end[i],
-              );
-      }
-
-      //returns pre-initialized cash flow table object
-      return {
-        //rate independent fields
-        date_accrual_start: date_accrual_start,
-        date_accrual_end: date_accrual_end,
-        date_pmt: date_pmt,
-        t_accrual_start: t_accrual_start,
-        t_accrual_end: t_accrual_end,
-        t_pmt: t_pmt,
-        is_interest_date: is_interest_date,
-        is_repay_date: is_repay_date,
-        is_fixing_date: is_fixing_date,
-        is_condition_date: is_condition_date,
-        accrual_factor: accrual_factor,
-        //rate dependent fields
-        /*      
-      current_principal: current_principal,
-      interest_current_period: interest_current_period,
-      accrued_interest: accrued_interest,
-      pmt_principal: pmt_principal,
-      pmt_interest: pmt_interest,
-      pmt_total: pmt_total
-      */
-      };
-    }
-
-    finalize_cash_flows(fwd_curve, override_rate_or_spread) {
-      var c = this.cash_flows;
-      var n = c.date_accrual_start.length;
-      var current_principal = new Array(n);
-      var fwd_rate = new Array(n);
-      var interest_current_period = new Array(n);
-      var accrued_interest = new Array(n);
-      var pmt_principal = new Array(n);
-      var pmt_interest = new Array(n);
-      var pmt_total = new Array(n);
-
-      var sign = this.notional >= 0 ? 1 : -1;
-
-      // initialize conditions
-      var icond = 0;
-      while (this.conditions_valid_until[icond] < c.date_accrual_start[0])
-        icond++;
-
-      var current_repay =
-        this.repay_amount[Math.min(icond, this.repay_amount.length - 1)];
-      var current_capitalization =
-        this.interest_capitalization[
-          Math.min(icond, this.interest_capitalization.length - 1)
-        ];
-      var current_cap_rate =
-        this.cap_rate[Math.min(icond, this.cap_rate.length - 1)];
-      var current_floor_rate =
-        this.floor_rate[Math.min(icond, this.floor_rate.length - 1)];
-
-      //initialize interest rate
-      var current_rate, j;
-      var r = this.is_float ? this.float_spread : this.fixed_rate;
-      var get_rate_or_spread;
-
-      //override rate if needed
-      if (typeof override_rate_or_spread === "number") {
-        get_rate_or_spread = function () {
-          return override_rate_or_spread;
-        };
-      } else {
-        get_rate_or_spread = function () {
-          return r[Math.min(icond, r.length - 1)];
-        };
-      }
-
-      //initialise first line of cash flow table (notional pay out)
-      current_principal[0] = 0;
-      fwd_rate[0] = 0;
-      interest_current_period[0] = 0;
-      accrued_interest[0] = 0;
-      pmt_principal[0] = -this.notional;
-      pmt_interest[0] = 0;
-      pmt_total[0] = this.notional_exchange ? -this.notional : 0;
-      var current_margin = 0;
-
-      var i;
-      for (i = 1; i < n; i++) {
-        //update principal
-        current_principal[i] = current_principal[i - 1] - pmt_principal[i - 1];
-
-        //pay principal if repay date
-        if (c.is_repay_date[i]) {
-          pmt_principal[i] = current_repay * sign;
-        } else {
-          pmt_principal[i] = 0;
-        }
-
-        //update interest rate for the current period
-        if (!this.is_float) {
-          fwd_rate[i] = 0;
-        } else {
-          if (c.t_accrual_start[i] <= 0) {
-            //period beginning in the past or now, use current rate
-            fwd_rate[i] = this.float_current_rate;
-          } else if (c.is_fixing_date[i - 1]) {
-            //period beginning in the future, and start date is fixing date, use forward curve from now until next fixing date
-            j = 0;
-            while (!c.is_fixing_date[i + j] && i + j < c.is_fixing_date.length)
-              j++;
-
-            fwd_rate[i] = fwd_curve.get_fwd_amount(
-              c.t_accrual_start[i],
-              c.t_accrual_end[i + j],
-            );
-            fwd_rate[i] /= this.year_fraction_func(
-              c.date_accrual_start[i],
-              c.date_accrual_end[i + j],
-            );
-          } else {
-            fwd_rate[i] = fwd_rate[i - 1];
-          }
-        }
-        current_rate = fwd_rate[i] + get_rate_or_spread();
-
-        //calculate interest amount for the current period
-        interest_current_period[i] =
-          current_principal[i] *
-          (current_rate - this.excl_margin) *
-          c.accrual_factor[i];
-        if (this.excl_margin !== 0)
-          current_margin +=
-            current_principal[i] * this.excl_margin * c.accrual_factor[i];
-
-        //accrue interest
-        accrued_interest[i] =
-          (i > 0 ? accrued_interest[i - 1] : 0) + interest_current_period[i];
-
-        //pay or capitalize interest
-        if (c.is_interest_date[i]) {
-          pmt_interest[i] = accrued_interest[i];
-          accrued_interest[i] = 0;
-          if (current_capitalization) {
-            pmt_principal[i] = pmt_principal[i] - pmt_interest[i];
-            if (this.excl_margin !== 0)
-              pmt_principal[i] = pmt_principal[i] - current_margin;
-          }
-          current_margin = 0;
-        } else {
-          pmt_interest[i] = 0;
-        }
-
-        //make sure principal is not overpaid and all principal is paid back in the end
-        if (
-          (i < n - 1 &&
-            pmt_principal[i] * sign > current_principal[i] * sign) ||
-          i === n - 1
-        ) {
-          pmt_principal[i] = current_principal[i];
-        }
-
-        pmt_total[i] = pmt_interest[i];
-        if (this.notional_exchange) {
-          pmt_total[i] += pmt_principal[i];
-        }
-
-        //update conditions for next period
-        if (c.is_condition_date[i]) {
-          icond++;
-          current_repay =
-            this.repay_amount[Math.min(icond, this.repay_amount.length - 1)];
-          current_capitalization =
-            this.interest_capitalization[
-              Math.min(icond, this.interest_capitalization.length - 1)
-            ];
-          current_cap_rate =
-            this.cap_rate[Math.min(icond, this.cap_rate.length - 1)];
-          current_floor_rate =
-            this.floor_rate[Math.min(icond, this.floor_rate.length - 1)];
-        }
-      }
-
-      //erase principal payments if notional_exchange is false
-      if (false === this.notional_exchange) {
-        for (i = 0; i < n; i++) pmt_principal[i] = 0;
-      }
-
-      //returns finalized cash flow table object
-      return {
-        //rate independent fields
-        date_accrual_start: c.date_accrual_start,
-        date_accrual_end: c.date_accrual_end,
-        date_pmt: c.date_pmt,
-        t_accrual_start: c.t_accrual_start,
-        t_accrual_end: c.t_accrual_end,
-        t_pmt: c.t_pmt,
-        is_interest_date: c.is_interest_date,
-        is_repay_date: c.is_repay_date,
-        is_fixing_date: c.is_fixing_date,
-        is_condition_date: c.is_condition_date,
-        accrual_factor: c.accrual_factor,
-        //rate dependent fields
-        current_principal: current_principal,
-        fwd_rate: fwd_rate,
-        interest_current_period: interest_current_period,
-        accrued_interest: accrued_interest,
-        pmt_principal: pmt_principal,
-        pmt_interest: pmt_interest,
-        pmt_total: pmt_total,
-      };
-    }
-
-    get_cash_flows(fwd_curve) {
-      if (this.is_float) {
-        if (typeof fwd_curve !== "object" || fwd_curve === null)
-          throw new Error(
-            "fixed_income.get_cash_flows: Must provide forward curve when evaluating floating rate interest stream",
-          );
-        return this.finalize_cash_flows(fwd_curve);
-      }
-      return this.cash_flows;
-    }
-
-    present_value(disc_curve, spread_curve, fwd_curve) {
-      if (!(disc_curve instanceof library.Curve))
-        disc_curve = new library.Curve(disc_curve);
-
-      if (this.is_float) {
-        if (!(fwd_curve instanceof library.Curve))
-          fwd_curve = new library.Curve(fwd_curve);
-      } else {
-        fwd_curve = null;
-      }
-
-      if (spread_curve) {
-        if (!(spread_curve instanceof library.Curve))
-          spread_curve = new library.Curve(spread_curve);
-      } else {
-        spread_curve = null;
-      }
-
-      return library.dcf(
-        this.get_cash_flows(fwd_curve),
-        disc_curve,
-        spread_curve,
-        this.residual_spread,
-        this.settlement_date,
-      );
-    }
-
-    add_deps_impl(deps) {
-      deps.add_curve(this.disc_curve);
-      if (this.spread_curve != "") deps.add_curve(this.spread_curve);
-      if (this.is_float) deps.add_curve(this.fwd_curve);
-    }
-
-    value_impl(params) {
-      if ((!params) instanceof library.Params)
-        throw new Error("evaluate: params must be of type Params");
-      const disc_curve = params.get_curve(this.disc_curve);
-      const spread_curve =
-        this.spread_curve != "" ? params.get_curve(this.spread_curve) : null;
-      const fwd_curve = this.is_float ? params.get_curve(this.fwd_curve) : null;
-      return this.present_value(disc_curve, spread_curve, fwd_curve);
-    }
-
-    fair_rate_or_spread(disc_curve, spread_curve, fwd_curve) {
-      if (!(disc_curve instanceof library.Curve))
-        disc_curve = new library.Curve(disc_curve);
-
-      if (spread_curve) {
-        if (!(spread_curve instanceof library.Curve))
-          spread_curve = new library.Curve(spread_curve);
-      } else {
-        spread_curve = null;
-      }
-
-      if (fwd_curve) {
-        if (!(fwd_curve instanceof library.Curve))
-          fwd_curve = new library.Curve(fwd_curve);
-      } else {
-        fwd_curve = library.get_const_curve(0);
-      }
-
-      const c = this.finalize_cash_flows(fwd_curve); // cash flow with zero interest or zero spread
-
-      //retrieve outstanding principal on valuation date
-      var outstanding_principal = 0;
-      let i = 0;
-      while (c.date_pmt[i] <= library.valuation_date) i++;
-      outstanding_principal = c.current_principal[i];
-
-      //build cash flow object with zero interest and (harder) zero spread
-      const pmt = new Array(c.pmt_total.length);
-      let accrued = 0;
-      for (i = 0; i < pmt.length; i++) {
-        pmt[i] = c.pmt_principal[i];
-        //calculate interest amount for the current period
-        accrued += c.current_principal[i] * c.accrual_factor[i] * c.fwd_rate[i];
-
-        //pay interest
-        if (c.is_interest_date[i]) {
-          pmt[i] += accrued;
-          accrued = 0;
-        }
-      }
-
-      let res =
-        outstanding_principal -
-        library.dcf(
-          {
-            date_pmt: c.date_pmt,
-            t_pmt: c.t_pmt,
-            pmt_total: pmt,
-          },
-          disc_curve,
-          spread_curve,
-          this.residual_spread,
-          this.settlement_date,
-        );
-      res /= this.annuity(disc_curve, spread_curve, fwd_curve);
-      return res;
-    }
-
-    annuity(disc_curve, spread_curve, fwd_curve) {
-      var c = this.get_cash_flows(fwd_curve);
-      var pmt = new Array(c.pmt_total.length);
-      var accrued = 0;
-      var i;
-      for (i = 0; i < pmt.length; i++) {
-        pmt[i] = 0;
-        //calculate interest amount for the current period based on 100% interest rate
-        accrued += c.current_principal[i] * c.accrual_factor[i];
-
-        //pay interest
-        if (c.is_interest_date[i]) {
-          pmt[i] += accrued;
-          accrued = 0;
-        }
-      }
-      return library.dcf(
-        {
-          date_pmt: c.date_pmt,
-          t_pmt: c.t_pmt,
-          pmt_total: pmt,
-        },
-        disc_curve,
-        spread_curve,
-        this.residual_spread,
-        this.settlement_date,
-      );
-    }
-  }
-
-  library.FixedIncome = FixedIncome;
-})(this.JsonRisk || module.exports);
-(function (library) {
   class Floater extends library.LegInstrument {
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
@@ -1960,13 +1254,16 @@
       return -pv_float / annuity;
     }
 
-    fixed_rate() {
+    get fixed_rate() {
       //returns first rate on the fixed leg
       for (const p of this.#fixed_leg.payments) {
         if (p instanceof library.FixedRatePayment) {
           return p.rate;
         }
       }
+      throw new Error(
+        "Swap: cannot determine fixed rate, fixed leg has no rate payments",
+      );
     }
 
     annuity(disc_curve) {
@@ -2063,7 +1360,7 @@
       }
       //obtain fwd rate, that is, fair swap rate
       const fair_rate = this.fair_rate(disc_curve, fwd_curve);
-      const fixed_rate = this.fixed_rate();
+      const fixed_rate = this.fixed_rate;
 
       //obtain time-scaled volatility
       this.#vol = surface.get_rate(
@@ -2104,100 +1401,105 @@
    * @public
    */
   library.create_equivalent_regular_swaption = function (
-    cf_obj,
-    first_exercise_date,
+    original_leg,
+    exercise_date,
     conventions,
   ) {
     //sanity checks
-    if (
-      undefined === cf_obj.date_pmt ||
-      undefined === cf_obj.pmt_total ||
-      undefined === cf_obj.current_principal
-    )
-      throw new Error(
-        "create_equivalent_regular_swaption: invalid cashflow object",
-      );
-    if (
-      cf_obj.t_pmt.length !== cf_obj.pmt_total.length ||
-      cf_obj.t_pmt.length !== cf_obj.current_principal.length
-    )
-      throw new Error(
-        "create_equivalent_regular_swaption: invalid cashflow object",
-      );
+    if (!(original_leg instanceof library.Leg))
+      throw new Error("create_equivalent_regular_swaption: invalid leg");
+
     if (!conventions) conventions = {};
     var tenor = conventions.tenor || 6;
     var bdc = conventions.bdc || "unadjusted";
     var calendar = conventions.calendar || "";
 
-    //retrieve outstanding principal on first_exercise_date (corresponds to regular swaption notional)
-    var outstanding_principal = 0;
-    var i = 0;
-    while (cf_obj.date_pmt[i] <= first_exercise_date) i++;
-    outstanding_principal = cf_obj.current_principal[i];
+    // rebuild leg with just a discount curve
+    const leg = new library.Leg({
+      disc_curve: "discount",
+      payments: original_leg.payments,
+    });
 
-    if (outstanding_principal === 0)
+    //retrieve outstanding principal on first_exercise_date (corresponds to regular swaption notional)
+    const balance = leg.balance(exercise_date);
+    if (balance === 0)
       throw new Error(
-        "create_equivalent_regular_swaption: invalid cashflow object or first_exercise_date, zero outstanding principal",
+        "create_equivalent_regular_swaption: invalid leg or first_exercise_date, zero outstanding principal",
       );
     //compute internal rate of return for remaining cash flow including settlement payment
-    var irr;
+    let irr = 0;
     try {
-      irr = library.irr(cf_obj, first_exercise_date, -outstanding_principal);
-    } catch (e) {
+      irr = leg.irr(exercise_date);
+    } catch (e_not_used) {
       // somtimes irr fails with degenerate options, e.g., on a last very short period
-      irr = 0;
     }
 
     //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
     irr = (12 / tenor) * (Math.pow(1 + irr, tenor / 12) - 1);
 
     //compute forward effective duration of remaining cash flow
-    var tte = library.time_from_now(first_exercise_date);
-    var cup = library.get_const_curve(irr + 0.0001);
-    var cdown = library.get_const_curve(irr - 0.0001);
-    var npv_up = library.dcf(cf_obj, cup, null, null, first_exercise_date);
-    npv_up /= cup.get_df(tte);
-    var npv_down = library.dcf(cf_obj, cdown, null, null, first_exercise_date);
-    npv_down /= cdown.get_df(tte);
-    var effective_duration_target =
-      (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
+    const params_up = new library.Params({
+      valuation_date: library.valuation_date,
+      curves: {
+        discount: {
+          type: "yield",
+          times: [1],
+          zcs: [irr + 0.0001],
+        },
+      },
+    });
+    const df_ex_up = params_up
+      .get_curve("discount")
+      .get_df(library.time_from_now(exercise_date));
 
-    // in some cases effective duration target is very short, make it at least one day
-    if (effective_duration_target < 1 / 365)
-      effective_duration_target = 1 / 365;
+    const params_down = new library.Params({
+      valuation_date: library.valuation_date,
+      curves: {
+        discount: {
+          type: "yield",
+          times: [1],
+          zcs: [irr - 0.0001],
+        },
+      },
+    });
+    const df_ex_down = params_down
+      .get_curve("discount")
+      .get_df(library.time_from_now(exercise_date));
 
-    //brief function to compute forward effective duration
-    var ed = function (bond) {
-      var fi = new library.FixedIncome(bond);
-      npv_up = fi.present_value(cup);
-      npv_up /= cup.get_df(tte);
-      npv_down = fi.present_value(cdown);
-      npv_down /= cdown.get_df(tte);
-      var res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
+    //brief function to compute forward effective duration on a leg
+    var ed = function (leg) {
+      const npv_up = leg.value(params_up, exercise_date) / df_ex_up;
+      const npv_down = leg.value(params_down, exercise_date) / df_ex_down;
+      const res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
       return res;
     };
 
+    // in some cases effective duration target is very short, make it at least one day
+    let effective_duration = ed(leg);
+    const effective_duration_target = Math.max(effective_duration, 1 / 365);
+
     //find bullet bond maturity that has approximately the same effective duration
     //start with simple estimate
-    var ttm_guess = effective_duration_target;
-    var ttm = ttm_guess;
-    var maturity = library.add_days(first_exercise_date, Math.round(ttm * 365));
+    const ttm_guess = effective_duration_target;
+    let ttm = ttm_guess;
+    let maturity = library.add_days(exercise_date, Math.round(ttm * 365));
 
-    var bond = {
+    const bond = {
       maturity: maturity,
-      effective_date: first_exercise_date,
-      settlement_date: library.adjust(
-        first_exercise_date,
+      effective_date: exercise_date,
+      acquire_date_: library.adjust(
+        exercise_date,
         bdc,
         library.is_holiday_factory(calendar),
       ), //exclude initial disboursement cashflow from valuation
-      notional: outstanding_principal,
+      notional: balance,
       fixed_rate: irr,
       tenor: tenor,
       calendar: calendar,
       bdc: bdc,
+      disc_curve: "discount",
     };
-    var effective_duration = ed(bond);
+    effective_duration = ed(new library.Bond(bond).legs[0]);
     var iter = 10;
 
     //alter maturity until we obtain effective duration target value
@@ -2208,19 +1510,20 @@
       ttm = (ttm * effective_duration_target) / effective_duration;
       // revert to best estimate when value is implausible
       if (isNaN(ttm) || ttm > 100 || ttm < 1 / 365) ttm = ttm_guess;
-      maturity = library.add_days(first_exercise_date, Math.round(ttm * 365));
+      maturity = library.add_days(exercise_date, Math.round(ttm * 365));
       bond.maturity = maturity;
-      effective_duration = ed(bond);
+      const leg = new library.Bond(bond).legs[0];
+      effective_duration = ed(leg);
       iter--;
     }
 
     return {
       is_payer: false,
       maturity: maturity,
-      first_exercise_date: first_exercise_date,
-      effective_date: first_exercise_date,
-      settlement_date: first_exercise_date,
-      notional: outstanding_principal,
+      first_exercise_date: exercise_date,
+      effective_date: exercise_date,
+      settlement_date: exercise_date,
+      notional: balance,
       fixed_rate: irr,
       tenor: tenor,
       float_spread: 0.0,
@@ -2694,6 +1997,12 @@
     get disc_curve() {
       return this.#disc_curve;
     }
+    get spread_curve() {
+      return this.#spread_curve;
+    }
+    get residual_spread() {
+      return this.#residual_spread;
+    }
     get payments() {
       return this.#payments;
     }
@@ -2731,9 +2040,21 @@
     }
     get has_constant_notional() {
       if (!this.#payments.length) return true;
-      let notional = this.#payments[0].notional;
+      let notional = Math.abs(this.#payments[0].notional);
       for (const p of this.#payments) {
-        if (p.notional != notional) return false;
+        if (Math.abs(p.notional) != notional) return false;
+      }
+      return true;
+    }
+    get has_constant_rate() {
+      let rate = null;
+      for (const p of this.#payments) {
+        if (p.constructor != library.FixedRatePayment) continue;
+        if (rate === null) {
+          rate = p.rate;
+          continue;
+        }
+        if (rate !== p.rate) return false;
       }
       return true;
     }
@@ -2854,6 +2175,25 @@
       return res;
     }
 
+    // compute irr for some date
+    irr(d) {
+      const balance = this.balance(d);
+      const tset = library.time_from_now(d);
+      const payments = this.#payments;
+      const func = function (x) {
+        let res = -balance * Math.pow(1 + x, -tset);
+        for (const p of payments) {
+          if (p.date_value <= d) continue;
+          const t = library.time_from_now(p.date_pmt);
+          res += p.amount * Math.pow(1 + x, -t);
+        }
+        return res;
+      };
+
+      const res = library.find_root_secant(func, 0, 0.0001);
+      return res;
+    }
+
     // get fair rate or spread
     fair_rate_or_spread(params) {
       for (const idx of Object.values(this.#indices)) {
@@ -2969,10 +2309,12 @@
           entry[1] += notional;
         } else {
           // create new entry
-          pmap.set(tpay, [total, notional]);
+          pmap.set(tpay, [total, notional, p.date_pmt]);
         }
       }
-      const times = Array.from(pmap.keys()).sort();
+      const times = Array.from(pmap.keys()).sort(function (a, b) {
+        return a - b;
+      });
       const n = times.length;
 
       const t_pmt = new Float64Array(n);
@@ -2980,22 +2322,25 @@
       const pmt_interest = new Float64Array(n);
       const pmt_principal = new Float64Array(n);
       const current_principal = new Float64Array(n);
+      const date_pmt = new Array(n);
 
       let cp = 0;
       for (let i = 0; i < n; i++) {
         const t = times[i];
-        const [total, notional] = pmap.get(t);
+        const [total, notional, dt] = pmap.get(t);
 
         t_pmt[i] = t;
         pmt_total[i] = total;
         pmt_principal[i] = notional;
         pmt_interest[i] = total - notional;
         current_principal[i] = cp;
+        date_pmt[i] = dt;
         cp -= notional;
       }
 
       return {
         t_pmt,
+        date_pmt,
         pmt_total,
         pmt_principal,
         pmt_interest,
@@ -3971,92 +3316,6 @@
   library.BlackModel = BlackModel;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  /**
-   * discounts a cash flow
-   * @param {object} cf_obj cash flow
-   * @param {object} disc_curve discount curve
-   * @param {object} spread_curve spread curve
-   * @param {number} residual_spread residual spread
-   * @param {date} settlement_date settlement date
-   * @returns {object} discounted cash flow
-   * @memberof JsonRisk
-   * @public
-   */
-  library.dcf = function (
-    cf_obj,
-    disc_curve,
-    spread_curve,
-    residual_spread,
-    settlement_date,
-  ) {
-    /*
-                requires cf_obj of type
-                {
-                        date_pmt: array(date),
-                        t_pmt: array(double),
-                        pmt_total: array(double)
-                }
-                requires safe curves (curves may be null)
-                
-                */
-
-    //curve initialisation and fallbacks
-    if (typeof residual_spread !== "number") residual_spread = 0;
-    disc_curve = disc_curve || library.get_const_curve(0);
-    var sd = library.date_or_null(settlement_date);
-    if (!sd) sd = library.valuation_date;
-    var tset = library.time_from_now(sd);
-
-    //sanity checks
-    if (undefined === cf_obj.t_pmt || undefined === cf_obj.pmt_total)
-      throw new Error("dcf: invalid cashflow object");
-    if (cf_obj.t_pmt.length !== cf_obj.pmt_total.length)
-      throw new Error("dcf: invalid cashflow object");
-
-    var res = 0;
-    var i = 0;
-    var df, rate;
-    var fast = !spread_curve && 0 === residual_spread;
-    while (cf_obj.t_pmt[i] <= tset) i++; // only consider cashflows after settlement date
-    while (i < cf_obj.t_pmt.length) {
-      if (fast) {
-        df = disc_curve.get_df(cf_obj.t_pmt[i]);
-      } else {
-        rate = residual_spread + disc_curve.get_rate(cf_obj.t_pmt[i]);
-        if (spread_curve) rate += spread_curve.get_rate(cf_obj.t_pmt[i]);
-        df = Math.pow(1 + rate, -cf_obj.t_pmt[i]);
-      }
-      res += cf_obj.pmt_total[i] * df;
-      i++;
-    }
-    return res;
-  };
-
-  /**
-   * TODO
-   * @param {object} cf_obj cash flow
-   * @param {date} settlement_date
-   * @param {date} payment_on_settlement_date
-   * @returns {object} ...
-   * @memberof JsonRisk
-   * @public
-   */
-  library.irr = function (cf_obj, settlement_date, payment_on_settlement_date) {
-    if (!payment_on_settlement_date) payment_on_settlement_date = 0;
-
-    var tset = library.time_from_now(settlement_date);
-    var func = function (x) {
-      return (
-        library.dcf(cf_obj, null, null, x, settlement_date) +
-        payment_on_settlement_date * Math.pow(1 + x, -tset)
-      );
-    };
-
-    var ret = library.find_root_secant(func, 0, 0.0001);
-    return ret;
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
   class IsdaCdsModel {
     #disc_curve = null;
     #survival_curve = null;
@@ -4968,7 +4227,7 @@
   ) {
     //correction for multi curve valuation - move basis spread to fixed leg
     const { fixed_leg, float_leg } = swaption;
-    let fixed_rate = swaption.fixed_rate();
+    let fixed_rate = swaption.fixed_rate;
     const pv_float_singlecurve = float_leg.value_with_curves(
       disc_curve,
       disc_curve,

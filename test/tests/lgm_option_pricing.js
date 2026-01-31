@@ -31,31 +31,85 @@ test.execute = function (TestFramework, JsonRisk) {
   //Test LGM option pricing
   JsonRisk.set_valuation_date("2019/01/01");
   yf = JsonRisk.year_fraction_factory("");
-  var cf_obj = {
-    date_pmt: [
-      TestFramework.get_utc_date(2019, 0, 1),
-      TestFramework.get_utc_date(2020, 0, 1),
-      TestFramework.get_utc_date(2021, 0, 1),
-      TestFramework.get_utc_date(2022, 0, 1),
-      TestFramework.get_utc_date(2023, 0, 1),
-      TestFramework.get_utc_date(2024, 0, 1),
-      TestFramework.get_utc_date(2025, 0, 1),
-      TestFramework.get_utc_date(2026, 0, 1),
-      TestFramework.get_utc_date(2027, 0, 1),
-    ],
-    current_principal: [100, 100, 90, 80, 70, 60, 50, 40, 30],
-    pmt_interest: [0, 11, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
-    pmt_total: [0, 11, 10.9, 10.8, 10.7, 10.6, 10.5, 10.4, 30.3],
-  };
 
-  cf_obj.t_pmt = new Array(cf_obj.date_pmt.length);
-  for (i = 0; i < cf_obj.date_pmt.length; i++) {
-    cf_obj.t_pmt[i] = JsonRisk.time_from_now(cf_obj.date_pmt[i]);
+  const dates = [
+    "2020/01/01",
+    "2021/01/01",
+    "2022/01/01",
+    "2023/01/01",
+    "2024/01/01",
+    "2025/01/01",
+    "2026/01/01",
+    "2027/01/01",
+  ];
+  // notional payments
+  const payments = dates.map(function (d) {
+    return { type: "notional", date_pmt: d, notional: 10 };
+  });
+  // initial notional
+  payments.push({
+    type: "notional",
+    date_pmt: JsonRisk.valuation_date,
+    notional: -100,
+  });
+  // interest payments
+  let last_date = JsonRisk.valuation_date;
+  let notional = 100;
+  for (const d of dates) {
+    payments.push({
+      type: "fixed",
+      dcc: "30/360",
+      notional: 100,
+      rate: 0.01,
+      date_start: last_date,
+      date_end: d,
+      date_pmt: d,
+    });
+    last_date = d;
   }
 
-  var cf_regular;
+  // create leg
+  const leg = new JsonRisk.Leg({
+    disc_curve: "discount",
+    payments: payments,
+  });
+  leg.update_notionals();
 
-  expiries = [
+  // create params
+  const params = new JsonRisk.Params({
+    valuation_date: JsonRisk.valuation_date,
+    curves: {
+      discount: {
+        type: "yield",
+        times: [1],
+        zcs: [0.01],
+      },
+    },
+  });
+
+  const params_1bp = new JsonRisk.Params({
+    valuation_date: JsonRisk.valuation_date,
+    curves: {
+      discount: {
+        type: "yield",
+        times: [1],
+        zcs: [0.0101],
+      },
+    },
+  });
+
+  const params_100bp = new JsonRisk.Params({
+    valuation_date: JsonRisk.valuation_date,
+    curves: {
+      discount: {
+        type: "yield",
+        times: [1],
+        zcs: [0.02],
+      },
+    },
+  });
+
+  const expiries = [
     TestFramework.get_utc_date(2019, 0, 1),
     TestFramework.get_utc_date(2020, 0, 1),
     TestFramework.get_utc_date(2021, 0, 1),
@@ -64,89 +118,44 @@ test.execute = function (TestFramework, JsonRisk) {
     TestFramework.get_utc_date(2024, 0, 1),
     TestFramework.get_utc_date(2025, 0, 1),
   ];
-  var lgm_xi;
-  var result, result_orig, result_numeric, bpv;
-  curve = JsonRisk.get_const_curve(0.01);
-  curve_1bp = JsonRisk.get_const_curve(0.0101);
-  curve_100bp = JsonRisk.get_const_curve(0.02);
-
-  //create bcbs 352 scenarios
-  var bcbs352times = [
-    0.0028, 0.0417, 0.1667, 0.375, 0.625, 0.875, 1.25, 1.75, 2.5, 3.5, 4.5, 5.5,
-    6.5, 7.5, 8.5, 9.5, 12.5, 17.5, 25,
-  ];
-
-  var curve_up = {
-    times: bcbs352times,
-    zcs: [],
-  };
-  var curve_down = {
-    times: bcbs352times,
-    zcs: [],
-  };
-  var curve_steepener = {
-    times: bcbs352times,
-    zcs: [],
-  };
-  var curve_flattener = {
-    times: bcbs352times,
-    zcs: [],
-  };
-  var curve_shortup = {
-    times: bcbs352times,
-    zcs: [],
-  };
-  var curve_shortdown = {
-    times: bcbs352times,
-    zcs: [],
-  };
-
-  var slong, sshort;
-  for (var i = 0; i < bcbs352times.length; i++) {
-    curve_up.zcs.push(0.02);
-    curve_down.zcs.push(-0.02);
-    sshort = Math.exp(-bcbs352times[i] / 4);
-    slong = 1 - sshort;
-    curve_shortup.zcs.push(0.025 * sshort);
-    curve_shortdown.zcs.push(-0.025 * sshort);
-    curve_steepener.zcs.push(-0.65 * 0.025 * sshort + 0.9 * 0.01 * slong);
-    curve_flattener.zcs.push(0.8 * 0.025 * sshort - 0.6 * 0.01 * slong);
-  }
 
   for (let m = 0; m < 0.05; m += 0.01) {
     const lgm = new JsonRisk.LGM(m);
     for (i = 0; i < expiries.length; i++) {
-      swaption = JsonRisk.create_equivalent_regular_swaption(
-        cf_obj,
+      const swaption = JsonRisk.create_equivalent_regular_swaption(
+        leg,
         expiries[i],
       );
-      cf_regular = new JsonRisk.FixedIncome(swaption).get_cash_flows();
+      swaption.disc_curve = "discount";
+      const leg_regular = new JsonRisk.Leg(
+        JsonRisk.cashflow_generator(swaption),
+      );
+
+      //cash flow PVs
+      let result = leg_regular.value(params);
+      let result_up = leg_regular.value(params_1bp);
+      const bpv = Math.abs(result_up - result);
 
       lgm.set_times_and_hull_white_volatility(
         [Math.max(yf(JsonRisk.valuation_date, expiries[i]), 0.0001)],
         0.01,
       );
-      lgm_xi = lgm.xi[0];
-      //cash flow PVs
-      result = JsonRisk.dcf(cf_regular, curve, null, null, expiries[i]);
-      bpv = Math.abs(
-        JsonRisk.dcf(cf_regular, curve_1bp, null, null, expiries[i]) - result,
-      );
+      const lgm_xi = lgm.xi[0];
 
       //option PVs
       // Original Cash Flow
-      result_orig = lgm.european_call(
-        cf_obj,
+      let result_orig = lgm.european_call(
+        leg.get_cash_flows(),
         yf(JsonRisk.valuation_date, expiries[i]),
-        curve,
+        params.get_curve("discount"),
         lgm_xi,
       );
 
       // Equivalant regular cash flow
       result = lgm.european_call(
-        cf_regular,
+        leg_regular.get_cash_flows(),
         yf(JsonRisk.valuation_date, expiries[i]),
-        curve,
+        params.get_curve("discount"),
         lgm_xi,
       );
       TestFramework.assert(
@@ -156,9 +165,9 @@ test.execute = function (TestFramework, JsonRisk) {
 
       // Original Cash Flow numeric, using the bermudan engine
       result = lgm.bermudan_call(
-        cf_obj,
+        leg.get_cash_flows(),
         [yf(JsonRisk.valuation_date, expiries[i])],
-        curve,
+        params.get_curve("discount"),
         [lgm_xi],
       );
       TestFramework.assert(
@@ -168,15 +177,15 @@ test.execute = function (TestFramework, JsonRisk) {
 
       // Curve Up
       result_orig = lgm.european_call(
-        cf_obj,
+        leg.get_cash_flows(),
         yf(JsonRisk.valuation_date, expiries[i]),
-        curve_100bp,
+        params_100bp.get_curve("discount"),
         lgm_xi,
       );
       result = lgm.european_call(
-        cf_regular,
+        leg_regular.get_cash_flows(),
         yf(JsonRisk.valuation_date, expiries[i]),
-        curve_100bp,
+        params_100bp.get_curve("discount"),
         lgm_xi,
       );
       TestFramework.assert(
@@ -184,9 +193,9 @@ test.execute = function (TestFramework, JsonRisk) {
         `LGM option price curve up (equivalent regular vs original), Mean Rev ${m}, first_exercise_date ${i + 1}`,
       );
       result = lgm.bermudan_call(
-        cf_obj,
+        leg_regular.get_cash_flows(),
         [yf(JsonRisk.valuation_date, expiries[i])],
-        curve_100bp,
+        params_100bp.get_curve("discount"),
         [lgm_xi],
       );
       TestFramework.assert(

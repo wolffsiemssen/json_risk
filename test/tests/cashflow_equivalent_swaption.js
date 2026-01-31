@@ -54,7 +54,7 @@ test.execute = function (TestFramework, JsonRisk) {
         JsonRisk.valuation_date,
         expiries[j] + months[i],
       );
-      const bond = new JsonRisk.FixedIncome({
+      const bond = new JsonRisk.Bond({
         maturity: bond_maturity,
         notional: 10000000,
         fixed_rate: bond_rate,
@@ -67,9 +67,9 @@ test.execute = function (TestFramework, JsonRisk) {
       console.log(
         "JSON Risk bond price:                           " + p1.toFixed(3),
       );
-      const cfs = bond.get_cash_flows();
+      const leg = bond.legs[0];
       let swaption = JsonRisk.create_equivalent_regular_swaption(
-        cfs,
+        leg,
         first_exercise_date,
         bond,
       );

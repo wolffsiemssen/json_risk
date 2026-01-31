@@ -30,13 +30,16 @@
         throw new Error("Bond: must have notional payments");
     }
 
-    fixed_rate() {
+    get fixed_rate() {
       //returns first rate on the leg
       for (const p of this.legs[0].payments) {
         if (p instanceof library.FixedRatePayment) {
           return p.rate;
         }
       }
+      throw new Error(
+        "Bond: cannot retrieve fixed rate, bond has no rate payments",
+      );
     }
 
     fair_rate_or_spread(params) {

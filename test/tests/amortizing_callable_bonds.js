@@ -78,7 +78,7 @@ test.execute = function (TestFramework, JsonRisk) {
   ];
 
   for (i = 0; i < Maturity.length; i++) {
-    const amortizing_callable_bond = new JsonRisk.CallableFixedIncome({
+    const amortizing_callable_bond = new JsonRisk.CallableBond({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -94,7 +94,7 @@ test.execute = function (TestFramework, JsonRisk) {
       surface: "surface",
     });
 
-    const accreting_callable_bond = new JsonRisk.CallableFixedIncome({
+    const accreting_callable_bond = new JsonRisk.CallableBond({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
@@ -110,7 +110,7 @@ test.execute = function (TestFramework, JsonRisk) {
       surface: "surface",
     });
 
-    const callable_bond = new JsonRisk.CallableFixedIncome({
+    const callable_bond = new JsonRisk.CallableBond({
       maturity: Maturity[i],
       first_exercise_date: Firstcall[i],
       tenor: Tenor[i],
