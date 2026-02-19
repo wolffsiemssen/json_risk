@@ -287,7 +287,7 @@
             }
             try {
               xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
-            } catch (e) {
+            } catch (e_not_used) {
               //use initial guess or zero as fallback, whichever is better
               if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
             }
@@ -417,7 +417,7 @@
 
         try {
           break_even = library.find_root_ridders(func, upper, lower, 20);
-        } catch (e) {
+        } catch (e_not_used) {
           //fall back to numeric price
           return this.bermudan_call(
             cf_obj,
