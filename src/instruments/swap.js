@@ -2,6 +2,7 @@
   class Swap extends library.LegInstrument {
     #fixed_leg = null;
     #float_leg = null;
+    #is_payer = null;
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate legs from terms and conditions
@@ -69,6 +70,8 @@
           "Swap: must have one purely fix and one purely float leg.",
         );
       }
+
+      this.#is_payer = this.#fixed_leg.payments[0].notional > 0;
     }
 
     // getter functions
@@ -77,6 +80,9 @@
     }
     get float_leg() {
       return this.#float_leg;
+    }
+    get is_payer() {
+      return this.#is_payer;
     }
 
     fair_rate(disc_curve, fwd_curve) {

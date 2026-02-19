@@ -54,6 +54,7 @@
         call_schedule.pop();
 
       this.#call_schedule = call_schedule;
+      Object.freeze(call_schedule);
 
       this.#mean_reversion = library.number_or_null(obj.mean_reversion) || 0.0; // null allowed
       this.hull_white_volatility = library.number_or_null(
@@ -110,6 +111,10 @@
       // market deps
       this.#surface = obj.surface || "";
       this.#fwd_curve = obj.fwd_curve || "";
+    }
+
+    get call_schedule() {
+      return this.#call_schedule;
     }
 
     value_impl(params) {

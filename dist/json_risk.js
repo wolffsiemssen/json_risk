@@ -633,6 +633,7 @@
         call_schedule.pop();
 
       this.#call_schedule = call_schedule;
+      Object.freeze(call_schedule);
 
       this.#mean_reversion = library.number_or_null(obj.mean_reversion) || 0.0; // null allowed
       this.hull_white_volatility = library.number_or_null(
@@ -689,6 +690,10 @@
       // market deps
       this.#surface = obj.surface || "";
       this.#fwd_curve = obj.fwd_curve || "";
+    }
+
+    get call_schedule() {
+      return this.#call_schedule;
     }
 
     value_impl(params) {
@@ -1164,6 +1169,7 @@
   class Swap extends library.LegInstrument {
     #fixed_leg = null;
     #float_leg = null;
+    #is_payer = null;
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate legs from terms and conditions
@@ -1231,6 +1237,8 @@
           "Swap: must have one purely fix and one purely float leg.",
         );
       }
+
+      this.#is_payer = this.#fixed_leg.payments[0].notional > 0;
     }
 
     // getter functions
@@ -1239,6 +1247,9 @@
     }
     get float_leg() {
       return this.#float_leg;
+    }
+    get is_payer() {
+      return this.#is_payer;
     }
 
     fair_rate(disc_curve, fwd_curve) {
