@@ -169,7 +169,7 @@
     // interpolation function for cube
     get_rate(t_expiry, t_term, fwd, strike) {
       // atm rate can have a scenario
-      var atm = this.#get_surface_rate_scenario(t_expiry, t_term);
+      const atm = this.#get_surface_rate_scenario(t_expiry, t_term);
 
       // optionally, we consider a smile on the surface
       if (this.#smile.length > 0) {
@@ -208,7 +208,7 @@
           throw new Error(
             "get_cube_rate: invalid cube, moneyness must be nondecreasing",
           );
-        var temp = 1 / (mmax - mmin);
+        const temp = 1 / (mmax - mmin);
         return (
           atm +
           (this.#smile[imin].get_surface_rate(t_expiry, t_term) * (mmax - m) +

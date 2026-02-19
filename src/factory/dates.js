@@ -65,7 +65,7 @@
    * @memberof JsonRisk
    */
   library.date_to_date_str = function (d) {
-    var dobj = library.date_or_null(d);
+    const dobj = library.date_or_null(d);
     if (null === dobj) throw new Error("date_to_date_str: invalid input.");
     return dobj.toISOString().slice(0, 10);
   };
@@ -79,11 +79,11 @@
   library.date_or_null = function (d) {
     if (!d) return null;
     if (d instanceof Date) {
-      var h = d.getUTCHours();
+      const h = d.getUTCHours();
       if (h === 0) return d;
-      var y = d.getUTCFullYear();
-      var m = d.getUTCMonth();
-      var t = d.getUTCDate();
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      let t = d.getUTCDate();
       if (h > 11) t++; // advance to next day UTC 0:00 date
       return new Date(Date.UTC(y, m, t));
     }

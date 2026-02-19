@@ -1,16 +1,16 @@
 (function (library) {
   const name_to_moneyness = function (str) {
-    var s = str.toLowerCase();
+    const s = str.toLowerCase();
     if (s.endsWith("atm")) return 0; //ATM surface
-    var n = s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
+    const n = s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
     if (n.length < 2) return null;
     return n[1] / 10000;
   };
 
   const find_smile = function (name, list) {
-    var res = [],
-      moneyness;
-    for (var i = 0; i < list.length; i++) {
+    const res = [];
+    let moneyness;
+    for (let i = 0; i < list.length; i++) {
       if (!list[i].startsWith(name)) continue; //not a smile section of surface name
       if (list[i].length === name.length) continue; //this is the surface itself
       moneyness = name_to_moneyness(list[i]);
@@ -248,7 +248,7 @@
         }
         if (Array.isArray(rule.tags)) {
           // if no exact match by risk factors, all tags of that rule must match
-          var found = true;
+          let found = true;
           for (const tag of rule.tags) {
             if (!item.has_tag(tag)) found = false;
           }

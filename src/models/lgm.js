@@ -139,19 +139,19 @@
       if (!state.length)
         throw new Error("lgm_dcf: state variable must be an array of numbers");
 
-      var i = 0,
+      let i = 0,
         j,
         dh,
         temp,
         dh_dh_xi_2;
-      var res = new Float64Array(state.length);
-      var times = cf_obj.t_pmt;
-      var amounts = cf_obj.pmt_total;
+      const res = new Float64Array(state.length);
+      const times = cf_obj.t_pmt;
+      const amounts = cf_obj.pmt_total;
       // move forward to first line after exercise date
       while (times[i] <= t_exercise) i++;
 
       //include accrued interest if interest payment is part of the cash flow object
-      var accrued_interest = 0;
+      let accrued_interest = 0;
       if (cf_obj.pmt_interest) {
         accrued_interest =
           i === 0
@@ -160,7 +160,7 @@
               (times[i] - times[i - 1]);
       }
       // include principal payment on exercise date
-      var sadj = strike_adjustment(
+      const sadj = strike_adjustment(
         cf_obj,
         t_exercise,
         discount_factors,
@@ -339,7 +339,7 @@
 
         */
 
-      var discount_factors =
+      const discount_factors =
         discount_factors_precalc ||
         get_discount_factors(
           cf_obj,
@@ -363,9 +363,9 @@
           )[0],
         ); //very low volatility
 
-      var std_dev = Math.sqrt(xi);
-      var dh = this.#h(t_exercise + 1 / 365) - this.#h(t_exercise);
-      var break_even;
+      let std_dev = Math.sqrt(xi);
+      let dh = this.#h(t_exercise + 1 / 365) - this.#h(t_exercise);
+      let break_even;
 
       const func = function (x) {
         return this.#dcf(
@@ -390,7 +390,7 @@
         //find break even point and good initial guess for it
         //
 
-        var lower, upper;
+        let lower, upper;
 
         if (func(0) >= 0) {
           lower = 0;
@@ -431,14 +431,14 @@
         }
       }
 
-      var i = 0;
-      var one_std_dev = 1 / std_dev;
+      let i = 0;
+      const one_std_dev = 1 / std_dev;
 
       // move forward to first line after exercise date
       while (cf_obj.t_pmt[i] <= t_exercise) i++;
 
       //include accrued interest if interest payment is part of the cash flow object
-      var accrued_interest = 0;
+      let accrued_interest = 0;
       if (cf_obj.pmt_interest) {
         accrued_interest =
           i === 0
@@ -449,13 +449,13 @@
 
       // include principal payment on or before exercise date
       dh = this.#h(t_exercise);
-      var sadj = strike_adjustment(
+      const sadj = strike_adjustment(
         cf_obj,
         t_exercise,
         discount_factors,
         opportunity_spread,
       );
-      var res =
+      let res =
         -(cf_obj.current_principal[i] + accrued_interest + sadj) *
         discount_factors[discount_factors.length - 1] *
         library.cndf(break_even * one_std_dev + dh * std_dev);
@@ -515,7 +515,7 @@
        */
       function make_state_vector() {
         //repopulates state vector and ds measure
-        var res = new Float64Array(2 * STD_DEV_RANGE * RESOLUTION + 1);
+        const res = new Float64Array(2 * STD_DEV_RANGE * RESOLUTION + 1);
         res[0] = -STD_DEV_RANGE * std_dev;
         for (i = 1; i < n; i++) {
           res[i] = res[i - 1] + ds;
@@ -529,7 +529,7 @@
        */
       function update_value() {
         //take maximum of payoff and hold values
-        var i_d = 0;
+        let i_d = 0;
         for (i = 0; i < n; i++) {
           value[i] = Math.max(hold[i], payoff[i], 0);
           if (!i_d && i > 0) {
@@ -540,12 +540,12 @@
         }
         //account for discontinuity if any
         if (i_d) {
-          var max_0 = value[i_d - 1],
+          const max_0 = value[i_d - 1],
             max_1 = value[i_d];
-          var min_0 = Math.min(payoff[i_d - 1], hold[i_d - 1]),
+          const min_0 = Math.min(payoff[i_d - 1], hold[i_d - 1]),
             min_1 = Math.min(payoff[i_d], hold[i_d]);
-          var cross = (max_0 - min_0) / (max_1 - min_1 + max_0 - min_0);
-          var err =
+          const cross = (max_0 - min_0) / (max_1 - min_1 + max_0 - min_0);
+          const err =
             0.25 * (cross * (max_1 - min_1) + (1 - cross) * (max_0 - min_0));
           value[i_d] -= cross * err;
           value[i_d - 1] -= (1 - cross) * err;
@@ -561,17 +561,18 @@
        */
       function numeric_integration(j) {
         if (xi_last - xi < 1e-12) return value[j];
-        var temp = 0,
-          dp_lo = 0,
-          dp_hi,
-          norm_scale = 1 / Math.sqrt(xi_last - xi),
-          increment = ds_last * norm_scale,
-          i = 0,
+        const norm_scale = 1 / Math.sqrt(xi_last - xi),
+          increment = ds_last * norm_scale;
+        let i = 0,
           x = (state_last[0] - state[j] + 0.5 * ds_last) * norm_scale;
         while (x < -STD_DEV_RANGE) {
           x += increment;
           i += 1;
         }
+
+        let temp = 0,
+          dp_lo = 0,
+          dp_hi;
         while (x < STD_DEV_RANGE) {
           if (i >= n) break;
           dp_hi = library.fast_cndf(x);
@@ -583,18 +584,18 @@
         return temp;
       }
 
-      var n = 2 * STD_DEV_RANGE * RESOLUTION + 1;
-      var j, i, n_ex;
-      var xi,
+      const n = 2 * STD_DEV_RANGE * RESOLUTION + 1;
+      let j, i, n_ex;
+      let xi,
         xi_last = 0,
         std_dev,
         ds,
         ds_last;
-      var state, state_last;
-      var payoff;
-      var value = new Float64Array(n);
-      var hold = new Float64Array(n);
-      var discount_factors;
+      let state, state_last;
+      let payoff;
+      const value = new Float64Array(n);
+      const hold = new Float64Array(n);
+      let discount_factors;
 
       //n_ex starts at last exercise date
       n_ex = xi_vec.length - 1;
@@ -649,8 +650,8 @@
       state = [0];
 
       xi = 0;
-      hold = numeric_integration(0); //last integration according to martingale formula
-      return hold;
+      const holdnow = numeric_integration(0); //last integration according to martingale formula
+      return holdnow;
     }
   }
 
@@ -674,11 +675,11 @@
     spread_curve,
     residual_spread,
   ) {
-    var res = new Array(cf_obj.t_pmt.length + 1); //last item holds discount factor for t_exercise
-    var i = 0,
+    const res = new Array(cf_obj.t_pmt.length + 1); //last item holds discount factor for t_exercise
+    let i = 0,
       rate;
     if (typeof residual_spread !== "number") residual_spread = 0;
-    var fast = !spread_curve && 0 === residual_spread;
+    const fast = !spread_curve && 0 === residual_spread;
 
     // move forward to first line after exercise date
     while (cf_obj.t_pmt[i] <= 0) i++;
@@ -725,9 +726,9 @@
     opportunity_spread,
   ) {
     if (!opportunity_spread) return 0;
-    var i = 0,
-      df;
-    var res = 0;
+    let i = 0,
+      df,
+      res = 0;
     // move forward to first line after exercise date
     while (cf_obj.t_pmt[i] <= t_exercise) i++;
 

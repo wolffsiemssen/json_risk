@@ -1,10 +1,4 @@
 (function (library) {
-  "use strict";
-  /*
-        
-        Schedule functions used by simple and irregular fixed income instruments.
-        
-        */
   /**
    * creates a forward schedule from start up to but excluding end, using tenor as frequency
    * @param {date} start start date
@@ -15,9 +9,9 @@
    * @memberof JsonRisk
    * @private
    */
-  var forward_rollout = function (start, end, tenor, adjust_func) {
-    var res = [start];
-    var i = 1,
+  const forward_rollout = function (start, end, tenor, adjust_func) {
+    const res = [start];
+    let i = 1,
       dt = library.add_months(start, tenor);
     while (dt.getTime() < end.getTime()) {
       res.push(dt);
@@ -40,9 +34,9 @@
    * @memberof JsonRisk
    * @private
    */
-  var backward_rollout = function (start, end, tenor, adjust_func) {
-    var res = [end];
-    var i = 1,
+  const backward_rollout = function (start, end, tenor, adjust_func) {
+    const res = [end];
+    let i = 1,
       dt = library.add_months(end, -tenor);
     while (dt.getTime() > start.getTime()) {
       res.unshift(dt);
@@ -120,7 +114,7 @@
         maturity,
       ];
 
-    var res;
+    let res;
     if (first_dt instanceof Date && !(next_to_last_dt instanceof Date)) {
       // forward generation with explicit stub at beginning
       res = forward_rollout(first_dt, maturity, tenor, adjust_func);

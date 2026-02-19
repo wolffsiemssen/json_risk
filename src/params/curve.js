@@ -1,5 +1,4 @@
 (function (library) {
-  var default_yf = null;
   /**
    * returns a constant zero-rate curve
    * @function get_const_curve
@@ -21,6 +20,7 @@
   };
 
   // helper function for curve constructor
+  let default_yf = null;
   const get_time_at = function (curve, i) {
     if (!curve.times) {
       //construct times from other parameters in order of preference
@@ -41,13 +41,13 @@
 
   // helper function for curve constructor
   const get_times = function (curve) {
-    var i = (curve.times || curve.days || curve.dates || curve.labels || [])
+    let i = (curve.times || curve.days || curve.dates || curve.labels || [])
       .length;
     if (!i)
       throw new Error(
         "Curve: invalid curve, need to provide valid times, days, dates, or labels",
       );
-    var times = new Array(i);
+    const times = new Array(i);
     while (i > 0) {
       i--;
       times[i] = get_time_at(curve, i);
@@ -121,7 +121,7 @@
       this.#times = Object.freeze(_times);
       this.#zcs = Object.freeze(_zcs);
 
-      var _get_interpolated_rate;
+      let _get_interpolated_rate;
       let _always_flat = false;
       this.#intp = (obj.intp || "").toLowerCase();
       switch (this.#intp) {
@@ -190,7 +190,7 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        var scenario = new library.Curve({
+        const scenario = new library.Curve({
           labels: rule.labels_x,
           zcs: rule.values[0],
           intp: rule.model === "absolute" ? this.#intp : "linear_zc",

@@ -17,8 +17,8 @@
     root.JsonRisk = factory();
   }
 })(this, function () {
-  var valuation_date = null;
-  var JsonRisk = {
+  let valuation_date = null;
+  const JsonRisk = {
     /**
      * @type {Date}
      * @description Gets the library's current valution date if set.
@@ -77,7 +77,7 @@
   library.make_bool_vector = function (b) {
     if (typeof b === "boolean") return [b];
     if (typeof b === "number") return [b !== 0];
-    var res;
+    let res;
     if (typeof b === "string") {
       res = b.split(/\s+/);
     } else if (Array.isArray(b)) {
@@ -85,7 +85,7 @@
     } else {
       return [false];
     }
-    for (var i = 0; i < res.length; i++) {
+    for (let i = 0; i < res.length; i++) {
       res[i] = library.make_bool(res[i]);
     }
     return res;
@@ -158,7 +158,7 @@
    * @memberof JsonRisk
    */
   library.date_to_date_str = function (d) {
-    var dobj = library.date_or_null(d);
+    const dobj = library.date_or_null(d);
     if (null === dobj) throw new Error("date_to_date_str: invalid input.");
     return dobj.toISOString().slice(0, 10);
   };
@@ -172,11 +172,11 @@
   library.date_or_null = function (d) {
     if (!d) return null;
     if (d instanceof Date) {
-      var h = d.getUTCHours();
+      const h = d.getUTCHours();
       if (h === 0) return d;
-      var y = d.getUTCFullYear();
-      var m = d.getUTCMonth();
-      var t = d.getUTCDate();
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      let t = d.getUTCDate();
       if (h > 11) t++; // advance to next day UTC 0:00 date
       return new Date(Date.UTC(y, m, t));
     }
@@ -268,7 +268,7 @@
     if (typeof n === "number") return n;
     if (typeof n === "string") {
       n = n.trim();
-      var res = parseFloat(n);
+      let res = parseFloat(n);
       if (isNaN(res)) return null;
       if (n.charAt(n.length - 1) === "%") res *= 0.01;
       return res;
@@ -282,7 +282,7 @@
    * @memberof JsonRisk
    */
   library.positive_number_or_null = function (n) {
-    var res = library.number_or_null(n);
+    const res = library.number_or_null(n);
     if (res <= 0) return null;
     return res;
   };
@@ -293,7 +293,7 @@
    * @memberof JsonRisk
    */
   library.natural_number_or_null = function (n) {
-    var res = library.number_or_null(n);
+    const res = library.number_or_null(n);
     if (res < 0 || res !== Math.floor(res)) return null;
     return res;
   };
@@ -305,7 +305,7 @@
    */
   library.number_vector_or_null = function (n) {
     if (typeof n === "number") return [n];
-    var res;
+    let res;
     if (typeof n === "string") {
       res = n.split(/\s+/);
     } else if (Array.isArray(n)) {
@@ -313,7 +313,7 @@
     } else {
       return null;
     }
-    for (var i = 0; i < res.length; i++) {
+    for (let i = 0; i < res.length; i++) {
       res[i] = library.number_or_null(res[i]);
       if (null === res[i])
         throw new Error("number_vector_or_null: invalid input");
@@ -1350,11 +1350,11 @@
 
     value_with_curves(disc_curve, fwd_curve, surface) {
       //obtain times
-      var t_maturity = library.time_from_now(this.#maturity);
-      var t_first_exercise_date = library.time_from_now(
+      const t_maturity = library.time_from_now(this.#maturity);
+      const t_first_exercise_date = library.time_from_now(
         this.#first_exercise_date,
       );
-      var t_term = t_maturity - t_first_exercise_date;
+      const t_term = t_maturity - t_first_exercise_date;
       if (t_term < 1 / 512) {
         return 0;
       }
@@ -1410,9 +1410,9 @@
       throw new Error("create_equivalent_regular_swaption: invalid leg");
 
     if (!conventions) conventions = {};
-    var tenor = conventions.tenor || 6;
-    var bdc = conventions.bdc || "unadjusted";
-    var calendar = conventions.calendar || "";
+    const tenor = conventions.tenor || 6;
+    const bdc = conventions.bdc || "unadjusted";
+    const calendar = conventions.calendar || "";
 
     // rebuild leg with just a discount curve
     const leg = new library.Leg({
@@ -1467,7 +1467,7 @@
       .get_df(library.time_from_now(exercise_date));
 
     //brief function to compute forward effective duration on a leg
-    var ed = function (leg) {
+    const ed = function (leg) {
       const npv_up = leg.value(params_up, exercise_date) / df_ex_up;
       const npv_down = leg.value(params_down, exercise_date) / df_ex_down;
       const res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
@@ -1500,7 +1500,7 @@
       disc_curve: "discount",
     };
     effective_duration = ed(new library.Bond(bond).legs[0]);
-    var iter = 10;
+    let iter = 10;
 
     //alter maturity until we obtain effective duration target value
     while (
@@ -3009,23 +3009,23 @@
 (function (library) {
   "use strict";
 
-  var RT2PI = Math.sqrt(4.0 * Math.acos(0.0));
-  var SPLIT = 7.07106781186547;
-  var N0 = 220.206867912376;
-  var N1 = 221.213596169931;
-  var N2 = 112.079291497871;
-  var N3 = 33.912866078383;
-  var N4 = 6.37396220353165;
-  var N5 = 0.700383064443688;
-  var N6 = 3.52624965998911e-2;
-  var M0 = 440.413735824752;
-  var M1 = 793.826512519948;
-  var M2 = 637.333633378831;
-  var M3 = 296.564248779674;
-  var M4 = 86.7807322029461;
-  var M5 = 16.064177579207;
-  var M6 = 1.75566716318264;
-  var M7 = 8.83883476483184e-2;
+  const RT2PI = Math.sqrt(4.0 * Math.acos(0.0));
+  const SPLIT = 7.07106781186547;
+  const N0 = 220.206867912376;
+  const N1 = 221.213596169931;
+  const N2 = 112.079291497871;
+  const N3 = 33.912866078383;
+  const N4 = 6.37396220353165;
+  const N5 = 0.700383064443688;
+  const N6 = 3.52624965998911e-2;
+  const M0 = 440.413735824752;
+  const M1 = 793.826512519948;
+  const M2 = 637.333633378831;
+  const M3 = 296.564248779674;
+  const M4 = 86.7807322029461;
+  const M5 = 16.064177579207;
+  const M6 = 1.75566716318264;
+  const M7 = 8.83883476483184e-2;
 
   /**
    * ...
@@ -3046,21 +3046,22 @@
    * @public
    */
   library.cndf = function (x) {
-    var z = Math.abs(x);
-    var c;
+    const z = Math.abs(x);
+    let c;
 
     if (z <= 37.0) {
-      var e = Math.exp((-z * z) / 2.0);
+      const e = Math.exp((-z * z) / 2.0);
       if (z < SPLIT) {
-        var n =
+        const n =
           (((((N6 * z + N5) * z + N4) * z + N3) * z + N2) * z + N1) * z + N0;
-        var d =
+        const d =
           ((((((M7 * z + M6) * z + M5) * z + M4) * z + M3) * z + M2) * z + M1) *
             z +
           M0;
         c = (e * n) / d;
       } else {
-        var f = z + 1.0 / (z + 2.0 / (z + 3.0 / (z + 4.0 / (z + 13.0 / 20.0))));
+        const f =
+          z + 1.0 / (z + 2.0 / (z + 3.0 / (z + 4.0 / (z + 13.0 / 20.0))));
         c = e / (RT2PI * f);
       }
     } else if (z > 37.0) {
@@ -3071,12 +3072,12 @@
     return x <= 0.0 ? c : 1 - c;
   };
 
-  var D1 = 0.049867347;
-  var D2 = 0.0211410061;
-  var D3 = 0.0032776263;
-  var D4 = 0.0000380036;
-  var D5 = 0.0000488906;
-  var D6 = 0.000005383;
+  const D1 = 0.049867347;
+  const D2 = 0.0211410061;
+  const D3 = 0.0032776263;
+  const D4 = 0.0000380036;
+  const D5 = 0.0000488906;
+  const D6 = 0.000005383;
 
   /**
    * fast cumulative normal distribution function according to Abramowitz and Stegun
@@ -3086,8 +3087,8 @@
    * @public
    */
   library.fast_cndf = function (x) {
-    var z = x > 0 ? x : -x;
-    var f = 1 + z * (D1 + z * (D2 + z * (D3 + z * (D4 + z * (D5 + z * D6)))));
+    const z = x > 0 ? x : -x;
+    let f = 1 + z * (D1 + z * (D2 + z * (D3 + z * (D4 + z * (D5 + z * D6)))));
     f *= f;
     f *= f;
     f *= f;
@@ -3108,13 +3109,14 @@
    * @public
    */
   library.find_root_secant = function (func, start, next, max_iter, threshold) {
-    var x = start,
+    let x = start,
       xnext = next,
       temp = 0,
       iter = max_iter || 20,
-      t = threshold || 0.00000001;
-    var f = func(x),
+      f = func(x),
       fnext = func(xnext);
+    const t = threshold || 0.00000001;
+
     if (Math.abs(fnext) > Math.abs(f)) {
       //swap start values if start is better than next
       temp = x;
@@ -3170,17 +3172,17 @@
     max_iter,
     threshold,
   ) {
-    var x = start,
+    let x = start,
       y = next,
       z = 0,
       w = 0,
       r = 0,
       iter = max_iter || 20,
-      t = threshold || 0.00000001;
-    var fx = func(x),
+      fx = func(x),
       fy = func(y),
       fz,
       fw;
+    const t = threshold || 0.00000001;
     if (fx * fy > 0)
       throw new Error(
         "find_root_ridders: start values do not bracket the root",
@@ -3602,19 +3604,19 @@
       if (!state.length)
         throw new Error("lgm_dcf: state variable must be an array of numbers");
 
-      var i = 0,
+      let i = 0,
         j,
         dh,
         temp,
         dh_dh_xi_2;
-      var res = new Float64Array(state.length);
-      var times = cf_obj.t_pmt;
-      var amounts = cf_obj.pmt_total;
+      const res = new Float64Array(state.length);
+      const times = cf_obj.t_pmt;
+      const amounts = cf_obj.pmt_total;
       // move forward to first line after exercise date
       while (times[i] <= t_exercise) i++;
 
       //include accrued interest if interest payment is part of the cash flow object
-      var accrued_interest = 0;
+      let accrued_interest = 0;
       if (cf_obj.pmt_interest) {
         accrued_interest =
           i === 0
@@ -3623,7 +3625,7 @@
               (times[i] - times[i - 1]);
       }
       // include principal payment on exercise date
-      var sadj = strike_adjustment(
+      const sadj = strike_adjustment(
         cf_obj,
         t_exercise,
         discount_factors,
@@ -3802,7 +3804,7 @@
 
         */
 
-      var discount_factors =
+      const discount_factors =
         discount_factors_precalc ||
         get_discount_factors(
           cf_obj,
@@ -3826,9 +3828,9 @@
           )[0],
         ); //very low volatility
 
-      var std_dev = Math.sqrt(xi);
-      var dh = this.#h(t_exercise + 1 / 365) - this.#h(t_exercise);
-      var break_even;
+      let std_dev = Math.sqrt(xi);
+      let dh = this.#h(t_exercise + 1 / 365) - this.#h(t_exercise);
+      let break_even;
 
       const func = function (x) {
         return this.#dcf(
@@ -3853,7 +3855,7 @@
         //find break even point and good initial guess for it
         //
 
-        var lower, upper;
+        let lower, upper;
 
         if (func(0) >= 0) {
           lower = 0;
@@ -3894,14 +3896,14 @@
         }
       }
 
-      var i = 0;
-      var one_std_dev = 1 / std_dev;
+      let i = 0;
+      const one_std_dev = 1 / std_dev;
 
       // move forward to first line after exercise date
       while (cf_obj.t_pmt[i] <= t_exercise) i++;
 
       //include accrued interest if interest payment is part of the cash flow object
-      var accrued_interest = 0;
+      let accrued_interest = 0;
       if (cf_obj.pmt_interest) {
         accrued_interest =
           i === 0
@@ -3912,13 +3914,13 @@
 
       // include principal payment on or before exercise date
       dh = this.#h(t_exercise);
-      var sadj = strike_adjustment(
+      const sadj = strike_adjustment(
         cf_obj,
         t_exercise,
         discount_factors,
         opportunity_spread,
       );
-      var res =
+      let res =
         -(cf_obj.current_principal[i] + accrued_interest + sadj) *
         discount_factors[discount_factors.length - 1] *
         library.cndf(break_even * one_std_dev + dh * std_dev);
@@ -3978,7 +3980,7 @@
        */
       function make_state_vector() {
         //repopulates state vector and ds measure
-        var res = new Float64Array(2 * STD_DEV_RANGE * RESOLUTION + 1);
+        const res = new Float64Array(2 * STD_DEV_RANGE * RESOLUTION + 1);
         res[0] = -STD_DEV_RANGE * std_dev;
         for (i = 1; i < n; i++) {
           res[i] = res[i - 1] + ds;
@@ -3992,7 +3994,7 @@
        */
       function update_value() {
         //take maximum of payoff and hold values
-        var i_d = 0;
+        let i_d = 0;
         for (i = 0; i < n; i++) {
           value[i] = Math.max(hold[i], payoff[i], 0);
           if (!i_d && i > 0) {
@@ -4003,12 +4005,12 @@
         }
         //account for discontinuity if any
         if (i_d) {
-          var max_0 = value[i_d - 1],
+          const max_0 = value[i_d - 1],
             max_1 = value[i_d];
-          var min_0 = Math.min(payoff[i_d - 1], hold[i_d - 1]),
+          const min_0 = Math.min(payoff[i_d - 1], hold[i_d - 1]),
             min_1 = Math.min(payoff[i_d], hold[i_d]);
-          var cross = (max_0 - min_0) / (max_1 - min_1 + max_0 - min_0);
-          var err =
+          const cross = (max_0 - min_0) / (max_1 - min_1 + max_0 - min_0);
+          const err =
             0.25 * (cross * (max_1 - min_1) + (1 - cross) * (max_0 - min_0));
           value[i_d] -= cross * err;
           value[i_d - 1] -= (1 - cross) * err;
@@ -4024,17 +4026,18 @@
        */
       function numeric_integration(j) {
         if (xi_last - xi < 1e-12) return value[j];
-        var temp = 0,
-          dp_lo = 0,
-          dp_hi,
-          norm_scale = 1 / Math.sqrt(xi_last - xi),
-          increment = ds_last * norm_scale,
-          i = 0,
+        const norm_scale = 1 / Math.sqrt(xi_last - xi),
+          increment = ds_last * norm_scale;
+        let i = 0,
           x = (state_last[0] - state[j] + 0.5 * ds_last) * norm_scale;
         while (x < -STD_DEV_RANGE) {
           x += increment;
           i += 1;
         }
+
+        let temp = 0,
+          dp_lo = 0,
+          dp_hi;
         while (x < STD_DEV_RANGE) {
           if (i >= n) break;
           dp_hi = library.fast_cndf(x);
@@ -4046,18 +4049,18 @@
         return temp;
       }
 
-      var n = 2 * STD_DEV_RANGE * RESOLUTION + 1;
-      var j, i, n_ex;
-      var xi,
+      const n = 2 * STD_DEV_RANGE * RESOLUTION + 1;
+      let j, i, n_ex;
+      let xi,
         xi_last = 0,
         std_dev,
         ds,
         ds_last;
-      var state, state_last;
-      var payoff;
-      var value = new Float64Array(n);
-      var hold = new Float64Array(n);
-      var discount_factors;
+      let state, state_last;
+      let payoff;
+      const value = new Float64Array(n);
+      const hold = new Float64Array(n);
+      let discount_factors;
 
       //n_ex starts at last exercise date
       n_ex = xi_vec.length - 1;
@@ -4112,8 +4115,8 @@
       state = [0];
 
       xi = 0;
-      hold = numeric_integration(0); //last integration according to martingale formula
-      return hold;
+      const holdnow = numeric_integration(0); //last integration according to martingale formula
+      return holdnow;
     }
   }
 
@@ -4137,11 +4140,11 @@
     spread_curve,
     residual_spread,
   ) {
-    var res = new Array(cf_obj.t_pmt.length + 1); //last item holds discount factor for t_exercise
-    var i = 0,
+    const res = new Array(cf_obj.t_pmt.length + 1); //last item holds discount factor for t_exercise
+    let i = 0,
       rate;
     if (typeof residual_spread !== "number") residual_spread = 0;
-    var fast = !spread_curve && 0 === residual_spread;
+    const fast = !spread_curve && 0 === residual_spread;
 
     // move forward to first line after exercise date
     while (cf_obj.t_pmt[i] <= 0) i++;
@@ -4188,9 +4191,9 @@
     opportunity_spread,
   ) {
     if (!opportunity_spread) return 0;
-    var i = 0,
-      df;
-    var res = 0;
+    let i = 0,
+      df,
+      res = 0;
     // move forward to first line after exercise date
     while (cf_obj.t_pmt[i] <= t_exercise) i++;
 
@@ -4329,7 +4332,6 @@
   library.Simulatable = Simulatable;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  var default_yf = null;
   /**
    * returns a constant zero-rate curve
    * @function get_const_curve
@@ -4351,6 +4353,7 @@
   };
 
   // helper function for curve constructor
+  let default_yf = null;
   const get_time_at = function (curve, i) {
     if (!curve.times) {
       //construct times from other parameters in order of preference
@@ -4371,13 +4374,13 @@
 
   // helper function for curve constructor
   const get_times = function (curve) {
-    var i = (curve.times || curve.days || curve.dates || curve.labels || [])
+    let i = (curve.times || curve.days || curve.dates || curve.labels || [])
       .length;
     if (!i)
       throw new Error(
         "Curve: invalid curve, need to provide valid times, days, dates, or labels",
       );
-    var times = new Array(i);
+    const times = new Array(i);
     while (i > 0) {
       i--;
       times[i] = get_time_at(curve, i);
@@ -4451,7 +4454,7 @@
       this.#times = Object.freeze(_times);
       this.#zcs = Object.freeze(_zcs);
 
-      var _get_interpolated_rate;
+      let _get_interpolated_rate;
       let _always_flat = false;
       this.#intp = (obj.intp || "").toLowerCase();
       switch (this.#intp) {
@@ -4520,7 +4523,7 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        var scenario = new library.Curve({
+        const scenario = new library.Curve({
           labels: rule.labels_x,
           zcs: rule.values[0],
           intp: rule.model === "absolute" ? this.#intp : "linear_zc",
@@ -5075,7 +5078,7 @@
     // interpolation function for cube
     get_rate(t_expiry, t_term, fwd, strike) {
       // atm rate can have a scenario
-      var atm = this.#get_surface_rate_scenario(t_expiry, t_term);
+      const atm = this.#get_surface_rate_scenario(t_expiry, t_term);
 
       // optionally, we consider a smile on the surface
       if (this.#smile.length > 0) {
@@ -5114,7 +5117,7 @@
           throw new Error(
             "get_cube_rate: invalid cube, moneyness must be nondecreasing",
           );
-        var temp = 1 / (mmax - mmin);
+        const temp = 1 / (mmax - mmin);
         return (
           atm +
           (this.#smile[imin].get_surface_rate(t_expiry, t_term) * (mmax - m) +
@@ -5248,17 +5251,17 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   const name_to_moneyness = function (str) {
-    var s = str.toLowerCase();
+    const s = str.toLowerCase();
     if (s.endsWith("atm")) return 0; //ATM surface
-    var n = s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
+    const n = s.match(/([+-][0-9]+)bp$/); //find number in name, convention is NAME+100BP, NAME-50BP
     if (n.length < 2) return null;
     return n[1] / 10000;
   };
 
   const find_smile = function (name, list) {
-    var res = [],
-      moneyness;
-    for (var i = 0; i < list.length; i++) {
+    const res = [];
+    let moneyness;
+    for (let i = 0; i < list.length; i++) {
       if (!list[i].startsWith(name)) continue; //not a smile section of surface name
       if (list[i].length === name.length) continue; //this is the surface itself
       moneyness = name_to_moneyness(list[i]);
@@ -5496,7 +5499,7 @@
         }
         if (Array.isArray(rule.tags)) {
           // if no exact match by risk factors, all tags of that rule must match
-          var found = true;
+          let found = true;
           for (const tag of rule.tags) {
             if (!item.has_tag(tag)) found = false;
           }
@@ -5556,7 +5559,7 @@
       this.results.present_value[i] = this.instrument.value(this.params);
     };
 
-    var module = {
+    const module = {
       simulation_once: simulation_once,
       simulation_scenario: simulation_scenario,
     };
@@ -5579,7 +5582,7 @@
     library.set_valuation_date(params_json.valuation_date);
 
     // create context for module execution
-    var context = {
+    const context = {
       instrument_json: instrument_json,
       instrument: library.make_instrument(instrument_json),
       params_json: params_json,
@@ -5619,12 +5622,6 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
-  "use strict";
-  /*
-        
-        Schedule functions used by simple and irregular fixed income instruments.
-        
-        */
   /**
    * creates a forward schedule from start up to but excluding end, using tenor as frequency
    * @param {date} start start date
@@ -5635,9 +5632,9 @@
    * @memberof JsonRisk
    * @private
    */
-  var forward_rollout = function (start, end, tenor, adjust_func) {
-    var res = [start];
-    var i = 1,
+  const forward_rollout = function (start, end, tenor, adjust_func) {
+    const res = [start];
+    let i = 1,
       dt = library.add_months(start, tenor);
     while (dt.getTime() < end.getTime()) {
       res.push(dt);
@@ -5660,9 +5657,9 @@
    * @memberof JsonRisk
    * @private
    */
-  var backward_rollout = function (start, end, tenor, adjust_func) {
-    var res = [end];
-    var i = 1,
+  const backward_rollout = function (start, end, tenor, adjust_func) {
+    const res = [end];
+    let i = 1,
       dt = library.add_months(end, -tenor);
     while (dt.getTime() > start.getTime()) {
       res.unshift(dt);
@@ -5740,7 +5737,7 @@
         maturity,
       ];
 
-    var res;
+    let res;
     if (first_dt instanceof Date && !(next_to_last_dt instanceof Date)) {
       // forward generation with explicit stub at beginning
       res = forward_rollout(first_dt, maturity, tenor, adjust_func);
@@ -5812,8 +5809,8 @@
 
   "use strict";
 
-  var dl = 1000 * 60 * 60 * 24; // length of one day in milliseconds
-  var one_over_dl = 1.0 / dl;
+  const dl = 1000 * 60 * 60 * 24; // length of one day in milliseconds
+  const one_over_dl = 1.0 / dl;
 
   /**
    * checks if a year is a leap year
@@ -5900,12 +5897,12 @@
    * @private
    */
   function yf_30U360(from, to) {
-    var y1 = from.getUTCFullYear();
-    var y2 = to.getUTCFullYear();
-    var m1 = from.getUTCMonth();
-    var m2 = to.getUTCMonth();
-    var d1 = Math.min(from.getUTCDate(), 30);
-    var d2 = to.getUTCDate();
+    const y1 = from.getUTCFullYear();
+    const y2 = to.getUTCFullYear();
+    const m1 = from.getUTCMonth();
+    const m2 = to.getUTCMonth();
+    const d1 = Math.min(from.getUTCDate(), 30);
+    let d2 = to.getUTCDate();
     if (29 < d1 && 31 == d2) d2 = 30;
     return ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
   }
@@ -5919,12 +5916,12 @@
    * @private
    */
   function yf_30E360(from, to) {
-    var y1 = from.getUTCFullYear();
-    var y2 = to.getUTCFullYear();
-    var m1 = from.getUTCMonth();
-    var m2 = to.getUTCMonth();
-    var d1 = Math.min(from.getUTCDate(), 30);
-    var d2 = Math.min(to.getUTCDate(), 30);
+    const y1 = from.getUTCFullYear();
+    const y2 = to.getUTCFullYear();
+    const m1 = from.getUTCMonth();
+    const m2 = to.getUTCMonth();
+    const d1 = Math.min(from.getUTCDate(), 30);
+    const d2 = Math.min(to.getUTCDate(), 30);
     return ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
   }
 
@@ -5937,12 +5934,12 @@
    * @private
    */
   function yf_30G360(from, to) {
-    var y1 = from.getUTCFullYear();
-    var y2 = to.getUTCFullYear();
-    var m1 = from.getUTCMonth();
-    var m2 = to.getUTCMonth();
-    var d1 = Math.min(from.getUTCDate(), 30);
-    var d2 = Math.min(to.getUTCDate(), 30);
+    const y1 = from.getUTCFullYear();
+    const y2 = to.getUTCFullYear();
+    const m1 = from.getUTCMonth();
+    const m2 = to.getUTCMonth();
+    let d1 = Math.min(from.getUTCDate(), 30);
+    let d2 = Math.min(to.getUTCDate(), 30);
     if (1 == m1 && d1 == days_in_month(y1, m1)) d1 = 30;
     if (1 == m2 && d2 == days_in_month(y2, m2)) d2 = 30;
     return ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
@@ -5959,11 +5956,11 @@
   function yf_actact(from, to) {
     if (from - to === 0) return 0;
     if (from > to) return -yf_actact(to, from);
-    var yfrom = from.getUTCFullYear();
-    var yto = to.getUTCFullYear();
+    const yfrom = from.getUTCFullYear();
+    const yto = to.getUTCFullYear();
     if (yfrom === yto)
       return days_between(from, to) / (is_leap_year(yfrom) ? 366 : 365);
-    var res = yto - yfrom - 1;
+    let res = yto - yfrom - 1;
     res +=
       days_between(from, new Date(Date.UTC(yfrom + 1, 0, 1))) /
       (is_leap_year(yfrom) ? 366 : 365);
@@ -6063,7 +6060,7 @@
    * @public
    */
   library.add_months = function (from, nmonths, roll_day) {
-    var y = from.getUTCFullYear(),
+    let y = from.getUTCFullYear(),
       m = from.getUTCMonth() + nmonths,
       d;
     while (m >= 12) {
@@ -6091,12 +6088,12 @@
    * @public
    */
   library.add_period = function (from, str) {
-    var num = parseInt(str, 10);
+    const num = parseInt(str, 10);
     if (isNaN(num))
       throw new Error(
         "period_str_to_time(str) - Invalid time period string: " + str,
       );
-    var unit = str.charAt(str.length - 1);
+    const unit = str.charAt(str.length - 1);
     if (unit === "Y" || unit === "y") return library.add_months(from, 12 * num);
     if (unit === "M" || unit === "m") return library.add_months(from, num);
     if (unit === "W" || unit === "w") return library.add_days(from, 7 * num);
@@ -6119,16 +6116,16 @@
    * @private
    */
   function easter_sunday(y) {
-    var f = Math.floor,
+    const f = Math.floor,
       c = f(y / 100),
       n = y - 19 * f(y / 19),
       k = f((c - 17) / 25);
-    var i = c - f(c / 4) - f((c - k) / 3) + 19 * n + 15;
+    let i = c - f(c / 4) - f((c - k) / 3) + 19 * n + 15;
     i = i - 30 * f(i / 30);
     i = i - f(i / 28) * (1 - f(i / 28) * f(29 / (i + 1)) * f((21 - n) / 11));
-    var j = y + f(y / 4) + i + 2 - c + f(c / 4);
+    let j = y + f(y / 4) + i + 2 - c + f(c / 4);
     j = j - 7 * f(j / 7);
-    var l = i - j,
+    const l = i - j,
       m = 3 + f((l + 40) / 44),
       d = l + 28 - 31 * f(m / 4);
     return new Date(Date.UTC(y, m - 1, d));
@@ -6142,7 +6139,7 @@
    * @private
    */
   function is_holiday_default(dt) {
-    var wd = dt.getUTCDay();
+    const wd = dt.getUTCDay();
     if (0 === wd) return true;
     if (6 === wd) return true;
     return false;
@@ -6158,25 +6155,25 @@
   function is_holiday_target(dt) {
     if (is_holiday_default(dt)) return true;
 
-    var d = dt.getUTCDate();
-    var m = dt.getUTCMonth();
+    const d = dt.getUTCDate();
+    const m = dt.getUTCMonth();
     if (1 === d && 0 === m) return true; //new year
     if (25 === d && 11 === m) return true; //christmas
 
-    var y = dt.getUTCFullYear();
+    const y = dt.getUTCFullYear();
     if (1998 === y || 1999 === y || 2001 === y) {
       if (31 === d && 11 === m) return true; // December 31
     }
     if (y > 2000) {
       if ((1 === d && 4 === m) || (26 === d && 11 === m)) return true; //labour and goodwill
-      var es = easter_sunday(y);
+      const es = easter_sunday(y);
       if (dt.getTime() === library.add_days(es, -2).getTime()) return true; //Good Friday
       if (dt.getTime() === library.add_days(es, 1).getTime()) return true; //Easter Monday
     }
     return false;
   }
 
-  var calendars = {};
+  const calendars = {};
 
   /**
    * add additional holidays that are no default holidays, i.e., weekend days
@@ -6190,14 +6187,13 @@
     if (!(name instanceof String || typeof name === "string"))
       throw new Error("add_calendar: invalid input.");
     if (!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
-    var n = dates.length,
+    let n = dates.length,
       i,
       ht_size;
-    var holidays = [];
-    var dt;
+    const holidays = [];
     //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
     for (i = 0; i < n; i++) {
-      dt = library.date_or_null(dates[i]);
+      const dt = library.date_or_null(dates[i]);
       if (!dt) continue;
       if (is_holiday_default(dt)) continue;
       holidays.push(dt);
@@ -6217,13 +6213,14 @@
     }
 
     //populate hash table
-    var hash_table = new Array(ht_size);
+    const hash_table = new Array(ht_size);
     for (i = 0; i < ht_size; i++) {
       hash_table[i] = [];
     }
-    var ht_index;
+
     for (i = 0; i < n; i++) {
-      ht_index = Math.floor(holidays[i].getTime() * one_over_dl) % ht_size;
+      const ht_index =
+        Math.floor(holidays[i].getTime() * one_over_dl) % ht_size;
       hash_table[ht_index].push(holidays[i].getTime());
     }
 
@@ -6240,17 +6237,17 @@
    * @public
    */
   library.is_holiday_factory = function (str) {
-    var sl = str.toLowerCase();
+    const sl = str.toLowerCase();
     //builtin target calendar
     if (sl === "target") return is_holiday_target;
     //generic hash lookup function for stored calendars
     if (Array.isArray(calendars[sl])) {
-      var cal = calendars[sl];
+      const cal = calendars[sl];
       return function (dt) {
         if (is_holiday_default(dt)) return true;
-        var ms = dt.getTime();
-        var ht_index = Math.floor(ms * one_over_dl) % cal.length;
-        for (var i = 0; i < cal[ht_index].length; i++) {
+        const ms = dt.getTime();
+        const ht_index = Math.floor(ms * one_over_dl) % cal.length;
+        for (let i = 0; i < cal[ht_index].length; i++) {
           if (ms === cal[ht_index][i]) return true;
         }
         return false;
@@ -6278,11 +6275,11 @@
    */
   library.adjust = function (dt, bdc, is_holiday_function) {
     if (!(bdc instanceof String) && typeof bdc !== "string") return dt; // no business day convention specified
-    var s = (bdc || "u").charAt(0).toLowerCase();
-    var adj = new Date(dt);
+    const s = (bdc || "u").charAt(0).toLowerCase();
+    let adj = new Date(dt);
     if (s === "u") return adj; //unadjusted
 
-    var m;
+    let m;
     if (s === "m") m = adj.getUTCMonth(); //save month for modified following
     if (s === "m" || s === "f") {
       while (is_holiday_function(adj)) adj = library.add_days(adj, 1);
@@ -6304,7 +6301,7 @@
    * @public
    */
   library.add_business_days = function (from, n, is_holiday_function) {
-    var res = from,
+    let res = from,
       i = n;
     while (i > 0) {
       res = library.adjust(library.add_days(res, 1), "f", is_holiday_function);

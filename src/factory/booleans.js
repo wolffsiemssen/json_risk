@@ -30,7 +30,7 @@
   library.make_bool_vector = function (b) {
     if (typeof b === "boolean") return [b];
     if (typeof b === "number") return [b !== 0];
-    var res;
+    let res;
     if (typeof b === "string") {
       res = b.split(/\s+/);
     } else if (Array.isArray(b)) {
@@ -38,7 +38,7 @@
     } else {
       return [false];
     }
-    for (var i = 0; i < res.length; i++) {
+    for (let i = 0; i < res.length; i++) {
       res[i] = library.make_bool(res[i]);
     }
     return res;

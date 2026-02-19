@@ -9,7 +9,7 @@
     if (typeof n === "number") return n;
     if (typeof n === "string") {
       n = n.trim();
-      var res = parseFloat(n);
+      let res = parseFloat(n);
       if (isNaN(res)) return null;
       if (n.charAt(n.length - 1) === "%") res *= 0.01;
       return res;
@@ -23,7 +23,7 @@
    * @memberof JsonRisk
    */
   library.positive_number_or_null = function (n) {
-    var res = library.number_or_null(n);
+    const res = library.number_or_null(n);
     if (res <= 0) return null;
     return res;
   };
@@ -34,7 +34,7 @@
    * @memberof JsonRisk
    */
   library.natural_number_or_null = function (n) {
-    var res = library.number_or_null(n);
+    const res = library.number_or_null(n);
     if (res < 0 || res !== Math.floor(res)) return null;
     return res;
   };
@@ -46,7 +46,7 @@
    */
   library.number_vector_or_null = function (n) {
     if (typeof n === "number") return [n];
-    var res;
+    let res;
     if (typeof n === "string") {
       res = n.split(/\s+/);
     } else if (Array.isArray(n)) {
@@ -54,7 +54,7 @@
     } else {
       return null;
     }
-    for (var i = 0; i < res.length; i++) {
+    for (let i = 0; i < res.length; i++) {
       res[i] = library.number_or_null(res[i]);
       if (null === res[i])
         throw new Error("number_vector_or_null: invalid input");

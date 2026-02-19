@@ -1,23 +1,23 @@
 (function (library) {
   "use strict";
 
-  var RT2PI = Math.sqrt(4.0 * Math.acos(0.0));
-  var SPLIT = 7.07106781186547;
-  var N0 = 220.206867912376;
-  var N1 = 221.213596169931;
-  var N2 = 112.079291497871;
-  var N3 = 33.912866078383;
-  var N4 = 6.37396220353165;
-  var N5 = 0.700383064443688;
-  var N6 = 3.52624965998911e-2;
-  var M0 = 440.413735824752;
-  var M1 = 793.826512519948;
-  var M2 = 637.333633378831;
-  var M3 = 296.564248779674;
-  var M4 = 86.7807322029461;
-  var M5 = 16.064177579207;
-  var M6 = 1.75566716318264;
-  var M7 = 8.83883476483184e-2;
+  const RT2PI = Math.sqrt(4.0 * Math.acos(0.0));
+  const SPLIT = 7.07106781186547;
+  const N0 = 220.206867912376;
+  const N1 = 221.213596169931;
+  const N2 = 112.079291497871;
+  const N3 = 33.912866078383;
+  const N4 = 6.37396220353165;
+  const N5 = 0.700383064443688;
+  const N6 = 3.52624965998911e-2;
+  const M0 = 440.413735824752;
+  const M1 = 793.826512519948;
+  const M2 = 637.333633378831;
+  const M3 = 296.564248779674;
+  const M4 = 86.7807322029461;
+  const M5 = 16.064177579207;
+  const M6 = 1.75566716318264;
+  const M7 = 8.83883476483184e-2;
 
   /**
    * ...
@@ -38,21 +38,22 @@
    * @public
    */
   library.cndf = function (x) {
-    var z = Math.abs(x);
-    var c;
+    const z = Math.abs(x);
+    let c;
 
     if (z <= 37.0) {
-      var e = Math.exp((-z * z) / 2.0);
+      const e = Math.exp((-z * z) / 2.0);
       if (z < SPLIT) {
-        var n =
+        const n =
           (((((N6 * z + N5) * z + N4) * z + N3) * z + N2) * z + N1) * z + N0;
-        var d =
+        const d =
           ((((((M7 * z + M6) * z + M5) * z + M4) * z + M3) * z + M2) * z + M1) *
             z +
           M0;
         c = (e * n) / d;
       } else {
-        var f = z + 1.0 / (z + 2.0 / (z + 3.0 / (z + 4.0 / (z + 13.0 / 20.0))));
+        const f =
+          z + 1.0 / (z + 2.0 / (z + 3.0 / (z + 4.0 / (z + 13.0 / 20.0))));
         c = e / (RT2PI * f);
       }
     } else if (z > 37.0) {
@@ -63,12 +64,12 @@
     return x <= 0.0 ? c : 1 - c;
   };
 
-  var D1 = 0.049867347;
-  var D2 = 0.0211410061;
-  var D3 = 0.0032776263;
-  var D4 = 0.0000380036;
-  var D5 = 0.0000488906;
-  var D6 = 0.000005383;
+  const D1 = 0.049867347;
+  const D2 = 0.0211410061;
+  const D3 = 0.0032776263;
+  const D4 = 0.0000380036;
+  const D5 = 0.0000488906;
+  const D6 = 0.000005383;
 
   /**
    * fast cumulative normal distribution function according to Abramowitz and Stegun
@@ -78,8 +79,8 @@
    * @public
    */
   library.fast_cndf = function (x) {
-    var z = x > 0 ? x : -x;
-    var f = 1 + z * (D1 + z * (D2 + z * (D3 + z * (D4 + z * (D5 + z * D6)))));
+    const z = x > 0 ? x : -x;
+    let f = 1 + z * (D1 + z * (D2 + z * (D3 + z * (D4 + z * (D5 + z * D6)))));
     f *= f;
     f *= f;
     f *= f;
@@ -100,13 +101,14 @@
    * @public
    */
   library.find_root_secant = function (func, start, next, max_iter, threshold) {
-    var x = start,
+    let x = start,
       xnext = next,
       temp = 0,
       iter = max_iter || 20,
-      t = threshold || 0.00000001;
-    var f = func(x),
+      f = func(x),
       fnext = func(xnext);
+    const t = threshold || 0.00000001;
+
     if (Math.abs(fnext) > Math.abs(f)) {
       //swap start values if start is better than next
       temp = x;
@@ -162,17 +164,17 @@
     max_iter,
     threshold,
   ) {
-    var x = start,
+    let x = start,
       y = next,
       z = 0,
       w = 0,
       r = 0,
       iter = max_iter || 20,
-      t = threshold || 0.00000001;
-    var fx = func(x),
+      fx = func(x),
       fy = func(y),
       fz,
       fw;
+    const t = threshold || 0.00000001;
     if (fx * fy > 0)
       throw new Error(
         "find_root_ridders: start values do not bracket the root",

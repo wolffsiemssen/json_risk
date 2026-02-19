@@ -17,8 +17,8 @@
     root.JsonRisk = factory();
   }
 })(this, function () {
-  var valuation_date = null;
-  var JsonRisk = {
+  let valuation_date = null;
+  const JsonRisk = {
     /**
      * @type {Date}
      * @description Gets the library's current valution date if set.

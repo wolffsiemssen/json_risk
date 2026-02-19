@@ -16,7 +16,7 @@
       this.results.present_value[i] = this.instrument.value(this.params);
     };
 
-    var module = {
+    const module = {
       simulation_once: simulation_once,
       simulation_scenario: simulation_scenario,
     };
@@ -39,7 +39,7 @@
     library.set_valuation_date(params_json.valuation_date);
 
     // create context for module execution
-    var context = {
+    const context = {
       instrument_json: instrument_json,
       instrument: library.make_instrument(instrument_json),
       params_json: params_json,

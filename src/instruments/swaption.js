@@ -74,11 +74,11 @@
 
     value_with_curves(disc_curve, fwd_curve, surface) {
       //obtain times
-      var t_maturity = library.time_from_now(this.#maturity);
-      var t_first_exercise_date = library.time_from_now(
+      const t_maturity = library.time_from_now(this.#maturity);
+      const t_first_exercise_date = library.time_from_now(
         this.#first_exercise_date,
       );
-      var t_term = t_maturity - t_first_exercise_date;
+      const t_term = t_maturity - t_first_exercise_date;
       if (t_term < 1 / 512) {
         return 0;
       }
@@ -134,9 +134,9 @@
       throw new Error("create_equivalent_regular_swaption: invalid leg");
 
     if (!conventions) conventions = {};
-    var tenor = conventions.tenor || 6;
-    var bdc = conventions.bdc || "unadjusted";
-    var calendar = conventions.calendar || "";
+    const tenor = conventions.tenor || 6;
+    const bdc = conventions.bdc || "unadjusted";
+    const calendar = conventions.calendar || "";
 
     // rebuild leg with just a discount curve
     const leg = new library.Leg({
@@ -191,7 +191,7 @@
       .get_df(library.time_from_now(exercise_date));
 
     //brief function to compute forward effective duration on a leg
-    var ed = function (leg) {
+    const ed = function (leg) {
       const npv_up = leg.value(params_up, exercise_date) / df_ex_up;
       const npv_down = leg.value(params_down, exercise_date) / df_ex_down;
       const res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
@@ -224,7 +224,7 @@
       disc_curve: "discount",
     };
     effective_duration = ed(new library.Bond(bond).legs[0]);
-    var iter = 10;
+    let iter = 10;
 
     //alter maturity until we obtain effective duration target value
     while (

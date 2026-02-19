@@ -12,8 +12,8 @@
 
   "use strict";
 
-  var dl = 1000 * 60 * 60 * 24; // length of one day in milliseconds
-  var one_over_dl = 1.0 / dl;
+  const dl = 1000 * 60 * 60 * 24; // length of one day in milliseconds
+  const one_over_dl = 1.0 / dl;
 
   /**
    * checks if a year is a leap year
@@ -100,12 +100,12 @@
    * @private
    */
   function yf_30U360(from, to) {
-    var y1 = from.getUTCFullYear();
-    var y2 = to.getUTCFullYear();
-    var m1 = from.getUTCMonth();
-    var m2 = to.getUTCMonth();
-    var d1 = Math.min(from.getUTCDate(), 30);
-    var d2 = to.getUTCDate();
+    const y1 = from.getUTCFullYear();
+    const y2 = to.getUTCFullYear();
+    const m1 = from.getUTCMonth();
+    const m2 = to.getUTCMonth();
+    const d1 = Math.min(from.getUTCDate(), 30);
+    let d2 = to.getUTCDate();
     if (29 < d1 && 31 == d2) d2 = 30;
     return ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
   }
@@ -119,12 +119,12 @@
    * @private
    */
   function yf_30E360(from, to) {
-    var y1 = from.getUTCFullYear();
-    var y2 = to.getUTCFullYear();
-    var m1 = from.getUTCMonth();
-    var m2 = to.getUTCMonth();
-    var d1 = Math.min(from.getUTCDate(), 30);
-    var d2 = Math.min(to.getUTCDate(), 30);
+    const y1 = from.getUTCFullYear();
+    const y2 = to.getUTCFullYear();
+    const m1 = from.getUTCMonth();
+    const m2 = to.getUTCMonth();
+    const d1 = Math.min(from.getUTCDate(), 30);
+    const d2 = Math.min(to.getUTCDate(), 30);
     return ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
   }
 
@@ -137,12 +137,12 @@
    * @private
    */
   function yf_30G360(from, to) {
-    var y1 = from.getUTCFullYear();
-    var y2 = to.getUTCFullYear();
-    var m1 = from.getUTCMonth();
-    var m2 = to.getUTCMonth();
-    var d1 = Math.min(from.getUTCDate(), 30);
-    var d2 = Math.min(to.getUTCDate(), 30);
+    const y1 = from.getUTCFullYear();
+    const y2 = to.getUTCFullYear();
+    const m1 = from.getUTCMonth();
+    const m2 = to.getUTCMonth();
+    let d1 = Math.min(from.getUTCDate(), 30);
+    let d2 = Math.min(to.getUTCDate(), 30);
     if (1 == m1 && d1 == days_in_month(y1, m1)) d1 = 30;
     if (1 == m2 && d2 == days_in_month(y2, m2)) d2 = 30;
     return ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
@@ -159,11 +159,11 @@
   function yf_actact(from, to) {
     if (from - to === 0) return 0;
     if (from > to) return -yf_actact(to, from);
-    var yfrom = from.getUTCFullYear();
-    var yto = to.getUTCFullYear();
+    const yfrom = from.getUTCFullYear();
+    const yto = to.getUTCFullYear();
     if (yfrom === yto)
       return days_between(from, to) / (is_leap_year(yfrom) ? 366 : 365);
-    var res = yto - yfrom - 1;
+    let res = yto - yfrom - 1;
     res +=
       days_between(from, new Date(Date.UTC(yfrom + 1, 0, 1))) /
       (is_leap_year(yfrom) ? 366 : 365);
@@ -263,7 +263,7 @@
    * @public
    */
   library.add_months = function (from, nmonths, roll_day) {
-    var y = from.getUTCFullYear(),
+    let y = from.getUTCFullYear(),
       m = from.getUTCMonth() + nmonths,
       d;
     while (m >= 12) {
@@ -291,12 +291,12 @@
    * @public
    */
   library.add_period = function (from, str) {
-    var num = parseInt(str, 10);
+    const num = parseInt(str, 10);
     if (isNaN(num))
       throw new Error(
         "period_str_to_time(str) - Invalid time period string: " + str,
       );
-    var unit = str.charAt(str.length - 1);
+    const unit = str.charAt(str.length - 1);
     if (unit === "Y" || unit === "y") return library.add_months(from, 12 * num);
     if (unit === "M" || unit === "m") return library.add_months(from, num);
     if (unit === "W" || unit === "w") return library.add_days(from, 7 * num);
@@ -319,16 +319,16 @@
    * @private
    */
   function easter_sunday(y) {
-    var f = Math.floor,
+    const f = Math.floor,
       c = f(y / 100),
       n = y - 19 * f(y / 19),
       k = f((c - 17) / 25);
-    var i = c - f(c / 4) - f((c - k) / 3) + 19 * n + 15;
+    let i = c - f(c / 4) - f((c - k) / 3) + 19 * n + 15;
     i = i - 30 * f(i / 30);
     i = i - f(i / 28) * (1 - f(i / 28) * f(29 / (i + 1)) * f((21 - n) / 11));
-    var j = y + f(y / 4) + i + 2 - c + f(c / 4);
+    let j = y + f(y / 4) + i + 2 - c + f(c / 4);
     j = j - 7 * f(j / 7);
-    var l = i - j,
+    const l = i - j,
       m = 3 + f((l + 40) / 44),
       d = l + 28 - 31 * f(m / 4);
     return new Date(Date.UTC(y, m - 1, d));
@@ -342,7 +342,7 @@
    * @private
    */
   function is_holiday_default(dt) {
-    var wd = dt.getUTCDay();
+    const wd = dt.getUTCDay();
     if (0 === wd) return true;
     if (6 === wd) return true;
     return false;
@@ -358,25 +358,25 @@
   function is_holiday_target(dt) {
     if (is_holiday_default(dt)) return true;
 
-    var d = dt.getUTCDate();
-    var m = dt.getUTCMonth();
+    const d = dt.getUTCDate();
+    const m = dt.getUTCMonth();
     if (1 === d && 0 === m) return true; //new year
     if (25 === d && 11 === m) return true; //christmas
 
-    var y = dt.getUTCFullYear();
+    const y = dt.getUTCFullYear();
     if (1998 === y || 1999 === y || 2001 === y) {
       if (31 === d && 11 === m) return true; // December 31
     }
     if (y > 2000) {
       if ((1 === d && 4 === m) || (26 === d && 11 === m)) return true; //labour and goodwill
-      var es = easter_sunday(y);
+      const es = easter_sunday(y);
       if (dt.getTime() === library.add_days(es, -2).getTime()) return true; //Good Friday
       if (dt.getTime() === library.add_days(es, 1).getTime()) return true; //Easter Monday
     }
     return false;
   }
 
-  var calendars = {};
+  const calendars = {};
 
   /**
    * add additional holidays that are no default holidays, i.e., weekend days
@@ -390,14 +390,13 @@
     if (!(name instanceof String || typeof name === "string"))
       throw new Error("add_calendar: invalid input.");
     if (!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
-    var n = dates.length,
+    let n = dates.length,
       i,
       ht_size;
-    var holidays = [];
-    var dt;
+    const holidays = [];
     //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
     for (i = 0; i < n; i++) {
-      dt = library.date_or_null(dates[i]);
+      const dt = library.date_or_null(dates[i]);
       if (!dt) continue;
       if (is_holiday_default(dt)) continue;
       holidays.push(dt);
@@ -417,13 +416,14 @@
     }
 
     //populate hash table
-    var hash_table = new Array(ht_size);
+    const hash_table = new Array(ht_size);
     for (i = 0; i < ht_size; i++) {
       hash_table[i] = [];
     }
-    var ht_index;
+
     for (i = 0; i < n; i++) {
-      ht_index = Math.floor(holidays[i].getTime() * one_over_dl) % ht_size;
+      const ht_index =
+        Math.floor(holidays[i].getTime() * one_over_dl) % ht_size;
       hash_table[ht_index].push(holidays[i].getTime());
     }
 
@@ -440,17 +440,17 @@
    * @public
    */
   library.is_holiday_factory = function (str) {
-    var sl = str.toLowerCase();
+    const sl = str.toLowerCase();
     //builtin target calendar
     if (sl === "target") return is_holiday_target;
     //generic hash lookup function for stored calendars
     if (Array.isArray(calendars[sl])) {
-      var cal = calendars[sl];
+      const cal = calendars[sl];
       return function (dt) {
         if (is_holiday_default(dt)) return true;
-        var ms = dt.getTime();
-        var ht_index = Math.floor(ms * one_over_dl) % cal.length;
-        for (var i = 0; i < cal[ht_index].length; i++) {
+        const ms = dt.getTime();
+        const ht_index = Math.floor(ms * one_over_dl) % cal.length;
+        for (let i = 0; i < cal[ht_index].length; i++) {
           if (ms === cal[ht_index][i]) return true;
         }
         return false;
@@ -478,11 +478,11 @@
    */
   library.adjust = function (dt, bdc, is_holiday_function) {
     if (!(bdc instanceof String) && typeof bdc !== "string") return dt; // no business day convention specified
-    var s = (bdc || "u").charAt(0).toLowerCase();
-    var adj = new Date(dt);
+    const s = (bdc || "u").charAt(0).toLowerCase();
+    let adj = new Date(dt);
     if (s === "u") return adj; //unadjusted
 
-    var m;
+    let m;
     if (s === "m") m = adj.getUTCMonth(); //save month for modified following
     if (s === "m" || s === "f") {
       while (is_holiday_function(adj)) adj = library.add_days(adj, 1);
@@ -504,7 +504,7 @@
    * @public
    */
   library.add_business_days = function (from, n, is_holiday_function) {
-    var res = from,
+    let res = from,
       i = n;
     while (i > 0) {
       res = library.adjust(library.add_days(res, 1), "f", is_holiday_function);
