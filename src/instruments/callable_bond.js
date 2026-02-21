@@ -1,4 +1,9 @@
 (function (library) {
+  /**
+   * Class representing a bond with single or multiple call rights
+   * @memberof JsonRisk
+   * @extends Bond
+   */
   class CallableBond extends library.Bond {
     #call_schedule = null;
     #mean_reversion = 0.0;
@@ -8,6 +13,20 @@
     #basket = null;
     #surface = "";
     #fwd_curve = "";
+
+    /**
+     * Create a callable bond instrument. If legs are not provided, legs are generated from terms and conditions. Legs must be one and only one leg with fixed and notional payments.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     * @param {date} obj.first_exercise_date the first date bond can be called
+     * @param {number} [obj.call_tenor=0] the distance of call dates in months. A call schedule is generated forward from the first exercise date until maturity.
+     * @param {number} [obj.mean_reversion=0] the hull-white mean reversion for valuation of the call rights
+     * @param {number} [obj.hull_white_volatility=null] the hull-white volatility for valuation of the call rights, if not provided, volatilities are calibrated against the supplied swaption volatility surface.
+     */
+
     constructor(obj) {
       // bond makes sure only fixed rate is supported
       super(obj);

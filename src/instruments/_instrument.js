@@ -1,9 +1,19 @@
 (function (library) {
+  /**
+   * Super-Class representing a position in a financial instrument
+   * @memberof JsonRisk
+   */
   class Instrument {
     static type = "Instrument";
     #currency = "";
     #quantity = 1.0;
 
+    /**
+     * Create an instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     */
     constructor(obj) {
       this.#currency = library.string_or_empty(obj.currency);
 

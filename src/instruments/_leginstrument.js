@@ -1,8 +1,21 @@
 (function (library) {
+  /**
+   * Class representing a financial instrument with legs, basis class for most rate and credit instruments
+   * @memberof JsonRisk
+   * @extends Instrument
+   */
   class LegInstrument extends library.Instrument {
     #legs = [];
     #acquire_date = new Date(Date.UTC(0, 0, 1));
 
+    /**
+     * Create a leg instrument.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
     constructor(obj) {
       super(obj);
 

@@ -412,11 +412,21 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Super-Class representing a position in a financial instrument
+   * @memberof JsonRisk
+   */
   class Instrument {
     static type = "Instrument";
     #currency = "";
     #quantity = 1.0;
 
+    /**
+     * Create an instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     */
     constructor(obj) {
       this.#currency = library.string_or_empty(obj.currency);
 
@@ -472,10 +482,23 @@
   library.Instrument = Instrument;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a financial instrument with legs, basis class for most rate and credit instruments
+   * @memberof JsonRisk
+   * @extends Instrument
+   */
   class LegInstrument extends library.Instrument {
     #legs = [];
     #acquire_date = new Date(Date.UTC(0, 0, 1));
 
+    /**
+     * Create a leg instrument.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
     constructor(obj) {
       super(obj);
 
@@ -521,7 +544,20 @@
   library.LegInstrument = LegInstrument;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a fixed rate bond
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
   class Bond extends library.LegInstrument {
+    /**
+     * Create a bond instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one lag with fixed and notional payments.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // fixed rate must be set either as a number or as a vector
@@ -578,6 +614,11 @@
   library.Bond = Bond;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a bond with single or multiple call rights
+   * @memberof JsonRisk
+   * @extends Bond
+   */
   class CallableBond extends library.Bond {
     #call_schedule = null;
     #mean_reversion = 0.0;
@@ -587,6 +628,20 @@
     #basket = null;
     #surface = "";
     #fwd_curve = "";
+
+    /**
+     * Create a callable bond instrument. If legs are not provided, legs are generated from terms and conditions. Legs must be one and only one leg with fixed and notional payments.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     * @param {date} obj.first_exercise_date the first date bond can be called
+     * @param {number} [obj.call_tenor=0] the distance of call dates in months. A call schedule is generated forward from the first exercise date until maturity.
+     * @param {number} [obj.mean_reversion=0] the hull-white mean reversion for valuation of the call rights
+     * @param {number} [obj.hull_white_volatility=null] the hull-white volatility for valuation of the call rights, if not provided, volatilities are calibrated against the supplied swaption volatility surface.
+     */
+
     constructor(obj) {
       // bond makes sure only fixed rate is supported
       super(obj);
@@ -767,11 +822,27 @@
   library.CallableBond = CallableBond;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a credit default swap
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
   class CreditDefaultSwap extends library.LegInstrument {
     #survival_curve = "";
     #accrual_on_default = false;
     #recovery_rate = 0.0;
 
+    /**
+     * Create a leg instrument.
+     * @param {obj} obj A plain object representing the cds.
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument. Must contain one single leg with only rate payments. If no legs are provided, a premium leg is generated from terms and conditions.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     * @param {string} [obj.survival_curve=""] the name of a curve object with discount factors representing survival probabilities
+     * @param {boolean} [obj.accrual_on_default=false] flag indicating if accrued interest is paid on default
+     * @param {number} [obj.recovery_rate=0.0] recovery rate, must be between 0 and 1
+     */
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate leg from terms and conditions
@@ -875,12 +946,28 @@
   library.CreditDefaultSwap = CreditDefaultSwap;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a stock, also serving as super class for equity derivatives
+   * @memberof JsonRisk
+   * @extends Instrument
+   */
   class Equity extends library.Instrument {
     #quote = "";
     #disc_curve = "";
     #spot_days = 0;
     #calendar = null;
     #is_holiday_func = null;
+
+    /**
+     * Create an equity instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {string} [obj.quote=""] reference to a quote object
+     * @param {string} [obj.disc_curve=""] reference to a curve object
+     * @param {string} [obj.calendar=""] calendar name
+     * @param {number} [obj.spot_days=0] spot days for the quote
+     */
     constructor(obj) {
       super(obj);
       this.#quote = library.string_or_empty(obj.quote);
@@ -938,13 +1025,34 @@
   library.Equity = Equity;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a forward contract on a stock or on an equity index
+   * @memberof JsonRisk
+   * @extends Equity
+   */
   class EquityForward extends library.Equity {
     #expiry = null;
     #repo_curve = "";
     #price = 0.0;
+
+    /**
+     * Create an equity forward instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {string} [obj.quote=""] reference to a quote object
+     * @param {string} [obj.disc_curve=""] reference to a curve object
+     * @param {string} [obj.repo_curve=""] reference to a curve object
+     * @param {string} [obj.calendar=""] calendar name
+     * @param {number} [obj.spot_days=0] spot days for the quote
+     * @param {date} obj.expiry expiry date of the forward
+     * @param {number} [obj.price=0.0] price payable at expiry
+     */
     constructor(obj) {
       super(obj);
       this.#expiry = library.date_or_null(obj.expiry);
+      if (null === this.#expiry)
+        throw new Error("EquityForward: must provide a valid expiry date");
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
       this.#price = library.number_or_null(obj.price) || 0.0;
     }
@@ -974,13 +1082,35 @@
   library.EquityForward = EquityForward;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a futures contract on a stock or on an equity index
+   * @memberof JsonRisk
+   * @extends Equity
+   */
   class EquityFuture extends library.Equity {
     #expiry = null;
     #repo_curve = "";
     #price = 0.0;
+
+    /**
+     * Create an equity future instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {string} [obj.quote=""] reference to a quote object
+     * @param {string} [obj.disc_curve=""] reference to a curve object
+     * @param {string} [obj.repo_curve=""] reference to a curve object
+     * @param {string} [obj.calendar=""] calendar name
+     * @param {number} [obj.spot_days=0] spot days for the quote
+     * @param {date} obj.expiry expiry date of the forward
+     * @param {number} [obj.price=0.0] price payable at expiry
+     */
+
     constructor(obj) {
       super(obj);
       this.#expiry = library.date_or_null(obj.expiry);
+      if (null === this.#expiry)
+        throw new Error("EquityFuture: must provide a valid expiry date");
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
       this.#price = library.number_or_null(obj.price) || 0.0;
     }
@@ -1008,12 +1138,33 @@
   library.EquityFuture = EquityFuture;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing an option on a stock or on an equity index
+   * @memberof JsonRisk
+   * @extends Equity
+   */
   class EquityOption extends library.Equity {
     #expiry = null;
     #repo_curve = "";
     #surface = "";
     #strike = 0.0;
     #is_call = true;
+
+    /**
+     * Create an equity option instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {string} [obj.quote=""] reference to a quote object
+     * @param {string} [obj.disc_curve=""] reference to a curve object
+     * @param {string} [obj.repo_curve=""] reference to a curve object
+     * @param {string} [obj.surface=""] reference to a surface object
+     * @param {string} [obj.calendar=""] calendar name
+     * @param {number} [obj.spot_days=0] spot days for the quote
+     * @param {date} obj.expiry expiry date of the forward
+     * @param {number} [obj.strike=0.0] strke price payable at expiry
+     * @param {boolean} [obj.is_call=false] flag indicating if this is a call option
+     */
     constructor(obj) {
       super(obj);
       this.#expiry = library.date_or_null(obj.expiry);
@@ -1055,7 +1206,20 @@
   library.EquityOption = EquityOption;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a floating rate bond
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
   class Floater extends library.LegInstrument {
+    /**
+     * Create a floater instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one leg with floating and notional payments.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // create shallow copy and leave original object unchanged
@@ -1114,7 +1278,20 @@
   library.Floater = Floater;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a FX Swap, FX Spot or FX Forward instrument
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
   class FxTerm extends library.LegInstrument {
+    /**
+     * Create a fx term instrument.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument. Must be one or two legs. If two legs are specified, they must have two different currencies. If no legs are specified, one single leg is generated from terms and conditions.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate leg from terms and conditions, only one single currency leg with near and optonally far payment supported
@@ -1166,10 +1343,25 @@
   library.FxTerm = FxTerm;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a fix-float swap
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
   class Swap extends library.LegInstrument {
     #fixed_leg = null;
     #float_leg = null;
     #is_payer = null;
+
+    /**
+     * Create a swap instrument. If legs are not provided, legs are generated from terms and conditions. Legs must be one purely fix and one purely float leg.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
+
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate legs from terms and conditions
@@ -1286,12 +1478,30 @@
   library.Swap = Swap;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a plain vanilla swaption
+   * @memberof JsonRisk
+   * @extends Swap
+   */
   class Swaption extends library.Swap {
     #first_exercise_date = null;
     #maturity = null;
     #surface = "";
     #std_dev = 0.0;
     #vol = 0.0;
+
+    /**
+     * Create a swaption instrument. If legs are not provided, legs are generated from terms and conditions. Legs must be one purely fix and one purely float leg.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+  * @param {date} obj.first_exercise_date the exercise date for the swaption
+       * @param {date} obj.maturity the maturity date of the underlying swap
+     * @param {string} [obj.surface=""] the reference to a surface object
+     
+     */
     constructor(obj) {
       //first_exercise_date (a.k.a. expiry) of the swaption
       let first_exercise_date = library.date_or_null(obj.first_exercise_date);
@@ -3495,7 +3705,7 @@
 
     /**
      * Create an LGM model
-     * @param {number} m A hull-white mean reversion
+     * @param {number} [m=0] A hull-white mean reversion
      */
     constructor(m = 0) {
       if (typeof m !== "number")
@@ -3541,7 +3751,7 @@
 
     /**
      * Get a vector of Hull-White volatilities from the parametrised model
-     * @type {Array} vector of volatilities for the Hull-White model
+     * @type {Array}
      */
     get hull_white_volatility() {
       const sigma = new Array(this.#t_ex.length);
@@ -3561,7 +3771,7 @@
 
     /**
      * Get a vector of exercise times from the parametrised model
-     * @type {Array} vector of times
+     * @type {Array}
      */
     get t_ex() {
       return Array.from(this.#t_ex);
@@ -3569,7 +3779,7 @@
 
     /**
      * Get a vector of LGM volatilities (xis) from the parametrised model
-     * @type {Array} vector of volatilities for the LGM model
+     * @type {Array}
      */
     get xi() {
       return Array.from(this.#xi);
@@ -3577,24 +3787,11 @@
 
     /**
      * Get the mean reversoin
-     * @type {number} mean reversion for the LGM model
+     * @type {number}
      */
     get mean_reversion() {
       return this.#mean_reversion;
     }
-
-    /**
-     * Calculates the discounted cash flow present value for a given vector of states (reduced value according to formula 4.14b)
-     * @param {object} cf_obj
-     * @param {} t_exercise
-     * @param {object} discount_factors
-     * @param {} xi volatility parameters
-     * @param {} state state vector
-     * @param {} opportunity_spread opportunity spread
-     * @returns {number} present value
-     * @memberof JsonRisk
-     * @public
-     */
 
     #dcf(cf_obj, t_exercise, discount_factors, xi, state, opportunity_spread) {
       /*
@@ -3668,11 +3865,10 @@
 
     /**
      * Calibrate and parametrise LGM against the supplied basket of swaptions
-     * @param {object} basket basket
+     * @param {object} basket basket of swaptions
      * @param {object} disc_curve discount curve
      * @param {object} fwd_curve forward curve
      * @param {object} surface surface
-     * @memberof JsonRisk
      */
     calibrate(basket, disc_curve, fwd_curve, surface) {
       this.#xi = new Float64Array(basket.length);
@@ -3780,16 +3976,19 @@
 
     /**
      * Calculates the european call option price on a cash flow (closed formula 5.7b).
-     * @param {object} cf_obj
-     * @param {} t_exercise
-     * @param {object} disc_curve
-     * @param {} xi
-     * @param {object} spread_curve spread curve
-     * @param {} residual_spread residual spread
-     * @param {} opportunity_spread opportunity spread
-     * @param {object} discount_factors_precalc
-     * @returns {number} the option value
-     * @memberof JsonRisk
+     * @param {object} cf_obj cash flow object
+     * @param {array} cf_obj.t_pmt vector of payment times
+     * @param {array} cf_obj.pmt_total vector of payment amounts
+     * @param {array} cf_obj.pmt_interest vector of interest payment amounts included in the payment amount
+     * @param {array} cf_obj.current_principal vector of current principals
+     * @param {number} t_exercise the time to exercise
+     * @param {object} disc_curve a curve object
+     * @param {number} xi the LGM volatility parameter
+     * @param {object} spread_curve a curve object
+     * @param {number} residual_spread residual spread
+     * @param {number} opportunity_spread opportunity spread
+     * @param {object} [discount_factors_precalc=null] for internal optimization
+     * @returns {number}
      */
     european_call(
       cf_obj,
@@ -3799,22 +3998,8 @@
       spread_curve,
       residual_spread,
       opportunity_spread,
-      discount_factors_precalc,
+      discount_factors_precalc = null,
     ) {
-      /*
-
-        Calculates the european call option price on a cash flow (closed formula 5.7b).
-
-        requires cf_obj of type
-        {
-            current_principal: array(double),
-            t_pmt: array(double),
-            pmt_total: array(double)
-            pmt_interest: array(double)
-        }
-
-        */
-
       const discount_factors =
         discount_factors_precalc ||
         get_discount_factors(
@@ -3949,17 +4134,19 @@
     }
 
     /**
-     * Calculates the bermudan call option price on a cash flow (numeric integration according to martingale formula 4.14a).
-     * @param {object} cf_obj
-     * @param {} exercise_vec
-     * @param {object} disc_curve discount curve
-     * @param {} xi_vec
-     * @param {object} spread_curve spread curve
-     * @param {} residual_spread
-     * @param {} opportunity_spread
-     * @returns {object} cash flow
-     * @memberof JsonRisk
-     * @public
+     * Calculates the european call option price on a cash flow (closed formula 5.7b).
+     * @param {object} cf_obj cash flow object
+     * @param {array} cf_obj.t_pmt vector of payment times
+     * @param {array} cf_obj.pmt_total vector of payment amounts
+     * @param {array} cf_obj.pmt_interest vector of interest payment amounts included in the payment amount
+     * @param {array} cf_obj.current_principal vector of current principals
+     * @param {number} t_exercise_vec the vectoor of times to exercise
+     * @param {object} disc_curve a curve object
+     * @param {number} xi_vec the vector of LGM volatility parametera
+     * @param {object} spread_curve a curve object
+     * @param {number} residual_spread residual spread
+     * @param {number} opportunity_spread opportunity spread
+     * @returns {number}
      */
     bermudan_call(
       cf_obj,
@@ -4141,7 +4328,6 @@
    * @param {object} spread_curve spread curve
    * @param {} residual_spread residual spread
    * @returns {object} discount factors
-   * @memberof JsonRisk
    * @private
    */
   const get_discount_factors = function (
@@ -4186,13 +4372,12 @@
   };
 
   /**
-   * calculated a strike adjustment reflecting the opportunity spread
+   * calculates a strike adjustment reflecting the opportunity spread
    * @param {object} cf_obj
    * @param {} t_exercise
    * @param {object} discount_factors
    * @param {} opportunity_spread
-   * @returns {object} ...
-   * @memberof JsonRisk
+   * @returns {number}
    * @private
    */
   const strike_adjustment = function (
@@ -4225,14 +4410,12 @@
   };
 
   /**
-   * Calculates correction for multi curve valuation - move basis spread to fixed leg
-   * @param {object} swaption Instrument
+   * Calculates correction for multi curve valuation - moves basis spread to fixed leg
+   * @param {object} swaption swaption instrument
    * @param {object} disc_curve discount curve
    * @param {object} fwd_curve forward curve
-   * @param {} fair_rate fair rate
    * @returns {object} cash flow
-   * @memberof JsonRisk
-   * @public
+   * @rivate
    */
   const european_swaption_adjusted_cashflow = function (
     swaption,

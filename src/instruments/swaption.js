@@ -1,10 +1,28 @@
 (function (library) {
+  /**
+   * Class representing a plain vanilla swaption
+   * @memberof JsonRisk
+   * @extends Swap
+   */
   class Swaption extends library.Swap {
     #first_exercise_date = null;
     #maturity = null;
     #surface = "";
     #std_dev = 0.0;
     #vol = 0.0;
+
+    /**
+     * Create a swaption instrument. If legs are not provided, legs are generated from terms and conditions. Legs must be one purely fix and one purely float leg.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+  * @param {date} obj.first_exercise_date the exercise date for the swaption
+       * @param {date} obj.maturity the maturity date of the underlying swap
+     * @param {string} [obj.surface=""] the reference to a surface object
+     
+     */
     constructor(obj) {
       //first_exercise_date (a.k.a. expiry) of the swaption
       let first_exercise_date = library.date_or_null(obj.first_exercise_date);

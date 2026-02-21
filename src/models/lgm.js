@@ -19,7 +19,7 @@
 
     /**
      * Create an LGM model
-     * @param {number} m A hull-white mean reversion
+     * @param {number} [m=0] A hull-white mean reversion
      */
     constructor(m = 0) {
       if (typeof m !== "number")
@@ -65,7 +65,7 @@
 
     /**
      * Get a vector of Hull-White volatilities from the parametrised model
-     * @type {Array} vector of volatilities for the Hull-White model
+     * @type {Array}
      */
     get hull_white_volatility() {
       const sigma = new Array(this.#t_ex.length);
@@ -85,7 +85,7 @@
 
     /**
      * Get a vector of exercise times from the parametrised model
-     * @type {Array} vector of times
+     * @type {Array}
      */
     get t_ex() {
       return Array.from(this.#t_ex);
@@ -93,7 +93,7 @@
 
     /**
      * Get a vector of LGM volatilities (xis) from the parametrised model
-     * @type {Array} vector of volatilities for the LGM model
+     * @type {Array}
      */
     get xi() {
       return Array.from(this.#xi);
@@ -101,24 +101,11 @@
 
     /**
      * Get the mean reversoin
-     * @type {number} mean reversion for the LGM model
+     * @type {number}
      */
     get mean_reversion() {
       return this.#mean_reversion;
     }
-
-    /**
-     * Calculates the discounted cash flow present value for a given vector of states (reduced value according to formula 4.14b)
-     * @param {object} cf_obj
-     * @param {} t_exercise
-     * @param {object} discount_factors
-     * @param {} xi volatility parameters
-     * @param {} state state vector
-     * @param {} opportunity_spread opportunity spread
-     * @returns {number} present value
-     * @memberof JsonRisk
-     * @public
-     */
 
     #dcf(cf_obj, t_exercise, discount_factors, xi, state, opportunity_spread) {
       /*
@@ -192,11 +179,10 @@
 
     /**
      * Calibrate and parametrise LGM against the supplied basket of swaptions
-     * @param {object} basket basket
+     * @param {object} basket basket of swaptions
      * @param {object} disc_curve discount curve
      * @param {object} fwd_curve forward curve
      * @param {object} surface surface
-     * @memberof JsonRisk
      */
     calibrate(basket, disc_curve, fwd_curve, surface) {
       this.#xi = new Float64Array(basket.length);
@@ -304,16 +290,19 @@
 
     /**
      * Calculates the european call option price on a cash flow (closed formula 5.7b).
-     * @param {object} cf_obj
-     * @param {} t_exercise
-     * @param {object} disc_curve
-     * @param {} xi
-     * @param {object} spread_curve spread curve
-     * @param {} residual_spread residual spread
-     * @param {} opportunity_spread opportunity spread
-     * @param {object} discount_factors_precalc
-     * @returns {number} the option value
-     * @memberof JsonRisk
+     * @param {object} cf_obj cash flow object
+     * @param {array} cf_obj.t_pmt vector of payment times
+     * @param {array} cf_obj.pmt_total vector of payment amounts
+     * @param {array} cf_obj.pmt_interest vector of interest payment amounts included in the payment amount
+     * @param {array} cf_obj.current_principal vector of current principals
+     * @param {number} t_exercise the time to exercise
+     * @param {object} disc_curve a curve object
+     * @param {number} xi the LGM volatility parameter
+     * @param {object} spread_curve a curve object
+     * @param {number} residual_spread residual spread
+     * @param {number} opportunity_spread opportunity spread
+     * @param {object} [discount_factors_precalc=null] for internal optimization
+     * @returns {number}
      */
     european_call(
       cf_obj,
@@ -323,22 +312,8 @@
       spread_curve,
       residual_spread,
       opportunity_spread,
-      discount_factors_precalc,
+      discount_factors_precalc = null,
     ) {
-      /*
-
-        Calculates the european call option price on a cash flow (closed formula 5.7b).
-
-        requires cf_obj of type
-        {
-            current_principal: array(double),
-            t_pmt: array(double),
-            pmt_total: array(double)
-            pmt_interest: array(double)
-        }
-
-        */
-
       const discount_factors =
         discount_factors_precalc ||
         get_discount_factors(
@@ -473,17 +448,19 @@
     }
 
     /**
-     * Calculates the bermudan call option price on a cash flow (numeric integration according to martingale formula 4.14a).
-     * @param {object} cf_obj
-     * @param {} exercise_vec
-     * @param {object} disc_curve discount curve
-     * @param {} xi_vec
-     * @param {object} spread_curve spread curve
-     * @param {} residual_spread
-     * @param {} opportunity_spread
-     * @returns {object} cash flow
-     * @memberof JsonRisk
-     * @public
+     * Calculates the european call option price on a cash flow (closed formula 5.7b).
+     * @param {object} cf_obj cash flow object
+     * @param {array} cf_obj.t_pmt vector of payment times
+     * @param {array} cf_obj.pmt_total vector of payment amounts
+     * @param {array} cf_obj.pmt_interest vector of interest payment amounts included in the payment amount
+     * @param {array} cf_obj.current_principal vector of current principals
+     * @param {number} t_exercise_vec the vectoor of times to exercise
+     * @param {object} disc_curve a curve object
+     * @param {number} xi_vec the vector of LGM volatility parametera
+     * @param {object} spread_curve a curve object
+     * @param {number} residual_spread residual spread
+     * @param {number} opportunity_spread opportunity spread
+     * @returns {number}
      */
     bermudan_call(
       cf_obj,
@@ -665,7 +642,6 @@
    * @param {object} spread_curve spread curve
    * @param {} residual_spread residual spread
    * @returns {object} discount factors
-   * @memberof JsonRisk
    * @private
    */
   const get_discount_factors = function (
@@ -710,13 +686,12 @@
   };
 
   /**
-   * calculated a strike adjustment reflecting the opportunity spread
+   * calculates a strike adjustment reflecting the opportunity spread
    * @param {object} cf_obj
    * @param {} t_exercise
    * @param {object} discount_factors
    * @param {} opportunity_spread
-   * @returns {object} ...
-   * @memberof JsonRisk
+   * @returns {number}
    * @private
    */
   const strike_adjustment = function (
@@ -749,14 +724,12 @@
   };
 
   /**
-   * Calculates correction for multi curve valuation - move basis spread to fixed leg
-   * @param {object} swaption Instrument
+   * Calculates correction for multi curve valuation - moves basis spread to fixed leg
+   * @param {object} swaption swaption instrument
    * @param {object} disc_curve discount curve
    * @param {object} fwd_curve forward curve
-   * @param {} fair_rate fair rate
    * @returns {object} cash flow
-   * @memberof JsonRisk
-   * @public
+   * @rivate
    */
   const european_swaption_adjusted_cashflow = function (
     swaption,

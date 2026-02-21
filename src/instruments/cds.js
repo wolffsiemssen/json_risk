@@ -1,9 +1,25 @@
 (function (library) {
+  /**
+   * Class representing a credit default swap
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
   class CreditDefaultSwap extends library.LegInstrument {
     #survival_curve = "";
     #accrual_on_default = false;
     #recovery_rate = 0.0;
 
+    /**
+     * Create a leg instrument.
+     * @param {obj} obj A plain object representing the cds.
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument. Must contain one single leg with only rate payments. If no legs are provided, a premium leg is generated from terms and conditions.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     * @param {string} [obj.survival_curve=""] the name of a curve object with discount factors representing survival probabilities
+     * @param {boolean} [obj.accrual_on_default=false] flag indicating if accrued interest is paid on default
+     * @param {number} [obj.recovery_rate=0.0] recovery rate, must be between 0 and 1
+     */
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate leg from terms and conditions

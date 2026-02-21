@@ -1,5 +1,18 @@
 (function (library) {
+  /**
+   * Class representing a FX Swap, FX Spot or FX Forward instrument
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
   class FxTerm extends library.LegInstrument {
+    /**
+     * Create a fx term instrument.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument. Must be one or two legs. If two legs are specified, they must have two different currencies. If no legs are specified, one single leg is generated from terms and conditions.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate leg from terms and conditions, only one single currency leg with near and optonally far payment supported

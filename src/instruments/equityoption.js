@@ -1,10 +1,31 @@
 (function (library) {
+  /**
+   * Class representing an option on a stock or on an equity index
+   * @memberof JsonRisk
+   * @extends Equity
+   */
   class EquityOption extends library.Equity {
     #expiry = null;
     #repo_curve = "";
     #surface = "";
     #strike = 0.0;
     #is_call = true;
+
+    /**
+     * Create an equity option instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {string} [obj.quote=""] reference to a quote object
+     * @param {string} [obj.disc_curve=""] reference to a curve object
+     * @param {string} [obj.repo_curve=""] reference to a curve object
+     * @param {string} [obj.surface=""] reference to a surface object
+     * @param {string} [obj.calendar=""] calendar name
+     * @param {number} [obj.spot_days=0] spot days for the quote
+     * @param {date} obj.expiry expiry date of the forward
+     * @param {number} [obj.strike=0.0] strke price payable at expiry
+     * @param {boolean} [obj.is_call=false] flag indicating if this is a call option
+     */
     constructor(obj) {
       super(obj);
       this.#expiry = library.date_or_null(obj.expiry);

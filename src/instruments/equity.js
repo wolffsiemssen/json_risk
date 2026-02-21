@@ -1,10 +1,26 @@
 (function (library) {
+  /**
+   * Class representing a stock, also serving as super class for equity derivatives
+   * @memberof JsonRisk
+   * @extends Instrument
+   */
   class Equity extends library.Instrument {
     #quote = "";
     #disc_curve = "";
     #spot_days = 0;
     #calendar = null;
     #is_holiday_func = null;
+
+    /**
+     * Create an equity instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {string} [obj.quote=""] reference to a quote object
+     * @param {string} [obj.disc_curve=""] reference to a curve object
+     * @param {string} [obj.calendar=""] calendar name
+     * @param {number} [obj.spot_days=0] spot days for the quote
+     */
     constructor(obj) {
       super(obj);
       this.#quote = library.string_or_empty(obj.quote);
