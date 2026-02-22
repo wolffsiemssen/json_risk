@@ -43,6 +43,10 @@
         throw new Error("Bond: must have notional payments");
     }
 
+    /**
+     * Get the first fixed rate found on the bond's leg.
+     * @type {number}
+     */
     get fixed_rate() {
       //returns first rate on the leg
       for (const p of this.legs[0].payments) {
@@ -55,11 +59,21 @@
       );
     }
 
+    /**
+     * Calculate the fair rate, i.e., the rate this bond would have to carry in order to have a par valuation
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     fair_rate_or_spread(params) {
-      // returns the rate this bond would have to carry in order to have a par valuation
+      // returns
       return this.legs[0].fair_rate_or_spread(params);
     }
 
+    /**
+     * Calculate the fixed rate annuity
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     annuity(params) {
       // returns fixed rate annuity
       return this.legs[0].annuity(params);

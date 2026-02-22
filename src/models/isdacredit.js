@@ -1,8 +1,18 @@
 (function (library) {
+  /**
+   * Class representing an ISDA credit model
+   * @memberof JsonRisk
+   */
   class IsdaCdsModel {
     #disc_curve = null;
     #survival_curve = null;
     #timeline = null;
+
+    /**
+     * Create an ISDA credit model
+     * @param {Curve} disc_curve discount curve object
+     * @param {Curve} survival_curve survival curve object, discount factors represent survival probabilities, should use the linear_rt interpolation method.
+     */
     constructor(disc_curve, survival_curve) {
       this.#disc_curve = disc_curve;
       this.#survival_curve = survival_curve;
@@ -15,6 +25,11 @@
       Object.freeze(this.#timeline);
     }
 
+    /**
+     * Create a time line from t_start to t_end including t_start, t_end and all support points of the discount curve and the survival curve
+     * @param {date} t_start start time
+     * @param {date} t_end end time
+     */
     timeline(t_start, t_end) {
       const res = [t_start];
       for (const t of this.#timeline) {
@@ -26,6 +41,14 @@
       return res;
     }
 
+    /**
+     * Calculate the present value of accrual on default for a rate payment
+     * @param {Payment} pmt the payment
+     * @param {date} pmt.date_start the accrual start date
+     * @param {date} pmt.date_end the accrual end date
+     * @param {date} pmt.date_pmt the payment date
+     * @param {number} pmt.amount the payment amount
+     */
     accrual_on_default_pv(pmt) {
       const { date_start, date_end, date_pmt, amount } = pmt;
       const t_pmt = library.time_from_now(date_pmt);
@@ -88,6 +111,14 @@
       return res * annualized_amount;
     }
 
+    /**
+     * Calculate the present value of a protetion period
+     * @param {object} period the period
+     * @param {date} period.date_start protection start date
+     * @param {date} period.date_end protection end date
+     * @param {number} period.notional the notional
+     * @param {number} period.recovery_rate the recovery rate
+     */
     protection_pv(period) {
       const { date_start, date_end, notional, recovery_rate } = period;
       const t_start = library.time_from_now(date_start);

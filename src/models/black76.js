@@ -1,7 +1,17 @@
 (function (library) {
+  /**
+   * Class representing a black76 model user to value e.g. equity options
+   * @memberof JsonRisk
+   */
   class BlackModel {
     #impl = null;
     #std_dev = 0.0;
+
+    /**
+     * Create a black76 model
+     * @param {number} time time to exercise
+     * @param {number} volatility black, e.g. log-normal volatility
+     */
     constructor(time, volatility) {
       this.#std_dev = volatility * Math.sqrt(time);
       if (time <= 0) {
@@ -38,10 +48,22 @@
       );
     }
 
+    /**
+     * Calculate the price of a put option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     put_price(forward, strike) {
       return this.#impl(-1, forward, strike);
     }
 
+    /**
+     * Calculate the price of a call option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     call_price(forward, strike) {
       return this.#impl(1, forward, strike);
     }

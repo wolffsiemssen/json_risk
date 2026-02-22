@@ -32,6 +32,10 @@
       this.#price = library.number_or_null(obj.price) || 0.0;
     }
 
+    /**
+     * Get the repo curve name
+     * @type {string}
+     */
     get repo_curve() {
       return this.#repo_curve;
     }

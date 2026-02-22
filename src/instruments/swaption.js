@@ -51,19 +51,34 @@
       this.#surface = obj.surface || "";
     }
 
-    // getter functions
+    /**
+     * Get the first exercise date
+     * @type {date}
+     */
     get first_exercise_date() {
       return this.#first_exercise_date;
     }
 
+    /**
+     * Get the surface name
+     * @type {string}
+     */
     get surface() {
       return this.#surface;
     }
 
+    /**
+     * Get the volatility used in the last evaluation, returns 0.0 if the instrument was never evaluated.
+     * @type {Leg}
+     */
     get vol() {
       return this.#vol;
     }
 
+    /**
+     * Get the standard deviation used in the last evaluation, returns 0.0 if the instrument was never evaluated.
+     * @type {Leg}
+     */
     get std_dev() {
       return this.#std_dev;
     }

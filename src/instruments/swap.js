@@ -89,13 +89,26 @@
       this.#is_payer = this.#fixed_leg.payments[0].notional > 0;
     }
 
-    // getter functions
+    /**
+     * Get the fixed leg
+     * @type {Leg}
+     */
     get fixed_leg() {
       return this.#fixed_leg;
     }
+
+    /**
+     * Get the float leg
+     * @type {Leg}
+     */
     get float_leg() {
       return this.#float_leg;
     }
+
+    /**
+     * Get the is_payer flag
+     * @type {boolean}
+     */
     get is_payer() {
       return this.#is_payer;
     }

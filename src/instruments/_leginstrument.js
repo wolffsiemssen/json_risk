@@ -30,10 +30,18 @@
       if (null !== ad) this.#acquire_date = ad;
     }
 
+    /**
+     * Get the vector of legs. Array is frozen, i.e., read only.
+     * @type {array}
+     */
     get legs() {
       return this.#legs;
     }
 
+    /**
+     * Get the acquire date.
+     * @type {date}
+     */
     get acquire_date() {
       return this.#acquire_date;
     }

@@ -1,6 +1,6 @@
 (function (library) {
   /**
-   * @desc read surface type for given surface and create surface object
+   * Read surface type for given surface and create surface object
    * @param {object} obj any surface JSON
    * @returns {object} surface class object
    * @memberof JsonRisk

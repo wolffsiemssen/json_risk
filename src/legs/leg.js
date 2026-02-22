@@ -1,4 +1,8 @@
 (function (library) {
+  /**
+   * Class representing a leg, i.e., a stream of payments
+   * @memberof JsonRisk
+   */
   class Leg {
     #currency = "";
     #disc_curve = "";
@@ -9,6 +13,17 @@
     #update_notionals_if_needed = function () {
       return;
     };
+
+    /**
+     * Create a leg .
+     * @param {obj} obj A plain object representing the leg
+     * @param {string} [obj.currency=""] currency of the leg. If empty, the first currency found on one of the payments is used. All payments must have the same currency or no currency at all.
+     * @param {string} [obj.disc_curve=""] named reference to a discount curve
+     * @param {string} [obj.spread_curve=""] named reference to a spread curve
+     * @param {number} [obj.residual_spread=0.0] residual spread on top of the discount and spread curves
+     * @param {array} [obj.payments=[]] the payments. The constructor sorts payments by start date, end date, value date and type.
+     * @param {object} [obj.indices={}] an object with index names as keys and indices as values.
+     */
     constructor(obj) {
       this.#disc_curve = library.string_or_empty(obj.disc_curve);
       this.#spread_curve = library.string_or_empty(obj.spread_curve);
@@ -54,54 +69,110 @@
       Object.freeze(this.#indices);
     }
 
-    // getter functions
+    /**
+     * Get currency
+     * @type {string}
+     */
     get currency() {
       return this.#currency;
     }
+    /**
+     * Get discount curve
+     * @type {string}
+     */
     get disc_curve() {
       return this.#disc_curve;
     }
+
+    /**
+     * Get spread curve
+     * @type {string}
+     */
     get spread_curve() {
       return this.#spread_curve;
     }
+
+    /**
+     * Get residual spread
+     * @type {number}
+     */
     get residual_spread() {
       return this.#residual_spread;
     }
+
+    /**
+     * Get all payments. Array is frozen, i.e., read only
+     * @type {array}
+     */
     get payments() {
       return this.#payments;
     }
+
+    /**
+     * Get all indices. Object is frozen, i.e., read only
+     * @type {object}
+     */
     get indices() {
       return this.#indices;
     }
 
+    /**
+     * Flag indicating if leg has notional payments
+     * @type {boolean}
+     */
     get has_notional_payments() {
       for (const p of this.#payments) {
         if (p.constructor === library.NotionalPayment) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has capitalizing rate payments
+     * @type {boolean}
+     */
     get has_capitalization() {
       for (const p of this.#payments) {
         if (p.capitalize) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has fixed rate payments
+     * @type {boolean}
+     */
     get has_fixed_rate_payments() {
       for (const p of this.#payments) {
         if (p instanceof library.FixedRatePayment) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has float rate payments
+     * @type {boolean}
+     */
     get has_float_rate_payments() {
       for (const p of this.#payments) {
         if (p instanceof library.FloatRatePayment) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has embedded options, e.g. caps and floors
+     * @type {boolean}
+     */
     get has_embedded_options() {
       // not supported yet
       return false;
     }
+
+    /**
+     * Flag indicating if leg has constant notionals on all payments
+     * @type {boolean}
+     */
     get has_constant_notional() {
       if (!this.#payments.length) return true;
       let notional = Math.abs(this.#payments[0].notional);
@@ -110,6 +181,11 @@
       }
       return true;
     }
+
+    /**
+     * Flag indicating if leg has constant rate on all fixed rate payments
+     * @type {boolean}
+     */
     get has_constant_rate() {
       let rate = null;
       for (const p of this.#payments) {
@@ -123,7 +199,10 @@
       return true;
     }
 
-    // valuation functions
+    /**
+     * Adds dependencies (disc_curve, spread_curve, currency, and all dependencies of relevant indices)
+     * @param {Deps} deps a dependencies tracking object
+     */
     add_deps(deps) {
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
       if ("" != this.#spread_curve) deps.add_curve(this.#spread_curve);
@@ -175,6 +254,12 @@
       }
     }
 
+    /**
+     * Evaluate the leg
+     * @param {Params} params a parameters container object
+     * @param {date} acquire_date an acquire date, payments on or before acquire date are excluded
+     * @return {number}
+     */
     value(params, acquire_date) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(params);
@@ -190,6 +275,12 @@
       return this.#dcf(discounter, acquire_date);
     }
 
+    /**
+     * Evaluate the leg with just one discount curve and one forward curve. Used internally for valuing standard swaps and swaptions.
+     * @param {Params} disc_curve a curve
+     * @param {Params} fwd_curve a curve
+     * @return {number}
+     */
     value_with_curves(disc_curve, fwd_curve) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(fwd_curve);
@@ -204,7 +295,11 @@
       return this.#dcf(disc_curve);
     }
 
-    // argument must be either a valid params object or a curve object
+    /**
+     * Calculate the annuity including all fixed rate and float rate payments. It is the sum of notional times year fraction for each such payments, discounted from the payment date down to today.
+     * @param {obj} params_or_curve either a curve used for discounting or a params object. In the latter case, disc_curve and spread_curve are retrieved from the params object and residual spread is used.
+     * @return {number}
+     */
     annuity(params_or_curve) {
       const discounter =
         params_or_curve instanceof library.Params
@@ -229,7 +324,11 @@
       return res;
     }
 
-    // get outstanding balance  - all floating capitalizing payments must have been projected before by e.g. calling the value method
+    /**
+     * Calculates outstanding balance  - all floating capitalizing payments must have been projected before by e.g. calling the value method
+     * @param {date} [d=library.valuation_date] as-of date for the balance.
+     * @return {number}
+     */
     balance(d = library.valuation_date) {
       let res = 0;
       for (const p of this.#payments) {
@@ -239,7 +338,11 @@
       return res;
     }
 
-    // compute irr for some date
+    /**
+     * Calculates irr  - all floating capitalizing payments must have been projected before by e.g. calling the value method. The irr is the zero rate in annual act/365 convention such that the value of the leg equals the balance.
+     * @param {date} d payments on or before d are excluded.
+     * @return {number}
+     */
     irr(d) {
       const balance = this.balance(d);
       const tset = library.time_from_now(d);
@@ -303,7 +406,10 @@
       return (balance - res) / annuity;
     }
 
-    // update notionals - all floating capitalizing payments must have been projected before by e.g. calling the value method
+    /**
+     * Updates notionals  - all floating capitalizing payments must have been projected before by e.g. calling the value method.
+     * For legs with initial and final notional exchange, this method makes sure notionals on rate payments are consistent with notional repayments. More precisely, the notional of each rate payments must be equal to the outstanding balance valid for the accrual period, and the amount of a notional payment must not overpay. Capitalization of interest rate payments is taken into account as well.
+     */
     update_notionals() {
       // no amortization or capitalization if there is no or just one payment
       const n = this.#payments.length;
@@ -359,7 +465,10 @@
       }
     }
 
-    // get simple cash flow table
+    /**
+     * Get a simple cash flow table including payment times and payment amounts used internally for rate option pricing
+     *
+     */
     get_cash_flows() {
       const pmap = new Map();
       for (const p of this.#payments) {

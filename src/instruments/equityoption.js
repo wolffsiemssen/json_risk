@@ -35,6 +35,10 @@
       this.#is_call = library.make_bool(obj.is_call);
     }
 
+    /**
+     * Get the repo curve name
+     * @type {string}
+     */
     get repo_curve() {
       return this.#repo_curve;
     }

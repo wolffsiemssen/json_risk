@@ -7,11 +7,24 @@
     return res;
   }
 
+  /**
+   * Class representing a notional a.k.a. principal payment
+   * @memberof JsonRisk
+   */
   class NotionalPayment {
     #date_pmt = null;
     #date_value = null;
     #notional = 0.0;
     #currency = "";
+
+    /**
+     * Create a notional payment.
+     * @param {obj} obj A plain object representing the payment.
+     * @param {date} obj.date_pmt the payment date
+     * @param {date} [obj.date_value=obj.date_pmt] the value date, i.e., the date when this payment changes the balance for rate payments
+     * @param {number} obj.notional the payment amount
+     * @param {string} [obj.currency=""] currency of the payment.
+     */
     constructor(obj) {
       // notional
       this.#notional = check_notional(obj.notional);
@@ -32,7 +45,6 @@
       this.#notional = check_notional(n);
     }
 
-    // getter functions
     get is_fixed() {
       return true;
     }
@@ -130,9 +142,29 @@
     }
   }
 
+  /**
+   * Class representing a fixed rate payment
+   * @memberof JsonRisk
+   */
   class FixedRatePayment extends RatePayment {
     #rate = null;
     #amount = 0.0;
+
+    /**
+     * Create a fixed rate payment.
+     * @param {obj} obj A plain object representing the payment.
+     * @param {date} obj.date_pmt the payment date
+     * @param {date} [obj.date_value=obj.date_pmt] the value date, i.e., the date when this payment changes the balance for other rate payments, only relevant for capitalizing payments.
+     * @param {date} obj.date_start the accrual start date
+     * @param {date} [obj.ref_start=obj.date_start] the reference period start date, needed for some day count conventions
+     * @param {date} obj.date_end the accrual start date
+     * @param {date} [obj.ref_end=obj.date_end] the reference period start date, needed for some day count conventions
+     * @param {number} obj.notional the payment amount
+     * @param {string} [obj.currency=""] currency of the payment.
+     * @param {number} obj.rate fixed rate of the payment.
+     * @param {string} [obj.dcc=""] day count convention of the payment.
+     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     */
     constructor(obj) {
       super(obj);
       // rate
@@ -165,6 +197,10 @@
     }
   }
 
+  /**
+   * Class representing a float rate payment
+   * @memberof JsonRisk
+   */
   class FloatRatePayment extends RatePayment {
     #index = "";
     #is_fixed = false;
@@ -172,6 +208,25 @@
     #rate = 0.0;
     #reset_start = null;
     #reset_end = null;
+
+    /**
+     * Create a float rate payment.
+     * @param {obj} obj A plain object representing the payment.
+     * @param {date} obj.date_pmt the payment date
+     * @param {date} [obj.date_value=obj.date_pmt] the value date, i.e., the date when this payment changes the balance for other rate payments, only relevant for capitalizing payments.
+     * @param {date} obj.date_start the accrual start date
+     * @param {date} [obj.ref_start=obj.date_start] the reference period start date, needed for some day count conventions
+     * @param {date} [obj.reset_start=obj.date_start] the reset period start date
+     * @param {date} obj.date_end the accrual start date
+     * @param {date} [obj.ref_end=obj.date_end] the reference period start date, needed for some day count conventions
+     * @param {date} [obj.reset_end=obj.date_end] the reset period end date
+     * @param {number} obj.notional the payment amount
+     * @param {string} [obj.currency=""] currency of the payment.
+     * @param {string} [obj.index=""] named reference to an index of the payment.
+     * @param {number} [obj.spread=0.0] fixed spread rate of the payment.
+     * @param {string} [obj.dcc=""] day count convention of the payment.
+     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     */
     constructor(obj) {
       super(obj);
 

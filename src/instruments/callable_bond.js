@@ -132,6 +132,10 @@
       this.#fwd_curve = obj.fwd_curve || "";
     }
 
+    /**
+     * Returns the vector of call dates. Array is frozen, i.e., read only.
+     * @type {Array}
+     */
     get call_schedule() {
       return this.#call_schedule;
     }

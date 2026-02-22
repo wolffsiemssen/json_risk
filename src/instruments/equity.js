@@ -30,14 +30,26 @@
       this.#is_holiday_func = library.is_holiday_factory(this.#calendar);
     }
 
+    /**
+     * Get the name of the quote object
+     * @type {string}
+     */
     get quote() {
       return this.#quote;
     }
 
+    /**
+     * Get the disc curve name
+     * @type {string}
+     */
     get disc_curve() {
       return this.#disc_curve;
     }
 
+    /**
+     * Get the spot days
+     * @type {number}
+     */
     get spot_days() {
       return this.#spot_days;
     }

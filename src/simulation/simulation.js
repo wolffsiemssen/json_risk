@@ -1,7 +1,8 @@
 (function (library) {
   /**
-   * calculates the present value for any given supported instrument (bond, floater, fxterm, swap, swaption, callable_bond)
-   * @param {object} instrument any instrument
+   * Calculates the present value for any given supported instrument
+   * @param {object} instrument_json an instrument object as required by make_instrument
+   * @param {object} params_json an object containing parameters as required by the Params constructor
    * @returns {number} present value
    * @memberof JsonRisk
    * @public
@@ -26,8 +27,9 @@
   };
 
   /**
-   * runs a generic simulation on an instrument
-   * @param {object} instrument any instrument
+   * Runs a generic simulation on an instrument
+   * @param {object} instrument_json an instrument object as required by make_instrument
+   * @param {object} params_json an object containing parameters as required by the Params constructor
    * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
    * @returns {object} results object
    * @memberof JsonRisk

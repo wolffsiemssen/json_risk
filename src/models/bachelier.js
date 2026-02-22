@@ -1,7 +1,17 @@
 (function (library) {
+  /**
+   * Class representing a bachelier model used to value e.g. swaptions, caps and floors
+   * @memberof JsonRisk
+   */
   class BachelierModel {
     #impl = null;
     #std_dev = 0.0;
+
+    /**
+     * Create a bachelier model
+     * @param {number} time time to exercise
+     * @param {number} volatility bachelier, e.g. normal volatility
+     */
     constructor(time, volatility) {
       this.#std_dev = volatility * Math.sqrt(time);
       if (time < 0) {
@@ -32,10 +42,22 @@
       );
     }
 
+    /**
+     * Calculate the price of a put option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     put_price(forward, strike) {
       return this.#impl(-1, forward, strike);
     }
 
+    /**
+     * Calculate the price of a call option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     call_price(forward, strike) {
       return this.#impl(1, forward, strike);
     }

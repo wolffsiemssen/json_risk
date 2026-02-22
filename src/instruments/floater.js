@@ -57,11 +57,20 @@
         throw new Error("Floater: must have notional payments");
     }
 
+    /**
+     * Calculate the fair spread rate, i.e., the spread rate this bond would have to carry on top of the float rate in order to have a par valuation
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     fair_rate_or_spread(params) {
-      // returns the spread rate this bond would have to carry in order to have a par valuation
       return this.legs[0].fair_rate_or_spread(params);
     }
 
+    /**
+     * Calculate the spread rate annuity, e.g. the value of one hundred percent spread on top of the float rate
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     annuity(params) {
       // returns spread rate annuity
       return this.legs[0].annuity(params);

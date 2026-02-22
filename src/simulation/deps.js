@@ -1,46 +1,92 @@
 (function (library) {
-  const error_message = "Deps: name must be a string and cannot be empty";
+  const check_name = function (s) {
+    return library.nonempty_string_or_throw(
+      s,
+      "Deps: name must be a string and cannot be empty",
+    );
+  };
+
+  /**
+   * Class used for collecting dependencies, i.e., names of required scalars, curves, and surfaces, from an instrument, a leg, or an index
+   * @memberof JsonRisk
+   */
   class Deps {
     #scalars = new Set();
     #curves = new Set();
     #surfaces = new Set();
     #currencies = new Set();
+
+    /** Create an empty Deps object */
     constructor() {}
 
+    /**
+     * Add a scalar dependency
+     * @param {string} name The name of the scalar
+     */
     add_scalar(name) {
-      this.#scalars.add(library.nonempty_string_or_throw(name, error_message));
+      this.#scalars.add(check_name(name));
     }
 
+    /**
+     * Add a curve dependency
+     * @param {string} name The name of the curve
+     */
     add_curve(name) {
-      this.#curves.add(library.nonempty_string_or_throw(name, error_message));
+      this.#curves.add(check_name(name));
     }
 
+    /**
+     * Add a surface dependency
+     * @param {string} name The name of the surface
+     */
     add_surface(name) {
-      this.#surfaces.add(library.nonempty_string_or_throw(name, error_message));
+      this.#surfaces.add(check_name(name));
     }
 
+    /**
+     * Add a dependency on a currency
+     * @param {string} name The name of the currency
+     */
     add_currency(name) {
-      this.#currencies.add(
-        library.nonempty_string_or_throw(name, error_message),
-      );
+      this.#currencies.add(check_name(name));
     }
 
+    /**
+     * Get the names of all scalars.
+     * @type {Array}
+     */
     get scalars() {
       return Array.from(this.#scalars);
     }
 
+    /**
+     * Get the names of all curves.
+     * @type {Array}
+     */
     get curves() {
       return Array.from(this.#curves);
     }
 
+    /**
+     * Get the names of all surfaces.
+     * @type {Array}
+     */
     get surfaces() {
       return Array.from(this.#surfaces);
     }
 
+    /**
+     * Get the names of all currencies.
+     * @type {Array}
+     */
     get currencies() {
       return Array.from(this.#currencies);
     }
 
+    /**
+     * Create a minimal params container from an object with params, containing all collected dependencies
+     * @param {obj} params_json The plain object with parameters
+     */
     minimal_params(params_json) {
       const obj = {
         valuation_date: null,

@@ -1,7 +1,6 @@
 (function (library) {
   /**
-   * @function
-   * @desc Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
+   * Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
    * @param {boolean} b
    * @returns {boolean} boolean vector
    * @memberof JsonRisk
@@ -21,8 +20,7 @@
   };
 
   /**
-   * @function
-   * @desc Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
+   * Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
    * @param {boolean} b
    * @returns {boolean} boolean vector
    * @memberof JsonRisk

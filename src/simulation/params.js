@@ -23,6 +23,10 @@
     return res;
   };
 
+  /**
+   * Class representing a parameters container that holds market data and other parameters
+   * @memberof JsonRisk
+   */
   class Params {
     #valuation_date = null;
     #main_currency = "EUR";
@@ -32,6 +36,17 @@
     #scenario_groups = [];
     #num_scenarios = 1; // without any scenarios, num_scenarios is one since a base scenario is implicitly included
 
+    /**
+     * Create a Params object.
+     * @param {object} obj A plain object representing a parameters container.
+     * @param {date} obj.valuation_date As-of date for all calculations
+     * @param {string} [obj.main_currency="EUR"] Target currency for all calculations
+     * @param {object} [obj.scalars={}] Scalars to import into the parameters object. Keys are the names of the scalars as referenced by instruments, values are objects as understood by the scalar class constructors.
+     * @param {object} [obj.curves={}] Curves to import into the parameters object. Keys are the names of the curves as referenced by instruments, values are objects as understood by the curve class constructors.
+     * @param {object} [obj.surfaces={}] Surfaces to import into the parameters object. Keys are the names of the surfaces as referenced by instruments, values are objects as understood by the surface class constructors.
+     * @param {object} [obj.scenarios={}] Scenarios conforming to the JsonRisk scenario definition format.
+     * @param {object} [obj.calendars={}] Calendars to import into the library instance. Keys are the names of the calendars, values must be arrays of holidays to include into the calendar.
+     */
     constructor(obj) {
       // valuation date
       if (!("valuation_date" in obj))
@@ -113,30 +128,59 @@
       }
     }
 
+    /**
+     * Get the valuation date.
+     * @type {date}
+     */
     get valuation_date() {
       return this.#valuation_date;
     }
 
+    /**
+     * Get the main currency.
+     * @type {string}
+     */
     get main_currency() {
       return this.#main_currency;
     }
 
+    /**
+     * Get the number of scenarios.
+     * @type {number}
+     */
     get num_scenarios() {
       return this.#num_scenarios;
     }
 
+    /**
+     * Get the names of all scalars.
+     * @type {Array}
+     */
     get scalar_names() {
       return Object.keys(this.#scalars);
     }
 
+    /**
+     * Get the names of all curves.
+     * @type {Array}
+     */
     get curve_names() {
       return Object.keys(this.#curves);
     }
 
+    /**
+     * Get the names of all surfaces.
+     * @type {Array}
+     */
     get surface_names() {
       return Object.keys(this.#surfaces);
     }
 
+    /**
+     * Check if a scalar is included in this parameters container.
+     * @param {string} name The name of the scalar
+     * @return {boolean}
+     */
     has_scalar(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -145,6 +189,11 @@
       return n in this.#scalars;
     }
 
+    /**
+     * Check if a curve is included in this parameters container.
+     * @param {string} name The name of the curve
+     * @return {boolean}
+     */
     has_curve(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -153,6 +202,11 @@
       return n in this.#curves;
     }
 
+    /**
+     * Check if a surface is included in this parameters container.
+     * @param {string} name The name of the surface
+     * @return {boolean}
+     */
     has_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -161,6 +215,11 @@
       return n in this.#surfaces;
     }
 
+    /**
+     * Get a paticular scalar object
+     * @param {string} name the name of the scalar
+     * @return {Scalar}
+     */
     get_scalar(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -170,6 +229,11 @@
       return this.#scalars[n];
     }
 
+    /**
+     * Get a paticular curve object
+     * @param {string} name The name of the curve
+     * @return {Curve}
+     */
     get_curve(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -179,6 +243,11 @@
       return this.#curves[n];
     }
 
+    /**
+     * Get a paticular surface object
+     * @param {string} name The name of the surface
+     * @return {Surface}
+     */
     get_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -206,6 +275,12 @@
       );
     }
 
+    /**
+     * Get the FX fate for a currency pair. For each currency that is not the main currency, a scalar must be present that allows conversion from or to the main currency. These scalars must have the naming convention AAABBB, AAA/BBB, AAA_BBB, or AAA-BBB. Valid examples for the case where EUR is the main currency are EURUSD, GBP/EUR, EUR-CHF, or JPY-EUR. The first currency is the base currency, the second currency is the quote currency. E.g., EURUSD refers to the value of one EUR (base currency) in USD (quote currency).
+     * @param {string} from Three-Letter code for the currency to convert from
+     * @param {string} to Three-Letter code for the currency to convert to
+     * @return {number}
+     */
     get_fx_rate(from, to) {
       if (from === to) return 1.0;
       return (
@@ -213,6 +288,10 @@
       );
     }
 
+    /**
+     * Clears all scenarios from all parameter objects in the container.
+     *
+     */
     detach_scenarios() {
       for (const container of [this.#scalars, this.#curves, this.#surfaces]) {
         for (const item of Object.values(container)) {
@@ -221,6 +300,10 @@
       }
     }
 
+    /**
+     * Retrieve the n-th scenario.
+     * @param {number} n the index of the scenario starting with 1.
+     */
     get_scenario(n) {
       if (n === 0) return null;
       let i = 0;
@@ -233,6 +316,10 @@
       return null;
     }
 
+    /**
+     * Activate the n-th scenario by attaching it to all matching parameter objects in the containrt.
+     * @param {number} n the index of the scenario starting with 1.
+     */
     attach_scenario(n) {
       const scenario = this.get_scenario(n);
       if (!scenario) return this.detach_scenarios();
@@ -273,6 +360,10 @@
       }
     }
 
+    /**
+     * Reconvert the parameters container to a plain object
+     * @returns {object}
+     */
     toJSON() {
       const mapper = ([key, value]) => [key, value.toJSON()];
       const res = {

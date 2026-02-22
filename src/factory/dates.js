@@ -1,6 +1,6 @@
 (function (library) {
   /**
-   * @desc calculates the time in years from a given period string
+   * Calculates the time in years from a given period string
    * @param {string} str time string (xY, xM, xW, xD)
    * @returns {number} time in years
    * @memberof JsonRisk
@@ -20,7 +20,7 @@
   };
 
   /**
-   * @desc constructs a javascript date object from a JSON risk conformant date string
+   * Constructs a javascript date object from a JSON risk conformant date string
    * @param {string} str date string
    * @returns {date} javascript date object
    * @memberof JsonRisk
@@ -59,7 +59,7 @@
   };
 
   /**
-   * @desc constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+   * Constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
    * @param {date} date object
    * @returns {string} date string
    * @memberof JsonRisk
@@ -71,7 +71,7 @@
   };
 
   /**
-   * @desc takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
+   * Takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
    * @param {date} d
    * @returns {date} javascript date object
    * @memberof JsonRisk
@@ -93,7 +93,7 @@
   };
 
   /**
-   * @desc takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
+   * Takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
    * @param {date} d
    * @returns {date} javascript date object
    * @memberof JsonRisk
@@ -105,7 +105,7 @@
   };
 
   /**
-   * get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
+   * Get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
    * @param {date} d
    * @returns {number} array of javascript date objects
    * @memberof JsonRisk

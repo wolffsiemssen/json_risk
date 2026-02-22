@@ -47,8 +47,7 @@
 });
 (function (library) {
   /**
-   * @function
-   * @desc Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
+   * Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
    * @param {boolean} b
    * @returns {boolean} boolean vector
    * @memberof JsonRisk
@@ -68,8 +67,7 @@
   };
 
   /**
-   * @function
-   * @desc Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
+   * Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
    * @param {boolean} b
    * @returns {boolean} boolean vector
    * @memberof JsonRisk
@@ -93,7 +91,7 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * @desc calculates the time in years from a given period string
+   * Calculates the time in years from a given period string
    * @param {string} str time string (xY, xM, xW, xD)
    * @returns {number} time in years
    * @memberof JsonRisk
@@ -113,7 +111,7 @@
   };
 
   /**
-   * @desc constructs a javascript date object from a JSON risk conformant date string
+   * Constructs a javascript date object from a JSON risk conformant date string
    * @param {string} str date string
    * @returns {date} javascript date object
    * @memberof JsonRisk
@@ -152,7 +150,7 @@
   };
 
   /**
-   * @desc constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+   * Constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
    * @param {date} date object
    * @returns {string} date string
    * @memberof JsonRisk
@@ -164,7 +162,7 @@
   };
 
   /**
-   * @desc takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
+   * Takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
    * @param {date} d
    * @returns {date} javascript date object
    * @memberof JsonRisk
@@ -186,7 +184,7 @@
   };
 
   /**
-   * @desc takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
+   * Takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
    * @param {date} d
    * @returns {date} javascript date object
    * @memberof JsonRisk
@@ -198,7 +196,7 @@
   };
 
   /**
-   * get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
+   * Get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
    * @param {date} d
    * @returns {number} array of javascript date objects
    * @memberof JsonRisk
@@ -323,7 +321,7 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * @desc read surface type for given surface and create surface object
+   * Read surface type for given surface and create surface object
    * @param {object} obj any surface JSON
    * @returns {object} surface class object
    * @memberof JsonRisk
@@ -341,7 +339,7 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * read payment type for given payment and create payment object
+   * Read payment type for given payment and create payment object
    * @param {object} obj any payment JSON
    * @returns {object} payment class object
    * @memberof JsonRisk
@@ -362,7 +360,7 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * @desc Returns a reference to the argument if the argument is a string, and an empty string otherwise
+   * Returns a reference to the argument if the argument is a string, and an empty string otherwise
    * @param {any} input argument that is typically expected to be a string
    * @returns {string} the argument itself, or an empty string
    * @memberof JsonRisk
@@ -373,8 +371,8 @@
   };
 
   /**
-   * @desc Returns a reference to the argument if the argument is a string, and fallback string otherwise
-   * @param {any} input that is typically expected to be a string
+   * Returns a reference to the argument if the argument is a string, and fallback string otherwise
+   * @param {any} input argument that is typically expected to be a string
    * @param {string} fallback the fallback to return
    * @returns {string} the argument itself, or the fallback
    * @memberof JsonRisk
@@ -387,8 +385,8 @@
   };
 
   /**
-   * @desc Returns a reference to the argument if the argument is a string, and throws the supplied error message otherwise
-   * @param {any} input that is typically expected to be a string
+   * Returns a reference to the argument if the argument is a string, and throws the supplied error message otherwise
+   * @param {any} input argument that is typically expected to be a string
    * @param {string} message the message to throw
    * @returns {string} the argument supplied if it is a string
    * @memberof JsonRisk
@@ -399,8 +397,8 @@
   };
 
   /**
-   * @desc Returns a reference to the argument if the argument is a nonempty string, and throws the supplied error message otherwise
-   * @param {any} input that is typically expected to be a string
+   * Returns a reference to the argument if the argument is a nonempty string, and throws the supplied error message otherwise
+   * @param {any} input argument that is typically expected to be a string
    * @param {string} message the message to throw
    * @returns {string} the argument supplied if it is a nonempty string
    * @memberof JsonRisk
@@ -436,10 +434,18 @@
       }
     }
 
+    /**
+     * Get the instrument currency.
+     * @type {string}
+     */
     get currency() {
       return this.#currency;
     }
 
+    /**
+     * Get the position quantity.
+     * @type {number}
+     */
     get quantity() {
       return this.#quantity;
     }
@@ -448,6 +454,12 @@
       throw new Error("add_deps_impl: not implemented for class Instrument");
     }
 
+    /**
+     * Add the instruments dependencies to the attached Deps object.
+     * This is the main entry point for querying parameter dependencies of any instrument.
+     * This function calls the add_deps_impl function of the specific sub-class.
+     * @param {Deps} deps dependency tracking object
+     */
     add_deps(deps) {
       if (!(deps instanceof library.Deps))
         throw new Error("add_deps: deps must be of type Deps");
@@ -459,6 +471,14 @@
       throw new Error("value_impl: not implemented for class Instrument");
     }
 
+    /**
+     * Evaluate the instrument with the specified parameters container.
+     * This is the main entry point for evaluating any instrument.
+     * This function calls the value_impl function of the specific sub-class.
+     * It multiplies the result of value_impl with the position quantity and, if the instrument currency is set, converts the value into the main currency set in the parameters container.
+     * @param {Params} params parameters object with market data and other parameters. If params is not of type Params, conversion is attempted. This works for a plain object containing parameters.
+     * @param {object} extras container for additional valuation functionality
+     */
     value(params, extras) {
       const p =
         params instanceof library.Params ? params : new library.Params(params);
@@ -513,10 +533,18 @@
       if (null !== ad) this.#acquire_date = ad;
     }
 
+    /**
+     * Get the vector of legs. Array is frozen, i.e., read only.
+     * @type {array}
+     */
     get legs() {
       return this.#legs;
     }
 
+    /**
+     * Get the acquire date.
+     * @type {date}
+     */
     get acquire_date() {
       return this.#acquire_date;
     }
@@ -588,6 +616,10 @@
         throw new Error("Bond: must have notional payments");
     }
 
+    /**
+     * Get the first fixed rate found on the bond's leg.
+     * @type {number}
+     */
     get fixed_rate() {
       //returns first rate on the leg
       for (const p of this.legs[0].payments) {
@@ -600,11 +632,21 @@
       );
     }
 
+    /**
+     * Calculate the fair rate, i.e., the rate this bond would have to carry in order to have a par valuation
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     fair_rate_or_spread(params) {
-      // returns the rate this bond would have to carry in order to have a par valuation
+      // returns
       return this.legs[0].fair_rate_or_spread(params);
     }
 
+    /**
+     * Calculate the fixed rate annuity
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     annuity(params) {
       // returns fixed rate annuity
       return this.legs[0].annuity(params);
@@ -747,6 +789,10 @@
       this.#fwd_curve = obj.fwd_curve || "";
     }
 
+    /**
+     * Returns the vector of call dates. Array is frozen, i.e., read only.
+     * @type {Array}
+     */
     get call_schedule() {
       return this.#call_schedule;
     }
@@ -977,14 +1023,26 @@
       this.#is_holiday_func = library.is_holiday_factory(this.#calendar);
     }
 
+    /**
+     * Get the name of the quote object
+     * @type {string}
+     */
     get quote() {
       return this.#quote;
     }
 
+    /**
+     * Get the disc curve name
+     * @type {string}
+     */
     get disc_curve() {
       return this.#disc_curve;
     }
 
+    /**
+     * Get the spot days
+     * @type {number}
+     */
     get spot_days() {
       return this.#spot_days;
     }
@@ -1057,6 +1115,10 @@
       this.#price = library.number_or_null(obj.price) || 0.0;
     }
 
+    /**
+     * Get the repo curve name
+     * @type {string}
+     */
     get repo_curve() {
       return this.#repo_curve;
     }
@@ -1115,6 +1177,10 @@
       this.#price = library.number_or_null(obj.price) || 0.0;
     }
 
+    /**
+     * Get the repo curve name
+     * @type {string}
+     */
     get repo_curve() {
       return this.#repo_curve;
     }
@@ -1174,6 +1240,10 @@
       this.#is_call = library.make_bool(obj.is_call);
     }
 
+    /**
+     * Get the repo curve name
+     * @type {string}
+     */
     get repo_curve() {
       return this.#repo_curve;
     }
@@ -1264,11 +1334,20 @@
         throw new Error("Floater: must have notional payments");
     }
 
+    /**
+     * Calculate the fair spread rate, i.e., the spread rate this bond would have to carry on top of the float rate in order to have a par valuation
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     fair_rate_or_spread(params) {
-      // returns the spread rate this bond would have to carry in order to have a par valuation
       return this.legs[0].fair_rate_or_spread(params);
     }
 
+    /**
+     * Calculate the spread rate annuity, e.g. the value of one hundred percent spread on top of the float rate
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
     annuity(params) {
       // returns spread rate annuity
       return this.legs[0].annuity(params);
@@ -1433,13 +1512,26 @@
       this.#is_payer = this.#fixed_leg.payments[0].notional > 0;
     }
 
-    // getter functions
+    /**
+     * Get the fixed leg
+     * @type {Leg}
+     */
     get fixed_leg() {
       return this.#fixed_leg;
     }
+
+    /**
+     * Get the float leg
+     * @type {Leg}
+     */
     get float_leg() {
       return this.#float_leg;
     }
+
+    /**
+     * Get the is_payer flag
+     * @type {boolean}
+     */
     get is_payer() {
       return this.#is_payer;
     }
@@ -1530,19 +1622,34 @@
       this.#surface = obj.surface || "";
     }
 
-    // getter functions
+    /**
+     * Get the first exercise date
+     * @type {date}
+     */
     get first_exercise_date() {
       return this.#first_exercise_date;
     }
 
+    /**
+     * Get the surface name
+     * @type {string}
+     */
     get surface() {
       return this.#surface;
     }
 
+    /**
+     * Get the volatility used in the last evaluation, returns 0.0 if the instrument was never evaluated.
+     * @type {Leg}
+     */
     get vol() {
       return this.#vol;
     }
 
+    /**
+     * Get the standard deviation used in the last evaluation, returns 0.0 if the instrument was never evaluated.
+     * @type {Leg}
+     */
     get std_dev() {
       return this.#std_dev;
     }
@@ -2156,6 +2263,10 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a leg, i.e., a stream of payments
+   * @memberof JsonRisk
+   */
   class Leg {
     #currency = "";
     #disc_curve = "";
@@ -2166,6 +2277,17 @@
     #update_notionals_if_needed = function () {
       return;
     };
+
+    /**
+     * Create a leg .
+     * @param {obj} obj A plain object representing the leg
+     * @param {string} [obj.currency=""] currency of the leg. If empty, the first currency found on one of the payments is used. All payments must have the same currency or no currency at all.
+     * @param {string} [obj.disc_curve=""] named reference to a discount curve
+     * @param {string} [obj.spread_curve=""] named reference to a spread curve
+     * @param {number} [obj.residual_spread=0.0] residual spread on top of the discount and spread curves
+     * @param {array} [obj.payments=[]] the payments. The constructor sorts payments by start date, end date, value date and type.
+     * @param {object} [obj.indices={}] an object with index names as keys and indices as values.
+     */
     constructor(obj) {
       this.#disc_curve = library.string_or_empty(obj.disc_curve);
       this.#spread_curve = library.string_or_empty(obj.spread_curve);
@@ -2211,54 +2333,110 @@
       Object.freeze(this.#indices);
     }
 
-    // getter functions
+    /**
+     * Get currency
+     * @type {string}
+     */
     get currency() {
       return this.#currency;
     }
+    /**
+     * Get discount curve
+     * @type {string}
+     */
     get disc_curve() {
       return this.#disc_curve;
     }
+
+    /**
+     * Get spread curve
+     * @type {string}
+     */
     get spread_curve() {
       return this.#spread_curve;
     }
+
+    /**
+     * Get residual spread
+     * @type {number}
+     */
     get residual_spread() {
       return this.#residual_spread;
     }
+
+    /**
+     * Get all payments. Array is frozen, i.e., read only
+     * @type {array}
+     */
     get payments() {
       return this.#payments;
     }
+
+    /**
+     * Get all indices. Object is frozen, i.e., read only
+     * @type {object}
+     */
     get indices() {
       return this.#indices;
     }
 
+    /**
+     * Flag indicating if leg has notional payments
+     * @type {boolean}
+     */
     get has_notional_payments() {
       for (const p of this.#payments) {
         if (p.constructor === library.NotionalPayment) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has capitalizing rate payments
+     * @type {boolean}
+     */
     get has_capitalization() {
       for (const p of this.#payments) {
         if (p.capitalize) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has fixed rate payments
+     * @type {boolean}
+     */
     get has_fixed_rate_payments() {
       for (const p of this.#payments) {
         if (p instanceof library.FixedRatePayment) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has float rate payments
+     * @type {boolean}
+     */
     get has_float_rate_payments() {
       for (const p of this.#payments) {
         if (p instanceof library.FloatRatePayment) return true;
       }
       return false;
     }
+
+    /**
+     * Flag indicating if leg has embedded options, e.g. caps and floors
+     * @type {boolean}
+     */
     get has_embedded_options() {
       // not supported yet
       return false;
     }
+
+    /**
+     * Flag indicating if leg has constant notionals on all payments
+     * @type {boolean}
+     */
     get has_constant_notional() {
       if (!this.#payments.length) return true;
       let notional = Math.abs(this.#payments[0].notional);
@@ -2267,6 +2445,11 @@
       }
       return true;
     }
+
+    /**
+     * Flag indicating if leg has constant rate on all fixed rate payments
+     * @type {boolean}
+     */
     get has_constant_rate() {
       let rate = null;
       for (const p of this.#payments) {
@@ -2280,7 +2463,10 @@
       return true;
     }
 
-    // valuation functions
+    /**
+     * Adds dependencies (disc_curve, spread_curve, currency, and all dependencies of relevant indices)
+     * @param {Deps} deps a dependencies tracking object
+     */
     add_deps(deps) {
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
       if ("" != this.#spread_curve) deps.add_curve(this.#spread_curve);
@@ -2332,6 +2518,12 @@
       }
     }
 
+    /**
+     * Evaluate the leg
+     * @param {Params} params a parameters container object
+     * @param {date} acquire_date an acquire date, payments on or before acquire date are excluded
+     * @return {number}
+     */
     value(params, acquire_date) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(params);
@@ -2347,6 +2539,12 @@
       return this.#dcf(discounter, acquire_date);
     }
 
+    /**
+     * Evaluate the leg with just one discount curve and one forward curve. Used internally for valuing standard swaps and swaptions.
+     * @param {Params} disc_curve a curve
+     * @param {Params} fwd_curve a curve
+     * @return {number}
+     */
     value_with_curves(disc_curve, fwd_curve) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(fwd_curve);
@@ -2361,7 +2559,11 @@
       return this.#dcf(disc_curve);
     }
 
-    // argument must be either a valid params object or a curve object
+    /**
+     * Calculate the annuity including all fixed rate and float rate payments. It is the sum of notional times year fraction for each such payments, discounted from the payment date down to today.
+     * @param {obj} params_or_curve either a curve used for discounting or a params object. In the latter case, disc_curve and spread_curve are retrieved from the params object and residual spread is used.
+     * @return {number}
+     */
     annuity(params_or_curve) {
       const discounter =
         params_or_curve instanceof library.Params
@@ -2386,7 +2588,11 @@
       return res;
     }
 
-    // get outstanding balance  - all floating capitalizing payments must have been projected before by e.g. calling the value method
+    /**
+     * Calculates outstanding balance  - all floating capitalizing payments must have been projected before by e.g. calling the value method
+     * @param {date} [d=library.valuation_date] as-of date for the balance.
+     * @return {number}
+     */
     balance(d = library.valuation_date) {
       let res = 0;
       for (const p of this.#payments) {
@@ -2396,7 +2602,11 @@
       return res;
     }
 
-    // compute irr for some date
+    /**
+     * Calculates irr  - all floating capitalizing payments must have been projected before by e.g. calling the value method. The irr is the zero rate in annual act/365 convention such that the value of the leg equals the balance.
+     * @param {date} d payments on or before d are excluded.
+     * @return {number}
+     */
     irr(d) {
       const balance = this.balance(d);
       const tset = library.time_from_now(d);
@@ -2460,7 +2670,10 @@
       return (balance - res) / annuity;
     }
 
-    // update notionals - all floating capitalizing payments must have been projected before by e.g. calling the value method
+    /**
+     * Updates notionals  - all floating capitalizing payments must have been projected before by e.g. calling the value method.
+     * For legs with initial and final notional exchange, this method makes sure notionals on rate payments are consistent with notional repayments. More precisely, the notional of each rate payments must be equal to the outstanding balance valid for the accrual period, and the amount of a notional payment must not overpay. Capitalization of interest rate payments is taken into account as well.
+     */
     update_notionals() {
       // no amortization or capitalization if there is no or just one payment
       const n = this.#payments.length;
@@ -2516,7 +2729,10 @@
       }
     }
 
-    // get simple cash flow table
+    /**
+     * Get a simple cash flow table including payment times and payment amounts used internally for rate option pricing
+     *
+     */
     get_cash_flows() {
       const pmap = new Map();
       for (const p of this.#payments) {
@@ -2581,11 +2797,24 @@
     return res;
   }
 
+  /**
+   * Class representing a notional a.k.a. principal payment
+   * @memberof JsonRisk
+   */
   class NotionalPayment {
     #date_pmt = null;
     #date_value = null;
     #notional = 0.0;
     #currency = "";
+
+    /**
+     * Create a notional payment.
+     * @param {obj} obj A plain object representing the payment.
+     * @param {date} obj.date_pmt the payment date
+     * @param {date} [obj.date_value=obj.date_pmt] the value date, i.e., the date when this payment changes the balance for rate payments
+     * @param {number} obj.notional the payment amount
+     * @param {string} [obj.currency=""] currency of the payment.
+     */
     constructor(obj) {
       // notional
       this.#notional = check_notional(obj.notional);
@@ -2606,7 +2835,6 @@
       this.#notional = check_notional(n);
     }
 
-    // getter functions
     get is_fixed() {
       return true;
     }
@@ -2704,9 +2932,29 @@
     }
   }
 
+  /**
+   * Class representing a fixed rate payment
+   * @memberof JsonRisk
+   */
   class FixedRatePayment extends RatePayment {
     #rate = null;
     #amount = 0.0;
+
+    /**
+     * Create a fixed rate payment.
+     * @param {obj} obj A plain object representing the payment.
+     * @param {date} obj.date_pmt the payment date
+     * @param {date} [obj.date_value=obj.date_pmt] the value date, i.e., the date when this payment changes the balance for other rate payments, only relevant for capitalizing payments.
+     * @param {date} obj.date_start the accrual start date
+     * @param {date} [obj.ref_start=obj.date_start] the reference period start date, needed for some day count conventions
+     * @param {date} obj.date_end the accrual start date
+     * @param {date} [obj.ref_end=obj.date_end] the reference period start date, needed for some day count conventions
+     * @param {number} obj.notional the payment amount
+     * @param {string} [obj.currency=""] currency of the payment.
+     * @param {number} obj.rate fixed rate of the payment.
+     * @param {string} [obj.dcc=""] day count convention of the payment.
+     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     */
     constructor(obj) {
       super(obj);
       // rate
@@ -2739,6 +2987,10 @@
     }
   }
 
+  /**
+   * Class representing a float rate payment
+   * @memberof JsonRisk
+   */
   class FloatRatePayment extends RatePayment {
     #index = "";
     #is_fixed = false;
@@ -2746,6 +2998,25 @@
     #rate = 0.0;
     #reset_start = null;
     #reset_end = null;
+
+    /**
+     * Create a float rate payment.
+     * @param {obj} obj A plain object representing the payment.
+     * @param {date} obj.date_pmt the payment date
+     * @param {date} [obj.date_value=obj.date_pmt] the value date, i.e., the date when this payment changes the balance for other rate payments, only relevant for capitalizing payments.
+     * @param {date} obj.date_start the accrual start date
+     * @param {date} [obj.ref_start=obj.date_start] the reference period start date, needed for some day count conventions
+     * @param {date} [obj.reset_start=obj.date_start] the reset period start date
+     * @param {date} obj.date_end the accrual start date
+     * @param {date} [obj.ref_end=obj.date_end] the reference period start date, needed for some day count conventions
+     * @param {date} [obj.reset_end=obj.date_end] the reset period end date
+     * @param {number} obj.notional the payment amount
+     * @param {string} [obj.currency=""] currency of the payment.
+     * @param {string} [obj.index=""] named reference to an index of the payment.
+     * @param {number} [obj.spread=0.0] fixed spread rate of the payment.
+     * @param {string} [obj.dcc=""] day count convention of the payment.
+     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     */
     constructor(obj) {
       super(obj);
 
@@ -3445,9 +3716,19 @@
   };
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a bachelier model used to value e.g. swaptions, caps and floors
+   * @memberof JsonRisk
+   */
   class BachelierModel {
     #impl = null;
     #std_dev = 0.0;
+
+    /**
+     * Create a bachelier model
+     * @param {number} time time to exercise
+     * @param {number} volatility bachelier, e.g. normal volatility
+     */
     constructor(time, volatility) {
       this.#std_dev = volatility * Math.sqrt(time);
       if (time < 0) {
@@ -3478,10 +3759,22 @@
       );
     }
 
+    /**
+     * Calculate the price of a put option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     put_price(forward, strike) {
       return this.#impl(-1, forward, strike);
     }
 
+    /**
+     * Calculate the price of a call option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     call_price(forward, strike) {
       return this.#impl(1, forward, strike);
     }
@@ -3489,9 +3782,19 @@
   library.BachelierModel = BachelierModel;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing a black76 model user to value e.g. equity options
+   * @memberof JsonRisk
+   */
   class BlackModel {
     #impl = null;
     #std_dev = 0.0;
+
+    /**
+     * Create a black76 model
+     * @param {number} time time to exercise
+     * @param {number} volatility black, e.g. log-normal volatility
+     */
     constructor(time, volatility) {
       this.#std_dev = volatility * Math.sqrt(time);
       if (time <= 0) {
@@ -3528,10 +3831,22 @@
       );
     }
 
+    /**
+     * Calculate the price of a put option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     put_price(forward, strike) {
       return this.#impl(-1, forward, strike);
     }
 
+    /**
+     * Calculate the price of a call option
+     * @param {number} forward the forward value
+     * @param {number} strike the strike value
+     * @return {number}
+     */
     call_price(forward, strike) {
       return this.#impl(1, forward, strike);
     }
@@ -3539,10 +3854,20 @@
   library.BlackModel = BlackModel;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  /**
+   * Class representing an ISDA credit model
+   * @memberof JsonRisk
+   */
   class IsdaCdsModel {
     #disc_curve = null;
     #survival_curve = null;
     #timeline = null;
+
+    /**
+     * Create an ISDA credit model
+     * @param {Curve} disc_curve discount curve object
+     * @param {Curve} survival_curve survival curve object, discount factors represent survival probabilities, should use the linear_rt interpolation method.
+     */
     constructor(disc_curve, survival_curve) {
       this.#disc_curve = disc_curve;
       this.#survival_curve = survival_curve;
@@ -3555,6 +3880,11 @@
       Object.freeze(this.#timeline);
     }
 
+    /**
+     * Create a time line from t_start to t_end including t_start, t_end and all support points of the discount curve and the survival curve
+     * @param {date} t_start start time
+     * @param {date} t_end end time
+     */
     timeline(t_start, t_end) {
       const res = [t_start];
       for (const t of this.#timeline) {
@@ -3566,6 +3896,14 @@
       return res;
     }
 
+    /**
+     * Calculate the present value of accrual on default for a rate payment
+     * @param {Payment} pmt the payment
+     * @param {date} pmt.date_start the accrual start date
+     * @param {date} pmt.date_end the accrual end date
+     * @param {date} pmt.date_pmt the payment date
+     * @param {number} pmt.amount the payment amount
+     */
     accrual_on_default_pv(pmt) {
       const { date_start, date_end, date_pmt, amount } = pmt;
       const t_pmt = library.time_from_now(date_pmt);
@@ -3628,6 +3966,14 @@
       return res * annualized_amount;
     }
 
+    /**
+     * Calculate the present value of a protetion period
+     * @param {object} period the period
+     * @param {date} period.date_start protection start date
+     * @param {date} period.date_end protection end date
+     * @param {number} period.notional the notional
+     * @param {number} period.recovery_rate the recovery rate
+     */
     protection_pv(period) {
       const { date_start, date_end, notional, recovery_rate } = period;
       const t_start = library.time_from_now(date_start);
@@ -5339,48 +5685,94 @@
   library.Surface = Surface;
 })(this.JsonRisk || module.exports);
 (function (library) {
-  const error_message = "Deps: name must be a string and cannot be empty";
+  const check_name = function (s) {
+    return library.nonempty_string_or_throw(
+      s,
+      "Deps: name must be a string and cannot be empty",
+    );
+  };
+
+  /**
+   * Class used for collecting dependencies, i.e., names of required scalars, curves, and surfaces, from an instrument, a leg, or an index
+   * @memberof JsonRisk
+   */
   class Deps {
     #scalars = new Set();
     #curves = new Set();
     #surfaces = new Set();
     #currencies = new Set();
+
+    /** Create an empty Deps object */
     constructor() {}
 
+    /**
+     * Add a scalar dependency
+     * @param {string} name The name of the scalar
+     */
     add_scalar(name) {
-      this.#scalars.add(library.nonempty_string_or_throw(name, error_message));
+      this.#scalars.add(check_name(name));
     }
 
+    /**
+     * Add a curve dependency
+     * @param {string} name The name of the curve
+     */
     add_curve(name) {
-      this.#curves.add(library.nonempty_string_or_throw(name, error_message));
+      this.#curves.add(check_name(name));
     }
 
+    /**
+     * Add a surface dependency
+     * @param {string} name The name of the surface
+     */
     add_surface(name) {
-      this.#surfaces.add(library.nonempty_string_or_throw(name, error_message));
+      this.#surfaces.add(check_name(name));
     }
 
+    /**
+     * Add a dependency on a currency
+     * @param {string} name The name of the currency
+     */
     add_currency(name) {
-      this.#currencies.add(
-        library.nonempty_string_or_throw(name, error_message),
-      );
+      this.#currencies.add(check_name(name));
     }
 
+    /**
+     * Get the names of all scalars.
+     * @type {Array}
+     */
     get scalars() {
       return Array.from(this.#scalars);
     }
 
+    /**
+     * Get the names of all curves.
+     * @type {Array}
+     */
     get curves() {
       return Array.from(this.#curves);
     }
 
+    /**
+     * Get the names of all surfaces.
+     * @type {Array}
+     */
     get surfaces() {
       return Array.from(this.#surfaces);
     }
 
+    /**
+     * Get the names of all currencies.
+     * @type {Array}
+     */
     get currencies() {
       return Array.from(this.#currencies);
     }
 
+    /**
+     * Create a minimal params container from an object with params, containing all collected dependencies
+     * @param {obj} params_json The plain object with parameters
+     */
     minimal_params(params_json) {
       const obj = {
         valuation_date: null,
@@ -5468,6 +5860,10 @@
     return res;
   };
 
+  /**
+   * Class representing a parameters container that holds market data and other parameters
+   * @memberof JsonRisk
+   */
   class Params {
     #valuation_date = null;
     #main_currency = "EUR";
@@ -5477,6 +5873,17 @@
     #scenario_groups = [];
     #num_scenarios = 1; // without any scenarios, num_scenarios is one since a base scenario is implicitly included
 
+    /**
+     * Create a Params object.
+     * @param {object} obj A plain object representing a parameters container.
+     * @param {date} obj.valuation_date As-of date for all calculations
+     * @param {string} [obj.main_currency="EUR"] Target currency for all calculations
+     * @param {object} [obj.scalars={}] Scalars to import into the parameters object. Keys are the names of the scalars as referenced by instruments, values are objects as understood by the scalar class constructors.
+     * @param {object} [obj.curves={}] Curves to import into the parameters object. Keys are the names of the curves as referenced by instruments, values are objects as understood by the curve class constructors.
+     * @param {object} [obj.surfaces={}] Surfaces to import into the parameters object. Keys are the names of the surfaces as referenced by instruments, values are objects as understood by the surface class constructors.
+     * @param {object} [obj.scenarios={}] Scenarios conforming to the JsonRisk scenario definition format.
+     * @param {object} [obj.calendars={}] Calendars to import into the library instance. Keys are the names of the calendars, values must be arrays of holidays to include into the calendar.
+     */
     constructor(obj) {
       // valuation date
       if (!("valuation_date" in obj))
@@ -5558,30 +5965,59 @@
       }
     }
 
+    /**
+     * Get the valuation date.
+     * @type {date}
+     */
     get valuation_date() {
       return this.#valuation_date;
     }
 
+    /**
+     * Get the main currency.
+     * @type {string}
+     */
     get main_currency() {
       return this.#main_currency;
     }
 
+    /**
+     * Get the number of scenarios.
+     * @type {number}
+     */
     get num_scenarios() {
       return this.#num_scenarios;
     }
 
+    /**
+     * Get the names of all scalars.
+     * @type {Array}
+     */
     get scalar_names() {
       return Object.keys(this.#scalars);
     }
 
+    /**
+     * Get the names of all curves.
+     * @type {Array}
+     */
     get curve_names() {
       return Object.keys(this.#curves);
     }
 
+    /**
+     * Get the names of all surfaces.
+     * @type {Array}
+     */
     get surface_names() {
       return Object.keys(this.#surfaces);
     }
 
+    /**
+     * Check if a scalar is included in this parameters container.
+     * @param {string} name The name of the scalar
+     * @return {boolean}
+     */
     has_scalar(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -5590,6 +6026,11 @@
       return n in this.#scalars;
     }
 
+    /**
+     * Check if a curve is included in this parameters container.
+     * @param {string} name The name of the curve
+     * @return {boolean}
+     */
     has_curve(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -5598,6 +6039,11 @@
       return n in this.#curves;
     }
 
+    /**
+     * Check if a surface is included in this parameters container.
+     * @param {string} name The name of the surface
+     * @return {boolean}
+     */
     has_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -5606,6 +6052,11 @@
       return n in this.#surfaces;
     }
 
+    /**
+     * Get a paticular scalar object
+     * @param {string} name the name of the scalar
+     * @return {Scalar}
+     */
     get_scalar(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -5615,6 +6066,11 @@
       return this.#scalars[n];
     }
 
+    /**
+     * Get a paticular curve object
+     * @param {string} name The name of the curve
+     * @return {Curve}
+     */
     get_curve(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -5624,6 +6080,11 @@
       return this.#curves[n];
     }
 
+    /**
+     * Get a paticular surface object
+     * @param {string} name The name of the surface
+     * @return {Surface}
+     */
     get_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
@@ -5651,6 +6112,12 @@
       );
     }
 
+    /**
+     * Get the FX fate for a currency pair. For each currency that is not the main currency, a scalar must be present that allows conversion from or to the main currency. These scalars must have the naming convention AAABBB, AAA/BBB, AAA_BBB, or AAA-BBB. Valid examples for the case where EUR is the main currency are EURUSD, GBP/EUR, EUR-CHF, or JPY-EUR. The first currency is the base currency, the second currency is the quote currency. E.g., EURUSD refers to the value of one EUR (base currency) in USD (quote currency).
+     * @param {string} from Three-Letter code for the currency to convert from
+     * @param {string} to Three-Letter code for the currency to convert to
+     * @return {number}
+     */
     get_fx_rate(from, to) {
       if (from === to) return 1.0;
       return (
@@ -5658,6 +6125,10 @@
       );
     }
 
+    /**
+     * Clears all scenarios from all parameter objects in the container.
+     *
+     */
     detach_scenarios() {
       for (const container of [this.#scalars, this.#curves, this.#surfaces]) {
         for (const item of Object.values(container)) {
@@ -5666,6 +6137,10 @@
       }
     }
 
+    /**
+     * Retrieve the n-th scenario.
+     * @param {number} n the index of the scenario starting with 1.
+     */
     get_scenario(n) {
       if (n === 0) return null;
       let i = 0;
@@ -5678,6 +6153,10 @@
       return null;
     }
 
+    /**
+     * Activate the n-th scenario by attaching it to all matching parameter objects in the containrt.
+     * @param {number} n the index of the scenario starting with 1.
+     */
     attach_scenario(n) {
       const scenario = this.get_scenario(n);
       if (!scenario) return this.detach_scenarios();
@@ -5718,6 +6197,10 @@
       }
     }
 
+    /**
+     * Reconvert the parameters container to a plain object
+     * @returns {object}
+     */
     toJSON() {
       const mapper = ([key, value]) => [key, value.toJSON()];
       const res = {
@@ -5737,8 +6220,9 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * calculates the present value for any given supported instrument (bond, floater, fxterm, swap, swaption, callable_bond)
-   * @param {object} instrument any instrument
+   * Calculates the present value for any given supported instrument
+   * @param {object} instrument_json an instrument object as required by make_instrument
+   * @param {object} params_json an object containing parameters as required by the Params constructor
    * @returns {number} present value
    * @memberof JsonRisk
    * @public
@@ -5763,8 +6247,9 @@
   };
 
   /**
-   * runs a generic simulation on an instrument
-   * @param {object} instrument any instrument
+   * Runs a generic simulation on an instrument
+   * @param {object} instrument_json an instrument object as required by make_instrument
+   * @param {object} params_json an object containing parameters as required by the Params constructor
    * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
    * @returns {object} results object
    * @memberof JsonRisk
