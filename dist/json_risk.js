@@ -227,7 +227,7 @@
    * @memberof JsonRisk
    */
   library.make_instrument = function (obj) {
-    switch (obj.type.toLowerCase()) {
+    switch (obj.type.toLowerCase().replaceAll("_", "")) {
       case "bond":
         return new library.Bond(obj);
       case "floater":
@@ -238,15 +238,17 @@
         return new library.Swaption(obj);
       case "fxterm":
         return new library.FxTerm(obj);
-      case "callable_bond":
+      case "callablebond":
         return new library.CallableBond(obj);
+      case "leginstrument":
+        return new library.LegInstrument(obj);
       case "equity":
         return new library.Equity(obj);
-      case "equity_future":
+      case "equityfuture":
         return new library.EquityFuture(obj);
-      case "equity_forward":
+      case "equityforward":
         return new library.EquityForward(obj);
-      case "equity_option":
+      case "equityoption":
         return new library.EquityOption(obj);
       case "cds":
         return new library.CreditDefaultSwap(obj);
