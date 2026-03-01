@@ -14,7 +14,7 @@
     "concat": "mkdir -p dist;cat src/index.js src/*/*.js > dist/json_risk.js",
     "prettify": "prettier src/index.js src/*/*.js test/test.js test/tests/*.js --write",
     "lint": "eslint src/index.js src/*/*.js",
-    "doc": "jsdoc -c jsdoc.json", 
+    "doc": "jsdoc -c jsdoc.json;node markdown2html.js",
     "build": "npm run prettify && npm run lint && npm run concat"
   },
   "keywords": [
@@ -34,10 +34,8 @@
   "homepage": "https://www.jsonrisk.de",
   "devDependencies": {
     "eslint": "^9.20.1",
+    "jsdoc": "^4.0.5",
+    "markdown-it": "^14.1.1",
     "prettier": "^3.5.1"
-  },
-  "dependencies": {
-    "esdoc": "^1.1.0",
-    "esdoc-standard-plugin": "^1.0.0"
   }
 }
