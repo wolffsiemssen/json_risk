@@ -227,7 +227,11 @@
    * @memberof JsonRisk
    */
   library.make_instrument = function (obj) {
-    switch (obj.type.toLowerCase().replaceAll("_", "")) {
+    const type = library.string_or_throw(
+      obj.type,
+      "make_instrument: no type supplied",
+    );
+    switch (type.toLowerCase().replaceAll("_", "")) {
       case "bond":
         return new library.Bond(obj);
       case "floater":
