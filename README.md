@@ -63,12 +63,11 @@ JSON Risk supports the instrument types below:
   - Cross-Currency Swap
 - Callable fixed income instruments
   - Plain vanilla swaptions
-  - Bermudan swaptions
   - Single callable and multicallable bond
-  - Single callable and multicallable swaps
 - Equities
   - Stock
-  - Stock/Index Future/Forward
+  - Stock/Index Future
+  - Stock/Index Forward
   - European Options
 - Credit
   - Credit default swaps

@@ -4,8 +4,9 @@ JSON Risk supports the parameter types below:
 - Scalars
 - Curves
 - Surfaces
+- Calendars
 
-A Parameter set stores the parameters above along with scenarios. Parameters and scenarios are described in this document.
+A Parameter set stores the parameters above along with scenarios. Parameters and scenarios are described in this document. The JSON representation of a parameter set contains the fields below
  
 ## Parameter Field definitions
 
@@ -192,15 +193,39 @@ Example with labels and absolute strikes:
         }
 
 
+## Calendars
+
+Calendars are stored as objects. The keys are the names of each calendar, and the corresponding value must be a list of holidays, e.g., an Array of `Date` instances. An example:
+
+
+        {
+                "EXAMPLE_CALENDAR1": [
+                        "2025/01/01",
+                        "2026/01/01",
+                        "2027/01/01",
+                        "2028/01/01",
+                        "2029/01/01",
+                ],
+                "EXAMPLE_CALENDAR2": [
+                        "2025/05/01",
+                        "2026/05/01",
+                        "2027/05/01",
+                        "2028/05/01",
+                        "2029/05/01",
+                ],
+        }
+
+
 ## Scenarios
 
 ### Defintion of a scenario group
 A scenario group must have a name that consists of letters, numbers, dashes and underscores only. A scenario group consists of one or more scenarios. A single scenario consists of a name and one or more rules. The rules are used to determine the risk factors (i.e., parameters) to which the scenarios should be applied and what shock to apply.
 
 Here is an outline of the structure of a scenario:
- - **Scenario group**: A collection of scenarios
- - **Scenario**: an object with a name (without blank spaces) and a collection of rules
- - **Rule(s)**: an object that contains
+
+ - A **Scenario group**: A collection of scenarios
+ - A **Scenario**: an object with a name (without blank spaces) and a collection of rules
+ - Some **Rule(s)**: an object that contains
    - a list of **Risk factors**: The rule applies to each of the risk factors (i.e. scalars, curves, surfaces).
    - a list of **Tags**: all scalars, curves and surfaces that have ALL of the tags in this list attached are affected by this rule.
    - a **Model**: Either **additive**, **multiplicative** or **absolute**. If additive, the values of this rule are added to each affected risk factor. If multiplicative, the values of this rule are multiplied with the values of each affected risk factor. If absolute, the values of this rule replace the values of each affected risk factor.
@@ -239,14 +264,11 @@ Find below an example of a scenario group in JSON format.
              "yield"
             ],
            },
-           {}
+           { /* more rules */ }
           ]
          },
-         {
-          ...
-         }
+         { /* more scenarios */ }
         ]
-
 
 
 

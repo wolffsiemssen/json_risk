@@ -380,18 +380,19 @@ A value of zero indicates interest is paid at maturity. Any other positive value
 ------------------------------------------------------------------------------
 ## type `String`
 ### Domain
-Either `bond`, `floater`, `swap`, `swaption`, `callable_bond` or `fxterm`
+See table below, string is case-insensitive and underscores are ignored, so e.g. C-Style `equity_future` and C++-Style `EquityFuture` are both supported.
 ### Meaning
 The `make_instrument` function and the `simulation` and `vector_pricer` functions use this identifier to determine which class to instantiate for an instrument JSON object. These are the supported types with their classes:
 
 |type   |class   |category/superclass|
 |-------|--------|--------------------|
 |`bond` |Bond    |LegInstrument       |
-|`floater`|Bond  |LegInstrument       |
+|`floater`|Floater  |LegInstrument       |
 |`swap` |Swap    |LegInstrument       |
 |`swaption`|Swaption|LegInstrument    |
 |`fxterm`|FxTerm|LegInstrument        |
 |`callable_bond`|CallableBond|LegInstrument|
+|`leg_instrument`|LegInstrument|LegInstrument|
 |`equity`|Equity|Equity|
 |`equity_future`|EquityFuture|Equity  |
 |`equity_forward`|EquityForward|Equity|
