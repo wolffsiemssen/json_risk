@@ -86,7 +86,11 @@
         );
       }
 
-      this.#is_payer = this.#fixed_leg.payments[0].notional > 0;
+      const payfix = this.#fixed_leg.payments[0].notional < 0;
+      const payfloat = this.#float_leg.payments[0].notional < 0;
+      if (payfix === payfloat)
+        throw new Error("Swap: leg notionals must have opposite signs");
+      this.#is_payer = payfix;
     }
 
     /**
