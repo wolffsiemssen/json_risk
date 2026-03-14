@@ -378,25 +378,15 @@ Payer swap:
 
 
 
-### Swaptions - the `Swaption` class
+## Swaptions - the `Swaption` class
 
-Vanilla swaption positions. Swaptions are priced using the bachelier model.
+A swaption is a leg instrument with one fixed rate and one float rate leg. The legs are restricted in the same way as in the `Swap` class. In addition, a swaption has an exercise date (field `first_exercise_date`) and needs the reference to a surface object (field `surface`) for valuation with the bachelier model.
 
-### Valuation and usage
+### Leg generation
 
-        //convenience Valuation function without object instantiation
-        var present_value=JsonRisk.pricer_swaption(json_object, disc_curve, fwd_curve, surface);
+If no `legs` are supplied in the instrument JSON definition, the library tries to generate the legs based on terms and conditions in the same way as the `Swap` class.
 
-        //object instantiation
-        var swptn=new JsonRisk.swaption(json_object);
-        
-        //Valuation
-        present_value=swptn.present_value(disc_curve, fwd_curve, surface);
-
-        //access to underlying swap
-        var swap=swptn.base;
-
-## Examples
+### Examples
 
 Long receiver swaption:
 
@@ -421,7 +411,7 @@ Long receiver swaption:
 Short payer swaption:
 
         {                
-                is_short: true,
+                quantity: -1.0,
                 is_payer: true,                
                 notional: 100,
                 first_exercise_date: "2022/01/01",      //expiry date of the swaption
@@ -440,20 +430,19 @@ Short payer swaption:
                 float_bdc: "following"
         }
 
-## FX spot, forward, and swap positions - the `fxterm` class
+## FX spot, forward, and swap positions - the `FxTerm` class
 
-This class represents a single-currency-side of an fx spot, forward or swap position.
+This class represents an fx spot, forward or swap position. The `legs` are restricted to be either one leg (the instrument represents just one currency side of the contract in this case) or two legs. If two legs are present, the instrument represents both sides of the contract, and the legs must have different currencies.
 
-### Valuation and usage
+Legs can have one payment (fx spot or forward) or two payments (fx swap), and both legs must contain the same number of payments. All payments must be of type "NotionalPayment".
 
-        //convenience Valuation function without object instantiation
-        var present_value=JsonRisk.pricer_fxterm(json_object, disc_curve);
+### Leg generation
 
-        //object instantiation
-        var fxt=new JsonRisk.fxterm(json_object);
-        
-        //Valuation
-        present_value=fxt.present_value(disc_curve);
+If no `legs` are supplied, only one leg is supported and that leg is generated from terms and conditions:
+
+ - `notional` and optional `notional_2` specify the payment amounts
+ - `maturity` and optional `maturity_2` specify the payment times
+ - parametrise the instrument with a discount curve (field `disc_curve`)
 
 ### Examples
 
