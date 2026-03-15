@@ -67,6 +67,16 @@
           "CreditDefaultSwap: Cannot contain capitalizing payments",
         );
 
+      if (leg.has_float_rate_payments)
+        throw new Error(
+          "CreditDefaultSwap: Cannot contain float rate payments",
+        );
+
+      if (leg.has_embedded_options)
+        throw new Error(
+          "CreditDefaultSwap: Cannot contain embedded coupon options",
+        );
+
       this.#survival_curve = library.string_or_empty(obj.survival_curve);
       this.#accrual_on_default = library.make_bool(obj.accrual_on_default);
       this.#recovery_rate = library.number_or_null(obj.recovery_rate);
