@@ -54,8 +54,18 @@
       } else {
         super(obj);
       }
+
+      // consistency checks
       if (1 !== this.legs.length)
         throw new Error("CreditDefaultSwap: must have exactly one leg");
+
+      const leg = this.legs[0];
+      if (leg.has_notional_payments)
+        throw new Error("CreditDefaultSwap: Cannot contain notional payments");
+      if (leg.has_capitalization)
+        throw new Error(
+          "CreditDefaultSwap: Cannot contain capitalizing payments",
+        );
 
       this.#survival_curve = library.string_or_empty(obj.survival_curve);
       this.#accrual_on_default = library.make_bool(obj.accrual_on_default);
