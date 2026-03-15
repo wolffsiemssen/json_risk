@@ -911,8 +911,8 @@
           fixed_rate: fixed_rate,
           tenor: obj.tenor,
           calendar: obj.calendar,
-          bdc: obj.bdc,
-          dcc: obj.dcc,
+          bdc: library.string_or_empty(obj.bdc) || "f",
+          dcc: library.string_or_empty(obj.dcc) || "act/360",
           adjust_accrual_periods: obj.adjust_accrual_periods,
           disc_curve: obj.disc_curve,
         });
