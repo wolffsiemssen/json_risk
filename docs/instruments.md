@@ -174,7 +174,7 @@ Below is an example for a generic leg instrument in EUR with one leg. The leg ha
           "disc_curve": "discount",
           "payments": [
             {
-              "type": "fixed",
+              "type": "fixed",              // fixed rate payment
               "currency": "EUR",
               "notional": 100,
               "rate": 0.01,
@@ -183,7 +183,7 @@ Below is an example for a generic leg instrument in EUR with one leg. The leg ha
               "date_end": "2000/01/01"
             },
             {
-              "type": "float",
+              "type": "float",              // float rate payment, already fixed
               "currency": "EUR",
               "notional": 100,
               "rate": 0.02,
@@ -194,7 +194,7 @@ Below is an example for a generic leg instrument in EUR with one leg. The leg ha
               "date_end": "2000/01/01"
             },
             {
-              "type": "float",
+              "type": "float",              // float rate payment, still floating
               "currency": "EUR",
               "notional": 100,
               "rate": null,
@@ -206,14 +206,14 @@ Below is an example for a generic leg instrument in EUR with one leg. The leg ha
               "index": "index"
             },
             {
-              "type": "notional",
+              "type": "notional",           // notional payment
               "currency": "EUR",
               "notional": 100,
               "date_pmt": "2000/01/02",
               "date_value": "2000/01/01"
             }
           ],
-          "indices": {
+          "indices": {                      // float rate index
             "index": {
               "type": "simple",
               "fwd_curve": "forward"
@@ -463,25 +463,20 @@ FX swap:
                 maturity_2: "2027/01/01"
         }
 
-## Callable bonds - the `callable_fixed_income` class
+## Callable bonds - the `CallableBond` class
 
-Callable bonds must be fixed rate bonds. Apart from that, all features from the `fixed_income` class are supported.
+Callable bonds must be fixed rate bonds. Apart from that, all features from the `Bond` class are supported. Call dates are specified with `first_exercise_date` and `call_tenor`. If `call_tenor` is a positive natural number, a call schedule is generated forward from the `first_exercise_date`.
 
-Callable bond Valuation is implemented with a Linear Gauss Markov (or, equivalently, Hull-White) model in the spirit of Hagan, Patrick; EVALUATING AND HEDGING EXOTIC SWAP INSTRUMENTS VIA LGM (2019). It calibrates to a basket of plain vanilla swaptions automatically generated under the hood.
+Callable bond Valuation is implemented with a Linear Gauss Markov (or, equivalently, Hull-White) model in the spirit of Hagan, Patrick; EVALUATING AND HEDGING EXOTIC SWAP INSTRUMENTS VIA LGM (2019).
 
-### Valuation and usage
+### Parametrisation
 
-        //convenience Valuation functions without object instantiation
-        var present_value=JsonRisk.pricer_callable_bond(json_object, disc_curve, spread_curve, fwd_curve, surface);
+Like a bond, callable bonds support discounting based on a `discount_curve`, a `spread_curve` and an additional `residual_spread`. The Linear Gauss Markov model calibrates to a basket of plain vanilla swaptions automatically generated under the hood. The fields below can be used to parametrise this:
 
-        //object instantiation
-        var cb=new JsonRisk.callable_fixed_income(json_object);
-        
-        //Valuation
-        present_value=cb.present_value(disc_curve, spread_curve, fwd_curve, surface);
-
-        //access to underlying cash flow table
-        var cfobject=cb.base.get_cash_flows();
+ - `surface`: Reference to a volatility surface with bachelier swaption volatilities
+ - `fwd_curve`: Forward curve for the swaption basket generated
+ - `mean_reversion`: Optional Hull-White mean reversion parameter, defaults to zero
+ - `hull_white_volatility`: Optional scalar Hull-White volatility parameter. If this field is present, LGM parameters are not calibrated at all. Instead, the Hull-White volatility is directly converted into an LGM parameter.
         
 ### Examples
 
@@ -515,6 +510,71 @@ Multi-callable bond:
                 maturity: "2025/01/01",
 
                 first_exercise_date: "2022/01/01",      //call feature definition
-                call_tenor: 12                          //bermudan style call every 12 Months rolling forward from first exercise date
+                call_tenor: 12                          //bermudan style call every 12 months rolling forward from first exercise date
         }
 
+## Credit default swaps - the `CreditDefaultSwap` class
+
+Credit default swaps are leg instruments with just one leg paying premiums. It must contain fixed rate payments only, it cannot contain notional payments or capitalization. It is not needed to specify a protection leg nor is this supported. Protection starts at the start date of the first premium payment and ends at the end date of the last premium payment. Credit default swaps are valued with the ISDA CDS model and also have an accrual on default feature that can be toggled with the `accrual_on_default` flag.
+
+### Parametrisation
+
+ - A `discount_curve` for discounting premiums and expected protection payments
+ - A `survival_curve` for modeling default probabilities
+ - A `recovery_rate`
+ 
+In order to comply with the ISDA CDS model, curves should use `linear_rt` interpolation. However, this is not enforced technically.
+
+### Leg generation
+
+In case no legs are supplied with the instrument JSON, they are generated from terms and conditions. The library uses the fields below:
+
+ - `notional`: the volume of the contract
+ - `maturity`: the end date
+ - `effective_date: `the start date
+ - `first_date`: implicit initial stub date
+ - `next_to_last_date`: implicit final stub date
+ - `fixed_rate`: fixed rate for premium payments
+ - `tenor`: premium payment frequency
+ - `calendar`: holiday calendar
+ - `bdc`: business day convention
+ - `dcc`: day count convention
+ - `adjust_accrual_periods`: flag indicating if accrual start and end dates should be adjusted with the business day convention
+ 
+ ### Examples
+ 
+ Minimal example:
+ 
+     {
+        notional: 10000000,             // main contract features
+        effective_date: "2025/03/20",
+        maturity: "2035/03/20",
+        
+        fixed_rate: 0.04,               // premium conditions, uses act/360 and the following bdc by default
+        tenor: 3,
+        
+        disc_curve: "discount",         // parametrisation
+        survival_curve: "survival",
+        recovery_rate: 0.4,
+    }
+  
+  
+Example with all features
+
+
+     {
+        notional: 10000000,             // main contract features
+        effective_date: "2025/03/20",
+        maturity: "2035/03/20",
+        accrual_on_default: true,
+        
+        fixed_rate: 0.04,               // premium conditions
+        tenor: 3,
+        dcc: "act/365",                 // non-standard day count
+        bdc: "m",                       // non-standard business day convention
+        adjust_accrual_periods: true
+        
+        disc_curve: "discount",         // parametrisation
+        survival_curve: "survival",
+        recovery_rate: 0.4,
+    }
