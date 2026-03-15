@@ -1,6 +1,6 @@
 {
   "name": "json_risk",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "JSON / JavaScript financial risk and pricing library",
   "main": "index.js",
   "type": "commonjs",
