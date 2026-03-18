@@ -313,4 +313,148 @@ test.execute = function (TestFramework, JsonRisk) {
         ").",
     );
   }
+
+  // Test bonds and floaters do not overpay, even with capitalization
+  const effective_date = JsonRisk.date_or_throw("2025-01-01");
+  const final_maturity = JsonRisk.date_or_throw("2027-01-01");
+  const expected_end = JsonRisk.date_or_throw("2026-02-01");
+  const overpayers = [
+    {
+      // fixed rate, no capitalization
+      type: "Bond",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: 120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 1,
+      fixed_rate: 0.03,
+      calendar: "TARGET",
+      bdc: "f",
+    },
+    {
+      // fixed rate, extreme negative capitalization, should not overpay anyway
+      type: "Bond",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: 120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 1,
+      fixed_rate: -0.5, // 50%
+      interest_capitalization: true,
+      calendar: "TARGET",
+      bdc: "f",
+    },
+    {
+      // fixed rate, extreme negative capitalization, irregular schedule, should not overpay anyway
+      type: "Bond",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: 120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 12,
+      repay_tenor: 1,
+      interest_capitalization: true,
+      fixed_rate: -0.5, // 50%
+      calendar: "TARGET",
+      bdc: "f",
+    },
+    {
+      // fame with negative notionals, should not overpay anyway
+      type: "Bond",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: -120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 12,
+      repay_tenor: 1,
+      interest_capitalization: true,
+      fixed_rate: -0.5, // 50%
+      calendar: "TARGET",
+      bdc: "f",
+    },
+    {
+      // float rate, no capitalization
+      type: "Floater",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: 120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 1,
+      float_current_rate: 0.0,
+      float_spread: 0.03,
+      calendar: "TARGET",
+      bdc: "f",
+    },
+    {
+      // float rate, extreme negative capitalization, should not overpay anyway
+      type: "Floater",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: 120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 1,
+      interest_capitalization: true,
+      float_current_rate: 0.0,
+      float_spread: -0.5, // 50%
+      calendar: "TARGET",
+      bdc: "f",
+    },
+    {
+      // float rate, extreme negative capitalization, irregular schedule, should not overpay anyway
+      type: "Floater",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: 120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 12,
+      repay_tenor: 1,
+      interest_capitalization: true,
+      float_current_rate: 0.0,
+      float_spread: -0.5, // 50%
+      calendar: "TARGET",
+      bdc: "f",
+    },
+    {
+      // same with negative notionals, should not overpay anyway
+      type: "Floater",
+      effective_date: effective_date,
+      maturity: final_maturity,
+      notional: -120,
+      repay_amount: 10, // should pay off after one year
+      tenor: 12,
+      repay_tenor: 1,
+      interest_capitalization: true,
+      float_current_rate: 0.0,
+      float_spread: -0.5, // 50%
+      calendar: "TARGET",
+      bdc: "f",
+    },
+  ];
+
+  for (const o of overpayers) {
+    const instrument = JsonRisk.make_instrument(o);
+    const initial_balance = o.notional;
+    const payments = instrument.legs[0].payments;
+    for (const p of payments) {
+      // all payments after expected end must have zero notionals and amounts
+      if (p.date_value.getTime() > expected_end.getTime()) {
+        TestFramework.assert(
+          p.notional === 0,
+          "Amortizing Bonds must not overpay",
+        );
+        TestFramework.assert(
+          p.amount === 0,
+          "Amortizing Bonds must not overpay",
+        );
+      }
+
+      // regardless of the value date, rate payments must have a valid notional that has the same sign as the initial notional
+      if (p.constructor === JsonRisk.NotionalPayment) continue;
+      console.log("Notional: " + p.notional);
+      TestFramework.assert(
+        p.notional * o.notional >= 0,
+        "Amortizing Bonds must not overpay",
+      );
+    }
+  }
 };

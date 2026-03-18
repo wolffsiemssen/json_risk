@@ -426,6 +426,7 @@
 
       // keep track of balance and payments with value date in the future
       let balance = -p0.amount_notional;
+      const sign = Math.sign(balance);
       const open_payments = new Set();
 
       for (let i = 1; i < n; i++) {
@@ -440,10 +441,10 @@
         }
 
         if (p.constructor === library.NotionalPayment) {
-          // notional payments cannot change sign of balance, and final notional payment must clear balance
+          // notional payments cannot change initial sign of balance, and final notional payment must clear balance
           if (
-            (balance > 0 && p.notional > balance) ||
-            (balance < 0 && p.notional < balance) ||
+            (sign >= 0 && p.notional > balance) ||
+            (sign <= 0 && p.notional < balance) ||
             i === n - 1
           )
             p.set_notional(balance);
@@ -452,13 +453,13 @@
           p.set_notional(balance);
         }
 
-        // add this payment to the list if it pays notional
+        // make this payment change the balance if it pays notional
         if (p.amount_notional != 0) {
           if (p.date_value.getTime() <= start.getTime()) {
-            // immediately reduce balance
+            // change balance immediately
             balance -= p.amount_notional;
           } else {
-            // payment reduces balance later
+            // change balance later
             open_payments.add(p);
           }
         }

@@ -319,6 +319,7 @@
     let date_last_fixing = date_start;
     // add outflow in the beginning
     let notional = specs.notional;
+    let sign = Math.sign(notional);
     if (specs.notional_exchange)
       cashflows.push(pay_notional(date_start, -notional));
 
@@ -364,7 +365,7 @@
           n = notional;
         } else {
           // pay according to current repayment conditions
-          n = current_conditions.repay_amount;
+          n = current_conditions.repay_amount * sign;
         }
       }
 
