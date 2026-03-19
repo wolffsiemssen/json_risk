@@ -199,6 +199,28 @@
       return true;
     }
 
+    // serialise
+    toJSON() {
+      // payments
+      const res = {
+        payments: this.#payments.map((p) => p.toJSON()),
+      };
+
+      // indices
+      for (const [key, value] of Object.entries(this.#indices)) {
+        res.indices = res.indices || {};
+        res.indices[key] = value.toJSON();
+      }
+
+      // optional attributes
+      if (this.#currency) res.currency = this.#currency;
+      if (this.#disc_curve) res.disc_curve = this.#disc_curve;
+      if (this.#spread_curve) res.spread_curve = this.#spread_curve;
+      if (this.#residual_spread) res.residual_spread = this.#residual_spread;
+
+      return res;
+    }
+
     /**
      * Adds dependencies (disc_curve, spread_curve, currency, and all dependencies of relevant indices)
      * @param {Deps} deps a dependencies tracking object
@@ -221,12 +243,16 @@
         const t = library.time_from_now(d);
 
         // exclude payments in the past and that occur on or before the date of acquisition
-        if (t <= cutoff) continue;
-
+        if (t <= cutoff) {
+          p.set_pv(0.0);
+          continue;
+        }
         // get amount and discount
         const amount = p.amount;
         const df = disc_curve.get_df(t);
-        res += amount * df;
+        const val = amount * df;
+        p.set_pv(val);
+        res += val;
       }
       return res;
     }

@@ -15,6 +15,7 @@
     #date_pmt = null;
     #date_value = null;
     #notional = 0.0;
+    #pv = 0.0;
     #currency = "";
 
     /**
@@ -43,6 +44,14 @@
 
     set_notional(n) {
       this.#notional = check_notional(n);
+    }
+
+    set_pv(n) {
+      this.#pv = n;
+    }
+
+    get pv() {
+      return this.#pv;
     }
 
     get is_fixed() {
@@ -78,13 +87,28 @@
     get amount_option() {
       return 0.0;
     }
+
+    // serialisation
+    toJSON() {
+      return {
+        type: "Notional",
+        notional: this.#notional,
+        date_pmt: library.date_to_date_str(this.#date_pmt),
+        date_value: library.date_to_date_str(this.#date_value),
+        currency: this.#currency,
+        amount_interest: this.amount_interest, // uses derived class getter
+        amount_notional: this.amount_notional, // uses derived class getter
+        amount: this.amount, // uses derived class getter
+        pv: this.#pv,
+      };
+    }
   }
 
   class RatePayment extends NotionalPayment {
     #date_start = null;
     #date_end = null;
-    #ref_start = null;
-    #ref_end = null;
+    #date_roll = null;
+    #tenor = null;
     #dcc = "";
     #yf = null;
     #yffunc = null;
@@ -100,15 +124,13 @@
       if (this.#date_end === null)
         throw new Error("RatePayment: date_end must be a valid date");
 
-      // reference periods
-      this.#ref_start = library.date_or_null(obj.ref_start) || this.#date_start;
-      this.#ref_end = library.date_or_null(obj.ref_end) || this.#date_end;
+      // reference period calculations
+      this.#date_roll = library.date_or_null(obj.date_roll) || this.#date_start;
+      this.#tenor = library.natural_number_or_null(obj.tenor);
 
       // sanity checks
       if (this.#date_start.getTime() >= this.#date_end.getTime())
         throw new Error("RatePayment: date_start must be before date_end");
-      if (this.#ref_start.getTime() >= this.#ref_end.getTime())
-        throw new Error("RatePayment: ref_start must be before ref_end");
       if (this.#date_start.getTime() >= this.date_value.getTime())
         throw new Error("RatePayment: date_start must be before date_value");
 
@@ -128,17 +150,33 @@
     get date_end() {
       return this.#date_end;
     }
-    get ref_start() {
-      return this.#ref_start;
+    get date_roll() {
+      return this.#date_roll;
     }
-    get ref_end() {
-      return this.#ref_end;
+    get tenor() {
+      return this.#tenor;
     }
     get yf() {
       return this.#yf;
     }
     get capitalize() {
       return this.#capitalize;
+    }
+
+    // serialisation
+    toJSON() {
+      const res = super.toJSON();
+      delete res.type;
+      res.date_start = library.date_to_date_str(this.#date_start);
+      res.date_end = library.date_to_date_str(this.#date_end);
+      res.yf = this.#yf;
+      // optional members
+      if (this.#dcc) res.dcc = this.#dcc;
+      if (this.#capitalize) res.capitalize = true;
+      if (this.#date_roll)
+        res.date_roll = library.date_to_date_str(this.#date_roll);
+      if (this.#tenor) res.tenor = this.#tenor;
+      return res;
     }
   }
 
@@ -194,6 +232,14 @@
     set_notional(n) {
       super.set_notional(n);
       this.#amount = this.notional * this.#rate * this.yf;
+    }
+
+    // serialise
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Fixed";
+      res.rate = this.#rate;
+      return res;
     }
   }
 
@@ -279,6 +325,19 @@
     }
     get amount_notional() {
       return this.capitalize ? -this.amount_interest : 0.0;
+    }
+
+    // serialise
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Float";
+      res.is_fixed = this.#is_fixed;
+      res.index = this.#index;
+      res.spread = this.#spread;
+      res.rate = this.#rate;
+      res.reset_start = library.date_to_date_str(this.#reset_start);
+      res.reset_end = library.date_to_date_str(this.#reset_end);
+      return res;
     }
 
     // project rate

@@ -95,6 +95,7 @@ if (typeof require === "function") {
     "swaptions.js",
     "cashflow_equivalent_swaption.js",
     "legs.js",
+    "leg_round_trip.js",
     "fx_term.js",
     "fxconversion.js",
     "equities.js",
