@@ -137,7 +137,12 @@
       // dcc and year fraction
       this.#dcc = library.string_or_empty(obj.dcc);
       this.#yffunc = library.year_fraction_factory(this.#dcc);
-      this.#yf = this.#yffunc(this.#date_start, this.#date_end);
+      this.#yf = this.#yffunc(
+        this.#date_start,
+        this.#date_end,
+        this.#date_roll,
+        this.#tenor,
+      );
 
       // capitalization
       this.#capitalize = library.make_bool(obj.capitalize);

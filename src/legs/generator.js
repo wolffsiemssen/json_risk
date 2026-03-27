@@ -42,6 +42,19 @@
     specs.stub_end = library.make_bool(obj.stub_end); // defaults to false
     specs.stub_long = library.make_bool(obj.stub_long); // defaults to false
 
+    // determine roll date for act/actICMA convention
+    specs.roll_date = specs.maturity;
+    if (specs.next_to_last_date != null)
+      specs.roll_date = specs.next_to_last_date;
+    if (specs.first_date != null && specs.next_to_last_date == null)
+      specs.roll_date = specs.first_date;
+    if (
+      specs.first_date == null &&
+      specs.next_to_last_date == null &&
+      specs.stub_end
+    )
+      specs.roll_date = specs.effective_date;
+
     specs.dcc = library.string_or_empty(obj.dcc);
     const is_holiday_func = library.is_holiday_factory(obj.calendar || "");
     const bdc = library.string_or_empty(obj.bdc);
@@ -264,7 +277,18 @@
   ) {
     const date_value = date_pmt;
     const dcc = specs.dcc;
-    const res = { notional, date_start, date_end, date_pmt, date_value, dcc };
+    const date_roll = specs.roll_date;
+    const tenor = specs.tenor;
+    const res = {
+      notional,
+      date_start,
+      date_end,
+      date_roll,
+      tenor,
+      date_pmt,
+      date_value,
+      dcc,
+    };
     if (current_conditions.interest_capitalization) res.capitalize = true;
     if (!specs.is_float) {
       // fixed payment
