@@ -100,6 +100,7 @@ if (typeof require === "function") {
     "fxconversion.js",
     "equities.js",
     "equityvanillaoption.js",
+    "equityamericanvanillaoption.js",
     "cds.js",
     "irregular_bonds.js",
     "lgm_option_pricing.js",
