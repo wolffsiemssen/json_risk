@@ -200,6 +200,247 @@ test.execute = function (TestFramework, JsonRisk) {
     "act/act year fraction (4)",
   );
 
+  yf = JsonRisk.year_fraction_factory("act/actICMA");
+
+  const regular_cases = [
+    // mid month
+    {
+      from: "2020-01-15",
+      to: "2020-02-15",
+      tenor: 1,
+      rolldates: ["2020-01-15", "2020-02-15", "2025-07-15", "1990-10-15"],
+      ref: 1 / 12,
+    },
+    {
+      from: "2020-01-15",
+      to: "2020-04-15",
+      tenor: 3,
+      rolldates: ["2020-01-15", "2020-04-15", "2025-07-15", "1990-10-15"],
+      ref: 0.25,
+    },
+    {
+      from: "2020-01-15",
+      to: "2020-07-15",
+      tenor: 6,
+      rolldates: ["2020-01-15", "2020-07-15", "2025-01-15", "1990-07-15"],
+      ref: 0.5,
+    },
+    {
+      from: "2020-01-15",
+      to: "2021-01-15",
+      tenor: 12,
+      rolldates: ["2020-01-15", "2021-01-15", "2025-01-15", "1990-01-15"],
+      ref: 1.0,
+    },
+    // end month roll day 31
+    {
+      from: "2020-01-31",
+      to: "2020-02-29",
+      tenor: 1,
+      rolldates: ["2020-01-31", "2020-03-31", "2025-07-31", "1990-10-31"],
+      ref: 1 / 12,
+    },
+    {
+      from: "2020-01-31",
+      to: "2020-04-30",
+      tenor: 3,
+      rolldates: ["2020-01-31", "2020-07-31", "2025-07-31", "1990-10-31"],
+      ref: 0.25,
+    },
+    {
+      from: "2020-01-31",
+      to: "2020-07-31",
+      tenor: 6,
+      rolldates: ["2020-01-31", "2020-07-31", "2025-01-31", "1990-07-31"],
+      ref: 0.5,
+    },
+    {
+      from: "2020-01-31",
+      to: "2021-01-31",
+      tenor: 12,
+      rolldates: ["2020-01-31", "2021-01-31", "2025-01-31", "1990-01-31"],
+      ref: 1.0,
+    },
+    // end month roll day 30
+    {
+      from: "2020-01-30",
+      to: "2020-02-29",
+      tenor: 1,
+      rolldates: ["2020-01-30", "2020-04-30", "2025-07-30", "1990-10-30"],
+      ref: 1 / 12,
+    },
+    {
+      from: "2020-01-30",
+      to: "2020-04-30",
+      tenor: 3,
+      rolldates: ["2020-01-30", "2020-07-30", "2025-04-30", "1990-04-30"],
+      ref: 0.25,
+    },
+    {
+      from: "2020-06-30",
+      to: "2020-12-30",
+      tenor: 6,
+      rolldates: ["2020-06-30", "2020-12-30", "2025-12-30", "1990-06-30"],
+      ref: 0.5,
+    },
+    {
+      from: "2020-04-30",
+      to: "2021-04-30",
+      tenor: 12,
+      rolldates: ["2020-04-30", "2021-04-30", "2025-04-30", "1990-04-30"],
+      ref: 1.0,
+    },
+    // end month roll day 30 start in feb
+    {
+      from: "2020-02-29",
+      to: "2020-03-30",
+      tenor: 1,
+      rolldates: ["2020-01-30", "2020-04-30", "2025-07-30", "1990-10-30"],
+      ref: 1 / 12,
+    },
+    {
+      from: "2020-02-29",
+      to: "2020-05-30",
+      tenor: 3,
+      rolldates: ["2020-05-30", "2020-08-30", "2025-11-30", "1990-11-30"],
+      ref: 0.25,
+    },
+    {
+      from: "2020-02-29",
+      to: "2020-08-30",
+      tenor: 6,
+      rolldates: ["2020-08-30", "2021-08-30", "2025-08-30", "1990-08-30"],
+      ref: 0.5,
+    },
+    // end month roll day 29
+    {
+      from: "2020-02-29",
+      to: "2021-02-28",
+      tenor: 12,
+      rolldates: ["2020-02-29", "2024-02-29", "2028-02-29", "1992-02-29"],
+      ref: 1.0,
+    },
+    // end month roll day 28
+    {
+      from: "2020-02-28",
+      to: "2021-02-28",
+      tenor: 12,
+      rolldates: ["2021-02-28", "2022-02-28", "2023-02-28", "1990-02-28"],
+      ref: 1.0,
+    },
+  ];
+
+  for (const c of regular_cases) {
+    const from = JsonRisk.date_or_throw(c.from);
+    const to = JsonRisk.date_or_throw(c.to);
+    let res;
+    for (const roll of c.rolldates) {
+      res = yf(from, to, JsonRisk.date_or_throw(roll), c.tenor);
+      TestFramework.assert(
+        Math.abs(res - c.ref) < 1e-10,
+        `act/actICMA year fraction regular case with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+      );
+      res = yf(from, to, JsonRisk.date_or_throw(roll), undefined);
+      TestFramework.assert(
+        Math.abs(res - c.ref) < 1e-10,
+        `act/actICMA year fraction regular case tenor guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+      );
+    }
+    res = yf(from, to, undefined, c.tenor);
+    TestFramework.assert(
+      Math.abs(res - c.ref) < 1e-10,
+      `act/actICMA year fraction regular case roll date guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+    );
+    res = yf(from, to, undefined, undefined);
+    TestFramework.assert(
+      Math.abs(res - c.ref) < 1e-10,
+      `act/actICMA year fraction regular case tenor and roll date guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+    );
+  }
+
+  const irregular_cases = [
+    {
+      from: "2020-02-29",
+      to: "2020-03-31",
+      subcases: [
+        {
+          roll: "2020-02-29",
+          tenor: 3,
+          ref: 31 / (29 + 31 + 30) / 4,
+          desc: "end stub",
+        },
+        {
+          roll: "2020-03-31",
+          tenor: 3,
+          ref: 31 / (31 + 29 + 31) / 4,
+          desc: "front stub",
+        },
+        { roll: "2020-02-29", tenor: 12, ref: 31 / 365, desc: "end stub" },
+        { roll: "2020-03-31", tenor: 12, ref: 31 / 366, desc: "front stub" },
+        {
+          roll: "2020-03-15",
+          tenor: 1,
+          ref: 15 / 29 / 12 + 16 / 31 / 12,
+          desc: "accrual period within long stub",
+        },
+        {
+          roll: "2020-03-15",
+          tenor: 3,
+          ref: 15 / (29 + 31 + 31) / 4 + 16 / (31 + 30 + 31) / 4,
+          desc: "accrual period within long stub",
+        },
+        {
+          roll: "2020-03-15",
+          tenor: 6,
+          ref:
+            15 / (29 + 31 + 31 + 30 + 31 + 30) / 2 +
+            16 / (31 + 30 + 31 + 30 + 31 + 31) / 2,
+          desc: "accrual period within long stub",
+        },
+        {
+          roll: "2020-03-15",
+          tenor: 12,
+          ref: 15 / 366 + 16 / 365,
+          desc: "accrual period within long stub",
+        },
+      ],
+    },
+    {
+      from: "2021-05-10",
+      to: "2023-05-20",
+      subcases: [
+        {
+          roll: "2021-05-01",
+          tenor: 1,
+          ref: 22 / 31 / 12 + 23 / 12 + 19 / 31 / 12,
+          desc: "very long period within a very long stub",
+        },
+        {
+          roll: "2021-03-01",
+          tenor: 3,
+          ref:
+            22 / (31 + 30 + 31) / 4 +
+            7 / 4 +
+            (31 + 30 + 19) / (31 + 30 + 31) / 4,
+          desc: "very long period within a very long stub",
+        },
+      ],
+    },
+  ];
+
+  for (const c of irregular_cases) {
+    const from = JsonRisk.date_or_throw(c.from);
+    const to = JsonRisk.date_or_throw(c.to);
+    for (const s of c.subcases) {
+      const roll = JsonRisk.date_or_throw(s.roll);
+      const res = yf(from, to, roll, s.tenor);
+      TestFramework.assert(
+        Math.abs(res - s.ref) < 1e-10,
+        `act/actICMA year fraction irregular case with tenor ${s.tenor}, start ${c.from}, end ${c.to}, ${s.desc}, result ${res.toFixed(6)}`,
+      );
+    }
+  }
+
   yf = JsonRisk.year_fraction_factory("");
   for (i = 1; i < 11; i++) {
     from = TestFramework.get_utc_date(2000 + i, 2 * i, 3 * i);
