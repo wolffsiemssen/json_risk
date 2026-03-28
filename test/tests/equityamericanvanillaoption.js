@@ -77,13 +77,12 @@ test.execute = function (TestFramework, JsonRisk) {
     );
     value_reference = type === "Call" ? model.call_price() : model.put_price();
 
-    // We could also test that in the case of european options, the price given by the model is the same as the price 
-    // given by the Black-Scholes formula, which is implemented in the library as well. 
-    // This would be a good test to check that the model is correctly implemented, 
-    // and that it converges to the correct price for european options as the number of steps increases. 
+    // We could also test that in the case of european options, the price given by the model is the same as the price
+    // given by the Black-Scholes formula, which is implemented in the library as well.
+    // This would be a good test to check that the model is correctly implemented,
+    // and that it converges to the correct price for european options as the number of steps increases.
     // For now, we will just test that the price given by the model is close to the reference value given in the book,
     // which is a good test of the overall implementation of the instrument and the model.
-
 
     // value_reference *= Math.exp(-t * r);
 
@@ -138,7 +137,6 @@ const testAmericanData = [
   // and a tolerance of 1e-4, although in principle justified in the tests to avoid false positives due to rounding issues,
   // is not sufficient here: I get an error of 2%, which is quite high. It could be due to a cumulative effect of rounding errors in the binomial tree.
   // I will investigate it further.
- 
 
   ["Put", 95.0, 100.0, 0.0, 0.08, 0.5, 0.3, 5, null, 4.92],
 

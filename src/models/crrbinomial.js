@@ -88,11 +88,8 @@
     #maybe_adjust_n(time, volatility) {
       let n = this.#n;
       if (Math.abs(this.#r - this.#q) * Math.sqrt(time / n) > volatility) {
-        do {
-          n++;
-        } while (
-          Math.abs(this.#r - this.#q) * Math.sqrt(time / n) >
-          volatility
+        n = Math.ceil(
+          Math.pow(((this.#r - this.#q) * Math.sqrt(time)) / volatility, 2),
         );
       }
       this.#n = n;
@@ -173,7 +170,6 @@
         const exerciseValue = this.#payoff(this.#tree[i][index], phi);
         return Math.max(value, exerciseValue);
       });
-
     }
 
     #backward_induction(phi) {
@@ -193,7 +189,7 @@
       return value[0];
     }
 
-    // using typescript we could explicitly declare as private the functions that are not meant to be used outside the class, 
+    // using typescript we could explicitly declare as private the functions that are not meant to be used outside the class,
     // and avoid the need to prefix them with #.
     put_price() {
       return this.#impl(-1);
