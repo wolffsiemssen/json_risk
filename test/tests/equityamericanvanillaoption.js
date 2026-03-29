@@ -33,9 +33,9 @@ test.execute = function (TestFramework, JsonRisk) {
       vol,
       spot, // forward, // we use the spot as forward, since the model will adjust it with the dividend yield and risk-free rate to get the forward price at time t
       strike,
-      r,
-      q,
       n,
+      Math.exp(-t * r), // B, where B is the full discount factor at the risk-free rate,
+      Math.exp(-t * q), // Bq, where Bq is the discount factor at the dividend yield, defined as exp(-q*t),
       first_exercise_date,
       true,
     );
@@ -69,9 +69,9 @@ test.execute = function (TestFramework, JsonRisk) {
       vol,
       spot, // forward, // we use the spot as forward, since the model will adjust it with the dividend yield and risk-free rate to get the forward price at time t
       strike,
-      r,
-      q,
       n,
+      Math.exp(-t * r), // B, where B is the full discount factor at the risk-free rate,
+      Math.exp(-t * q), // Bq, where Bq is the discount factor at the dividend yield,
       first_exercise_date,
       true,
     );
@@ -95,7 +95,6 @@ test.execute = function (TestFramework, JsonRisk) {
       strike: strike,
       is_call: type === "Call",
       expiry: expiry,
-      r: r,
       q: q,
       n: n,
       first_exercise_date: first_exercise_date,

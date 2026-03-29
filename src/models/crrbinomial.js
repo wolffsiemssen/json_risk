@@ -4,9 +4,9 @@
     #std_dev = 0.0;
     #step_std_dev = 0.0;
     #n = 10; // number of steps in the binomial tree
-    #dt = 0.0; // time step
-    #r = 0.0; // risk-free rate
-    #q = 0.0; // dividend yield
+    #dt = 0.0; // time step, calculated as time to maturity divided by the number of steps
+    #Bq = 1.0; // discount factor at the dividend yield, defined as exp(-q*t)
+    #B = 1.0; // discount factor at the risk-free rate, defined as exp(-r*t)
     #strike = 0.0; // strike price
     #is_american = true; // if true we calculate the price of an american option, if false we calculate the price of a european option
     // is_american is set by default to true, since this model is meant to be used for american options.
@@ -26,17 +26,17 @@
       volatility,
       forward,
       strike,
-      r = 0.0,
-      q = 0.0,
       n = 10,
+      B = 1.0,
+      Bq = 1.0,
       first_exercise_time = null,
       is_american = true,
     ) {
       this.#std_dev = volatility * Math.sqrt(time);
       this.#strike = strike;
       this.#n = n;
-      this.#r = r;
-      this.#q = q;
+      this.#B = B;
+      this.#Bq = Bq;
       this.#is_american = is_american;
       if (time <= 0) {
         this.#impl = function (
@@ -53,22 +53,25 @@
           return Math.max(phi * (forward - strike), 0);
         };
       } else {
-        this.#maybe_adjust_n(time, volatility);
+        this.#maybe_adjust_n();
         this.#dt = time / this.#n;
         this.#step_std_dev = volatility * Math.sqrt(this.#dt);
         this.#up = Math.exp(this.#step_std_dev); // up factor for the binomial tree
-        this.#down = Math.exp(-this.#step_std_dev); // down factor for the binomial tree
+        this.#down = Math.exp(-this.#step_std_dev); // down factor for the binomial tree,
+
+        // risk-neutral probability of an up move, calculated as in the original Cox-Ross-Rubinstein paper
         this.#p =
-          (Math.exp((this.#r - this.#q) * this.#dt) - this.#down) /
-          (this.#up - this.#down); // risk-neutral probability of an up move
-        this.#df = Math.exp(-this.#r * this.#dt);
+          (Math.pow(this.#Bq / this.#B, 1 / this.#n) - this.#down) /
+          (this.#up - this.#down);
         this.#first_exercise_step =
           first_exercise_time !== null
             ? Math.round(first_exercise_time / this.#dt)
             : null; // this is the number of steps until the first exercise date, we round it to the nearest integer.
         // Null means that the first exercise date is the same as the expiry date, and the model behaves like
         // an european option
-        this.#df = Math.exp(-this.#r * this.#dt);
+
+        this.#df = Math.pow(this.#B, 1 / this.#n);
+
         this.#tree = this.#binomial_price_tree(forward);
         this.#impl = this.#backward_induction;
       }
@@ -85,12 +88,10 @@
     // we can increase the number of steps until we get a valid probability, and recalculate the parameters
     // of the model accordingly. This is a common issue with binomial models, and it is important
     // to handle it properly to avoid getting incorrect prices.
-    #maybe_adjust_n(time, volatility) {
+    #maybe_adjust_n() {
       let n = this.#n;
-      if (Math.abs(this.#r - this.#q) * Math.sqrt(time / n) > volatility) {
-        n = Math.ceil(
-          Math.pow(((this.#r - this.#q) * Math.sqrt(time)) / volatility, 2),
-        );
+      if (Math.pow(this.#Bq / this.#B, 1 / n) < this.#down && this.#down < 1) {
+        n = Math.ceil(Math.log(this.#Bq / this.#B) / Math.log(this.#down));
       }
       this.#n = n;
     }
@@ -105,7 +106,8 @@
         tree[i] = [];
         for (let j = 0; j <= i; j++) {
           tree[i][j] =
-            forward * Math.pow(this.#up, j) * Math.pow(this.#down, i - j);
+            // forward * Math.pow(this.#up, j) * Math.pow(this.#down, i - j);
+            forward * Math.pow(this.#up, 2 * j - i);
         }
       }
       console.debug(`Binomial price tree:`, tree);

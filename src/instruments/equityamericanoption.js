@@ -4,7 +4,6 @@
     #repo_curve = "";
     #surface = "";
     #strike = 0.0;
-    #r = 0.0; // risk-free rate
     #q = 0.0; // dividend yield
     #is_call = true;
     #first_exercise_date = null;
@@ -16,7 +15,6 @@
       this.#surface = library.string_or_empty(obj.surface);
       this.#strike = library.number_or_null(obj.strike) || 0.0;
       this.#is_call = library.make_bool(obj.is_call);
-      this.#r = library.number_or_null(obj.r) || 0.0;
       this.#q = library.number_or_null(obj.q) || 0.0;
       this.#n = library.number_or_null(obj.n) || 10;
       // It would be great to implement Typescript,
@@ -46,19 +44,24 @@
       const t = library.time_from_now(this.#expiry);
       const vol = surface.get_rate(t, null, forward, this.#strike);
 
+      const B = dc.get_df(t);
+      const Bq = Math.exp(-t * this.#q);
       const model = new library.CRRBinomialModel(
         t,
         vol,
         quote.get_value(), // forward, // we use the spot as forward, since the model will adjust it with the dividend yield and risk-free rate to get the forward price at time t
         this.#strike,
-        this.#r,
-        this.#q,
         this.#n,
+        B,
+        Bq,
         this.#first_exercise_date
           ? library.time_from_now(this.#first_exercise_date)
           : null,
       );
       const val = this.#is_call ? model.call_price() : model.put_price();
+      // should we put the condition that when there are no dividends, the price of the american call option
+      // should be the same as the price of the european call option given by the Black-Scholes formula,
+      // because early exercise is not beneficial in that case?
       return val * dc.get_df(t);
     }
   }
