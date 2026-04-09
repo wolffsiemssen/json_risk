@@ -9,10 +9,10 @@
     #repo_curve = "";
     #surface = "";
     #strike = 0.0;
-    #q = 0.0; // dividend yield
+    #q = 0.0;
     #is_call = true;
     #first_exercise_date = null;
-    #n = 10; // number of steps in the binomial tree
+    #n = 10;
 
     /**
      * Create an equity option instrument.

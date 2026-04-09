@@ -10,7 +10,7 @@
   class CRRBinomialModel {
     #impl = null;
     #std_dev = 0.0;
-    #step_std_dev = 0.0;
+    #step_std_dev = 0.0; // standard deviation of the price changes at each time step in the tree, calculated as volatility multiplied by the square root of the time step
     #n = 10; // number of steps in the binomial tree - 1. We use n steps, but the tree has n+1 rows, since we start from time 0.
     #dt = 0.0; // time step, calculated as time to maturity divided by the number of steps
     #Bq = [1.0]; // discount factor at the dividend yield, defined as exp(-q*t), we keep it as an array to be able to handle the case where the dividend yield is not constant, and we need to use different discount factors for different time steps in the tree
@@ -83,23 +83,25 @@
     }
 
     #initialize(time, forward, volatility, first_exercise_time, curve_B, Bq) {
-      console.debug(
-        `Initializing CRRBinomialModel with time ${time}, curve_B ${curve_B}, first exercise time ${first_exercise_time}, is american ${this.#is_american}`,
-      );
       // we initialize the model parameters, and build the binomial tree, which will be used in the backward induction to calculate the option price.
       // we also check the consistency of the input parameters, and throw an error if they are not consistent.
       if (curve_B !== null && typeof curve_B.get_df === "function") {
         for (let i = this.#n - 1; i >= 0; i--) {
           const t_i = (i * time) / this.#n;
           const t_iplus1 = ((i + 1) * time) / this.#n;
-          this.#B[i] = curve_B.get_df(t_iplus1) / curve_B.get_df(t_i); // we calculate the discount factor for each time step in the tree as the ratio of the discount factors at the end and the beginning of the time step, which is equivalent to taking the nth root of the discount factor for the whole time to maturity, but allows us to handle the case where the discount factor is not constant over time, and we need to use different discount factors for different time steps in the tree
+          this.#B[this.#n - 1 - i] =
+            curve_B.get_df(t_iplus1) / curve_B.get_df(t_i);
+          // we calculate the discount factor for each time step in the tree as the ratio of the discount factors
+          // at the end and the beginning of the time step.
+          // keep in mind that get_df returns the discount factor from time 0 to time t, where 0 is maturity, and t the time from start to maturity
+          // whereas step 0 in the tree corresponds to the start time, and step n corresponds to the maturity time.
+          // Therefore, the ratio get_df(t_iplus1) / get_df(t_i) gives the discount factor of the (n-1-i)th step in the tree.
         }
       } else {
         this.#B = Array.isArray(curve_B)
           ? curve_B
           : Array(this.#n).fill(Math.pow(curve_B, 1 / this.#n));
       }
-      console.debug(`Discount factors B:`, this.#B);
       // Bq will eventually be entered as curve_Bq, going through the same logic as curve_B
       // but for the moment the model instrument does not support dividend yield curves,
       // so we pass Bq directly as a parameter to the model,
@@ -112,9 +114,8 @@
 
       this.#dt = time / this.#n;
       this.#step_std_dev = volatility * Math.sqrt(this.#dt);
-      this.#up = Math.exp(this.#step_std_dev); // up factor for the binomial tree
-      this.#down = Math.exp(-this.#step_std_dev); // down factor for the binomial tree,
-      // risk-neutral probability of an up move, calculated as in the original Cox-Ross-Rubinstein paper
+      this.#up = Math.exp(this.#step_std_dev);
+      this.#down = Math.exp(-this.#step_std_dev);
       this.#p = this.#B.map(
         (B_i, i) => (this.#Bq[i] / B_i - this.#down) / (this.#up - this.#down),
       ); // we calculate the risk-neutral probability for each time step in the tree, using the corresponding discount factors
@@ -127,9 +128,6 @@
       // an european option
 
       this.#check_consistency();
-      console.debug(
-        `Initialized CRRBinomialModel with time ${time}, forward ${forward}, volatility ${volatility}, strike ${this.#strike}, n ${this.#n}, B ${this.#B}, Bq ${this.#Bq}, first exercise step ${this.#first_exercise_step}, is american ${this.#is_american}, up ${this.#up}, down ${this.#down}, p ${this.#p}`,
-      );
       this.#tree = this.#binomial_price_tree(forward);
       this.#impl = this.#backward_induction;
     }
@@ -169,7 +167,7 @@
     }
 
     #check_consistency() {
-      // this function can be used to test the consistency of the model parameters, and can be called from the constructor after initializing the parameters,
+      // this function is used to check the consistency of the model
       for (let i = 0; i < this.#p.length; i++) {
         if (this.#p[i] < 0 || this.#p[i] > 1) {
           throw new Error(
@@ -181,19 +179,13 @@
 
     #binomial_price_tree(forward) {
       // build the binomial tree
-      console.debug(
-        `Building binomial price tree, forward: ${forward}, up: ${this.#up}, down: ${this.#down}, p: ${this.#p}, steps: ${this.#n}`,
-      );
       const tree = [];
       for (let i = 0; i <= this.#n; i++) {
         tree[i] = [];
         for (let j = 0; j <= i; j++) {
-          tree[i][j] =
-            // forward * Math.pow(this.#up, j) * Math.pow(this.#down, i - j);
-            forward * Math.pow(this.#up, 2 * j - i);
+          tree[i][j] = forward * Math.pow(this.#up, 2 * j - i);
         }
       }
-      console.debug(`Binomial price tree:`, tree);
       return tree;
     }
 
@@ -208,9 +200,6 @@
       // which corresponds to the maturity. The payoff is calculated as max(phi * (price - strike), 0), where phi is 1 for call options and -1 for put options.
       const payoffs = [];
       for (let j = 0; j <= this.#n; j++) {
-        console.debug(
-          `Calculating payoff at maturity for node ${j}, price ${tree[this.#n][j]}, strike ${this.#strike}, phi ${phi}`,
-        );
         payoffs[j] = this.#payoff(tree[this.#n][j], phi);
       }
       return payoffs;
@@ -220,9 +209,6 @@
       let backward_values = [];
       for (let i = values.length - 1; i >= 0; i--) {
         for (let j = 0; j < i; j++) {
-          console.debug(
-            `Calculating backward value for node ${j} at step ${time_step}, values at next step: up ${values[j + 1]}, down ${values[j]}, p ${this.#p[time_step]}, df B ${this.#B[time_step]}`,
-          );
           backward_values[j] =
             this.#B[time_step] *
             (this.#p[time_step] * values[j + 1] +
@@ -240,11 +226,6 @@
       // otherwise we just take the backward value.
 
       // phi is 1 for call and -1 for put
-      console.debug(
-        `Calculating backward prices for step ${i}`,
-        this.#tree[i],
-        backward_values,
-      );
       return backward_values.map((value, index) => {
         if (!this.#is_american) {
           return value;
@@ -263,23 +244,12 @@
     }
 
     #backward_induction(phi) {
-      console.debug(`Starting backward induction, phi:`, phi);
       let values = this.#payoff_maturity(this.#tree, phi);
       let value = [0.0];
       let i = this.#n - 1;
-      console.debug(
-        `Starting backward induction, initial values at maturity:`,
-        values,
-      );
       do {
         values = this.#backward_values(values, i);
         value = this.#backward_prices(values, i, phi);
-        console.debug(
-          `Backward induction step ${i}, values:`,
-          values,
-          `backward prices:`,
-          value,
-        );
         i--;
       } while (values.length > 1);
       return value[0];
