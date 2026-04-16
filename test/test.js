@@ -101,6 +101,7 @@ if (typeof require === "function") {
     "equities.js",
     "equityvanillaoption.js",
     "equityamericanvanillaoption.js",
+    "CRRvsB76.js",
     "cds.js",
     "irregular_bonds.js",
     "lgm_option_pricing.js",
