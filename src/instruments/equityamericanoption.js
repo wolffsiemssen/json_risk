@@ -5,13 +5,13 @@
    * @extends Equity
    */
   class EquityAmericanOption extends library.Equity {
+    #first_exercise_date = null;
     #expiry = null;
     #repo_curve = "";
     #surface = "";
     #strike = 0.0;
     #q = 0.0;
     #is_call = true;
-    #first_exercise_date = null;
     #n = 10;
 
     /**
@@ -34,6 +34,7 @@
      */
     constructor(obj) {
       super(obj);
+      this.#first_exercise_date = library.date_or_null(obj.first_exercise_date);
       this.#expiry = library.date_or_null(obj.expiry);
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
       this.#surface = library.string_or_empty(obj.surface);
@@ -41,7 +42,6 @@
       this.#is_call = library.make_bool(obj.is_call);
       this.#q = library.number_or_null(obj.q) || 0.0;
       this.#n = library.number_or_null(obj.n) || 10;
-      this.#first_exercise_date = library.date_or_null(obj.first_exercise_date);
     }
 
     get repo_curve() {
@@ -62,26 +62,23 @@
       const surface = params.get_surface(this.#surface);
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
-      const t = library.time_from_now(this.#expiry);
-      const vol = surface.get_rate(t, null, forward, this.#strike);
-      const Bq = Math.exp(-t * this.#q);
+      const t_start = this.#first_exercise_date
+        ? library.time_from_now(this.#first_exercise_date)
+        : 0.0;
+      const t_end = library.time_from_now(this.#expiry);
+      const vol = surface.get_rate(t_start, null, forward, this.#strike);
       const model = new library.CRRBinomialModel(
-        t,
+        t_start,
+        t_end,
         vol,
         quote.get_value(), // we use the spot as forward, since the model will adjust it with the dividend yield and risk-free rate to get the forward price at time t
         this.#strike,
         this.#n,
         dc,
-        Bq,
-        this.#first_exercise_date
-          ? library.time_from_now(this.#first_exercise_date)
-          : null,
+        this.#q,
       );
       const val = this.#is_call ? model.call_price() : model.put_price();
-      // should we put the condition that when there are no dividends, the price of the american call option
-      // should be the same as the price of the european call option given by the Black-Scholes formula,
-      // because early exercise is not beneficial in that case?
-      return val; // the model already discounts the payoff to the present value, so we do not need to discount it again with the discount factor from the curve, since that would be double counting the discounting effect. The model takes into account the time value of money and the risk-free rate in its calculations, so we can directly return the price given by the model as the value of the option.
+      return val;
     }
   }
 

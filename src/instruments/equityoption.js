@@ -10,6 +10,7 @@
     #surface = "";
     #strike = 0.0;
     #is_call = true;
+    #q = 0.0;
 
     /**
      * Create an equity option instrument.
@@ -25,6 +26,7 @@
      * @param {date} obj.expiry expiry date of the forward
      * @param {number} [obj.strike=0.0] strke price payable at expiry
      * @param {boolean} [obj.is_call=false] flag indicating if this is a call option
+     * @param {number} [obj.q=0.0] continuous dividend yield
      */
     constructor(obj) {
       super(obj);
@@ -33,6 +35,7 @@
       this.#surface = library.string_or_empty(obj.surface);
       this.#strike = library.number_or_null(obj.strike) || 0.0;
       this.#is_call = library.make_bool(obj.is_call);
+      this.#q = library.number_or_null(obj.q) || 0.0;
     }
 
     /**
@@ -56,8 +59,10 @@
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
 
-      const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       const t = library.time_from_now(this.#expiry);
+      const forward =
+        this.forward(quote.get_value(), this.#expiry, dc, rc) *
+        Math.exp(-t * this.#q);
       const vol = surface.get_rate(t, null, forward, this.#strike);
 
       const model = new library.BlackModel(t, vol);
