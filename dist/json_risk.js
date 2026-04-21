@@ -7163,6 +7163,61 @@
     return res;
   }
 
+  // helper for act act AFB - works only if from and to are closer than one year
+  function period_contains_leapday(from, to) {
+    let leapday = null;
+    const yfrom = from.getUTCFullYear();
+    const yto = to.getUTCFullYear();
+
+    if (library.is_leap_year(yfrom)) {
+      leapday = new Date(Date.UTC(yfrom, 1, 29));
+    } else if (library.is_leap_year(yto)) {
+      leapday = new Date(Date.UTC(yto, 1, 29));
+    }
+    if (from < leapday && to >= leapday) return true;
+    return false;
+  }
+
+  /**
+   * year fraction act/act AFB  according to the ISDA 2008 memo
+   * @param {date} from from date
+   * @param {date} to to date
+   * @returns {number} year fraction between from and to date (act/act AFB)
+   * @memberof JsonRisk
+   * @private
+   */
+  function yf_actact_afb(from, to) {
+    if (from - to === 0) return 0;
+    if (from > to) return -yf_actact(to, from);
+    let rollday = to.getUTCDate();
+    const m = to.getUTCMonth();
+    const y = to.getUTCFullYear();
+
+    // roll over day 29 if end of feb
+    if (28 === rollday && 1 === m && false === library.is_leap_year(y))
+      rollday++;
+
+    let res = 0.0;
+    let temp1 = to,
+      temp2 = null;
+    while (temp1 > from) {
+      temp2 = temp1;
+      temp1 = library.add_months(temp1, -12, rollday);
+
+      // add a full year for each full yearly period within from and to
+      if (temp1 >= from) res += 1.0;
+    }
+
+    // return if no days remain
+    if (temp1.getTime() === from.getTime()) return res;
+
+    // add remaining year fraction
+    const deno = period_contains_leapday(from, temp2) ? 366 : 365;
+    const num = library.days_between(from, temp2);
+    res += num / deno;
+    return res;
+  }
+
   /**
    * returns day count convention of param (multiple possibilities to deliver day count conventions)
    * @param {string} str
@@ -7212,6 +7267,9 @@
       case "act/acticma":
       case "act/actisda":
         return yf_actact_icma;
+
+      case "act/actafb":
+        return yf_actact_afb;
 
       default:
         //fail if invalid string was supplied

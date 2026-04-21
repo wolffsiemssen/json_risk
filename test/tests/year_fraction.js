@@ -200,6 +200,72 @@ test.execute = function (TestFramework, JsonRisk) {
     "act/act year fraction (4)",
   );
 
+  yf = JsonRisk.year_fraction_factory("act/actAFB");
+  for (const m of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+    from = TestFramework.get_utc_date(2020, m, 25);
+    to = JsonRisk.add_days(from, 40);
+    const leap_period = m === 0 || m === 1;
+    ref = leap_period ? 40 / 366 : 40 / 365;
+    res = yf(from, to);
+    TestFramework.assert(
+      res.toFixed(10) == ref.toFixed(10),
+      `act/actAFB year fraction short period(${m})`,
+    );
+
+    to = JsonRisk.add_months(to, 12);
+    ref += 1.0;
+    res = yf(from, to);
+    TestFramework.assert(
+      res.toFixed(10) == ref.toFixed(10),
+      `act/actAFB year fraction long period(${m})`,
+    );
+
+    to = JsonRisk.add_months(to, 12 * 4);
+    ref += 4.0;
+    res = yf(from, to);
+    TestFramework.assert(
+      res.toFixed(10) == ref.toFixed(10),
+      `act/actAFB year fraction very long period(${m})`,
+    );
+  }
+
+  from = JsonRisk.date_or_throw("2023/02/28");
+  to = JsonRisk.date_or_throw("2024/02/29");
+  ref = 1;
+  res = yf(from, to);
+  TestFramework.assert(
+    res.toFixed(10) == ref.toFixed(10),
+    `act/actAFB year fraction ending end of feb (0)`,
+  );
+
+  from = JsonRisk.date_or_throw("2024/02/29");
+  to = JsonRisk.date_or_throw("2025/02/28");
+  ref = 1;
+  res = yf(from, to);
+  TestFramework.assert(
+    res.toFixed(10) == ref.toFixed(10),
+    `act/actAFB year fraction ending end of feb (1)`,
+  );
+
+  from = JsonRisk.date_or_throw("2023/02/27");
+  to = JsonRisk.date_or_throw("2024/02/29");
+  ref = 1 + 1 / 365;
+  res = yf(from, to);
+  TestFramework.assert(
+    res.toFixed(10) == ref.toFixed(10),
+    `act/actAFB year fraction ending end of feb with stub (0)`,
+  );
+
+  from = JsonRisk.date_or_throw("2024/02/28");
+  to = JsonRisk.date_or_throw("2025/02/28");
+  ref = 1 + 1 / 366;
+  res = yf(from, to);
+  TestFramework.assert(
+    res.toFixed(10) == ref.toFixed(10),
+    `act/actAFB year fraction ending end of feb with stub (1)`,
+  );
+
+  // act/act ICMA
   yf = JsonRisk.year_fraction_factory("act/actICMA");
 
   const regular_cases = [
