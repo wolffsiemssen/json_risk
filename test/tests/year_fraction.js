@@ -200,7 +200,7 @@ test.execute = function (TestFramework, JsonRisk) {
     "act/act year fraction (4)",
   );
 
-  yf = JsonRisk.year_fraction_factory("act/actAFB");
+  yf = JsonRisk.year_fraction_factory("act/act AFB");
   for (const m of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
     from = TestFramework.get_utc_date(2020, m, 25);
     to = JsonRisk.add_days(from, 40);
@@ -209,7 +209,7 @@ test.execute = function (TestFramework, JsonRisk) {
     res = yf(from, to);
     TestFramework.assert(
       res.toFixed(10) == ref.toFixed(10),
-      `act/actAFB year fraction short period(${m})`,
+      `act/act AFB year fraction short period(${m})`,
     );
 
     to = JsonRisk.add_months(to, 12);
@@ -217,7 +217,7 @@ test.execute = function (TestFramework, JsonRisk) {
     res = yf(from, to);
     TestFramework.assert(
       res.toFixed(10) == ref.toFixed(10),
-      `act/actAFB year fraction long period(${m})`,
+      `act/act AFB year fraction long period(${m})`,
     );
 
     to = JsonRisk.add_months(to, 12 * 4);
@@ -225,7 +225,7 @@ test.execute = function (TestFramework, JsonRisk) {
     res = yf(from, to);
     TestFramework.assert(
       res.toFixed(10) == ref.toFixed(10),
-      `act/actAFB year fraction very long period(${m})`,
+      `act/act AFB year fraction very long period(${m})`,
     );
   }
 
@@ -235,7 +235,7 @@ test.execute = function (TestFramework, JsonRisk) {
   res = yf(from, to);
   TestFramework.assert(
     res.toFixed(10) == ref.toFixed(10),
-    `act/actAFB year fraction ending end of feb (0)`,
+    `act/act AFB year fraction ending end of feb (0)`,
   );
 
   from = JsonRisk.date_or_throw("2024/02/29");
@@ -244,7 +244,7 @@ test.execute = function (TestFramework, JsonRisk) {
   res = yf(from, to);
   TestFramework.assert(
     res.toFixed(10) == ref.toFixed(10),
-    `act/actAFB year fraction ending end of feb (1)`,
+    `act/act AFB year fraction ending end of feb (1)`,
   );
 
   from = JsonRisk.date_or_throw("2023/02/27");
@@ -253,7 +253,7 @@ test.execute = function (TestFramework, JsonRisk) {
   res = yf(from, to);
   TestFramework.assert(
     res.toFixed(10) == ref.toFixed(10),
-    `act/actAFB year fraction ending end of feb with stub (0)`,
+    `act/act AFB year fraction ending end of feb with stub (0)`,
   );
 
   from = JsonRisk.date_or_throw("2024/02/28");
@@ -262,11 +262,11 @@ test.execute = function (TestFramework, JsonRisk) {
   res = yf(from, to);
   TestFramework.assert(
     res.toFixed(10) == ref.toFixed(10),
-    `act/actAFB year fraction ending end of feb with stub (1)`,
+    `act/act AFB year fraction ending end of feb with stub (1)`,
   );
 
   // act/act ICMA
-  yf = JsonRisk.year_fraction_factory("act/actICMA");
+  yf = JsonRisk.year_fraction_factory("act/act ICMA");
 
   const regular_cases = [
     // mid month
@@ -404,23 +404,23 @@ test.execute = function (TestFramework, JsonRisk) {
       res = yf(from, to, JsonRisk.date_or_throw(roll), c.tenor);
       TestFramework.assert(
         Math.abs(res - c.ref) < 1e-10,
-        `act/actICMA year fraction regular case with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+        `act/act ICMA year fraction regular case with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
       );
       res = yf(from, to, JsonRisk.date_or_throw(roll), undefined);
       TestFramework.assert(
         Math.abs(res - c.ref) < 1e-10,
-        `act/actICMA year fraction regular case tenor guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+        `act/act ICMA year fraction regular case tenor guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
       );
     }
     res = yf(from, to, undefined, c.tenor);
     TestFramework.assert(
       Math.abs(res - c.ref) < 1e-10,
-      `act/actICMA year fraction regular case roll date guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+      `act/act ICMA year fraction regular case roll date guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
     );
     res = yf(from, to, undefined, undefined);
     TestFramework.assert(
       Math.abs(res - c.ref) < 1e-10,
-      `act/actICMA year fraction regular case tenor and roll date guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
+      `act/act ICMA year fraction regular case tenor and roll date guess with tenor ${c.tenor}, start ${c.from}, end ${c.to}`,
     );
   }
 
@@ -502,7 +502,7 @@ test.execute = function (TestFramework, JsonRisk) {
       const res = yf(from, to, roll, s.tenor);
       TestFramework.assert(
         Math.abs(res - s.ref) < 1e-10,
-        `act/actICMA year fraction irregular case with tenor ${s.tenor}, start ${c.from}, end ${c.to}, ${s.desc}, result ${res.toFixed(6)}`,
+        `act/act ICMA year fraction irregular case with tenor ${s.tenor}, start ${c.from}, end ${c.to}, ${s.desc}, result ${res.toFixed(6)}`,
       );
     }
   }

@@ -2996,7 +2996,6 @@
     #date_end = null;
     #date_roll = null;
     #tenor = null;
-    #dcc = "";
     #yf = null;
     #yffunc = null;
     #capitalize = false;
@@ -3022,8 +3021,8 @@
         throw new Error("RatePayment: date_start must be before date_value");
 
       // dcc and year fraction
-      this.#dcc = library.string_or_empty(obj.dcc);
-      this.#yffunc = library.year_fraction_factory(this.#dcc);
+      const dcc = library.string_or_empty(obj.dcc);
+      this.#yffunc = library.year_fraction_factory(dcc);
       this.#yf = this.#yffunc(
         this.#date_start,
         this.#date_end,
@@ -3062,8 +3061,8 @@
       res.date_start = library.date_to_date_str(this.#date_start);
       res.date_end = library.date_to_date_str(this.#date_end);
       res.yf = this.#yf;
+      res.dcc = this.#yffunc.canonical_name;
       // optional members
-      if (this.#dcc) res.dcc = this.#dcc;
       if (this.#capitalize) res.capitalize = true;
       if (this.#date_roll)
         res.date_roll = library.date_to_date_str(this.#date_roll);
@@ -7218,6 +7217,16 @@
     return res;
   }
 
+  // canonical names for serialisation
+  yf_act365.canonical_name = "a/365";
+  yf_act360.canonical_name = "a/360";
+  yf_30U360.canonical_name = "30u/360";
+  yf_30E360.canonical_name = "30e/360";
+  yf_30G360.canonical_name = "30g/360";
+  yf_actact.canonical_name = "a/a isda";
+  yf_actact_icma.canonical_name = "a/a icma";
+  yf_actact_afb.canonical_name = "a/a afb";
+
   /**
    * returns day count convention of param (multiple possibilities to deliver day count conventions)
    * @param {string} str
@@ -7229,24 +7238,33 @@
     if (!(str instanceof String) && typeof str !== "string") return yf_act365; //default dcc
     if ("" === str) return yf_act365; // default dcc
 
-    switch (str.toLowerCase()) {
-      case "actual/365":
-      case "act/365":
+    switch (
+      str
+        .toLowerCase()
+        .replaceAll("actual", "a")
+        .replaceAll("act", "a")
+        .replace("(", "")
+        .replace(")", "")
+    ) {
       case "a/365":
-      case "act/365 (fixed)":
-      case "actual/365 (fixed)":
+      case "a/365 fixed":
         return yf_act365;
 
-      case "actual/360":
-      case "act/360":
       case "a/360":
       case "french":
         return yf_act360;
 
-      case "actual/actual":
-      case "act/act":
       case "a/a":
+      case "a/a isda":
         return yf_actact;
+
+      case "a/a icma":
+      case "a/a isma":
+      case "a/na":
+        return yf_actact_icma;
+
+      case "a/a afb":
+        return yf_actact_afb;
 
       case "30/360":
       case "30u/360":
@@ -7260,16 +7278,9 @@
         return yf_30E360;
 
       case "30g/360":
-      case "30e/360 (isda)":
+      case "30e/360 isda":
       case "30/360 german":
         return yf_30G360;
-
-      case "act/acticma":
-      case "act/actisda":
-        return yf_actact_icma;
-
-      case "act/actafb":
-        return yf_actact_afb;
 
       default:
         //fail if invalid string was supplied
