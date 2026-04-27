@@ -39,16 +39,30 @@ test.execute = function (TestFramework, JsonRisk) {
     // we do not discount the value, since the model already takes into account the discounting with the risk-free rate r.
 
     // test model
-    TestFramework.assert(
-      // problem: here I get an error of 2% as compared to the reference, which is quite high, and I am not sure why.
-      // It could be due to a cumulative effect of rounding errors in the binomial tree, but I will investigate it further.
-
-      Math.abs(value - value_reference) < 1 / Math.sqrt(n),
+    if (index === 0) {
+      // the first test is from the book, and it is not very accurate, so we use a larger tolerance for this test.
+      TestFramework.assert(
+        Math.abs(value - value_reference) < 0.01,
+        `CRR binomial model price ${index}, value ${value.toFixed(4)}, reference ${value_reference.toFixed(4)}`,
+      );
+    } else {
+      TestFramework.assert(
+        Math.abs(value - value_reference) < 0.0001,
+        `CRR binomial model price ${index}, value ${value.toFixed(4)}, reference ${value_reference.toFixed(4)}`,
+      );
+    }
+  }
+  /* TestFramework.assert(
+      Math.abs(value - value_reference) < 0.001, // 1 / Math.sqrt(n),
       `CRR binomial model price ${index}, value ${value.toFixed(4)}, reference ${value_reference.toFixed(4)}`,
       // we use as tolerance the error of the binomial model, that decreases roughly as 1/sqrt(n), where n is the number of steps in the tree.
       // This is a common rule of thumb for the convergence of the binomial model to the true option price as n increases.
-    );
-  }
+    ); */
+
+  const steps = 200;
+  const exponent = -14;
+  const norm = 10 ** exponent; // We use this factor to determine the tolerance for the assertions.
+  const binomial_error = norm / Math.sqrt(steps);
 
   const instrument_json = {
     quote: "stock",
@@ -57,7 +71,7 @@ test.execute = function (TestFramework, JsonRisk) {
     surface: "surface",
     spot_days: 0,
     q: 0.05,
-    n: 200,
+    n: steps,
   };
 
   const params = new JsonRisk.Params({
@@ -120,24 +134,30 @@ test.execute = function (TestFramework, JsonRisk) {
         const option_type = is_call ? "call" : "put";
 
         TestFramework.assert(
-          full > forward,
+          // we must take into account for composite error of full and forward, given by the sum of the errors of the two models,
+          // which is roughly 2 / Math.sqrt(steps).
+          full > forward - 2 * binomial_error, // we use as tolerance the error of the binomial model, that decreases roughly as 1/sqrt(n), where n is the number of steps in the tree.
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, full option (${full.toFixed(2)}) is worth more than forward starting option (${forward.toFixed(2)})`,
         );
 
         TestFramework.assert(
-          forward >= approx_euro,
+          forward >= approx_euro - 2 * binomial_error,
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, forward starting option (${forward.toFixed(2)}) is worth more than quasi european option (${approx_euro.toFixed(2)})`,
         );
 
         TestFramework.assert(
-          approx_euro >= numeric_euro,
+          approx_euro >= numeric_euro - binomial_error,
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, quasi european option (${approx_euro.toFixed(2)}) is worth more than numeric european option (${numeric_euro.toFixed(2)})`,
         );
 
         let ok = false;
-        if (numeric_euro >= analytic_euro * 0.99) ok = true;
-        if (numeric_euro <= analytic_euro * 1.01) ok = true;
-        if (Math.abs(numeric_euro - analytic_euro) < 0.001) ok = true;
+        // here the tolerance is a bit more tricky, since we are comparing the numeric european option,
+        // which is the result of the binomial model, with the analytic european option,
+        // which is the result of the Black-Scholes model. I consider only the error on the binomial model.
+        if (numeric_euro + binomial_error >= analytic_euro * 0.99) ok = true;
+        if (numeric_euro - binomial_error <= analytic_euro * 1.01) ok = true;
+        if (Math.abs(numeric_euro - analytic_euro) < 0.001 + binomial_error)
+          ok = true;
         TestFramework.assert(
           ok,
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, numeric european option (${numeric_euro.toFixed(2)}) is worth about the same as analytic european option (${analytic_euro.toFixed(2)})`,
@@ -153,15 +173,9 @@ test.execute = function (TestFramework, JsonRisk) {
 const testAmericanData = [
   // pag 285
   // type, strike, spot, q, r, t, vol, n, value
-  ["Put", 95.0, 100.0, 0.0, 0.08, 0.5, 0.3, 500, 4.92],
+  ["Put", 95.0, 100.0, 0.0, 0.08, 0.5, 0.3, 5, 4.92],
 
   // from the CD rom of the book
-  ["Call", 40.0, 42.0, 0.0, 0.1, 0.5, 0.2, 500, 4.7623],
-  ["Put", 40.0, 42.0, 0.0, 0.1, 0.5, 0.2, 500, 0.9113],
-
-  // from chatgpt (the chatgpt calculations are not very reliable, just use it as rough reference)
-  ["Call", 100.0, 100.0, 0.02, 0.05, 1.0, 0.2, 500, 9.2076], // chatgpt value: 10.4506,
-  ["Put", 100.0, 100.0, 0.02, 0.05, 1.0, 0.2, 500, 6.3107], // chatgpt value: 5.5735,
-  ["Put", 100.0, 100.0, 0.0, 0.05, 1.0, 0.2, 500, 5.57],
-  ["Put", 100.0, 100.0, 0.02, 0.05, 1.0, 0.2, 500, 6.7056], // chatgpt value: 5.96,
+  ["Call", 40.0, 42.0, 0.0, 0.1, 0.5, 0.2, 52, 4.7623],
+  ["Put", 40.0, 42.0, 0.0, 0.1, 0.5, 0.2, 52, 0.9113],
 ];
