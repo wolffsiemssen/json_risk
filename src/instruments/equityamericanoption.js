@@ -1,16 +1,18 @@
 (function (library) {
   /**
-   * Class representing an option on a stock or on an equity index
+   * Class representing an american option on a stock or on an equity index
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityOption extends library.Equity {
+  class EquityAmericanOption extends library.Equity {
+    #first_exercise_date = null;
     #expiry = null;
     #repo_curve = "";
     #surface = "";
     #strike = 0.0;
-    #is_call = true;
     #q = 0.0;
+    #is_call = true;
+    #n = 10;
 
     /**
      * Create an equity option instrument.
@@ -26,22 +28,22 @@
      * @param {date} obj.expiry expiry date of the forward
      * @param {number} [obj.strike=0.0] strke price payable at expiry
      * @param {boolean} [obj.is_call=false] flag indicating if this is a call option
-     * @param {number} [obj.q=0.0] continuous dividend yield
+     * @param {number} [obj.q=0.0] dividend yield, used to adjust the spot price to get the forward price at time t, and also to calculate the discount factor for dividends in the binomial model
+     * @param {number} [obj.n=10] number of steps in the binomial tree, used to build the tree and to calculate the time step
+     * @param {date} [obj.first_exercise_date=null] first exercise date for the option, used to determine when we start to check for early exercise in the backward induction. This is used for american options, and can be set to null for european options, in which case we assume that the first exercise date is the same as the expiry date.
      */
     constructor(obj) {
       super(obj);
+      this.#first_exercise_date = library.date_or_null(obj.first_exercise_date);
       this.#expiry = library.date_or_null(obj.expiry);
       this.#repo_curve = library.string_or_empty(obj.repo_curve);
       this.#surface = library.string_or_empty(obj.surface);
       this.#strike = library.number_or_null(obj.strike) || 0.0;
       this.#is_call = library.make_bool(obj.is_call);
       this.#q = library.number_or_null(obj.q) || 0.0;
+      this.#n = library.number_or_null(obj.n) || 10;
     }
 
-    /**
-     * Get the repo curve name
-     * @type {string}
-     */
     get repo_curve() {
       return this.#repo_curve;
     }
@@ -59,19 +61,26 @@
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
 
-      const t = library.time_from_now(this.#expiry);
-      const forward =
-        this.forward(quote.get_value(), this.#expiry, dc, rc) *
-        Math.exp(-t * this.#q);
-      const vol = surface.get_rate(t, null, forward, this.#strike);
-
-      const model = new library.BlackModel(t, vol);
-      const val = this.#is_call
-        ? model.call_price(forward, this.#strike)
-        : model.put_price(forward, this.#strike);
-      return val * dc.get_df(t);
+      const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
+      const t_start = this.#first_exercise_date
+        ? library.time_from_now(this.#first_exercise_date)
+        : 0.0;
+      const t_end = library.time_from_now(this.#expiry);
+      const vol = surface.get_rate(t_start, null, forward, this.#strike);
+      const model = new library.CRRBinomialModel(
+        t_start,
+        t_end,
+        vol,
+        quote.get_value(), // we use the spot as forward, since the model will adjust it with the dividend yield and risk-free rate to get the forward price at time t
+        this.#strike,
+        this.#n,
+        dc,
+        this.#q,
+      );
+      const val = this.#is_call ? model.call_price() : model.put_price();
+      return val;
     }
   }
 
-  library.EquityOption = EquityOption;
+  library.EquityAmericanOption = EquityAmericanOption;
 })(this.JsonRisk || module.exports);
