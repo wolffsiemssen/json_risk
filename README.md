@@ -95,7 +95,7 @@ Pricing of complex interest rate derivatives is implemented with a Linear Gauss 
 
 JSON Risk supports the day count conventions
 
- - act/act according to the ISDA 2006 rules in section 4.16 (b), also recognized by JSON Risk as act/act ISDA
+ - act/act (ISDA) according to the ISDA 2006 rules in section 4.16 (b), also recognized by JSON Risk as act/act
  - act/act (ICMA) according to the ISDA 2006 rules in section 4.16 (c), also recognized by JSON Risk as act/act (ISMA) or act/nAct
  - act/365 according to the ISDA 2006 rules in section 4.16 (d), also recognized by JSON Risk as act/365 (fixed)
  - act/360 according to the ISDA 2006 rules in section 4.16 (e), also recognized by JSON Risk as french
