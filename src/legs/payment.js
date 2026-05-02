@@ -109,7 +109,6 @@
     #date_end = null;
     #date_roll = null;
     #tenor = null;
-    #dcc = "";
     #yf = null;
     #yffunc = null;
     #capitalize = false;
@@ -135,9 +134,14 @@
         throw new Error("RatePayment: date_start must be before date_value");
 
       // dcc and year fraction
-      this.#dcc = library.string_or_empty(obj.dcc);
-      this.#yffunc = library.year_fraction_factory(this.#dcc);
-      this.#yf = this.#yffunc(this.#date_start, this.#date_end);
+      const dcc = library.string_or_empty(obj.dcc);
+      this.#yffunc = library.year_fraction_factory(dcc);
+      this.#yf = this.#yffunc(
+        this.#date_start,
+        this.#date_end,
+        this.#date_roll,
+        this.#tenor,
+      );
 
       // capitalization
       this.#capitalize = library.make_bool(obj.capitalize);
@@ -170,8 +174,8 @@
       res.date_start = library.date_to_date_str(this.#date_start);
       res.date_end = library.date_to_date_str(this.#date_end);
       res.yf = this.#yf;
+      res.dcc = this.#yffunc.canonical_name;
       // optional members
-      if (this.#dcc) res.dcc = this.#dcc;
       if (this.#capitalize) res.capitalize = true;
       if (this.#date_roll)
         res.date_roll = library.date_to_date_str(this.#date_roll);
