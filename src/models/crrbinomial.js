@@ -54,49 +54,9 @@
       // at the end and the beginning of the time step, e.g., a forward discount factor
       this.#B = new Array(this.#n);
 
-      // @Tilman I reverted the order of the discount factors in the tree to be the one I had before,
-      // that was consistent with the way we calculate the risk-neutral probabilities,
-      // and with the way we do the backward induction.
-      // I left your code commented out, should we decide to revert it back,
-      // but please let us discuss about before doing it. I can show you the detailed
-      // calculations of the model according to textbooks.
-      // Of course, we can keep your assignment of discount factors, but then we must invert
-      // the construction of the tree, or alternatively we can exchange t_start and t_end,
-      // but I think it is more intuitive to have t_start as the time of the beginning of the contract,
-      // and t_end as the time to maturity, and to have the discount factors in the tree ordered from the start to the end of the tree,
-      // e.g., B[0] corresponds to the discount factor of the first step in the tree, and B[n-1] corresponds to the discount factor
-      // of the last step in the tree, which is also the maturity time.
-      // B[0] is not 1, but the ratio of the discount factor of the start time,
-      // which is the full discount factor from start to maturity,
-      // to the discount factor of the first step,
-      // Actually, as long as the discount rate is a constant, reverting the order is not a problem,
-      // since the discount factors will be the same, but if we have a non-constant discount rate,
-      // then the order of the discount factors in the tree matters,
-      // and it must be consistent with the way we calculate the risk-neutral probabilities,
-      // and with the way we do the backward induction.
-
-      // this.#B[0] = 1.0;
-      // for (let i = 1; i < this.#n; i++) {
-      //   this.#B[i] =
-      //     disc_curve.get_df(i * dt) / disc_curve.get_df((i - 1) * dt);
-      // }
-
-      // console.debug(
-      //   `CRR binomial model: dt ${dt.toFixed(4)}, discount curve ${Array(
-      //     this.#n + 1,
-      //   )
-      //     .fill(0)
-      //     .map((_, i) => disc_curve.get_df(i * dt).toFixed(4))}`,
-      // );
-      // I wrote here some debug Logs to see what the discount curve really computes.
-      // I think everything can be properly adjusted by simply shifting the arguments of the function,
-      // like this:
-      const DeltaT = t_end; // I wrote this to make clear that what we actually use is a time difference,
-      // of course, once this is clear, I can remove this intermediate variable, and just use t_end.
       for (let i = 0; i < this.#n; i++) {
         this.#B[i] =
-          disc_curve.get_df(DeltaT - i * dt) /
-          disc_curve.get_df(DeltaT - (i + 1) * dt);
+          disc_curve.get_df((i + 1) * dt) / disc_curve.get_df(i * dt);
       }
 
       // Bq is the discount factor corresponding to the dividend yield q and one time step

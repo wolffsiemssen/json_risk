@@ -4131,10 +4131,10 @@
       // we calculate the discount factor for each time step in the tree as the ratio of the discount factors
       // at the end and the beginning of the time step, e.g., a forward discount factor
       this.#B = new Array(this.#n);
-      this.#B[0] = 1.0;
-      for (let i = 1; i < this.#n; i++) {
+
+      for (let i = 0; i < this.#n; i++) {
         this.#B[i] =
-          disc_curve.get_df(i * dt) / disc_curve.get_df((i - 1) * dt);
+          disc_curve.get_df((i + 1) * dt) / disc_curve.get_df(i * dt);
       }
 
       // Bq is the discount factor corresponding to the dividend yield q and one time step
@@ -4228,22 +4228,21 @@
         if (beforeFirstExercise) {
           return value;
         }
-
         const exerciseValue = this.#payoff(this.#tree[i][index], phi);
         return Math.max(value, exerciseValue);
       });
     }
 
     #backward_induction(phi) {
-      let values = this.#payoff_maturity(this.#tree, phi);
-      let value = [0.0];
+      let payoff = this.#payoff_maturity(this.#tree, phi);
+      // let value = [0.0];
       let i = this.#n - 1;
       do {
-        values = this.#backward_values(values, i);
-        value = this.#backward_prices(values, i, phi);
+        const bk_values = this.#backward_values(payoff, i);
+        payoff = this.#backward_prices(bk_values, i, phi);
         i--;
-      } while (values.length > 1);
-      return value[0];
+      } while (payoff.length > 1);
+      return payoff[0];
     }
 
     /**

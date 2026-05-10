@@ -15,16 +15,18 @@ if (typeof module === "object" && typeof exports !== "undefined") {
 test.execute = function (TestFramework, JsonRisk) {
   JsonRisk.set_valuation_date("2025/01/01");
 
-  const mock_curve = function (r) {
+  const mock_curve = function (rshort, rlong) {
     return {
       get_df: function (t) {
+        const r = t <= 0.25 ? rshort : rlong;
         return Math.exp(-r * t);
       },
     };
   };
 
   for (const [index, item] of testAmericanData.entries()) {
-    let [type, strike, spot, q, r, t, vol, n, value_reference] = item;
+    let [type, strike, spot, q, rshort, rlong, t, vol, n, value_reference] =
+      item;
     let model = new JsonRisk.CRRBinomialModel(
       0.0,
       t,
@@ -32,25 +34,18 @@ test.execute = function (TestFramework, JsonRisk) {
       spot, // we use the spot as forward, since the model will adjust it with the dividend yield and risk-free rate to get the forward price at time t
       strike,
       n,
-      mock_curve(r),
+      mock_curve(rshort, rlong),
       q,
     );
     let value = type === "Call" ? model.call_price() : model.put_price();
     // we do not discount the value, since the model already takes into account the discounting with the risk-free rate r.
 
     // test model
-    if (index === 0) {
-      // the first test is from the book, and it is not very accurate, so we use a larger tolerance for this test.
-      TestFramework.assert(
-        Math.abs(value - value_reference) < 0.01,
-        `CRR binomial model price ${index}, value ${value.toFixed(4)}, reference ${value_reference.toFixed(4)}`,
-      );
-    } else {
-      TestFramework.assert(
-        Math.abs(value - value_reference) < 0.0001,
-        `CRR binomial model price ${index}, value ${value.toFixed(4)}, reference ${value_reference.toFixed(4)}`,
-      );
-    }
+
+    TestFramework.assert(
+      Math.abs(value - value_reference) < 0.0001,
+      `CRR binomial model price ${index}, value ${value.toFixed(12)}, reference ${value_reference.toFixed(12)}`,
+    );
   }
   /* TestFramework.assert(
       Math.abs(value - value_reference) < 0.001, // 1 / Math.sqrt(n),
@@ -60,10 +55,7 @@ test.execute = function (TestFramework, JsonRisk) {
     ); */
 
   const steps = 200;
-  const exponent = -14;
-  const norm = 10 ** exponent; // We use this factor to determine the tolerance for the assertions.
-  const binomial_error = norm / Math.sqrt(steps);
-  const js_error = 10 ** -15; // this is the error due to the use of JavaScript for the calculations, which has a precision of about 15 digits.
+  const tolerance = 1e-10; // tolerance to rule out numerical roundoff
 
   const instrument_json = {
     quote: "stock",
@@ -80,9 +72,9 @@ test.execute = function (TestFramework, JsonRisk) {
     scalars: { stock: { value: 100.0 } }, // we do not use the forward price as a quote, since the model will adjust the spot price with the dividend yield and risk-free rate to get the forward price at time t, so we can directly use the spot price as a quote for the model, and it will take care of the rest.
     curves: {
       riskless: {
-        compounding: "Continuous",
+        compounding: "Annual",
         times: [1.0, 2.0, 3.0, 5.0, 10.0],
-        zcs: [0.01, 0.02, 0.025, 0.03, 0.02],
+        zcs: [0.01, 0.03, 0.05, 0.07, 0.09],
       },
     },
     surfaces: {
@@ -135,17 +127,17 @@ test.execute = function (TestFramework, JsonRisk) {
         const option_type = is_call ? "call" : "put";
 
         TestFramework.assert(
-          full > forward - js_error, // we use js_error here to take into account the error due to the use of JavaScript for the calculations, which has a precision of about 15 digits, and can affect the comparison of the two values when they are very close.
+          full > forward - tolerance,
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, full option (${full.toFixed(2)}) is worth more than forward starting option (${forward.toFixed(2)})`,
         );
 
         TestFramework.assert(
-          forward >= approx_euro - js_error, // we use js_error here to take into account the error due to the use of JavaScript for the calculations, which has a precision of about 15 digits, and can affect the comparison of the two values when they are very close.
+          forward >= approx_euro - tolerance,
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, forward starting option (${forward.toFixed(2)}) is worth more than quasi european option (${approx_euro.toFixed(2)})`,
         );
 
         TestFramework.assert(
-          approx_euro >= numeric_euro - js_error, // we use js_error here to take into account the error due to the use of JavaScript for the calculations, which has a precision of about 15 digits, and can affect the comparison of the two values when they are very close.
+          approx_euro >= numeric_euro - tolerance,
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, quasi european option (${approx_euro.toFixed(2)}) is worth more than numeric european option (${numeric_euro.toFixed(2)})`,
         );
 
@@ -153,10 +145,12 @@ test.execute = function (TestFramework, JsonRisk) {
         // here the tolerance is a bit more tricky, since we are comparing the numeric european option,
         // which is the result of the binomial model, with the analytic european option,
         // which is the result of the Black-Scholes model.
-        if (numeric_euro + binomial_error >= analytic_euro * 0.99) ok = true;
-        if (numeric_euro - binomial_error <= analytic_euro * 1.01) ok = true;
-        if (Math.abs(numeric_euro - analytic_euro) < 0.001 + binomial_error)
+        if (
+          numeric_euro >= analytic_euro * 0.99 &&
+          numeric_euro <= analytic_euro * 1.01
+        )
           ok = true;
+        if (Math.abs(numeric_euro - analytic_euro) < 0.01) ok = true;
         TestFramework.assert(
           ok,
           `Equity american ${option_type} option ${years.toFixed(0)} years, strike ${strike.toFixed(0)}, numeric european option (${numeric_euro.toFixed(2)}) is worth about the same as analytic european option (${analytic_euro.toFixed(2)})`,
@@ -170,11 +164,21 @@ test.execute = function (TestFramework, JsonRisk) {
 //      "Option pricing formulas", E.G. Haug, McGraw-Hill, second edition 2007
 //
 const testAmericanData = [
-  // pag 285
-  // type, strike, spot, q, r, t, vol, n, value
-  ["Put", 95.0, 100.0, 0.0, 0.08, 0.5, 0.3, 5, 4.92],
+  // const curve
+  // type, strike, spot, q, rshort, rlong, t, vol, n, value
+  ["Put", 95.0, 100.0, 0.0, 0.08, 0.08, 0.5, 0.3, 5, 4.91921196455],
+  ["Call", 95.0, 100.0, 0.0, 0.08, 0.08, 0.5, 0.3, 5, 13.352682693546],
+
+  // dividend
+  ["Put", 95.0, 100.0, 0.05, 0.08, 0.08, 0.5, 0.3, 5, 5.570131008005],
+  ["Call", 95.0, 100.0, 0.05, 0.08, 0.08, 0.5, 0.3, 5, 11.664487052877],
+
+  // non const curve
+  // type, strike, spot, q, rshort, rlong, t, vol, n, value
+  ["Put", 95.0, 100.0, 0.0, 0.03, 0.06, 0.5, 0.3, 5, 5.209098306382],
+  ["Call", 95.0, 100.0, 0.0, 0.03, 0.06, 0.5, 0.3, 5, 12.783855042015],
 
   // from the CD rom of the book
-  ["Call", 40.0, 42.0, 0.0, 0.1, 0.5, 0.2, 52, 4.7623],
-  ["Put", 40.0, 42.0, 0.0, 0.1, 0.5, 0.2, 52, 0.9113],
+  ["Call", 40.0, 42.0, 0.0, 0.1, 0.1, 0.5, 0.2, 52, 4.7623],
+  ["Put", 40.0, 42.0, 0.0, 0.1, 0.1, 0.5, 0.2, 52, 0.9113],
 ];
