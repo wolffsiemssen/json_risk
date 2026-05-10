@@ -87,6 +87,7 @@ if (typeof require === "function") {
     "compounding.js",
     "bessel_hermite.js",
     "interpolation_curve.js",
+    "integration.js",
     "surfaces.js",
     "schedule.js",
     "schedule_generation_consistency.js",
