@@ -10,9 +10,9 @@
     #n = 10; // number of steps in the binomial tree
     #n_first_exercise = 0; // the number of steps until the first exercise date
     #B = null; // forward discount factors
+    #forward = 0.0; // forward price
     #strike = 0.0; // strike price
     #p = [1.0]; // risk-neutral probability of an up move
-    #tree = []; // tree is a 2D array, where tree[i][j] is the price at time step i and node j, as computed by the #binomial_tree_price function
 
     /**
      * Create a CRR binomial model
@@ -73,7 +73,7 @@
       this.#n_first_exercise = Math.trunc(t_start / dt);
 
       this.#check_consistency();
-      this.#tree = this.#binomial_price_tree(forward);
+      this.#forward = forward;
       this.#impl = this.#backward_induction;
     }
 
@@ -99,45 +99,34 @@
       }
     }
 
-    #binomial_price_tree(forward) {
-      // build the binomial tree
-      const tree = [];
-      for (let i = 0; i <= this.#n; i++) {
-        tree[i] = [];
-        for (let j = 0; j <= i; j++) {
-          tree[i][j] = forward * Math.pow(this.#up, 2 * j - i);
-        }
-      }
-      return tree;
+    #tree(i, j) {
+      return this.#forward * Math.pow(this.#up, 2 * j - i);
     }
 
     #payoff(price, phi) {
       return Math.max(phi * (price - this.#strike), 0);
     }
 
-    #payoff_maturity(tree, phi) {
+    #payoff_maturity(phi) {
       // tree is a 2D array, where tree[i][j] is the price at time step i and node j,
       // as computed by the #binomial_tree_price function.
       // This function returns an array of payoffs at maturity, where payoffs[j] is the payoff at node j in the last row of the tree,
       // which corresponds to the maturity. The payoff is calculated as max(phi * (price - strike), 0), where phi is 1 for call options and -1 for put options.
       const payoffs = [];
       for (let j = 0; j <= this.#n; j++) {
-        payoffs[j] = this.#payoff(tree[this.#n][j], phi);
+        payoffs[j] = this.#payoff(this.#tree(this.#n, j), phi);
       }
       return payoffs;
     }
 
     #backward_values(values, time_step) {
-      let backward_values = [];
-      for (let i = values.length - 1; i >= 0; i--) {
-        for (let j = 0; j < i; j++) {
-          backward_values[j] =
-            this.#B[time_step] *
-            (this.#p[time_step] * values[j + 1] +
-              (1 - this.#p[time_step]) * values[j]);
-        }
+      const result = new Array(values.length - 1);
+      const fwd_discount = this.#B[time_step];
+      const p = this.#p[time_step];
+      for (let j = 0; j < result.length; j++) {
+        result[j] = fwd_discount * (p * values[j + 1] + (1 - p) * values[j]);
       }
-      return backward_values;
+      return result;
     }
 
     #backward_prices(backward_values, i, phi) {
@@ -150,13 +139,13 @@
         if (beforeFirstExercise) {
           return value;
         }
-        const exerciseValue = this.#payoff(this.#tree[i][index], phi);
+        const exerciseValue = this.#payoff(this.#tree(i, index), phi);
         return Math.max(value, exerciseValue);
       });
     }
 
     #backward_induction(phi) {
-      let payoff = this.#payoff_maturity(this.#tree, phi);
+      let payoff = this.#payoff_maturity(phi);
       // let value = [0.0];
       let i = this.#n - 1;
       do {

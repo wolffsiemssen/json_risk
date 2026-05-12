@@ -54,7 +54,7 @@ test.execute = function (TestFramework, JsonRisk) {
       // This is a common rule of thumb for the convergence of the binomial model to the true option price as n increases.
     ); */
 
-  const steps = 200;
+  const steps = 500;
   const tolerance = 1e-10; // tolerance to rule out numerical roundoff
 
   const instrument_json = {
@@ -142,14 +142,6 @@ test.execute = function (TestFramework, JsonRisk) {
         );
 
         let ok = false;
-        // here the tolerance is a bit more tricky, since we are comparing the numeric european option,
-        // which is the result of the binomial model, with the analytic european option,
-        // which is the result of the Black-Scholes model.
-        if (
-          numeric_euro >= analytic_euro * 0.99 &&
-          numeric_euro <= analytic_euro * 1.01
-        )
-          ok = true;
         if (Math.abs(numeric_euro - analytic_euro) < 0.01) ok = true;
         TestFramework.assert(
           ok,
