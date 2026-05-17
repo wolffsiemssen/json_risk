@@ -62,14 +62,16 @@ Any string representing any currency the conversion rate was previously register
 ### Domain
 JSON Risk supports the day count conventions
 
- - act/act according to the ISDA 2006 rules in section 4.16 (b), also recognized by JSON Risk as actual/actual or a/a
- - act/365 according to the ISDA 2006 rules in section 4.16 (d), also recognized by JSON Risk as actual/365, a/365, actual/365 (fixed) or act/365 (fixed)
- - act/360 according to the ISDA 2006 rules in section 4.16 (e), also recognized by JSON Risk as actual/360, a/360, or french
+ - act/act (ISDA) according to the ISDA 2006 rules in section 4.16 (b), also recognized by JSON Risk as act/act
+ - act/act (ICMA) according to the ISDA 2006 rules in section 4.16 (c), also recognized by JSON Risk as act/act (ISMA) or act/nAct
+ - act/365 according to the ISDA 2006 rules in section 4.16 (d), also recognized by JSON Risk as act/365 (fixed)
+ - act/360 according to the ISDA 2006 rules in section 4.16 (e), also recognized by JSON Risk as french
  - 30u/360 according to the ISDA 2006 rules in section 4.16 (f), also recognized by JSON Risk as 30/360, bond basis, or bond
  - 30e/360 according to the ISDA 2006 rules in section 4.16 (g), also recognized by JSON Risk as eurobond basis or eurobond
  - 30g/360 according to the ISDA 2006 rules in section 4.16 (h), also recognized by JSON Risk as 30e/360 (ISDA) or 30/360 German
+ - act/act (AFB) as described in a 1999 ISDA memo, originally defined by the french banking association
 
-For convenience, JSON Risk ignores case.
+JSON Risk is case insensitive when parsing day count conventions on instrument data. Instead of "act", is is ok to specify "actual" or just "a". Specific sub-conventions above may be specified with or without brackets, e.g., act/act ICMA and act/act (ICMA) refer to the same convention.
 ### Instruments
 Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`, `cds`
 ### Meaning
@@ -166,7 +168,7 @@ This field specifies the interest rate to be used on floating rate legs for fixi
 ------------------------------------------------------------------------------
 ## float\_dcc `String`
 ### Domain
-JSON Risk recognizes `Act/360`, `Act/365`, `30/360` and `Act/Act`. For convenience, JSON Risk ignores case and accepts the string `a` instead of `act`. The conventions `a/360`and `a/365` have the usual meaning, `a/a` refers to the Act/Act (ICMA) day count convention and `30/360` refers to the 30/360 European convention.
+See field dcc above
 ### Instruments
 Relevant for `swap` and `swaption`
 ### Meaning

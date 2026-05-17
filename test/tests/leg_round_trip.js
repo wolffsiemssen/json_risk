@@ -45,6 +45,8 @@ test.execute = function (TestFramework, JsonRisk) {
     spread_curve: "spread_curve",
     calendar: "TARGET",
     bdc: "f",
+    dcc: "bond",
+    float_dcc: "a/360",
   };
 
   const bond = new JsonRisk.Bond(ijson);
