@@ -13,6 +13,7 @@
     #forward = 0.0; // forward price
     #strike = 0.0; // strike price
     #p = [1.0]; // risk-neutral probability of an up move
+    #recombined_tree = []; // the binomial tree recombined to one-dimensional array
 
     /**
      * Create a CRR binomial model
@@ -100,7 +101,11 @@
     }
 
     #tree(i, j) {
-      return this.#forward * Math.pow(this.#up, 2 * j - i);
+      const index = 2 * j - i + this.#n; // we shift the index to be non-negative, since j can be at most n and i can be at most n, so 2*j - i can be at most n, and at least -n, so we shift it by n to be between 0 and 2*n
+      if (this.#recombined_tree[index]) return this.#recombined_tree[index];
+      const value = this.#forward * Math.pow(this.#up, 2 * j - i);
+      this.#recombined_tree[index] = value; // we cache the value in the recombined tree, so that we do not have to calculate it again, since the tree is recombined, we only need to calculate it once for each node in the tree, and we can reuse it for all the nodes that have the same price, which are the nodes that are on the same diagonal of the tree.
+      return value;
     }
 
     #payoff(price, phi) {
