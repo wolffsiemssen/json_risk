@@ -68,12 +68,13 @@
       const up = Math.exp(volatility * Math.sqrt(dt));
       this.#up = up;
       const down = 1.0 / up;
-      this.#p = this.#B.map((B_i) => (Bq / B_i - down) / (up - down));
+      this.#p = this.#B.map((B_i) =>
+        this.#assign_probabilities(B_i, Bq, up, down),
+      );
 
       // this is the number of steps until the first exercise date, we round it down
       this.#n_first_exercise = Math.trunc(t_start / dt);
 
-      this.#check_consistency();
       this.#forward = forward;
       this.#impl = this.#backward_induction;
     }
@@ -89,15 +90,14 @@
       }
     }
 
-    #check_consistency() {
-      // this function is used to check the consistency of the model
-      for (let i = 0; i < this.#p.length; i++) {
-        if (this.#p[i] < 0 || this.#p[i] > 1) {
-          throw new Error(
-            `Inconsistent parameters: p values must be between 0 and 1, got p[${i}] = ${this.#p[i]}`,
-          );
-        }
+    #assign_probabilities(Bi, Bq, up, down) {
+      const pi = (Bq / Bi - down) / (up - down);
+      if (pi < 0 || pi > 1) {
+        throw new Error(
+          `Inconsistent parameters: probability must be between 0 and 1, got pi ${pi}`,
+        );
       }
+      return pi;
     }
 
     #tree(i, j) {
@@ -151,7 +151,6 @@
 
     #backward_induction(phi) {
       let payoff = this.#payoff_maturity(phi);
-      // let value = [0.0];
       let i = this.#n - 1;
       do {
         const bk_values = this.#backward_values(payoff, i);
