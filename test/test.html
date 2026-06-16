@@ -81,7 +81,7 @@
         // run tests
         function runAll(){
             clearLogs();
-            for (test of jr_tests){
+            for (const test of jr_tests){
                 test.execute(TestFramework, JsonRisk);
             }
         }
