@@ -1109,6 +1109,22 @@
   library.Equity = Equity;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  // helper function
+  const times_for_gaussian = function (t_start, t_end) {
+    const res = [];
+    let days = 1 + Math.trunc(t_end * 365);
+    days = Math.min(days, 12);
+    let months = 1 + Math.trunc(t_end * 12);
+    months = Math.min(months, 48);
+    const n = Math.max(days, months);
+    for (let i = 1; i <= n; i++) {
+      const s = (t_end * i) / n;
+      if (s < t_start) continue;
+      res.push(s);
+    }
+    return res;
+  };
+
   /**
    * Class representing an american option on a stock or on an equity index
    * @memberof JsonRisk
@@ -1123,6 +1139,7 @@
     #q = 0.0;
     #is_call = true;
     #n = 10;
+    #model = "";
 
     /**
      * Create an equity option instrument.
@@ -1135,12 +1152,12 @@
      * @param {string} [obj.surface=""] reference to a surface object
      * @param {string} [obj.calendar=""] calendar name
      * @param {number} [obj.spot_days=0] spot days for the quote
-     * @param {date} obj.expiry expiry date of the forward
+     * @param {date} obj.expiry expiry date of the option
      * @param {number} [obj.strike=0.0] strke price payable at expiry
      * @param {boolean} [obj.is_call=false] flag indicating if this is a call option
      * @param {number} [obj.q=0.0] dividend yield, used to adjust the spot price to get the forward price at time t, and also to calculate the discount factor for dividends in the binomial model
      * @param {number} [obj.n=10] number of steps in the binomial tree, used to build the tree and to calculate the time step
-     * @param {date} [obj.first_exercise_date=null] first exercise date for the option, used to determine when we start to check for early exercise in the backward induction. This is used for american options, and can be set to null for european options, in which case we assume that the first exercise date is the same as the expiry date.
+     * @param {date} [obj.first_exercise_date=null] first exercise date for the option, if it is null, option can be exercised any time up to expiry. If it is equal to the expiry, we have a euripean option.
      */
     constructor(obj) {
       super(obj);
@@ -1152,6 +1169,7 @@
       this.#is_call = library.make_bool(obj.is_call);
       this.#q = library.number_or_null(obj.q) || 0.0;
       this.#n = library.number_or_null(obj.n) || 10;
+      this.#model = library.string_or_empty(obj.model).toLowerCase() || "crr";
     }
 
     get repo_curve() {
@@ -1167,6 +1185,7 @@
     value_impl(params, extras_not_used) {
       if (library.valuation_date >= this.#expiry) return 0.0;
       const quote = params.get_scalar(this.quote);
+      const spot = quote.get_value();
       const dc = params.get_curve(this.disc_curve);
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
@@ -1176,19 +1195,55 @@
         ? library.time_from_now(this.#first_exercise_date)
         : 0.0;
       const t_end = library.time_from_now(this.#expiry);
-      const vol = surface.get_rate(t_start, null, forward, this.#strike);
-      const model = new library.CRRBinomialModel(
-        t_start,
-        t_end,
-        vol,
-        quote.get_value(), // we use the spot as forward, since the model will adjust it with the dividend yield and risk-free rate to get the forward price at time t
-        this.#strike,
-        this.#n,
-        dc,
-        this.#q,
-      );
-      const val = this.#is_call ? model.call_price() : model.put_price();
-      return val;
+      const vol = surface.get_rate(t_end, null, forward, this.#strike);
+
+      if (this.#model == "crr") {
+        const model = new library.CRRBinomialModel(
+          t_start,
+          t_end,
+          vol,
+          spot,
+          this.#strike,
+          this.#n,
+          dc,
+          this.#q,
+        );
+        const val = this.#is_call ? model.call_price() : model.put_price();
+        return val;
+      } else if (this.#model == "gaussian") {
+        const times = times_for_gaussian(t_start, t_end);
+        const xi = times.map((t) => vol * Math.sqrt(t));
+
+        const strike = this.#strike;
+        const payoff = this.#is_call
+          ? function (t, v) {
+              if (t < t_start) return 0.0;
+              return Math.max(v - strike * dc.get_df(t), 0);
+            }
+          : function (t, v) {
+              if (t < t_start) return 0.0;
+              return Math.max(strike * dc.get_df(t) - v, 0);
+            };
+
+        const q = this.#q;
+        const underlying = function (t, x) {
+          const drift = -(q + 0.5 * vol * vol) * t;
+          return spot * Math.exp(drift + x);
+        };
+
+        const num_std_devs = 4;
+        const resolution = 16;
+        const model = new library.GaussianModel({
+          times,
+          xi,
+          underlying,
+          payoff,
+          num_std_devs,
+          resolution,
+        });
+        const val = model.price();
+        return val;
+      }
     }
   }
 
@@ -3519,7 +3574,14 @@
    * @param {number} max_depth - max depth
    * @memberof JsonRisk
    */
-  library.adaptive_simpson = function (f, a, b, eps = 1e-8, max_depth = 20) {
+  library.adaptive_simpson = function (
+    f,
+    a,
+    b,
+    eps = 1e-8,
+    max_depth = 20,
+    min_depth = 5,
+  ) {
     function simpson(a, b, fa, fb, fm) {
       return ((b - a) / 6) * (fa + 4 * fm + fb);
     }
@@ -3539,7 +3601,7 @@
       fm,
       whole: simpson(a, b, fa, fb, fm),
       eps,
-      depth: max_depth,
+      depth: 1,
     });
 
     let result = 0;
@@ -3561,7 +3623,10 @@
 
       const delta = left + right - whole;
 
-      if (depth <= 0 || Math.abs(delta) <= 15 * eps) {
+      if (
+        depth >= min_depth &&
+        (depth >= max_depth || Math.abs(delta) <= 15 * eps)
+      ) {
         // accept partial result
         result += left + right + delta / 15;
       } else {
@@ -3574,7 +3639,7 @@
           fm: frm,
           whole: right,
           eps: eps / 2,
-          depth: depth - 1,
+          depth: depth + 1,
         });
 
         stack.push({
@@ -3585,7 +3650,128 @@
           fm: flm,
           whole: left,
           eps: eps / 2,
-          depth: depth - 1,
+          depth: depth + 1,
+        });
+      }
+    }
+
+    return result;
+  };
+
+  /**
+   * Adaptive Gauss Kronrod Integration
+   * @param {function} f - function to integrate f(x)
+   * @param {number} a - start
+   * @param {number} b - ende
+   * @param {number} eps - accuracy
+   * @param {number} max_depth - max depth
+   * @memberof JsonRisk
+   */
+  library.adaptive_gauss_kronrod = function (
+    f,
+    a,
+    b,
+    eps = 1e-8,
+    max_depth = 20,
+    min_depth = 3,
+  ) {
+    // Kronrod nodes (positive, symmetric)
+    const xgk = [
+      0.9914553711208126, 0.9491079123427585, 0.8648644233597691,
+      0.7415311855993945, 0.5860872354676911, 0.4058451513773972,
+      0.2077849550078985, 0.0,
+    ];
+
+    // Kronrod weights
+    const wgk = [
+      0.02293532201052922, 0.0630920926299785, 0.1047900103222502,
+      0.1406532597155259, 0.1690047266392679, 0.1903505780647854,
+      0.2044329400752989, 0.2094821410847278,
+    ];
+
+    // Gauss weights (subset)
+    const wg = [
+      0.1294849661688697, 0.2797053914892766, 0.3818300505051189,
+      0.4179591836734694,
+    ];
+
+    function evaluate_interval(a, b) {
+      const center = 0.5 * (a + b);
+      const half_length = 0.5 * (b - a);
+
+      let kronrod_sum = 0;
+      let gauss_sum = 0;
+
+      for (let i = 0; i < xgk.length; i++) {
+        const abscissa = half_length * xgk[i];
+
+        const x1 = center - abscissa;
+        const x2 = center + abscissa;
+
+        const f1 = f(x1);
+        const f2 = f(x2);
+
+        const wk = wgk[i];
+
+        if (i === xgk.length - 1) {
+          // center point
+          const fc = f(center);
+          kronrod_sum += wk * fc;
+          gauss_sum += wg[3] * fc;
+        } else {
+          kronrod_sum += wk * (f1 + f2);
+
+          // Map Kronrod nodes → Gauss subset
+          if (i === 1) gauss_sum += wg[0] * (f1 + f2);
+          if (i === 3) gauss_sum += wg[1] * (f1 + f2);
+          if (i === 5) gauss_sum += wg[2] * (f1 + f2);
+        }
+      }
+
+      const i_k = kronrod_sum * half_length;
+      const i_g = gauss_sum * half_length;
+
+      return {
+        integral: i_k,
+        error: Math.abs(i_k - i_g),
+      };
+    }
+
+    // Stack of intervals
+    const stack = [
+      {
+        a: a,
+        b: b,
+        eps: eps,
+        depth: 1,
+      },
+    ];
+
+    let result = 0;
+
+    while (stack.length > 0) {
+      const { a, b, eps, depth } = stack.pop();
+
+      const { integral, error } = evaluate_interval(a, b);
+
+      if (depth >= min_depth && (error < eps || depth >= max_depth)) {
+        result += integral;
+      } else {
+        const mid = 0.5 * (a + b);
+
+        // Push children (note: push right first for left-first processing)
+        stack.push({
+          a: mid,
+          b: b,
+          eps: eps / 2,
+          depth: depth + 1,
+        });
+
+        stack.push({
+          a: a,
+          b: mid,
+          eps: eps / 2,
+          depth: depth + 1,
         });
       }
     }
@@ -3649,6 +3835,28 @@
       const temp = 1 / (x[index + 1] - x[index]);
       return (
         (y[index] * (x[index + 1] - s) + y[index + 1] * (s - x[index])) * temp
+      );
+    };
+  };
+
+  library.linear_interpolation_equidistant = function (x, y) {
+    // function that makes no more checks and copies, optimized for equidistant x
+    if (1 === x.length) {
+      const y0 = y[0];
+      return function (s_not_used) {
+        return y0;
+      };
+    }
+    const xmin = x[0];
+    const xmax = 0.5 * (x[x.length - 2] + x[x.length - 1]);
+    const one_over_dx = 1.0 / (x[1] - xmin);
+    return function (s) {
+      const sbounded = Math.min(Math.max(s, xmin), xmax);
+      const index = Math.trunc((sbounded - xmin) * one_over_dx);
+      if (s === x[index]) return y[index];
+      return (
+        (y[index] * (x[index + 1] - s) + y[index + 1] * (s - x[index])) *
+        one_over_dx
       );
     };
   };
@@ -4200,22 +4408,23 @@
     #n = 10; // number of steps in the binomial tree
     #n_first_exercise = 0; // the number of steps until the first exercise date
     #B = null; // forward discount factors
-    #forward = 0.0; // forward price
+    #spot = 0.0; // spot price
     #strike = 0.0; // strike price
     #p = [1.0]; // risk-neutral probability of an up move
+    #recombined_tree = []; // the binomial tree recombined to one-dimensional array
 
     /**
      * Create a CRR binomial model
      * @param {number} t_start // time to first exercise
      * @param {number} t_end // time to maturity
      * @param {number} volatility  // black, e.g. log-normal volatility
-     * @param {number} forward // forward price of the underlying at time 0, which will be used to build the binomial tree, and to calculate the payoff at maturity. The model will adjust it with the dividend yield and risk-free rate to get the forward price at each time step in the tree.
+     * @param {number} spot // spot price of the underlying at time 0. The model will adjust it with the dividend yield and risk-free rate to get the forward price at each time step in the tree.
      * @param {number} strike // strike price of the option, used to calculate the payoff at maturity, and the payoff at each time step in the tree for american options
      * @param {number} n // number of steps in the binomial tree, used to build the tree and to calculate the time step
-     * @param {object} disc_curve // doscount curve
+     * @param {object} disc_curve // discount curve
      * @param {number} q // continuous dividend yield
      */
-    constructor(t_start, t_end, volatility, forward, strike, n, disc_curve, q) {
+    constructor(t_start, t_end, volatility, spot, strike, n, disc_curve, q) {
       this.#std_dev = volatility * Math.sqrt(t_end);
       if (t_end <= 0) {
         this.#impl = function (phi_not_used) {
@@ -4225,17 +4434,17 @@
       } else if (t_end < 1 / 512 || this.#std_dev < 0.000001) {
         this.#impl = function (phi) {
           // expiring option or very low volatility, return inner value
-          return Math.max(phi * (forward - strike), 0);
+          return Math.max(phi * (spot - strike), 0);
         };
       } else {
         this.#strike = strike;
         this.#n = n;
         this.#check_input();
-        this.#initialize(t_start, t_end, volatility, forward, disc_curve, q);
+        this.#initialize(t_start, t_end, volatility, spot, disc_curve, q);
       }
     }
 
-    #initialize(t_start, t_end, volatility, forward, disc_curve, q) {
+    #initialize(t_start, t_end, volatility, spot, disc_curve, q) {
       // we initialize the model parameters, and build the binomial tree, which will be used in the backward induction to calculate the option price.
       // we also check the consistency of the input parameters, and throw an error if they are not consistent.
       const dt = t_end / this.#n;
@@ -4257,13 +4466,14 @@
       const up = Math.exp(volatility * Math.sqrt(dt));
       this.#up = up;
       const down = 1.0 / up;
-      this.#p = this.#B.map((B_i) => (Bq / B_i - down) / (up - down));
+      this.#p = this.#B.map((B_i) =>
+        this.#assign_probabilities(B_i, Bq, up, down),
+      );
 
       // this is the number of steps until the first exercise date, we round it down
       this.#n_first_exercise = Math.trunc(t_start / dt);
 
-      this.#check_consistency();
-      this.#forward = forward;
+      this.#spot = spot;
       this.#impl = this.#backward_induction;
     }
 
@@ -4278,19 +4488,22 @@
       }
     }
 
-    #check_consistency() {
-      // this function is used to check the consistency of the model
-      for (let i = 0; i < this.#p.length; i++) {
-        if (this.#p[i] < 0 || this.#p[i] > 1) {
-          throw new Error(
-            `Inconsistent parameters: p values must be between 0 and 1, got p[${i}] = ${this.#p[i]}`,
-          );
-        }
+    #assign_probabilities(Bi, Bq, up, down) {
+      const pi = (Bq / Bi - down) / (up - down);
+      if (pi < 0 || pi > 1) {
+        throw new Error(
+          `Inconsistent parameters: probability must be between 0 and 1, got pi ${pi}`,
+        );
       }
+      return pi;
     }
 
     #tree(i, j) {
-      return this.#forward * Math.pow(this.#up, 2 * j - i);
+      const index = 2 * j - i + this.#n; // we shift the index to be non-negative, since j can be at most n and i can be at most n, so 2*j - i can be at most n, and at least -n, so we shift it by n to be between 0 and 2*n
+      if (this.#recombined_tree[index]) return this.#recombined_tree[index];
+      const value = this.#spot * Math.pow(this.#up, 2 * j - i);
+      this.#recombined_tree[index] = value; // we cache the value in the recombined tree, so that we do not have to calculate it again, since the tree is recombined, we only need to calculate it once for each node in the tree, and we can reuse it for all the nodes that have the same price, which are the nodes that are on the same diagonal of the tree.
+      return value;
     }
 
     #payoff(price, phi) {
@@ -4336,7 +4549,6 @@
 
     #backward_induction(phi) {
       let payoff = this.#payoff_maturity(phi);
-      // let value = [0.0];
       let i = this.#n - 1;
       do {
         const bk_values = this.#backward_values(payoff, i);
@@ -4361,6 +4573,154 @@
     }
   }
   library.CRRBinomialModel = CRRBinomialModel;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  /**
+   * Gaussian model for option pricing.
+   * @memberof JsonRisk
+   */
+  class GaussianModel {
+    #times;
+    #xi;
+    #n;
+    #underlying;
+    #payoff;
+    #N = 0;
+    #grid = null;
+    #integrate = null;
+
+    /**
+     * @param {Object} obj
+     * @param {number[]} obj.times array of times
+     * @param {number[]} obj.xi array of standard deviations
+     * @param {function} obj.underlying function returning the underlying value for time t and gaussian state x
+     * @param {function} obj.payoff function returning the payoff for time t and underlying value v
+     * @param {number} obj.num_std_devs=4 range of standard deviations for numeric integration
+     * @param {number} obj.resulution=16 resolution for numeric integration
+     */
+    constructor(obj) {
+      this.#times = obj.times;
+      this.#n = obj.times.length;
+      this.#xi = obj.xi;
+      this.#underlying = obj.underlying;
+      this.#payoff = obj.payoff;
+
+      // numerics
+      const num_std_devs =
+        library.natural_number_or_null(obj.num_std_devs) || 4;
+      const resolution = library.natural_number_or_null(obj.resolution) || 16;
+      const dr = 0.5 / resolution;
+
+      this.#N = 2 * num_std_devs * resolution + 1;
+      this.#grid = new Array(this.#N);
+      const ndf = new Array(this.#N);
+
+      for (let i = 0; i < this.#N; ++i) {
+        const temp = num_std_devs * ((2 * i) / (this.#N - 1) - 1);
+        this.#grid[i] = temp;
+        ndf[i] = library.ndf(temp);
+      }
+
+      this.#integrate = function (f) {
+        // compute the integral over f(x) phi(x) dx where phi is the standard normal density
+        const f_weighted = (x) => {
+          let res = f(x);
+          res *= library.fast_cndf(x + dr) - library.fast_cndf(x - dr);
+          res *= resolution;
+          return res;
+        };
+        const ret = library.adaptive_simpson(
+          f_weighted,
+          -num_std_devs,
+          num_std_devs,
+          1e-5,
+          8,
+          5,
+        );
+        return ret;
+      };
+    }
+
+    price() {
+      const values_hold = new Float64Array(this.#N);
+      const values_ex = new Float64Array(this.#N);
+
+      {
+        // populate end state n
+        const t = this.#times[this.#n - 1];
+        const xi = this.#xi[this.#n - 1];
+        for (let i = 0; i < this.#N; ++i) {
+          const x = this.#grid[i];
+          const x_scaled = x * xi;
+          const val = this.#underlying(t, x_scaled);
+          values_hold[i] = 0.0; // in the last step, not exercising holds no more value
+          values_ex[i] = this.#payoff(t, val);
+        }
+      }
+
+      for (let n = this.#n - 1; n > 0; n--) {
+        const interp_hold = library.linear_interpolation_equidistant(
+          this.#grid,
+          new Float64Array(values_hold), // copy array since it is overwritten in the loop
+        );
+
+        const interp_ex = library.linear_interpolation_equidistant(
+          this.#grid,
+          new Float64Array(values_ex), // copy array since it is overwritten in the loop
+        );
+
+        const t = this.#times[n];
+        const xi_start = this.#xi[n - 1];
+        const xi_end = this.#xi[n];
+        const rho = xi_end == 0 ? xi_start : xi_start / xi_end;
+        const sigma = Math.sqrt(1 - rho * rho);
+
+        for (let i = 0; i < this.#N; ++i) {
+          // x is the standard normal variable corresponding to the model state in time n-1
+          const x = this.#grid[i];
+          const z1 = rho * x;
+          // x_scaled is the actual model state in time n-1
+          const x_scaled = x * xi_start;
+
+          // val is the underlying value in time t, model state x
+          const val = this.#underlying(t, x_scaled);
+          values_ex[i] = this.#payoff(t, val);
+
+          values_hold[i] = this.#integrate((y) => {
+            // y is the standard normal variable we integrate over
+            // z is the normalized state after transition, z = x_scaled+ x * Math.sqrt(xi_end * xi_end - xi_start * xi_start) / xi_end = rho * x+sigma * y
+            let z = z1 + sigma * y;
+
+            // compute the maximum of exercise value and hold value. payoff and hold are interpolated separately to achieve more accuracy around the point they cross
+            const ex = interp_ex(z);
+            const hold = interp_hold(z);
+            return Math.max(ex, hold);
+          });
+        }
+      }
+
+      // final integration
+      const interp_hold = library.linear_interpolation_equidistant(
+        this.#grid,
+        values_hold, // no more copying needed
+      );
+
+      const interp_ex = library.linear_interpolation_equidistant(
+        this.#grid,
+        values_ex, // no more copying needed
+      );
+
+      const res = this.#integrate((y) => {
+        const ex = interp_ex(y);
+        const hold = interp_hold(y);
+        return Math.max(ex, hold);
+      });
+
+      return res;
+    }
+  }
+
+  library.GaussianModel = GaussianModel;
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**

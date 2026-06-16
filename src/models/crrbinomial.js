@@ -10,7 +10,7 @@
     #n = 10; // number of steps in the binomial tree
     #n_first_exercise = 0; // the number of steps until the first exercise date
     #B = null; // forward discount factors
-    #forward = 0.0; // forward price
+    #spot = 0.0; // spot price
     #strike = 0.0; // strike price
     #p = [1.0]; // risk-neutral probability of an up move
     #recombined_tree = []; // the binomial tree recombined to one-dimensional array
@@ -20,13 +20,13 @@
      * @param {number} t_start // time to first exercise
      * @param {number} t_end // time to maturity
      * @param {number} volatility  // black, e.g. log-normal volatility
-     * @param {number} forward // forward price of the underlying at time 0, which will be used to build the binomial tree, and to calculate the payoff at maturity. The model will adjust it with the dividend yield and risk-free rate to get the forward price at each time step in the tree.
+     * @param {number} spot // spot price of the underlying at time 0. The model will adjust it with the dividend yield and risk-free rate to get the forward price at each time step in the tree.
      * @param {number} strike // strike price of the option, used to calculate the payoff at maturity, and the payoff at each time step in the tree for american options
      * @param {number} n // number of steps in the binomial tree, used to build the tree and to calculate the time step
-     * @param {object} disc_curve // doscount curve
+     * @param {object} disc_curve // discount curve
      * @param {number} q // continuous dividend yield
      */
-    constructor(t_start, t_end, volatility, forward, strike, n, disc_curve, q) {
+    constructor(t_start, t_end, volatility, spot, strike, n, disc_curve, q) {
       this.#std_dev = volatility * Math.sqrt(t_end);
       if (t_end <= 0) {
         this.#impl = function (phi_not_used) {
@@ -36,17 +36,17 @@
       } else if (t_end < 1 / 512 || this.#std_dev < 0.000001) {
         this.#impl = function (phi) {
           // expiring option or very low volatility, return inner value
-          return Math.max(phi * (forward - strike), 0);
+          return Math.max(phi * (spot - strike), 0);
         };
       } else {
         this.#strike = strike;
         this.#n = n;
         this.#check_input();
-        this.#initialize(t_start, t_end, volatility, forward, disc_curve, q);
+        this.#initialize(t_start, t_end, volatility, spot, disc_curve, q);
       }
     }
 
-    #initialize(t_start, t_end, volatility, forward, disc_curve, q) {
+    #initialize(t_start, t_end, volatility, spot, disc_curve, q) {
       // we initialize the model parameters, and build the binomial tree, which will be used in the backward induction to calculate the option price.
       // we also check the consistency of the input parameters, and throw an error if they are not consistent.
       const dt = t_end / this.#n;
@@ -75,7 +75,7 @@
       // this is the number of steps until the first exercise date, we round it down
       this.#n_first_exercise = Math.trunc(t_start / dt);
 
-      this.#forward = forward;
+      this.#spot = spot;
       this.#impl = this.#backward_induction;
     }
 
@@ -103,7 +103,7 @@
     #tree(i, j) {
       const index = 2 * j - i + this.#n; // we shift the index to be non-negative, since j can be at most n and i can be at most n, so 2*j - i can be at most n, and at least -n, so we shift it by n to be between 0 and 2*n
       if (this.#recombined_tree[index]) return this.#recombined_tree[index];
-      const value = this.#forward * Math.pow(this.#up, 2 * j - i);
+      const value = this.#spot * Math.pow(this.#up, 2 * j - i);
       this.#recombined_tree[index] = value; // we cache the value in the recombined tree, so that we do not have to calculate it again, since the tree is recombined, we only need to calculate it once for each node in the tree, and we can reuse it for all the nodes that have the same price, which are the nodes that are on the same diagonal of the tree.
       return value;
     }
