@@ -69,6 +69,7 @@ JSON Risk supports the instrument types below:
   - Stock/Index Future
   - Stock/Index Forward
   - European Options
+  - American Options
 - Credit
   - Credit default swaps
   

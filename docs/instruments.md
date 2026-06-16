@@ -9,6 +9,7 @@ JSON Risk supports the instrument types below:
   - Stock/Index Future
   - Stock/Index Forward
   - European Options
+  - American Options
 - Fixed income instruments
   - Fixed rate bonds
   - Floating rate bonds
@@ -35,7 +36,8 @@ Instruments are created from a JSON instrument definition either with their cons
 |Equity|Equity|A stock or an index|
 |EquityForward|Equity|A forward on a stock|
 |EquityFuture|Equity|A future on a stock or an index|
-|EquityOption|Equity|An option on a stock or an index|
+|EquityOption|Equity|A european option on a stock or an index|
+|EquityAmericanOption|Equity|An american option on a stock or an index|
 |LegInstrument|LegInstrument|A generic instrument with legs|
 |Bond|LegInstrument|A bond, i.e. a leg instrument with only fixed payments|
 |Floater|LegInstrument|A floating rate note, i.e. a leg instrument with only notional and floating rate payments|
@@ -124,7 +126,7 @@ in addition to stocks, forwards and futures have an expiry (`expiry_date`) and a
         calendar: "TARGET"
     };
 
-## Options on stocks and indices - the `EquityOption` class
+## European options on stocks and indices - the `EquityOption` class
 
 ### Definition and Parametrisation
 
@@ -154,6 +156,39 @@ In addition to forward and futures positions, the `EquityOption` requires a stri
         strike: 100.0,
         is_call: true,
         expiry: "2024/01/17",
+    }
+
+## American ptions on stocks and indices - the `EquityAmericanOption` class
+
+### Definition and Parametrisation
+
+In addition to european option positions, the `EquityAmericanOption` supports a field `first_exercise_date` which indicates the first date where the option can be exercised. If null, the option can be exercised any time up to expiry. The `model` field accepts `crr` and `gaussian`. The `crr` model is the default. More options with regard to numerics are supported and descibed in the jsdoc library documentation.
+
+### Examples
+
+    // a put option, exercisable at any time up to expiry
+    const put_json={
+        quote: "stock",
+        disc_curve: "discount",
+        repo_curve: "repo",
+        surface: "surface",
+        spot_days: 2,
+        strike: 100.0,
+        is_call: false,
+        expiry: "2024/01/17",
+    }
+
+    // a call option, forward starting
+    const call_json={
+        quote: "stock",
+        disc_curve: "discount",
+        repo_curve: "repo",
+        surface: "surface",
+        spot_days: 2,
+        strike: 100.0,
+        is_call: true,
+        expiry: "2024/01/17",
+        first_exercise_date: "2023/01/17"
     }
 
 ## Leg instruments - the `LegInstrument` class and its derived classes

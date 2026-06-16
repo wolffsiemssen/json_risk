@@ -6,6 +6,7 @@
    * @param {number} b - ende
    * @param {number} eps - accuracy
    * @param {number} max_depth - max depth
+   * @param {number} max_depth - min depth
    * @memberof JsonRisk
    */
   library.adaptive_simpson = function (
@@ -99,6 +100,7 @@
    * @param {number} b - ende
    * @param {number} eps - accuracy
    * @param {number} max_depth - max depth
+   * @param {number} max_depth - min depth
    * @memberof JsonRisk
    */
   library.adaptive_gauss_kronrod = function (
