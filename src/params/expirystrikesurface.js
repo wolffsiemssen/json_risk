@@ -74,8 +74,9 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scen = new library.ExpiryStrikeSurface({
-          labels_expiry: rule.labels_y,
+        const scen = new this.constructor({
+          type: this.type,
+          labels_expiry: rule.labels_x,
           moneyness: [0.0],
           values: [rule.values[0]],
         });

@@ -97,7 +97,7 @@
    * @memberof JsonRisk
    */
   library.period_str_to_time = function (str) {
-    const num = parseInt(str, 10);
+    const num = parseFloat(str, 10);
     if (isNaN(num))
       throw new Error(
         "period_str_to_time - Invalid time period string: " + str,
@@ -6151,8 +6151,9 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scen = new library.ExpiryStrikeSurface({
-          labels_expiry: rule.labels_y,
+        const scen = new this.constructor({
+          type: this.type,
+          labels_expiry: rule.labels_x,
           moneyness: [0.0],
           values: [rule.values[0]],
         });
@@ -6455,8 +6456,8 @@
     attach_rule(rule) {
       if (typeof rule === "object") {
         const scen = new library.Surface({
-          labels_expiry: rule.labels_y,
-          labels_term: rule.labels_x,
+          labels_expiry: rule.labels_x,
+          labels_term: rule.labels_y,
           values: rule.values,
         });
 
