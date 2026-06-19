@@ -700,11 +700,22 @@
         throw new Error("CallableBond: must provide first call date");
       const leg = this.legs[0];
       const payments = leg.payments;
-      if (fcd.getTime() <= payments[0].date_start.getTime())
-        throw new Error("CallableBond: first call date before issue date");
+      if (payments.length === 0)
+        throw new Error("CallableBond: leg has no payments.");
+      const date_start = payments[0].date_start;
+      const date_end = payments[payments.length - 1].date_value;
+      if (fcd.getTime() <= date_start.getTime())
+        throw new Error(
+          "CallableBond: first call date on or before issue date",
+        );
+
+      if (fcd.getTime() >= date_end.getTime())
+        throw new Error(
+          "CallableBond: first call date on or after maturity date",
+        );
 
       const call_tenor = library.natural_number_or_null(obj.call_tenor) || 0; //european call by default
-      const date_end = payments[payments.length - 1].date_value;
+
       const is_holiday_func = library.is_holiday_factory(obj.calendar);
       const bdc = library.string_or_empty(obj.bdc);
       const adjust = function (d) {
@@ -727,13 +738,13 @@
       }); // adjust call dates with calendar
 
       //truncate call dates as soon as principal has been redeemed
-      let i = payments.length - 1;
-      while (payments[i].notional === 0) i--;
+      const last_payment = payments.findLast((p) => p.notional !== 0);
       while (
-        call_schedule[call_schedule.length - 1].getTime() >=
-        payments[i].date_pmt.getTime()
-      )
+        call_schedule.length > 0 &&
+        call_schedule.at(-1).getTime() >= last_payment.date_pmt.getTime()
+      ) {
         call_schedule.pop();
+      }
 
       this.#call_schedule = call_schedule;
       Object.freeze(call_schedule);
@@ -746,15 +757,16 @@
       this.#opportunity_spread =
         library.number_or_null(obj.opportunity_spread) || 0.0;
       this.#exclude_base = library.make_bool(obj.exclude_base);
-      const simple_calibration = library.make_bool(obj.simple_calibration);
+
+      // use simple calibration if configured, or if leg is simple bullet
+      const simple_calibration =
+        library.make_bool(obj.simple_calibration) ||
+        (leg.has_constant_notional && leg.has_constant_rate);
 
       //basket generation
       this.#basket = new Array(call_schedule.length);
       for (let i = 0; i < call_schedule.length; i++) {
-        if (
-          (leg.has_constant_notional && leg.has_constant_rate) ||
-          simple_calibration
-        ) {
+        if (simple_calibration) {
           //basket instruments are co-terminal swaptions with standard conditions
           this.#basket[i] = new library.Swaption({
             is_payer: false,
@@ -810,12 +822,14 @@
         leg.spread_curve != "" ? params.get_curve(leg.spread_curve) : null;
       const fwd_curve = params.get_curve(this.#fwd_curve);
 
-      //eliminate past call dates and derive time to exercise
-      const t_exercise = [];
-      for (const dt of this.#call_schedule) {
-        const tte = library.time_from_now(dt);
-        if (tte > 1 / 512) t_exercise.push(tte); //non-expired call date
-      }
+      //get basket swaptions for all future call dates
+      const basket = this.#basket.filter(
+        (swaption) =>
+          library.time_from_now(swaption.first_exercise_date) > 1 / 512,
+      );
+      const t_exercise = basket.map((swaption) =>
+        library.time_from_now(swaption.first_exercise_date),
+      );
 
       // get LGM model with desired mean reversion
       const lgm = new library.LGM(this.#mean_reversion);
@@ -824,7 +838,7 @@
         //calibrate lgm model - returns xi for non-expired swaptions only
         const surface = params.get_surface(this.#surface);
 
-        lgm.calibrate(this.#basket, disc_curve, fwd_curve, surface);
+        lgm.calibrate(basket, disc_curve, fwd_curve, surface);
       } else {
         lgm.set_times_and_hull_white_volatility(
           t_exercise,
@@ -1956,46 +1970,23 @@
     //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
     irr = (12 / tenor) * (Math.pow(1 + irr, tenor / 12) - 1);
 
-    //compute forward effective duration of remaining cash flow
-    const params_up = new library.Params({
-      valuation_date: library.valuation_date,
-      curves: {
-        discount: {
-          type: "yield",
-          times: [1],
-          zcs: [irr + 0.0001],
-        },
-      },
-    });
-    const df_ex_up = params_up
-      .get_curve("discount")
-      .get_df(library.time_from_now(exercise_date));
-
-    const params_down = new library.Params({
-      valuation_date: library.valuation_date,
-      curves: {
-        discount: {
-          type: "yield",
-          times: [1],
-          zcs: [irr - 0.0001],
-        },
-      },
-    });
-    const df_ex_down = params_down
-      .get_curve("discount")
-      .get_df(library.time_from_now(exercise_date));
-
-    //brief function to compute forward effective duration on a leg
+    //brief function to compute forward effective duration of remaining cash flow
     const ed = function (leg) {
-      const npv_up = leg.value(params_up, exercise_date) / df_ex_up;
-      const npv_down = leg.value(params_down, exercise_date) / df_ex_down;
-      const res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
-      return res;
+      let npv_up = 0.0;
+      let npv_down = 0.0;
+      for (const p of leg.payments) {
+        const t = library.days_between(exercise_date, p.date_pmt) / 365;
+        if (t <= 0) continue;
+        npv_up += p.amount * (1 + irr + 0.0001) ** -t;
+        npv_down += p.amount * (1 + irr - 0.0001) ** -t;
+      }
+      if (npv_up == npv_down) return 0.0;
+      return (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
     };
 
-    // in some cases effective duration target is very short, make it at least one day
+    // in some cases effective duration target is very short, make it at least two weeks
     let effective_duration = ed(leg);
-    const effective_duration_target = Math.max(effective_duration, 1 / 365);
+    const effective_duration_target = Math.max(effective_duration, 1 / 24);
 
     //find bullet bond maturity that has approximately the same effective duration
     //start with simple estimate
@@ -5107,86 +5098,89 @@
       }.bind(this);
 
       for (let i = 0; i < basket.length; i++) {
-        if (library.time_from_now(basket[i].first_exercise_date) > 1 / 512) {
-          tte = library.time_from_now(basket[i].first_exercise_date);
-          this.#t_ex[i] = tte;
-
-          //first step: derive initial guess based on Hagan formula 5.16c
-          //get swap fixed cash flow adjusted for basis spread
-          cf_obj = european_swaption_adjusted_cashflow(
-            basket[i],
-            disc_curve,
-            fwd_curve,
+        if (library.time_from_now(basket[i].first_exercise_date) <= 1 / 512) {
+          throw new Error(
+            "LGM: basket instruments must have time to exercise of at least one day",
           );
+        }
+        tte = library.time_from_now(basket[i].first_exercise_date);
+        this.#t_ex[i] = tte;
 
-          discount_factors = get_discount_factors(
-            cf_obj,
-            tte,
-            disc_curve,
-            null,
-            null,
-          );
-          let denominator = 0;
-          for (let j = 0; j < cf_obj.t_pmt.length; j++) {
-            denominator +=
-              cf_obj.pmt_total[j] *
-              discount_factors[j] *
-              this.#h(cf_obj.t_pmt[j]);
+        //first step: derive initial guess based on Hagan formula 5.16c
+        //get swap fixed cash flow adjusted for basis spread
+        cf_obj = european_swaption_adjusted_cashflow(
+          basket[i],
+          disc_curve,
+          fwd_curve,
+        );
+
+        discount_factors = get_discount_factors(
+          cf_obj,
+          tte,
+          disc_curve,
+          null,
+          null,
+        );
+        let denominator = 0;
+        for (let j = 0; j < cf_obj.t_pmt.length; j++) {
+          denominator +=
+            cf_obj.pmt_total[j] *
+            discount_factors[j] *
+            this.#h(cf_obj.t_pmt[j]);
+        }
+        //bachelier swaption price and std deviation
+        target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
+        const std_dev_bachelier = basket[i].std_dev;
+
+        //initial guess
+        xi = Math.pow(
+          (std_dev_bachelier * basket[i].annuity(disc_curve)) / denominator,
+          2,
+        );
+
+        //second step: calibrate, but be careful with infeasible bachelier prices below min and max
+        let min_value = this.#dcf(
+          cf_obj,
+          tte,
+          discount_factors,
+          0,
+          [0],
+          null,
+        )[0];
+
+        //max value is value of the payoff without redemption payment
+        let max_value =
+          min_value +
+          basket[i].fixed_leg.payments[0].notional *
+            discount_factors[discount_factors.length - 1];
+        //min value (attained at vola=0) is maximum of zero and current value of the payoff
+        if (min_value < 0) min_value = 0;
+
+        const accuracy = target * 1e-7 + 1e-7;
+
+        if (target <= min_value + accuracy || 0 === xi) {
+          xi = 0;
+        } else {
+          if (target > max_value) target = max_value;
+          let approx = func(xi);
+          let j = 10;
+          while (approx < 0 && j > 0) {
+            j--;
+            xi *= 2;
+            approx = func(xi);
           }
-          //bachelier swaption price and std deviation
-          target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
-          const std_dev_bachelier = basket[i].std_dev;
-
-          //initial guess
-          xi = Math.pow(
-            (std_dev_bachelier * basket[i].annuity(disc_curve)) / denominator,
-            2,
-          );
-
-          //second step: calibrate, but be careful with infeasible bachelier prices below min and max
-          let min_value = this.#dcf(
-            cf_obj,
-            tte,
-            discount_factors,
-            0,
-            [0],
-            null,
-          )[0];
-
-          //max value is value of the payoff without redemption payment
-          let max_value =
-            min_value +
-            basket[i].fixed_leg.payments[0].notional *
-              discount_factors[discount_factors.length - 1];
-          //min value (attained at vola=0) is maximum of zero and current value of the payoff
-          if (min_value < 0) min_value = 0;
-
-          const accuracy = target * 1e-7 + 1e-7;
-
-          if (target <= min_value + accuracy || 0 === xi) {
-            xi = 0;
-          } else {
-            if (target > max_value) target = max_value;
-            let approx = func(xi);
-            let j = 10;
-            while (approx < 0 && j > 0) {
-              j--;
-              xi *= 2;
-              approx = func(xi);
-            }
-            try {
-              xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
-            } catch (e_not_used) {
-              //use initial guess or zero as fallback, whichever is better
-              if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
-            }
+          try {
+            xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
+          } catch (e_not_used) {
+            //use initial guess or zero as fallback, whichever is better
+            if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
           }
+        }
 
-          if (i > 0 && this.#xi[i - 1] > xi) {
-            this.#xi[i] = this.#xi[i - 1]; //fallback if monotonicity is violated
-          } else {
-            this.#xi[i] = xi;
-          }
+        if (i > 0 && this.#xi[i - 1] > xi) {
+          this.#xi[i] = this.#xi[i - 1]; //fallback if monotonicity is violated
+        } else {
+          this.#xi[i] = xi;
         }
       }
     }

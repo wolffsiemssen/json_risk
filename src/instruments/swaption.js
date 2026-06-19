@@ -194,46 +194,23 @@
     //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
     irr = (12 / tenor) * (Math.pow(1 + irr, tenor / 12) - 1);
 
-    //compute forward effective duration of remaining cash flow
-    const params_up = new library.Params({
-      valuation_date: library.valuation_date,
-      curves: {
-        discount: {
-          type: "yield",
-          times: [1],
-          zcs: [irr + 0.0001],
-        },
-      },
-    });
-    const df_ex_up = params_up
-      .get_curve("discount")
-      .get_df(library.time_from_now(exercise_date));
-
-    const params_down = new library.Params({
-      valuation_date: library.valuation_date,
-      curves: {
-        discount: {
-          type: "yield",
-          times: [1],
-          zcs: [irr - 0.0001],
-        },
-      },
-    });
-    const df_ex_down = params_down
-      .get_curve("discount")
-      .get_df(library.time_from_now(exercise_date));
-
-    //brief function to compute forward effective duration on a leg
+    //brief function to compute forward effective duration of remaining cash flow
     const ed = function (leg) {
-      const npv_up = leg.value(params_up, exercise_date) / df_ex_up;
-      const npv_down = leg.value(params_down, exercise_date) / df_ex_down;
-      const res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
-      return res;
+      let npv_up = 0.0;
+      let npv_down = 0.0;
+      for (const p of leg.payments) {
+        const t = library.days_between(exercise_date, p.date_pmt) / 365;
+        if (t <= 0) continue;
+        npv_up += p.amount * (1 + irr + 0.0001) ** -t;
+        npv_down += p.amount * (1 + irr - 0.0001) ** -t;
+      }
+      if (npv_up == npv_down) return 0.0;
+      return (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
     };
 
-    // in some cases effective duration target is very short, make it at least one day
+    // in some cases effective duration target is very short, make it at least two weeks
     let effective_duration = ed(leg);
-    const effective_duration_target = Math.max(effective_duration, 1 / 365);
+    const effective_duration_target = Math.max(effective_duration, 1 / 24);
 
     //find bullet bond maturity that has approximately the same effective duration
     //start with simple estimate
