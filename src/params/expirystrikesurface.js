@@ -76,9 +76,9 @@
       if (typeof rule === "object") {
         const scen = new this.constructor({
           type: this.type,
-          labels_expiry: rule.labels_x,
-          moneyness: [0.0],
-          values: [rule.values[0]],
+          expiries: rule.axis_x,
+          moneyness: rule.axis_y,
+          values: rule.values,
         });
 
         if (rule.model === "multiplicative") {
