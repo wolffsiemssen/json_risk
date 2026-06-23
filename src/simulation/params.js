@@ -68,7 +68,13 @@
           // make shallow copy for adding name
           const temp = Object.assign({}, value);
           temp.name = key;
-          this.#scalars[key] = new library.Scalar(temp);
+          try {
+            this.#scalars[key] = new library.Scalar(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate scalar '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -78,7 +84,13 @@
           // make shallow copy for adding name
           const temp = Object.assign({}, value);
           temp.name = key;
-          this.#curves[key] = new library.Curve(temp);
+          try {
+            this.#curves[key] = new library.Curve(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate curve '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -100,7 +112,13 @@
               temp.moneyness.push(moneyness);
             }
           }
-          this.#surfaces[key] = library.make_surface(temp);
+          try {
+            this.#surfaces[key] = library.make_surface(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate surface '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -118,12 +136,22 @@
           // transform all scenario rules into ScenarioRule objects
           const scenarios = [];
           for (const scenario of group) {
-            scenarios.push({
-              name: scenario.name,
-              rules: scenario.rules.map(
-                (rule) => new library.ScenarioRule(rule),
-              ),
-            });
+            if (typeof scenario.name !== "string")
+              throw new Error("Params: scenarios must contain a name property");
+            if (!Array.isArray(scenario.rules))
+              throw new Error("Params: scenarios must contain a rules array");
+            try {
+              scenarios.push({
+                name: scenario.name,
+                rules: scenario.rules.map(
+                  (rule) => new library.ScenarioRule(rule),
+                ),
+              });
+            } catch (e) {
+              throw new Error(
+                `Params: could not instantiate scenario rule in '${scenario.name}': ${e.message}`,
+              );
+            }
           }
 
           this.#scenario_groups.push(scenarios);
@@ -333,8 +361,9 @@
      * @param {number} n the index of the scenario starting with 1.
      */
     attach_scenario(n) {
+      this.detach_scenarios();
       const scenario = this.get_scenario(n);
-      if (!scenario) return this.detach_scenarios();
+      if (!scenario) return;
       const rules = scenario.rules;
 
       for (const container of [this.#scalars, this.#curves, this.#surfaces]) {

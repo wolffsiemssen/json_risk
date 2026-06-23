@@ -33,6 +33,8 @@
         return new library.EquityForward(obj);
       case "equityoption":
         return new library.EquityOption(obj);
+      case "equityamericanoption":
+        return new library.EquityAmericanOption(obj);
       case "cds":
         return new library.CreditDefaultSwap(obj);
       default:

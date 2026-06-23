@@ -44,7 +44,7 @@
       // moneyness
       if ("moneyness" in obj) {
         this.#moneyness = library.number_vector_or_null(obj.moneyness);
-        Object.freeze(this.#expiries);
+        Object.freeze(this.#moneyness);
       }
 
       // interpolation
