@@ -44,7 +44,7 @@
       // moneyness
       if ("moneyness" in obj) {
         this.#moneyness = library.number_vector_or_null(obj.moneyness);
-        Object.freeze(this.#expiries);
+        Object.freeze(this.#moneyness);
       }
 
       // interpolation
@@ -74,10 +74,11 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scen = new library.ExpiryStrikeSurface({
-          labels_expiry: rule.labels_y,
-          moneyness: [0.0],
-          values: [rule.values[0]],
+        const scen = new this.constructor({
+          type: this.type,
+          expiries: rule.axis_x,
+          moneyness: rule.axis_y,
+          values: rule.values,
         });
 
         if (rule.model === "multiplicative") {

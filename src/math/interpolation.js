@@ -58,6 +58,28 @@
     };
   };
 
+  library.linear_interpolation_equidistant = function (x, y) {
+    // function that makes no more checks and copies, optimized for equidistant x
+    if (1 === x.length) {
+      const y0 = y[0];
+      return function (s_not_used) {
+        return y0;
+      };
+    }
+    const xmin = x[0];
+    const xmax = 0.5 * (x[x.length - 2] + x[x.length - 1]);
+    const one_over_dx = 1.0 / (x[1] - xmin);
+    return function (s) {
+      const sbounded = Math.min(Math.max(s, xmin), xmax);
+      const index = Math.trunc((sbounded - xmin) * one_over_dx);
+      if (s === x[index]) return y[index];
+      return (
+        (y[index] * (x[index + 1] - s) + y[index + 1] * (s - x[index])) *
+        one_over_dx
+      );
+    };
+  };
+
   library.linear_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
     return library.linear_interpolation(x_, y_);

@@ -6,7 +6,7 @@
    * @memberof JsonRisk
    */
   library.period_str_to_time = function (str) {
-    const num = parseInt(str, 10);
+    const num = parseFloat(str, 10);
     if (isNaN(num))
       throw new Error(
         "period_str_to_time - Invalid time period string: " + str,

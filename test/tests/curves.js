@@ -139,26 +139,26 @@ test.execute = function (TestFramework, JsonRisk) {
     intp: "linear_zc",
   });
 
-  additive = {
+  const additive = new JsonRisk.ScenarioRule({
     model: "additive",
     labels_x: ["1Y", "7Y", "12Y", "186M", "20Y"],
     labels_y: ["1"],
     values: [[0.01, 0.015, 0.016, 0.015, 0.01]],
-  };
+  });
 
-  multiplicative = {
+  const multiplicative = new JsonRisk.ScenarioRule({
     model: "multiplicative",
     labels_x: ["1Y", "20Y"],
     labels_y: ["1"],
     values: [[2, 2]],
-  };
+  });
 
-  absolute = {
+  const absolute = new JsonRisk.ScenarioRule({
     model: "absolute",
     labels_x: ["1Y", "7Y", "12Y", "186M", "20Y"],
     labels_y: ["1"],
     values: [[0.02, 0.03, 0.032, 0.03, 0.02]],
-  };
+  });
 
   c.attach_rule(absolute);
   TestFramework.assert(

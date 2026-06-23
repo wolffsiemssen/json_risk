@@ -14,11 +14,22 @@ if (typeof module === "object" && typeof exports !== "undefined") {
 
 test.execute = function (TestFramework, JsonRisk) {
   for (const t of tests) {
-    const result = JsonRisk.adaptive_simpson(t.f, t.a, t.b, 1e-10);
+    const result_simpson = JsonRisk.adaptive_simpson(t.f, t.a, t.b, 1e-10);
+    const result_gauss_kronrod = JsonRisk.adaptive_gauss_kronrod(
+      t.f,
+      t.a,
+      t.b,
+      1e-10,
+    );
     const reference = t.ref;
     TestFramework.assert(
-      Math.abs(result - reference) < 1e-10,
-      `Numeric integration over ${t.name}, Result: ${result}, Reference: ${reference}`,
+      Math.abs(result_simpson - reference) < 1e-10,
+      `Numeric integration adaptive simpson over ${t.name}, Result: ${result_simpson}, Reference: ${reference}`,
+    );
+
+    TestFramework.assert(
+      Math.abs(result_gauss_kronrod - reference) < 1e-10,
+      `Numeric integration adaptive gauss kronrod over ${t.name}, Result: ${result_gauss_kronrod}, Reference: ${reference}`,
     );
   }
 };

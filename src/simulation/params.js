@@ -68,7 +68,13 @@
           // make shallow copy for adding name
           const temp = Object.assign({}, value);
           temp.name = key;
-          this.#scalars[key] = new library.Scalar(temp);
+          try {
+            this.#scalars[key] = new library.Scalar(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate scalar '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -78,7 +84,13 @@
           // make shallow copy for adding name
           const temp = Object.assign({}, value);
           temp.name = key;
-          this.#curves[key] = new library.Curve(temp);
+          try {
+            this.#curves[key] = new library.Curve(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate curve '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -100,7 +112,13 @@
               temp.moneyness.push(moneyness);
             }
           }
-          this.#surfaces[key] = library.make_surface(temp);
+          try {
+            this.#surfaces[key] = library.make_surface(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate surface '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -108,13 +126,35 @@
       if ("scenario_groups" in obj) {
         if (!Array.isArray(obj.scenario_groups))
           throw new Error("Params: scenario_groups must be an array");
-        this.#scenario_groups = obj.scenario_groups;
-        for (const group of this.#scenario_groups) {
+        this.#scenario_groups = [];
+        for (const group of obj.scenario_groups) {
           if (!Array.isArray(group))
             throw new Error(
               "Params: each group in scenario_groups must be an array.",
             );
           this.#num_scenarios += group.length;
+          // transform all scenario rules into ScenarioRule objects
+          const scenarios = [];
+          for (const scenario of group) {
+            if (typeof scenario.name !== "string")
+              throw new Error("Params: scenarios must contain a name property");
+            if (!Array.isArray(scenario.rules))
+              throw new Error("Params: scenarios must contain a rules array");
+            try {
+              scenarios.push({
+                name: scenario.name,
+                rules: scenario.rules.map(
+                  (rule) => new library.ScenarioRule(rule),
+                ),
+              });
+            } catch (e) {
+              throw new Error(
+                `Params: could not instantiate scenario rule in '${scenario.name}': ${e.message}`,
+              );
+            }
+          }
+
+          this.#scenario_groups.push(scenarios);
         }
       }
 
@@ -321,37 +361,15 @@
      * @param {number} n the index of the scenario starting with 1.
      */
     attach_scenario(n) {
+      this.detach_scenarios();
       const scenario = this.get_scenario(n);
-      if (!scenario) return this.detach_scenarios();
+      if (!scenario) return;
       const rules = scenario.rules;
-
-      // attach scenario if one of the rules match
-      const match = function (item, rule) {
-        if (Array.isArray(rule.risk_factors)) {
-          // match by risk factors
-          if (rule.risk_factors.indexOf(item.name) > -1) {
-            return true;
-          }
-        }
-        if (Array.isArray(rule.tags)) {
-          // if no exact match by risk factors, all tags of that rule must match
-          let found = true;
-          for (const tag of rule.tags) {
-            if (!item.has_tag(tag)) found = false;
-          }
-          // if tag list is empty, no matching by tags at all
-          if (rule.tags.length === 0) found = false;
-          if (found) {
-            return true;
-          }
-        }
-        return false;
-      };
 
       for (const container of [this.#scalars, this.#curves, this.#surfaces]) {
         for (const item of Object.values(container)) {
           for (const rule of rules) {
-            if (match(item, rule)) {
+            if (rule.matches(item)) {
               item.attach_rule(rule);
               break;
             }

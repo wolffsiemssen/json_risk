@@ -135,8 +135,8 @@
     attach_rule(rule) {
       if (typeof rule === "object") {
         const scen = new library.Surface({
-          labels_expiry: rule.labels_y,
-          labels_term: rule.labels_x,
+          expiries: rule.axis_x,
+          terms: rule.axis_y,
           values: rule.values,
         });
 

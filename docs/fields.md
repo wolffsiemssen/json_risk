@@ -91,6 +91,12 @@ Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `sw
 ### Meaning
 Start date for schedule generation.
 
+------------------------------------------------------------------------------
+## expiry `Date`
+### Instruments
+Relevant for `equity_option` and `equity_american_option`
+### Meaning
+The single date where an `equity_option` can be exercised, or the last date where an `equity_american_option` can be exercised.
 
 ------------------------------------------------------------------------------
 ## exclude\_base `Boolean`
@@ -109,9 +115,11 @@ Used fo specifying an explicit initial stub for the interest schedule. Marks the
 ------------------------------------------------------------------------------
 ## first\_exercise\_date `Date`
 ### Instruments
-Relevant for `swaption` and `callable_bond`.
+Relevant for `swaption`, `callable_bond` and `equity_american_option`.
 ### Meaning
 For `swaption` instruments, this is the expiry date, i.e., the date when the swaption is exercised. The exercise dates for the instrument type `callable_bond` are determined by the attribute `first_exercise_date` which represents the first date the bond can be called, and the attribute `call_tenor`.
+
+For `equity_american_option` instruments, this ist the first date the option can be exercised. If null, the option can be exercised any time up to `expiry`.
 
 ------------------------------------------------------------------------------
 ## fixed\_rate `Number` or `Number vector`

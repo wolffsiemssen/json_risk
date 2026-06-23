@@ -1,6 +1,6 @@
 /*!
 	JSON Risk
-	v2.0.0
+	v2.1.0
 	https://github.com/wolffsiemssen/json_risk
 	License: MIT
 */
@@ -97,7 +97,7 @@
    * @memberof JsonRisk
    */
   library.period_str_to_time = function (str) {
-    const num = parseInt(str, 10);
+    const num = parseFloat(str, 10);
     if (isNaN(num))
       throw new Error(
         "period_str_to_time - Invalid time period string: " + str,
@@ -254,6 +254,8 @@
         return new library.EquityForward(obj);
       case "equityoption":
         return new library.EquityOption(obj);
+      case "equityamericanoption":
+        return new library.EquityAmericanOption(obj);
       case "cds":
         return new library.CreditDefaultSwap(obj);
       default:
@@ -700,11 +702,22 @@
         throw new Error("CallableBond: must provide first call date");
       const leg = this.legs[0];
       const payments = leg.payments;
-      if (fcd.getTime() <= payments[0].date_start.getTime())
-        throw new Error("CallableBond: first call date before issue date");
+      if (payments.length === 0)
+        throw new Error("CallableBond: leg has no payments.");
+      const date_start = payments[0].date_start;
+      const date_end = payments[payments.length - 1].date_value;
+      if (fcd.getTime() <= date_start.getTime())
+        throw new Error(
+          "CallableBond: first call date on or before issue date",
+        );
+
+      if (fcd.getTime() >= date_end.getTime())
+        throw new Error(
+          "CallableBond: first call date on or after maturity date",
+        );
 
       const call_tenor = library.natural_number_or_null(obj.call_tenor) || 0; //european call by default
-      const date_end = payments[payments.length - 1].date_value;
+
       const is_holiday_func = library.is_holiday_factory(obj.calendar);
       const bdc = library.string_or_empty(obj.bdc);
       const adjust = function (d) {
@@ -727,13 +740,13 @@
       }); // adjust call dates with calendar
 
       //truncate call dates as soon as principal has been redeemed
-      let i = payments.length - 1;
-      while (payments[i].notional === 0) i--;
+      const last_payment = payments.findLast((p) => p.notional !== 0);
       while (
-        call_schedule[call_schedule.length - 1].getTime() >=
-        payments[i].date_pmt.getTime()
-      )
+        call_schedule.length > 0 &&
+        call_schedule.at(-1).getTime() >= last_payment.date_pmt.getTime()
+      ) {
         call_schedule.pop();
+      }
 
       this.#call_schedule = call_schedule;
       Object.freeze(call_schedule);
@@ -746,15 +759,16 @@
       this.#opportunity_spread =
         library.number_or_null(obj.opportunity_spread) || 0.0;
       this.#exclude_base = library.make_bool(obj.exclude_base);
-      const simple_calibration = library.make_bool(obj.simple_calibration);
+
+      // use simple calibration if configured, or if leg is simple bullet
+      const simple_calibration =
+        library.make_bool(obj.simple_calibration) ||
+        (leg.has_constant_notional && leg.has_constant_rate);
 
       //basket generation
       this.#basket = new Array(call_schedule.length);
       for (let i = 0; i < call_schedule.length; i++) {
-        if (
-          (leg.has_constant_notional && leg.has_constant_rate) ||
-          simple_calibration
-        ) {
+        if (simple_calibration) {
           //basket instruments are co-terminal swaptions with standard conditions
           this.#basket[i] = new library.Swaption({
             is_payer: false,
@@ -810,12 +824,14 @@
         leg.spread_curve != "" ? params.get_curve(leg.spread_curve) : null;
       const fwd_curve = params.get_curve(this.#fwd_curve);
 
-      //eliminate past call dates and derive time to exercise
-      const t_exercise = [];
-      for (const dt of this.#call_schedule) {
-        const tte = library.time_from_now(dt);
-        if (tte > 1 / 512) t_exercise.push(tte); //non-expired call date
-      }
+      //get basket swaptions for all future call dates
+      const basket = this.#basket.filter(
+        (swaption) =>
+          library.time_from_now(swaption.first_exercise_date) > 1 / 512,
+      );
+      const t_exercise = basket.map((swaption) =>
+        library.time_from_now(swaption.first_exercise_date),
+      );
 
       // get LGM model with desired mean reversion
       const lgm = new library.LGM(this.#mean_reversion);
@@ -824,7 +840,7 @@
         //calibrate lgm model - returns xi for non-expired swaptions only
         const surface = params.get_surface(this.#surface);
 
-        lgm.calibrate(this.#basket, disc_curve, fwd_curve, surface);
+        lgm.calibrate(basket, disc_curve, fwd_curve, surface);
       } else {
         lgm.set_times_and_hull_white_volatility(
           t_exercise,
@@ -1109,6 +1125,147 @@
   library.Equity = Equity;
 })(this.JsonRisk || module.exports);
 (function (library) {
+  // helper function
+  const times_for_gaussian = function (t_start, t_end) {
+    const res = [];
+    let days = 1 + Math.trunc(t_end * 365);
+    days = Math.min(days, 12);
+    let months = 1 + Math.trunc(t_end * 12);
+    months = Math.min(months, 48);
+    const n = Math.max(days, months);
+    for (let i = 1; i <= n; i++) {
+      const s = (t_end * i) / n;
+      if (s < t_start) continue;
+      res.push(s);
+    }
+    return res;
+  };
+
+  /**
+   * Class representing an american option on a stock or on an equity index
+   * @memberof JsonRisk
+   * @extends Equity
+   */
+  class EquityAmericanOption extends library.Equity {
+    #first_exercise_date = null;
+    #expiry = null;
+    #repo_curve = "";
+    #surface = "";
+    #strike = 0.0;
+    #q = 0.0;
+    #is_call = true;
+    #n = 10;
+    #model = "";
+
+    /**
+     * Create an equity option instrument.
+     * @param {obj} obj A plain object representing position in a financial instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {string} [obj.quote=""] reference to a quote object
+     * @param {string} [obj.disc_curve=""] reference to a curve object
+     * @param {string} [obj.repo_curve=""] reference to a curve object
+     * @param {string} [obj.surface=""] reference to a surface object
+     * @param {string} [obj.calendar=""] calendar name
+     * @param {number} [obj.spot_days=0] spot days for the quote
+     * @param {date} obj.expiry expiry date of the option
+     * @param {number} [obj.strike=0.0] strke price payable at expiry
+     * @param {boolean} [obj.is_call=false] flag indicating if this is a call option
+     * @param {number} [obj.q=0.0] dividend yield, used to adjust the spot price to get the forward price at time t, and also to calculate the discount factor for dividends in the binomial model
+     * @param {number} [obj.n=10] number of steps in the binomial tree, used to build the tree and to calculate the time step
+     * @param {date} [obj.first_exercise_date=null] first exercise date for the option, if it is null, option can be exercised any time up to expiry. If it is equal to the expiry, we have a euripean option.
+     */
+    constructor(obj) {
+      super(obj);
+      this.#first_exercise_date = library.date_or_null(obj.first_exercise_date);
+      this.#expiry = library.date_or_null(obj.expiry);
+      this.#repo_curve = library.string_or_empty(obj.repo_curve);
+      this.#surface = library.string_or_empty(obj.surface);
+      this.#strike = library.number_or_null(obj.strike) || 0.0;
+      this.#is_call = library.make_bool(obj.is_call);
+      this.#q = library.number_or_null(obj.q) || 0.0;
+      this.#n = library.number_or_null(obj.n) || 10;
+      this.#model = library.string_or_empty(obj.model).toLowerCase() || "crr";
+    }
+
+    get repo_curve() {
+      return this.#repo_curve;
+    }
+
+    add_deps_impl(deps) {
+      super.add_deps_impl(deps);
+      if ("" != this.#repo_curve) deps.add_curve(this.#repo_curve);
+      if ("" != this.#surface) deps.add_surface(this.#surface);
+    }
+
+    value_impl(params, extras_not_used) {
+      if (library.valuation_date >= this.#expiry) return 0.0;
+      const quote = params.get_scalar(this.quote);
+      const spot = quote.get_value();
+      const dc = params.get_curve(this.disc_curve);
+      const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
+      const surface = params.get_surface(this.#surface);
+
+      const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
+      const t_start = this.#first_exercise_date
+        ? library.time_from_now(this.#first_exercise_date)
+        : 0.0;
+      const t_end = library.time_from_now(this.#expiry);
+      const vol = surface.get_rate(t_end, null, forward, this.#strike);
+
+      if (this.#model == "crr") {
+        const model = new library.CRRBinomialModel(
+          t_start,
+          t_end,
+          vol,
+          spot,
+          this.#strike,
+          this.#n,
+          dc,
+          this.#q,
+        );
+        const val = this.#is_call ? model.call_price() : model.put_price();
+        return val;
+      } else if (this.#model == "gaussian") {
+        const times = times_for_gaussian(t_start, t_end);
+        const xi = times.map((t) => vol * Math.sqrt(t));
+
+        const strike = this.#strike;
+        const payoff = this.#is_call
+          ? function (t, v) {
+              if (t < t_start) return 0.0;
+              return Math.max(v - strike * dc.get_df(t), 0);
+            }
+          : function (t, v) {
+              if (t < t_start) return 0.0;
+              return Math.max(strike * dc.get_df(t) - v, 0);
+            };
+
+        const q = this.#q;
+        const underlying = function (t, x) {
+          const drift = -(q + 0.5 * vol * vol) * t;
+          return spot * Math.exp(drift + x);
+        };
+
+        const num_std_devs = 4;
+        const resolution = 16;
+        const model = new library.GaussianModel({
+          times,
+          xi,
+          underlying,
+          payoff,
+          num_std_devs,
+          resolution,
+        });
+        const val = model.price();
+        return val;
+      }
+    }
+  }
+
+  library.EquityAmericanOption = EquityAmericanOption;
+})(this.JsonRisk || module.exports);
+(function (library) {
   /**
    * Class representing a forward contract on a stock or on an equity index
    * @memberof JsonRisk
@@ -1241,6 +1398,7 @@
     #surface = "";
     #strike = 0.0;
     #is_call = true;
+    #q = 0.0;
 
     /**
      * Create an equity option instrument.
@@ -1256,6 +1414,7 @@
      * @param {date} obj.expiry expiry date of the forward
      * @param {number} [obj.strike=0.0] strke price payable at expiry
      * @param {boolean} [obj.is_call=false] flag indicating if this is a call option
+     * @param {number} [obj.q=0.0] continuous dividend yield
      */
     constructor(obj) {
       super(obj);
@@ -1264,6 +1423,7 @@
       this.#surface = library.string_or_empty(obj.surface);
       this.#strike = library.number_or_null(obj.strike) || 0.0;
       this.#is_call = library.make_bool(obj.is_call);
+      this.#q = library.number_or_null(obj.q) || 0.0;
     }
 
     /**
@@ -1287,8 +1447,10 @@
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
 
-      const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       const t = library.time_from_now(this.#expiry);
+      const forward =
+        this.forward(quote.get_value(), this.#expiry, dc, rc) *
+        Math.exp(-t * this.#q);
       const vol = surface.get_rate(t, null, forward, this.#strike);
 
       const model = new library.BlackModel(t, vol);
@@ -1810,46 +1972,23 @@
     //regular swaption rate (that is, moneyness) should be equal to irr converted from annual compounding to simple compounding
     irr = (12 / tenor) * (Math.pow(1 + irr, tenor / 12) - 1);
 
-    //compute forward effective duration of remaining cash flow
-    const params_up = new library.Params({
-      valuation_date: library.valuation_date,
-      curves: {
-        discount: {
-          type: "yield",
-          times: [1],
-          zcs: [irr + 0.0001],
-        },
-      },
-    });
-    const df_ex_up = params_up
-      .get_curve("discount")
-      .get_df(library.time_from_now(exercise_date));
-
-    const params_down = new library.Params({
-      valuation_date: library.valuation_date,
-      curves: {
-        discount: {
-          type: "yield",
-          times: [1],
-          zcs: [irr - 0.0001],
-        },
-      },
-    });
-    const df_ex_down = params_down
-      .get_curve("discount")
-      .get_df(library.time_from_now(exercise_date));
-
-    //brief function to compute forward effective duration on a leg
+    //brief function to compute forward effective duration of remaining cash flow
     const ed = function (leg) {
-      const npv_up = leg.value(params_up, exercise_date) / df_ex_up;
-      const npv_down = leg.value(params_down, exercise_date) / df_ex_down;
-      const res = (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
-      return res;
+      let npv_up = 0.0;
+      let npv_down = 0.0;
+      for (const p of leg.payments) {
+        const t = library.days_between(exercise_date, p.date_pmt) / 365;
+        if (t <= 0) continue;
+        npv_up += p.amount * (1 + irr + 0.0001) ** -t;
+        npv_down += p.amount * (1 + irr - 0.0001) ** -t;
+      }
+      if (npv_up == npv_down) return 0.0;
+      return (10000.0 * (npv_down - npv_up)) / (npv_down + npv_up);
     };
 
-    // in some cases effective duration target is very short, make it at least one day
+    // in some cases effective duration target is very short, make it at least two weeks
     let effective_duration = ed(leg);
-    const effective_duration_target = Math.max(effective_duration, 1 / 365);
+    const effective_duration_target = Math.max(effective_duration, 1 / 24);
 
     //find bullet bond maturity that has approximately the same effective duration
     //start with simple estimate
@@ -3426,9 +3565,17 @@
    * @param {number} b - ende
    * @param {number} eps - accuracy
    * @param {number} max_depth - max depth
+   * @param {number} max_depth - min depth
    * @memberof JsonRisk
    */
-  library.adaptive_simpson = function (f, a, b, eps = 1e-8, max_depth = 20) {
+  library.adaptive_simpson = function (
+    f,
+    a,
+    b,
+    eps = 1e-8,
+    max_depth = 20,
+    min_depth = 5,
+  ) {
     function simpson(a, b, fa, fb, fm) {
       return ((b - a) / 6) * (fa + 4 * fm + fb);
     }
@@ -3448,7 +3595,7 @@
       fm,
       whole: simpson(a, b, fa, fb, fm),
       eps,
-      depth: max_depth,
+      depth: 1,
     });
 
     let result = 0;
@@ -3470,7 +3617,10 @@
 
       const delta = left + right - whole;
 
-      if (depth <= 0 || Math.abs(delta) <= 15 * eps) {
+      if (
+        depth >= min_depth &&
+        (depth >= max_depth || Math.abs(delta) <= 15 * eps)
+      ) {
         // accept partial result
         result += left + right + delta / 15;
       } else {
@@ -3483,7 +3633,7 @@
           fm: frm,
           whole: right,
           eps: eps / 2,
-          depth: depth - 1,
+          depth: depth + 1,
         });
 
         stack.push({
@@ -3494,7 +3644,129 @@
           fm: flm,
           whole: left,
           eps: eps / 2,
-          depth: depth - 1,
+          depth: depth + 1,
+        });
+      }
+    }
+
+    return result;
+  };
+
+  /**
+   * Adaptive Gauss Kronrod Integration
+   * @param {function} f - function to integrate f(x)
+   * @param {number} a - start
+   * @param {number} b - ende
+   * @param {number} eps - accuracy
+   * @param {number} max_depth - max depth
+   * @param {number} max_depth - min depth
+   * @memberof JsonRisk
+   */
+  library.adaptive_gauss_kronrod = function (
+    f,
+    a,
+    b,
+    eps = 1e-8,
+    max_depth = 20,
+    min_depth = 3,
+  ) {
+    // Kronrod nodes (positive, symmetric)
+    const xgk = [
+      0.9914553711208126, 0.9491079123427585, 0.8648644233597691,
+      0.7415311855993945, 0.5860872354676911, 0.4058451513773972,
+      0.2077849550078985, 0.0,
+    ];
+
+    // Kronrod weights
+    const wgk = [
+      0.02293532201052922, 0.0630920926299785, 0.1047900103222502,
+      0.1406532597155259, 0.1690047266392679, 0.1903505780647854,
+      0.2044329400752989, 0.2094821410847278,
+    ];
+
+    // Gauss weights (subset)
+    const wg = [
+      0.1294849661688697, 0.2797053914892766, 0.3818300505051189,
+      0.4179591836734694,
+    ];
+
+    function evaluate_interval(a, b) {
+      const center = 0.5 * (a + b);
+      const half_length = 0.5 * (b - a);
+
+      let kronrod_sum = 0;
+      let gauss_sum = 0;
+
+      for (let i = 0; i < xgk.length; i++) {
+        const abscissa = half_length * xgk[i];
+
+        const x1 = center - abscissa;
+        const x2 = center + abscissa;
+
+        const f1 = f(x1);
+        const f2 = f(x2);
+
+        const wk = wgk[i];
+
+        if (i === xgk.length - 1) {
+          // center point
+          const fc = f(center);
+          kronrod_sum += wk * fc;
+          gauss_sum += wg[3] * fc;
+        } else {
+          kronrod_sum += wk * (f1 + f2);
+
+          // Map Kronrod nodes → Gauss subset
+          if (i === 1) gauss_sum += wg[0] * (f1 + f2);
+          if (i === 3) gauss_sum += wg[1] * (f1 + f2);
+          if (i === 5) gauss_sum += wg[2] * (f1 + f2);
+        }
+      }
+
+      const i_k = kronrod_sum * half_length;
+      const i_g = gauss_sum * half_length;
+
+      return {
+        integral: i_k,
+        error: Math.abs(i_k - i_g),
+      };
+    }
+
+    // Stack of intervals
+    const stack = [
+      {
+        a: a,
+        b: b,
+        eps: eps,
+        depth: 1,
+      },
+    ];
+
+    let result = 0;
+
+    while (stack.length > 0) {
+      const { a, b, eps, depth } = stack.pop();
+
+      const { integral, error } = evaluate_interval(a, b);
+
+      if (depth >= min_depth && (error < eps || depth >= max_depth)) {
+        result += integral;
+      } else {
+        const mid = 0.5 * (a + b);
+
+        // Push children (note: push right first for left-first processing)
+        stack.push({
+          a: mid,
+          b: b,
+          eps: eps / 2,
+          depth: depth + 1,
+        });
+
+        stack.push({
+          a: a,
+          b: mid,
+          eps: eps / 2,
+          depth: depth + 1,
         });
       }
     }
@@ -3558,6 +3830,28 @@
       const temp = 1 / (x[index + 1] - x[index]);
       return (
         (y[index] * (x[index + 1] - s) + y[index + 1] * (s - x[index])) * temp
+      );
+    };
+  };
+
+  library.linear_interpolation_equidistant = function (x, y) {
+    // function that makes no more checks and copies, optimized for equidistant x
+    if (1 === x.length) {
+      const y0 = y[0];
+      return function (s_not_used) {
+        return y0;
+      };
+    }
+    const xmin = x[0];
+    const xmax = 0.5 * (x[x.length - 2] + x[x.length - 1]);
+    const one_over_dx = 1.0 / (x[1] - xmin);
+    return function (s) {
+      const sbounded = Math.min(Math.max(s, xmin), xmax);
+      const index = Math.trunc((sbounded - xmin) * one_over_dx);
+      if (s === x[index]) return y[index];
+      return (
+        (y[index] * (x[index + 1] - s) + y[index + 1] * (s - x[index])) *
+        one_over_dx
       );
     };
   };
@@ -4099,6 +4393,332 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
+   * Cox-Ross-Rubinstein binomial tree model for option pricing.
+   * @memberof JsonRisk
+   */
+  class CRRBinomialModel {
+    #impl = null;
+    #std_dev = 0.0;
+    #up = 1.0;
+    #n = 10; // number of steps in the binomial tree
+    #n_first_exercise = 0; // the number of steps until the first exercise date
+    #B = null; // forward discount factors
+    #spot = 0.0; // spot price
+    #strike = 0.0; // strike price
+    #p = [1.0]; // risk-neutral probability of an up move
+    #recombined_tree = []; // the binomial tree recombined to one-dimensional array
+
+    /**
+     * Create a CRR binomial model
+     * @param {number} t_start // time to first exercise
+     * @param {number} t_end // time to maturity
+     * @param {number} volatility  // black, e.g. log-normal volatility
+     * @param {number} spot // spot price of the underlying at time 0. The model will adjust it with the dividend yield and risk-free rate to get the forward price at each time step in the tree.
+     * @param {number} strike // strike price of the option, used to calculate the payoff at maturity, and the payoff at each time step in the tree for american options
+     * @param {number} n // number of steps in the binomial tree, used to build the tree and to calculate the time step
+     * @param {object} disc_curve // discount curve
+     * @param {number} q // continuous dividend yield
+     */
+    constructor(t_start, t_end, volatility, spot, strike, n, disc_curve, q) {
+      this.#std_dev = volatility * Math.sqrt(t_end);
+      if (t_end <= 0) {
+        this.#impl = function (phi_not_used) {
+          // expired option
+          return 0.0;
+        };
+      } else if (t_end < 1 / 512 || this.#std_dev < 0.000001) {
+        this.#impl = function (phi) {
+          // expiring option or very low volatility, return inner value
+          return Math.max(phi * (spot - strike), 0);
+        };
+      } else {
+        this.#strike = strike;
+        this.#n = n;
+        this.#check_input();
+        this.#initialize(t_start, t_end, volatility, spot, disc_curve, q);
+      }
+    }
+
+    #initialize(t_start, t_end, volatility, spot, disc_curve, q) {
+      // we initialize the model parameters, and build the binomial tree, which will be used in the backward induction to calculate the option price.
+      // we also check the consistency of the input parameters, and throw an error if they are not consistent.
+      const dt = t_end / this.#n;
+
+      // we calculate the discount factor for each time step in the tree as the ratio of the discount factors
+      // at the end and the beginning of the time step, e.g., a forward discount factor
+      this.#B = new Array(this.#n);
+
+      for (let i = 0; i < this.#n; i++) {
+        this.#B[i] =
+          disc_curve.get_df((i + 1) * dt) / disc_curve.get_df(i * dt);
+      }
+
+      // Bq is the discount factor corresponding to the dividend yield q and one time step
+      const Bq = Math.exp(-dt * q);
+
+      // risk-neutral probabilities, using the corresponding discount factors
+      // for the risk-free rate and the dividend yield at that time step
+      const up = Math.exp(volatility * Math.sqrt(dt));
+      this.#up = up;
+      const down = 1.0 / up;
+      this.#p = this.#B.map((B_i) =>
+        this.#assign_probabilities(B_i, Bq, up, down),
+      );
+
+      // this is the number of steps until the first exercise date, we round it down
+      this.#n_first_exercise = Math.trunc(t_start / dt);
+
+      this.#spot = spot;
+      this.#impl = this.#backward_induction;
+    }
+
+    #check_input() {
+      if (this.#n <= 0) {
+        throw new Error(`Invalid input: n must be positive, got n ${this.#n}`);
+      }
+      if (this.#strike < 0) {
+        throw new Error(
+          `Invalid input: strike must be non-negative, got strike ${this.#strike}`,
+        );
+      }
+    }
+
+    #assign_probabilities(Bi, Bq, up, down) {
+      const pi = (Bq / Bi - down) / (up - down);
+      if (pi < 0 || pi > 1) {
+        throw new Error(
+          `Inconsistent parameters: probability must be between 0 and 1, got pi ${pi}`,
+        );
+      }
+      return pi;
+    }
+
+    #tree(i, j) {
+      const index = 2 * j - i + this.#n; // we shift the index to be non-negative, since j can be at most n and i can be at most n, so 2*j - i can be at most n, and at least -n, so we shift it by n to be between 0 and 2*n
+      if (this.#recombined_tree[index]) return this.#recombined_tree[index];
+      const value = this.#spot * Math.pow(this.#up, 2 * j - i);
+      this.#recombined_tree[index] = value; // we cache the value in the recombined tree, so that we do not have to calculate it again, since the tree is recombined, we only need to calculate it once for each node in the tree, and we can reuse it for all the nodes that have the same price, which are the nodes that are on the same diagonal of the tree.
+      return value;
+    }
+
+    #payoff(price, phi) {
+      return Math.max(phi * (price - this.#strike), 0);
+    }
+
+    #payoff_maturity(phi) {
+      // tree is a 2D array, where tree[i][j] is the price at time step i and node j,
+      // as computed by the #binomial_tree_price function.
+      // This function returns an array of payoffs at maturity, where payoffs[j] is the payoff at node j in the last row of the tree,
+      // which corresponds to the maturity. The payoff is calculated as max(phi * (price - strike), 0), where phi is 1 for call options and -1 for put options.
+      const payoffs = [];
+      for (let j = 0; j <= this.#n; j++) {
+        payoffs[j] = this.#payoff(this.#tree(this.#n, j), phi);
+      }
+      return payoffs;
+    }
+
+    #backward_values(values, time_step) {
+      const result = new Array(values.length - 1);
+      const fwd_discount = this.#B[time_step];
+      const p = this.#p[time_step];
+      for (let j = 0; j < result.length; j++) {
+        result[j] = fwd_discount * (p * values[j + 1] + (1 - p) * values[j]);
+      }
+      return result;
+    }
+
+    #backward_prices(backward_values, i, phi) {
+      // this function takes the backward values at time step i+1, and calculates the backward values at time step i,
+      // taking into account the possibility of early exercise if we are at or after the first exercise step
+      const beforeFirstExercise = i < this.#n_first_exercise;
+
+      // phi is 1 for call and -1 for put
+      return backward_values.map((value, index) => {
+        if (beforeFirstExercise) {
+          return value;
+        }
+        const exerciseValue = this.#payoff(this.#tree(i, index), phi);
+        return Math.max(value, exerciseValue);
+      });
+    }
+
+    #backward_induction(phi) {
+      let payoff = this.#payoff_maturity(phi);
+      let i = this.#n - 1;
+      do {
+        const bk_values = this.#backward_values(payoff, i);
+        payoff = this.#backward_prices(bk_values, i, phi);
+        i--;
+      } while (payoff.length > 1);
+      return payoff[0];
+    }
+
+    /**
+     * Calculate the price of a put option
+     */
+    put_price() {
+      return this.#impl(-1);
+    }
+
+    /**
+     *  Calculate the price of a call option
+     */
+    call_price() {
+      return this.#impl(1);
+    }
+  }
+  library.CRRBinomialModel = CRRBinomialModel;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  /**
+   * Gaussian model for option pricing.
+   * @memberof JsonRisk
+   */
+  class GaussianModel {
+    #times;
+    #xi;
+    #n;
+    #underlying;
+    #payoff;
+    #N = 0;
+    #grid = null;
+    #integrate = null;
+
+    /**
+     * @param {Object} obj
+     * @param {number[]} obj.times array of times
+     * @param {number[]} obj.xi array of standard deviations
+     * @param {function} obj.underlying function returning the underlying value for time t and gaussian state x
+     * @param {function} obj.payoff function returning the payoff for time t and underlying value v
+     * @param {number} obj.num_std_devs=4 range of standard deviations for numeric integration
+     * @param {number} obj.resulution=16 resolution for numeric integration
+     */
+    constructor(obj) {
+      this.#times = obj.times;
+      this.#n = obj.times.length;
+      this.#xi = obj.xi;
+      this.#underlying = obj.underlying;
+      this.#payoff = obj.payoff;
+
+      // numerics
+      const num_std_devs =
+        library.natural_number_or_null(obj.num_std_devs) || 4;
+      const resolution = library.natural_number_or_null(obj.resolution) || 16;
+      const dr = 0.5 / resolution;
+
+      this.#N = 2 * num_std_devs * resolution + 1;
+      this.#grid = new Array(this.#N);
+      const ndf = new Array(this.#N);
+
+      for (let i = 0; i < this.#N; ++i) {
+        const temp = num_std_devs * ((2 * i) / (this.#N - 1) - 1);
+        this.#grid[i] = temp;
+        ndf[i] = library.ndf(temp);
+      }
+
+      this.#integrate = function (f) {
+        // compute the integral over f(x) phi(x) dx where phi is the standard normal density
+        const f_weighted = (x) => {
+          let res = f(x);
+          res *= library.fast_cndf(x + dr) - library.fast_cndf(x - dr);
+          res *= resolution;
+          return res;
+        };
+        const ret = library.adaptive_simpson(
+          f_weighted,
+          -num_std_devs,
+          num_std_devs,
+          1e-5,
+          8,
+          5,
+        );
+        return ret;
+      };
+    }
+
+    price() {
+      const values_hold = new Float64Array(this.#N);
+      const values_ex = new Float64Array(this.#N);
+
+      {
+        // populate end state n
+        const t = this.#times[this.#n - 1];
+        const xi = this.#xi[this.#n - 1];
+        for (let i = 0; i < this.#N; ++i) {
+          const x = this.#grid[i];
+          const x_scaled = x * xi;
+          const val = this.#underlying(t, x_scaled);
+          values_hold[i] = 0.0; // in the last step, not exercising holds no more value
+          values_ex[i] = this.#payoff(t, val);
+        }
+      }
+
+      for (let n = this.#n - 1; n > 0; n--) {
+        const interp_hold = library.linear_interpolation_equidistant(
+          this.#grid,
+          new Float64Array(values_hold), // copy array since it is overwritten in the loop
+        );
+
+        const interp_ex = library.linear_interpolation_equidistant(
+          this.#grid,
+          new Float64Array(values_ex), // copy array since it is overwritten in the loop
+        );
+
+        const t = this.#times[n];
+        const xi_start = this.#xi[n - 1];
+        const xi_end = this.#xi[n];
+        const rho = xi_end == 0 ? xi_start : xi_start / xi_end;
+        const sigma = Math.sqrt(1 - rho * rho);
+
+        for (let i = 0; i < this.#N; ++i) {
+          // x is the standard normal variable corresponding to the model state in time n-1
+          const x = this.#grid[i];
+          const z1 = rho * x;
+          // x_scaled is the actual model state in time n-1
+          const x_scaled = x * xi_start;
+
+          // val is the underlying value in time t, model state x
+          const val = this.#underlying(t, x_scaled);
+          values_ex[i] = this.#payoff(t, val);
+
+          values_hold[i] = this.#integrate((y) => {
+            // y is the standard normal variable we integrate over
+            // z is the normalized state after transition, z = x_scaled+ x * Math.sqrt(xi_end * xi_end - xi_start * xi_start) / xi_end = rho * x+sigma * y
+            let z = z1 + sigma * y;
+
+            // compute the maximum of exercise value and hold value. payoff and hold are interpolated separately to achieve more accuracy around the point they cross
+            const ex = interp_ex(z);
+            const hold = interp_hold(z);
+            return Math.max(ex, hold);
+          });
+        }
+      }
+
+      // final integration
+      const interp_hold = library.linear_interpolation_equidistant(
+        this.#grid,
+        values_hold, // no more copying needed
+      );
+
+      const interp_ex = library.linear_interpolation_equidistant(
+        this.#grid,
+        values_ex, // no more copying needed
+      );
+
+      const res = this.#integrate((y) => {
+        const ex = interp_ex(y);
+        const hold = interp_hold(y);
+        return Math.max(ex, hold);
+      });
+
+      return res;
+    }
+  }
+
+  library.GaussianModel = GaussianModel;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  /**
    * Class representing an ISDA credit model
    * @memberof JsonRisk
    */
@@ -4480,86 +5100,89 @@
       }.bind(this);
 
       for (let i = 0; i < basket.length; i++) {
-        if (library.time_from_now(basket[i].first_exercise_date) > 1 / 512) {
-          tte = library.time_from_now(basket[i].first_exercise_date);
-          this.#t_ex[i] = tte;
-
-          //first step: derive initial guess based on Hagan formula 5.16c
-          //get swap fixed cash flow adjusted for basis spread
-          cf_obj = european_swaption_adjusted_cashflow(
-            basket[i],
-            disc_curve,
-            fwd_curve,
+        if (library.time_from_now(basket[i].first_exercise_date) <= 1 / 512) {
+          throw new Error(
+            "LGM: basket instruments must have time to exercise of at least one day",
           );
+        }
+        tte = library.time_from_now(basket[i].first_exercise_date);
+        this.#t_ex[i] = tte;
 
-          discount_factors = get_discount_factors(
-            cf_obj,
-            tte,
-            disc_curve,
-            null,
-            null,
-          );
-          let denominator = 0;
-          for (let j = 0; j < cf_obj.t_pmt.length; j++) {
-            denominator +=
-              cf_obj.pmt_total[j] *
-              discount_factors[j] *
-              this.#h(cf_obj.t_pmt[j]);
+        //first step: derive initial guess based on Hagan formula 5.16c
+        //get swap fixed cash flow adjusted for basis spread
+        cf_obj = european_swaption_adjusted_cashflow(
+          basket[i],
+          disc_curve,
+          fwd_curve,
+        );
+
+        discount_factors = get_discount_factors(
+          cf_obj,
+          tte,
+          disc_curve,
+          null,
+          null,
+        );
+        let denominator = 0;
+        for (let j = 0; j < cf_obj.t_pmt.length; j++) {
+          denominator +=
+            cf_obj.pmt_total[j] *
+            discount_factors[j] *
+            this.#h(cf_obj.t_pmt[j]);
+        }
+        //bachelier swaption price and std deviation
+        target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
+        const std_dev_bachelier = basket[i].std_dev;
+
+        //initial guess
+        xi = Math.pow(
+          (std_dev_bachelier * basket[i].annuity(disc_curve)) / denominator,
+          2,
+        );
+
+        //second step: calibrate, but be careful with infeasible bachelier prices below min and max
+        let min_value = this.#dcf(
+          cf_obj,
+          tte,
+          discount_factors,
+          0,
+          [0],
+          null,
+        )[0];
+
+        //max value is value of the payoff without redemption payment
+        let max_value =
+          min_value +
+          basket[i].fixed_leg.payments[0].notional *
+            discount_factors[discount_factors.length - 1];
+        //min value (attained at vola=0) is maximum of zero and current value of the payoff
+        if (min_value < 0) min_value = 0;
+
+        const accuracy = target * 1e-7 + 1e-7;
+
+        if (target <= min_value + accuracy || 0 === xi) {
+          xi = 0;
+        } else {
+          if (target > max_value) target = max_value;
+          let approx = func(xi);
+          let j = 10;
+          while (approx < 0 && j > 0) {
+            j--;
+            xi *= 2;
+            approx = func(xi);
           }
-          //bachelier swaption price and std deviation
-          target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
-          const std_dev_bachelier = basket[i].std_dev;
-
-          //initial guess
-          xi = Math.pow(
-            (std_dev_bachelier * basket[i].annuity(disc_curve)) / denominator,
-            2,
-          );
-
-          //second step: calibrate, but be careful with infeasible bachelier prices below min and max
-          let min_value = this.#dcf(
-            cf_obj,
-            tte,
-            discount_factors,
-            0,
-            [0],
-            null,
-          )[0];
-
-          //max value is value of the payoff without redemption payment
-          let max_value =
-            min_value +
-            basket[i].fixed_leg.payments[0].notional *
-              discount_factors[discount_factors.length - 1];
-          //min value (attained at vola=0) is maximum of zero and current value of the payoff
-          if (min_value < 0) min_value = 0;
-
-          const accuracy = target * 1e-7 + 1e-7;
-
-          if (target <= min_value + accuracy || 0 === xi) {
-            xi = 0;
-          } else {
-            if (target > max_value) target = max_value;
-            let approx = func(xi);
-            let j = 10;
-            while (approx < 0 && j > 0) {
-              j--;
-              xi *= 2;
-              approx = func(xi);
-            }
-            try {
-              xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
-            } catch (e_not_used) {
-              //use initial guess or zero as fallback, whichever is better
-              if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
-            }
+          try {
+            xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
+          } catch (e_not_used) {
+            //use initial guess or zero as fallback, whichever is better
+            if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
           }
+        }
 
-          if (i > 0 && this.#xi[i - 1] > xi) {
-            this.#xi[i] = this.#xi[i - 1]; //fallback if monotonicity is violated
-          } else {
-            this.#xi[i] = xi;
-          }
+        if (i > 0 && this.#xi[i - 1] > xi) {
+          this.#xi[i] = this.#xi[i - 1]; //fallback if monotonicity is violated
+        } else {
+          this.#xi[i] = xi;
         }
       }
     }
@@ -5308,8 +5931,8 @@
     attach_rule(rule) {
       if (typeof rule === "object") {
         const scenario = new library.Curve({
-          labels: rule.labels_x,
-          zcs: rule.values[0],
+          times: rule.axis_x,
+          zcs: rule.values_for_curve,
           intp: rule.model === "absolute" ? this.#intp : "linear_zc",
         });
         if (rule.model === "multiplicative")
@@ -5494,7 +6117,7 @@
       // moneyness
       if ("moneyness" in obj) {
         this.#moneyness = library.number_vector_or_null(obj.moneyness);
-        Object.freeze(this.#expiries);
+        Object.freeze(this.#moneyness);
       }
 
       // interpolation
@@ -5524,10 +6147,11 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scen = new library.ExpiryStrikeSurface({
-          labels_expiry: rule.labels_y,
-          moneyness: [0.0],
-          values: [rule.values[0]],
+        const scen = new this.constructor({
+          type: this.type,
+          expiries: rule.axis_x,
+          moneyness: rule.axis_y,
+          values: rule.values,
         });
 
         if (rule.model === "multiplicative") {
@@ -5661,7 +6285,7 @@
     }
 
     attach_rule(rule) {
-      const scenval = rule.values[0][0];
+      const scenval = rule.value_for_scalar;
       if (rule.model === "multiplicative")
         this.#scenario_value = this.#value * scenval;
       if (rule.model === "additive")
@@ -5828,8 +6452,8 @@
     attach_rule(rule) {
       if (typeof rule === "object") {
         const scen = new library.Surface({
-          labels_expiry: rule.labels_y,
-          labels_term: rule.labels_x,
+          expiries: rule.axis_x,
+          terms: rule.axis_y,
           values: rule.values,
         });
 
@@ -6149,7 +6773,13 @@
           // make shallow copy for adding name
           const temp = Object.assign({}, value);
           temp.name = key;
-          this.#scalars[key] = new library.Scalar(temp);
+          try {
+            this.#scalars[key] = new library.Scalar(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate scalar '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -6159,7 +6789,13 @@
           // make shallow copy for adding name
           const temp = Object.assign({}, value);
           temp.name = key;
-          this.#curves[key] = new library.Curve(temp);
+          try {
+            this.#curves[key] = new library.Curve(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate curve '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -6181,7 +6817,13 @@
               temp.moneyness.push(moneyness);
             }
           }
-          this.#surfaces[key] = library.make_surface(temp);
+          try {
+            this.#surfaces[key] = library.make_surface(temp);
+          } catch (e) {
+            throw new Error(
+              `Params: could not instantiate surface '${key}': ${e.message}`,
+            );
+          }
         }
       }
 
@@ -6189,13 +6831,35 @@
       if ("scenario_groups" in obj) {
         if (!Array.isArray(obj.scenario_groups))
           throw new Error("Params: scenario_groups must be an array");
-        this.#scenario_groups = obj.scenario_groups;
-        for (const group of this.#scenario_groups) {
+        this.#scenario_groups = [];
+        for (const group of obj.scenario_groups) {
           if (!Array.isArray(group))
             throw new Error(
               "Params: each group in scenario_groups must be an array.",
             );
           this.#num_scenarios += group.length;
+          // transform all scenario rules into ScenarioRule objects
+          const scenarios = [];
+          for (const scenario of group) {
+            if (typeof scenario.name !== "string")
+              throw new Error("Params: scenarios must contain a name property");
+            if (!Array.isArray(scenario.rules))
+              throw new Error("Params: scenarios must contain a rules array");
+            try {
+              scenarios.push({
+                name: scenario.name,
+                rules: scenario.rules.map(
+                  (rule) => new library.ScenarioRule(rule),
+                ),
+              });
+            } catch (e) {
+              throw new Error(
+                `Params: could not instantiate scenario rule in '${scenario.name}': ${e.message}`,
+              );
+            }
+          }
+
+          this.#scenario_groups.push(scenarios);
         }
       }
 
@@ -6402,37 +7066,15 @@
      * @param {number} n the index of the scenario starting with 1.
      */
     attach_scenario(n) {
+      this.detach_scenarios();
       const scenario = this.get_scenario(n);
-      if (!scenario) return this.detach_scenarios();
+      if (!scenario) return;
       const rules = scenario.rules;
-
-      // attach scenario if one of the rules match
-      const match = function (item, rule) {
-        if (Array.isArray(rule.risk_factors)) {
-          // match by risk factors
-          if (rule.risk_factors.indexOf(item.name) > -1) {
-            return true;
-          }
-        }
-        if (Array.isArray(rule.tags)) {
-          // if no exact match by risk factors, all tags of that rule must match
-          let found = true;
-          for (const tag of rule.tags) {
-            if (!item.has_tag(tag)) found = false;
-          }
-          // if tag list is empty, no matching by tags at all
-          if (rule.tags.length === 0) found = false;
-          if (found) {
-            return true;
-          }
-        }
-        return false;
-      };
 
       for (const container of [this.#scalars, this.#curves, this.#surfaces]) {
         for (const item of Object.values(container)) {
           for (const rule of rules) {
-            if (match(item, rule)) {
+            if (rule.matches(item)) {
               item.attach_rule(rule);
               break;
             }
@@ -6461,6 +7103,218 @@
   }
 
   library.Params = Params;
+})(this.JsonRisk || module.exports);
+(function (library) {
+  const validate_model = function (str) {
+    if (typeof str !== "string")
+      throw new Error("ScenarioRule: model must be a string");
+    const ret = str.toLowerCase();
+    if (ret !== "additive" && ret !== "multiplicative" && ret !== "absolute")
+      throw new Error(
+        "ScenarioRule: model must be additive, multiplicative or absolute",
+      );
+    return ret;
+  };
+  const validate_and_convert_to_set = function (arr) {
+    if (!Array.isArray(arr)) {
+      throw new Error("ScenarioRule: risk_factors and tags must be arrays");
+    }
+    for (const item of arr) {
+      if (typeof item !== "string") {
+        throw new Error(
+          "ScenarioRule: risk_factors and tags must be arrays of strings",
+        );
+      }
+    }
+    return new Set(arr);
+  };
+
+  const validate_and_convert_to_numbers = function (arr) {
+    if (null == arr) return [1.0];
+    if (!Array.isArray(arr)) {
+      throw new Error("ScenarioRule: labels_x and labels_y must be arrays");
+    }
+    if (arr.length === 0) {
+      throw new Error("ScenarioRule: labels_x and labels_y must be non-empty");
+    }
+    const ret = arr.map((str) => {
+      const num = parseFloat(str, 10);
+      if (isNaN(num))
+        throw new Error(
+          "ScenarioRule: could not convert this value to a number: " + str,
+        );
+      const unit = str.charAt(str.length - 1);
+
+      if (unit === "M" || unit === "m") return num / 12;
+      if (unit === "W" || unit === "w") return num / 52;
+      if (unit === "D" || unit === "d") return num / 365;
+      return num; // return the number itself, especially if the unit is "y" or "Y", but also if there is no unit at all.
+    });
+
+    Object.freeze(ret);
+    return ret;
+  };
+
+  const validate_and_copy_values = function (arr, xlen, ylen) {
+    if (!Array.isArray(arr))
+      throw new Error(
+        "ScenarioRule: invalid values property, must be an array.",
+      );
+    const n = arr.length;
+    if (n === xlen) {
+      // regular case
+      const res = new Array(xlen);
+      for (let i = 0; i < xlen; i++) {
+        const temp = arr[i];
+        if (!Array.isArray(temp))
+          throw new Error(
+            "ScenarioRule: invalid values array, elements must be arrays",
+          );
+        if (temp.length !== ylen)
+          throw new Error(
+            "ScenarioRule: invalid values array, elements must be arrays of the same length as labels_y",
+          );
+        res[i] = new Array(ylen);
+        for (let j = 0; j < ylen; j++) {
+          const num = temp[j];
+          if (typeof num !== "number")
+            throw new Error(
+              "ScenarioRule: invalid values array, elements must be arrays of numbers",
+            );
+          res[i][j] = num;
+        }
+      }
+      Object.freeze(res);
+      return res;
+    } else if (n === 1 && ylen === 1) {
+      // special case of one-dimensional curve-like scenario where we tolerate the transposed variant, too
+      const temp = arr[0];
+      if (!Array.isArray(temp))
+        throw new Error(
+          "ScenarioRule: invalid values array, elements must be arrays",
+        );
+      if (temp.length !== xlen)
+        throw new Error(
+          "ScenarioRule: invalid values array, expecting array of the same length as labels_x",
+        );
+      const res = new Array(xlen);
+      for (let i = 0; i < xlen; i++) {
+        const num = temp[i];
+        if (typeof num !== "number")
+          throw new Error(
+            "ScenarioRule: invalid values array, elements must be arrays of numbers",
+          );
+        res[i] = [num];
+      }
+      Object.freeze(res);
+      return res;
+    } else {
+      throw new Error(
+        "ScenarioRule: invalid values array, length must be the same as labels_x",
+      );
+    }
+  };
+
+  /**
+   * ScenarioRule - represents a scenario rule for simulations
+   * @memberof JsonRisk
+   */
+  class ScenarioRule {
+    #model = "";
+    #risk_factors = null;
+    #tags = null;
+    #labels_x = null;
+    #axis_x = null;
+    #labels_y = null;
+    #axis_y = null;
+    #values = null;
+    /**
+     * Create a ScenarioRule object.
+     * @param {object} obj A plain object representing a parameters container.
+     * @param {string} [obj.model] the perturbation model (e.g., "additive", "multiplicative", "absolute")
+     * @param {Array} [obj.risk_factors=[]] identifies which scalars, curves and surfaces to apply the rule to
+     * @param {Array} [obj.tags=[]] identifies which scalars, curves and surfaces to apply the rule to
+     * @param {Array} [obj.labels_x] Labels for the x-axis, e.g., curve term, surface expiry
+     * @param {Array} [obj.labels_y] Labels for the y-axis, e.g., surface term, surface moneyness
+     * @param {Array} [obj.values] Values for the scenario. Must be an array with the same length as labels_x and contain arrays with the same length ob labels_y
+     */
+    constructor({ model, risk_factors, tags, labels_x, labels_y, values }) {
+      this.#model = validate_model(model);
+      this.#risk_factors = validate_and_convert_to_set(risk_factors || []);
+      this.#tags = validate_and_convert_to_set(tags || []);
+      this.#labels_x = labels_x ? Array.from(labels_x) : null;
+      this.#axis_x = validate_and_convert_to_numbers(labels_x);
+      this.#labels_y = labels_y ? Array.from(labels_y) : null;
+      this.#axis_y = validate_and_convert_to_numbers(labels_y);
+      this.#values = validate_and_copy_values(
+        values,
+        this.#axis_x.length,
+        this.#axis_y.length,
+      );
+    }
+
+    get model() {
+      return this.#model;
+    }
+
+    get axis_x() {
+      return this.#axis_x;
+    }
+
+    get axis_y() {
+      return this.#axis_y;
+    }
+
+    get values() {
+      return this.#values;
+    }
+
+    get values_for_curve() {
+      return this.#values.map((column) => column[0]);
+    }
+
+    get value_for_scalar() {
+      return this.#values[0][0];
+    }
+
+    matches(item) {
+      // check if a simulatable item is matched this rule
+      if (!(item instanceof library.Simulatable))
+        throw new Error(
+          "ScenarioRule: can only match object of type Simulatable",
+        );
+
+      // match by risk factors
+      if (this.#risk_factors.has(item.name)) {
+        return true;
+      }
+
+      // if no exact match by risk factors, match by tags if tags are present. in that case, all tags must match
+      if (this.#tags.size === 0) return false;
+      let found = true;
+      for (const tag of this.#tags) {
+        if (!item.has_tag(tag)) found = false;
+      }
+      return found;
+    }
+
+    toJSON() {
+      const res = {
+        model: this.#model,
+        values: this.#values,
+      };
+
+      if (this.#risk_factors.size > 0)
+        res.risk_factors = Array.from(this.#risk_factors);
+      if (this.#tags.size > 0) res.tags = Array.from(this.#tags);
+      if (this.#labels_x) res.labels_x = Array.from(this.#labels_x);
+      if (this.#labels_y) res.labels_y = Array.from(this.#labels_y);
+
+      return res;
+    }
+  }
+
+  library.ScenarioRule = ScenarioRule;
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**

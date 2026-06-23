@@ -204,86 +204,89 @@
       }.bind(this);
 
       for (let i = 0; i < basket.length; i++) {
-        if (library.time_from_now(basket[i].first_exercise_date) > 1 / 512) {
-          tte = library.time_from_now(basket[i].first_exercise_date);
-          this.#t_ex[i] = tte;
-
-          //first step: derive initial guess based on Hagan formula 5.16c
-          //get swap fixed cash flow adjusted for basis spread
-          cf_obj = european_swaption_adjusted_cashflow(
-            basket[i],
-            disc_curve,
-            fwd_curve,
+        if (library.time_from_now(basket[i].first_exercise_date) <= 1 / 512) {
+          throw new Error(
+            "LGM: basket instruments must have time to exercise of at least one day",
           );
+        }
+        tte = library.time_from_now(basket[i].first_exercise_date);
+        this.#t_ex[i] = tte;
 
-          discount_factors = get_discount_factors(
-            cf_obj,
-            tte,
-            disc_curve,
-            null,
-            null,
-          );
-          let denominator = 0;
-          for (let j = 0; j < cf_obj.t_pmt.length; j++) {
-            denominator +=
-              cf_obj.pmt_total[j] *
-              discount_factors[j] *
-              this.#h(cf_obj.t_pmt[j]);
+        //first step: derive initial guess based on Hagan formula 5.16c
+        //get swap fixed cash flow adjusted for basis spread
+        cf_obj = european_swaption_adjusted_cashflow(
+          basket[i],
+          disc_curve,
+          fwd_curve,
+        );
+
+        discount_factors = get_discount_factors(
+          cf_obj,
+          tte,
+          disc_curve,
+          null,
+          null,
+        );
+        let denominator = 0;
+        for (let j = 0; j < cf_obj.t_pmt.length; j++) {
+          denominator +=
+            cf_obj.pmt_total[j] *
+            discount_factors[j] *
+            this.#h(cf_obj.t_pmt[j]);
+        }
+        //bachelier swaption price and std deviation
+        target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
+        const std_dev_bachelier = basket[i].std_dev;
+
+        //initial guess
+        xi = Math.pow(
+          (std_dev_bachelier * basket[i].annuity(disc_curve)) / denominator,
+          2,
+        );
+
+        //second step: calibrate, but be careful with infeasible bachelier prices below min and max
+        let min_value = this.#dcf(
+          cf_obj,
+          tte,
+          discount_factors,
+          0,
+          [0],
+          null,
+        )[0];
+
+        //max value is value of the payoff without redemption payment
+        let max_value =
+          min_value +
+          basket[i].fixed_leg.payments[0].notional *
+            discount_factors[discount_factors.length - 1];
+        //min value (attained at vola=0) is maximum of zero and current value of the payoff
+        if (min_value < 0) min_value = 0;
+
+        const accuracy = target * 1e-7 + 1e-7;
+
+        if (target <= min_value + accuracy || 0 === xi) {
+          xi = 0;
+        } else {
+          if (target > max_value) target = max_value;
+          let approx = func(xi);
+          let j = 10;
+          while (approx < 0 && j > 0) {
+            j--;
+            xi *= 2;
+            approx = func(xi);
           }
-          //bachelier swaption price and std deviation
-          target = basket[i].value_with_curves(disc_curve, fwd_curve, surface);
-          const std_dev_bachelier = basket[i].std_dev;
-
-          //initial guess
-          xi = Math.pow(
-            (std_dev_bachelier * basket[i].annuity(disc_curve)) / denominator,
-            2,
-          );
-
-          //second step: calibrate, but be careful with infeasible bachelier prices below min and max
-          let min_value = this.#dcf(
-            cf_obj,
-            tte,
-            discount_factors,
-            0,
-            [0],
-            null,
-          )[0];
-
-          //max value is value of the payoff without redemption payment
-          let max_value =
-            min_value +
-            basket[i].fixed_leg.payments[0].notional *
-              discount_factors[discount_factors.length - 1];
-          //min value (attained at vola=0) is maximum of zero and current value of the payoff
-          if (min_value < 0) min_value = 0;
-
-          const accuracy = target * 1e-7 + 1e-7;
-
-          if (target <= min_value + accuracy || 0 === xi) {
-            xi = 0;
-          } else {
-            if (target > max_value) target = max_value;
-            let approx = func(xi);
-            let j = 10;
-            while (approx < 0 && j > 0) {
-              j--;
-              xi *= 2;
-              approx = func(xi);
-            }
-            try {
-              xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
-            } catch (e_not_used) {
-              //use initial guess or zero as fallback, whichever is better
-              if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
-            }
+          try {
+            xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
+          } catch (e_not_used) {
+            //use initial guess or zero as fallback, whichever is better
+            if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
           }
+        }
 
-          if (i > 0 && this.#xi[i - 1] > xi) {
-            this.#xi[i] = this.#xi[i - 1]; //fallback if monotonicity is violated
-          } else {
-            this.#xi[i] = xi;
-          }
+        if (i > 0 && this.#xi[i - 1] > xi) {
+          this.#xi[i] = this.#xi[i - 1]; //fallback if monotonicity is violated
+        } else {
+          this.#xi[i] = xi;
         }
       }
     }

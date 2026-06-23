@@ -191,8 +191,8 @@
     attach_rule(rule) {
       if (typeof rule === "object") {
         const scenario = new library.Curve({
-          labels: rule.labels_x,
-          zcs: rule.values[0],
+          times: rule.axis_x,
+          zcs: rule.values_for_curve,
           intp: rule.model === "absolute" ? this.#intp : "linear_zc",
         });
         if (rule.model === "multiplicative")

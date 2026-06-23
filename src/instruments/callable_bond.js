@@ -37,11 +37,22 @@
         throw new Error("CallableBond: must provide first call date");
       const leg = this.legs[0];
       const payments = leg.payments;
-      if (fcd.getTime() <= payments[0].date_start.getTime())
-        throw new Error("CallableBond: first call date before issue date");
+      if (payments.length === 0)
+        throw new Error("CallableBond: leg has no payments.");
+      const date_start = payments[0].date_start;
+      const date_end = payments[payments.length - 1].date_value;
+      if (fcd.getTime() <= date_start.getTime())
+        throw new Error(
+          "CallableBond: first call date on or before issue date",
+        );
+
+      if (fcd.getTime() >= date_end.getTime())
+        throw new Error(
+          "CallableBond: first call date on or after maturity date",
+        );
 
       const call_tenor = library.natural_number_or_null(obj.call_tenor) || 0; //european call by default
-      const date_end = payments[payments.length - 1].date_value;
+
       const is_holiday_func = library.is_holiday_factory(obj.calendar);
       const bdc = library.string_or_empty(obj.bdc);
       const adjust = function (d) {
@@ -64,13 +75,13 @@
       }); // adjust call dates with calendar
 
       //truncate call dates as soon as principal has been redeemed
-      let i = payments.length - 1;
-      while (payments[i].notional === 0) i--;
+      const last_payment = payments.findLast((p) => p.notional !== 0);
       while (
-        call_schedule[call_schedule.length - 1].getTime() >=
-        payments[i].date_pmt.getTime()
-      )
+        call_schedule.length > 0 &&
+        call_schedule.at(-1).getTime() >= last_payment.date_pmt.getTime()
+      ) {
         call_schedule.pop();
+      }
 
       this.#call_schedule = call_schedule;
       Object.freeze(call_schedule);
@@ -83,15 +94,16 @@
       this.#opportunity_spread =
         library.number_or_null(obj.opportunity_spread) || 0.0;
       this.#exclude_base = library.make_bool(obj.exclude_base);
-      const simple_calibration = library.make_bool(obj.simple_calibration);
+
+      // use simple calibration if configured, or if leg is simple bullet
+      const simple_calibration =
+        library.make_bool(obj.simple_calibration) ||
+        (leg.has_constant_notional && leg.has_constant_rate);
 
       //basket generation
       this.#basket = new Array(call_schedule.length);
       for (let i = 0; i < call_schedule.length; i++) {
-        if (
-          (leg.has_constant_notional && leg.has_constant_rate) ||
-          simple_calibration
-        ) {
+        if (simple_calibration) {
           //basket instruments are co-terminal swaptions with standard conditions
           this.#basket[i] = new library.Swaption({
             is_payer: false,
@@ -147,12 +159,14 @@
         leg.spread_curve != "" ? params.get_curve(leg.spread_curve) : null;
       const fwd_curve = params.get_curve(this.#fwd_curve);
 
-      //eliminate past call dates and derive time to exercise
-      const t_exercise = [];
-      for (const dt of this.#call_schedule) {
-        const tte = library.time_from_now(dt);
-        if (tte > 1 / 512) t_exercise.push(tte); //non-expired call date
-      }
+      //get basket swaptions for all future call dates
+      const basket = this.#basket.filter(
+        (swaption) =>
+          library.time_from_now(swaption.first_exercise_date) > 1 / 512,
+      );
+      const t_exercise = basket.map((swaption) =>
+        library.time_from_now(swaption.first_exercise_date),
+      );
 
       // get LGM model with desired mean reversion
       const lgm = new library.LGM(this.#mean_reversion);
@@ -161,7 +175,7 @@
         //calibrate lgm model - returns xi for non-expired swaptions only
         const surface = params.get_surface(this.#surface);
 
-        lgm.calibrate(this.#basket, disc_curve, fwd_curve, surface);
+        lgm.calibrate(basket, disc_curve, fwd_curve, surface);
       } else {
         lgm.set_times_and_hull_white_volatility(
           t_exercise,

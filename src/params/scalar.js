@@ -19,7 +19,7 @@
     }
 
     attach_rule(rule) {
-      const scenval = rule.values[0][0];
+      const scenval = rule.value_for_scalar;
       if (rule.model === "multiplicative")
         this.#scenario_value = this.#value * scenval;
       if (rule.model === "additive")

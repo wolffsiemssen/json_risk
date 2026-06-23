@@ -59,11 +59,12 @@ test.execute = function (TestFramework, JsonRisk) {
       strike: strike,
       is_call: type === "Call",
       expiry: expiry,
+      q: q,
     });
 
     const params = new JsonRisk.Params({
       valuation_date: JsonRisk.valuation_date,
-      scalars: { stock: { value: spot * Math.exp(-t * q) } }, // instruments do not support dividend yield, so we adjust the spot
+      scalars: { stock: { value: spot } },
       curves: {
         riskless: { compounding: "Continuous", times: [1.0], zcs: [r] },
       },

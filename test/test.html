@@ -81,7 +81,7 @@
         // run tests
         function runAll(){
             clearLogs();
-            for (test of jr_tests){
+            for (const test of jr_tests){
                 test.execute(TestFramework, JsonRisk);
             }
         }
@@ -115,6 +115,7 @@
     <script src="tests/fxconversion.js"></script>
     <script src="tests/equities.js"></script>
     <script src="tests/equityvanillaoption.js"></script>
+    <script src="tests/equityamericanoption.js"></script>
     <script src="tests/cds.js"></script>
     <script src="tests/irregular_bonds.js"></script>
     <script src="tests/lgm_option_pricing.js"></script>
@@ -122,6 +123,7 @@
     <script src="tests/amortizing_callable_bonds.js"></script>
     <script src="tests/vector_pricing_curve_scenarios.js"></script>
     <script src="tests/params.js"></script>
+    <script src="tests/equity_option_surface_scenarios.js"></script>
 
     <!-- LIBRARY -->
     <script src="../dist/json_risk.js"></script>
