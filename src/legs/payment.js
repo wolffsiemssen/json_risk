@@ -275,7 +275,7 @@
      * @param {string} [obj.index=""] named reference to an index of the payment.
      * @param {number} [obj.spread=0.0] fixed spread rate of the payment.
      * @param {string} [obj.dcc=""] day count convention of the payment.
-     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     * @param {boolean} [obj.calitalize=false] flag indicating if this payment capitalizes
      */
     constructor(obj) {
       super(obj);
@@ -365,9 +365,139 @@
   // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
 
   // CapFloorPayment()
+  class CapFloorPayment extends RatePayment {
+    #index = "";
+    #forward_rate = 0.0;
+    #rate_cap = null;
+    #rate_floor = null;
+    #cap_volatility = null;
+    #floor_volatility = null;
+    #reset_start = null;
+    #reset_end = null;
+
+    constructor(obj) {
+      super(obj);
+
+      // index
+      this.#index = library.string_or_empty(obj.index);
+
+      // strikes
+      this.#rate_cap = library.number_or_null(obj.rate_cap);
+      this.#rate_floor = library.number_or_null(obj.rate_floor);
+
+      if (obj.volatility) {
+        this.#cap_volatility = library.number_or_null(obj.volatility.cap);
+        this.#floor_volatility = library.number_or_null(obj.volatility.floor);
+      }
+
+      this.#reset_start =
+        library.date_or_null(obj.reset_start) || this.date_start;
+      this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
+
+      /*
+      assigning forward rate directly from a value passed in the object bypasses the
+      code in project(indicxes). I do not know if is the best way of getting this value. 
+      It is a short cut introfuced because the pricing (computation of present value) does not go through a pricer defined and registered in json_risk_doku.js
+      */
+      this.#forward_rate = library.number_or_null(obj.forward_rate) || 0.0;
+
+      // sanity checks
+      if (this.#reset_start >= this.#reset_end)
+        throw new Error(
+          "CapFloorPayment: reset_start must be before reset_end",
+        );
+    }
+
+    // project rate  // TODO check all what follows here
+    project(indices) {
+      if ("" === this.#index)
+        throw new Error("CapFloorPayment: no index defined");
+      const idx = indices[this.#index];
+      if (undefined === idx)
+        throw new Error(
+          `CapFloorPayment: index ${this.#index} was not supplied`,
+        );
+      if (!(idx instanceof library.SimpleIndex))
+        throw new Error(`CapFloorPayment: invalid index ${this.#index}`);
+
+      this.#forward_rate = idx.fwd_rate(this.#reset_start, this.#reset_end);
+      return this.#forward_rate;
+    }
+
+    get index() {
+      return this.#index;
+    }
+    get forward_rate() {
+      return this.#forward_rate;
+    }
+    get rate_cap() {
+      return this.#rate_cap;
+    }
+    get rate_floor() {
+      return this.#rate_floor;
+    }
+    get amount() {
+      return this.capitalize ? 0.0 : this.amount_interest;
+    }
+
+    get amount_interest() {
+      const value_date = library.valuation_date;
+
+      const diff_ms = this.#reset_start.getTime() - value_date.getTime();
+      const t_expiry = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
+
+      const t = t_expiry > 0 ? t_expiry : 0.0001; // to avoid division by zero, we set a small positive value if t_expiry is not set
+
+      let caplet_rate = 0.0;
+      let floorlet_rate = 0.0;
+
+      if (this.#rate_cap && this.#cap_volatility !== null) {
+        const cap_black = new library.BlackModel(t, this.#cap_volatility);
+        caplet_rate = cap_black.call_price(this.#forward_rate, this.#rate_cap);
+      }
+
+      if (this.#rate_floor && this.#floor_volatility !== null) {
+        const floor_black = new library.BlackModel(t, this.#floor_volatility);
+        floorlet_rate = floor_black.put_price(
+          this.#forward_rate,
+          this.#rate_floor,
+        );
+      }
+
+      const nominal_payoff =
+        this.notional * this.yf * (caplet_rate - floorlet_rate);
+
+      if (nominal_payoff < 0 && !this.#rate_floor) {
+        return 0.0; // maybe this check is redundant
+      }
+
+      return nominal_payoff;
+    }
+
+    get amount_notional() {
+      return this.capitalize ? -this.amount_interest : 0.0;
+    }
+
+    // serialise
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "CapFloor";
+      res.index = this.#index;
+      res.forward_rate = this.#forward_rate;
+      res.rate_cap = this.#rate_cap;
+      res.rate_floor = this.#rate_floor;
+      res.reset_start = library.date_to_date_str(this.#reset_start);
+      res.reset_end = library.date_to_date_str(this.#reset_end);
+      return res;
+    }
+  }
+
+  // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
+
   library.NotionalPayment = NotionalPayment;
   library.FixedRatePayment = FixedRatePayment;
   library.FloatRatePayment = FloatRatePayment;
+  library.CapFloorPayment = CapFloorPayment;
 
   library.payment_compare = function (a, b) {
     // sort by start date first while notional payments use date_value instead
