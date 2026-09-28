@@ -308,6 +308,11 @@
         throw new Error("RatePayment: reset_start must be before reset_end");
     }
 
+    // setter functions
+    set_rate(r) {
+      this.#rate = library.number_or_null(r) || 0.0;
+    }
+
     // getter functions
     get is_fixed() {
       return this.#is_fixed;
@@ -362,142 +367,100 @@
     }
   }
 
-  // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
-
-  // CapFloorPayment()
-  class CapFloorPayment extends RatePayment {
-    #index = "";
-    #forward_rate = 0.0;
-    #rate_cap = null;
-    #rate_floor = null;
-    #cap_volatility = null;
-    #floor_volatility = null;
-    #reset_start = null;
-    #reset_end = null;
-
+  class CapFloorPayment extends FloatRatePyment {
+    #volatility = null; // number
+    #strike = null; // number
+    
     constructor(obj) {
       super(obj);
 
-      // index
-      this.#index = library.string_or_empty(obj.index);
+      this.#volatility = null; // library.number_or_null(obj.volatility); // ??? for test case?
+      // I do not need volatility here as property of this class
+      // and I do not need to pass it to the toJSON method: volatility is 
+      // derived from the surface, already known to the index
+      // I only need to complete the SimpleIndex class with a method for computing volatility
+      // out of the surface
+      this.#strike = library.number_or_null(obj.strike);
 
-      // strikes
-      this.#rate_cap = library.number_or_null(obj.rate_cap);
-      this.#rate_floor = library.number_or_null(obj.rate_floor);
-
-      if (obj.volatility) {
-        this.#cap_volatility = library.number_or_null(obj.volatility.cap);
-        this.#floor_volatility = library.number_or_null(obj.volatility.floor);
-      }
-
-      this.#reset_start =
-        library.date_or_null(obj.reset_start) || this.date_start;
-      this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
-
-      /*
-      assigning forward rate directly from a value passed in the object bypasses the
-      code in project(indicxes). I do not know if is the best way of getting this value. 
-      It is a short cut introfuced because the pricing (computation of present value) does not go through a pricer defined and registered in json_risk_doku.js
-      */
-      this.#forward_rate = library.number_or_null(obj.forward_rate) || 0.0;
-
-      // sanity checks
-      if (this.#reset_start >= this.#reset_end)
-        throw new Error(
-          "CapFloorPayment: reset_start must be before reset_end",
-        );
     }
 
-    // project rate  // TODO check all what follows here
-    project(indices) {
-      if ("" === this.#index)
-        throw new Error("CapFloorPayment: no index defined");
-      const idx = indices[this.#index];
-      if (undefined === idx)
-        throw new Error(
-          `CapFloorPayment: index ${this.#index} was not supplied`,
-        );
-      if (!(idx instanceof library.SimpleIndex))
-        throw new Error(`CapFloorPayment: invalid index ${this.#index}`);
-
-      this.#forward_rate = idx.fwd_rate(this.#reset_start, this.#reset_end);
-      return this.#forward_rate;
+    // setter functions
+    set_volatility(vola) { // I will probably not need this eventually
+      this.#volatility = library.number_or_null(vola) || 0.0;  // TODO or null?
     }
 
-    get index() {
-      return this.#index;
+
+    // getter functions
+    get volatility() { // I will probably not need this eventually
+      return this.#volatility;
     }
-    get forward_rate() {
-      return this.#forward_rate;
-    }
-    get rate_cap() {
-      return this.#rate_cap;
-    }
-    get rate_floor() {
-      return this.#rate_floor;
-    }
-    get amount() {
-      return this.capitalize ? 0.0 : this.amount_interest;
+    get strike() {
+      return this.#strike;
     }
 
-    get amount_interest() {
-      const value_date = library.valuation_date;
-
-      const diff_ms = this.#reset_start.getTime() - value_date.getTime();
-      const t_expiry = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
-
-      const t = t_expiry > 0 ? t_expiry : 0.0001; // to avoid division by zero, we set a small positive value if t_expiry is not set
-
-      let caplet_rate = 0.0;
-      let floorlet_rate = 0.0;
-
-      if (this.#rate_cap && this.#cap_volatility !== null) {
-        const cap_black = new library.BlackModel(t, this.#cap_volatility);
-        caplet_rate = cap_black.call_price(this.#forward_rate, this.#rate_cap);
-      }
-
-      if (this.#rate_floor && this.#floor_volatility !== null) {
-        const floor_black = new library.BlackModel(t, this.#floor_volatility);
-        floorlet_rate = floor_black.put_price(
-          this.#forward_rate,
-          this.#rate_floor,
-        );
-      }
-
-      const nominal_payoff =
-        this.notional * this.yf * (caplet_rate - floorlet_rate);
-
-      if (nominal_payoff < 0 && !this.#rate_floor) {
-        return 0.0; // maybe this check is redundant
-      }
-
-      return nominal_payoff;
-    }
-
-    get amount_notional() {
-      return this.capitalize ? -this.amount_interest : 0.0;
-    }
-
-    // serialise
     toJSON() {
       const res = super.toJSON();
-      res.type = "CapFloor";
-      res.index = this.#index;
-      res.forward_rate = this.#forward_rate;
-      res.rate_cap = this.#rate_cap;
-      res.rate_floor = this.#rate_floor;
-      res.reset_start = library.date_to_date_str(this.#reset_start);
-      res.reset_end = library.date_to_date_str(this.#reset_end);
+      res.volatility = this.#volatility; // actually I do not need this. Volatility is calculated from the index, that knows the surface, 
+      // the same way as the forward rate is computed from the curve
+      // should not belong to this class, but just be part of the leg instrument, like forward rate
+      res.strike = this.#strike;
+      return res;
+    }
+
+    // project rate
+    project(indices) {
+      if (this.is_fixed) return this.rate;
+      if ("" === this.index)
+        throw new Error(`${this.constructor.name}: no index defined`);
+      const idx = indices[this.index];
+      if (undefined === idx)
+        throw new Error(
+          `${this.constructor.name}: index ${this.index} was not supplied`,
+        );
+
+      if (!(idx instanceof library.SimpleIndex))
+        throw new Error(`${this.constructor.name}: invalid index ${this.index}`);
+      const fwd_rate =  idx.fwd_rate(this.reset_start, this.reset_end);
+      const rate = fwd_rate + (this.spread || 0.0);
+      this.set_rate(rate);
+      const volatility = this.set_volatility(idx.volatility(this.reset_start, this.this_end, fwd_rate, this.#strike));
+      this.set_volatility(volatility); // maybe volatility is not needed here
+      return this.rate;
+    }
+
+  }
+
+  class CapletPayment extends CapFloorRatePayment {
+    constructor(obj) {
+      super(obj);
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Caplet";
       return res;
     }
   }
 
-  // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
+  class FloorletPayment extends CapFloorPayment {
+    constructor(obj) {
+      super(obj);
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Floorlet";
+      return res;
+    }
+
+  }
 
   library.NotionalPayment = NotionalPayment;
   library.FixedRatePayment = FixedRatePayment;
   library.FloatRatePayment = FloatRatePayment;
   library.CapFloorPayment = CapFloorPayment;
+  library.CapletPayment = CapletPayment;
+  library.FloorletPayment = FloorletPayment;
 
   library.payment_compare = function (a, b) {
     // sort by start date first while notional payments use date_value instead
