@@ -367,14 +367,14 @@
     }
   }
 
-  class CapFloorPayment extends FloatRatePyment {
+  class CapFloorPayment extends FloatRatePayment {
     #volatility = null; // number
     #strike = null; // number
     
     constructor(obj) {
       super(obj);
 
-      this.#volatility = null; // library.number_or_null(obj.volatility); // ??? for test case?
+      // this.#volatility = null; // library.number_or_null(obj.volatility); // ??? for test case?
       // I do not need volatility here as property of this class
       // and I do not need to pass it to the toJSON method: volatility is 
       // derived from the surface, already known to the index
@@ -385,25 +385,46 @@
     }
 
     // setter functions
-    set_volatility(vola) { // I will probably not need this eventually
-      this.#volatility = library.number_or_null(vola) || 0.0;  // TODO or null?
-    }
-
+    // set_volatility(vola) { // I will probably not need this eventually
+    //   this.#volatility = library.number_or_null(vola) || 0.0;  // TODO or null?
+    // }
 
     // getter functions
-    get volatility() { // I will probably not need this eventually
-      return this.#volatility;
-    }
+    // get volatility() { // I will probably not need this eventually
+    //   return this.#volatility;
+    // }
     get strike() {
       return this.#strike;
     }
 
     toJSON() {
       const res = super.toJSON();
-      res.volatility = this.#volatility; // actually I do not need this. Volatility is calculated from the index, that knows the surface, 
+      // res.volatility = this.#volatility; // actually I do not need this. Volatility is calculated from the index, that knows the surface, 
       // the same way as the forward rate is computed from the curve
       // should not belong to this class, but just be part of the leg instrument, like forward rate
       res.strike = this.#strike;
+      return res;
+    }
+
+    /**
+     * Workaround to prevent instantiating this class, making it de-facto an abstract class. 
+     * Only Caplet Floorlet children classes can be instantiated
+     */
+    project(indices) {
+      throw new Error(`${this.constructor.name}: Method 'project()' must be implemented in child class.`);
+    }
+
+
+  }
+
+  class CapletPayment extends CapFloorPayment {
+    constructor(obj) {
+      super(obj);
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Caplet";
       return res;
     }
 
@@ -420,25 +441,22 @@
 
       if (!(idx instanceof library.SimpleIndex))
         throw new Error(`${this.constructor.name}: invalid index ${this.index}`);
-      const fwd_rate =  idx.fwd_rate(this.reset_start, this.reset_end);
-      const rate = fwd_rate + (this.spread || 0.0);
-      this.set_rate(rate);
-      const volatility = this.set_volatility(idx.volatility(this.reset_start, this.this_end, fwd_rate, this.#strike));
-      this.set_volatility(volatility); // maybe volatility is not needed here
+      const fwd_rate =  idx.fwd_rate(this.reset_start, this.reset_end) + (this.spread || 0.0);
+      const volatility = idx.volatility(this.reset_start, this.reset_end, fwd_rate, this.strike);
+      
+      let option_rate = 0.0;
+      if (this.strike && volatility > 0) {
+        const value_date = library.valuation_date;
+        const diff_ms = this.reset_start.getTime() - value_date.getTime();
+        const t = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
+        const t_expiry = t > 0 ? t : 0.0001;
+
+        const black = new library.Black76(t_expiry, volatility);
+        option_rate = black.call_price(fwd_rate, this.strike);
+      }
+      
+      this.set_rate(option_rate);
       return this.rate;
-    }
-
-  }
-
-  class CapletPayment extends CapFloorRatePayment {
-    constructor(obj) {
-      super(obj);
-    }
-
-    toJSON() {
-      const res = super.toJSON();
-      res.type = "Caplet";
-      return res;
     }
   }
 
@@ -451,6 +469,37 @@
       const res = super.toJSON();
       res.type = "Floorlet";
       return res;
+    }
+
+    // project rate
+    project(indices) {
+      if (this.is_fixed) return this.rate;
+      if ("" === this.index)
+        throw new Error(`${this.constructor.name}: no index defined`);
+      const idx = indices[this.index];
+      if (undefined === idx)
+        throw new Error(
+          `${this.constructor.name}: index ${this.index} was not supplied`,
+        );
+
+      if (!(idx instanceof library.SimpleIndex))
+        throw new Error(`${this.constructor.name}: invalid index ${this.index}`);
+      const fwd_rate =  idx.fwd_rate(this.reset_start, this.reset_end) + (this.spread || 0.0);
+      const volatility = idx.volatility(this.reset_start, this.reset_end, fwd_rate, this.strike);
+      
+      let option_rate = 0.0;
+      if (this.strike && volatility > 0) {
+        const value_date = library.valuation_date;
+        const diff_ms = this.reset_start.getTime() - value_date.getTime();
+        const t = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
+        const t_expiry = t > 0 ? t : 0.0001;
+
+        const black = new library.Black76(t_expiry, volatility);
+        option_rate = black.floor_price(fwd_rate, this.strike);
+      }
+      
+      this.set_rate(option_rate);
+      return this.rate;
     }
 
   }

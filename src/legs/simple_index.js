@@ -75,13 +75,18 @@
         return;
       }
 
+      // looking into the Params class, I saw the method make_surface, but not the method "get_curve"
+      // which however called in the link_curve function. So, I am worrying whether this class
+      // is everywhere consistently defined and instantiated.
+      // for the sake of safety, I encapsulate the call here in an "if" consition that just checks whether
+      // this is consistent 
       if (params_or_surface && typeof params_or_surface.make_surface === "function") {
-        this.#linked_surface = params_or_surface.make_surface(this.#vola_curve_name);
+        this.#linked_surface = params_or_surface.make_surface(this.#surface);
         return;
       }
 
       if (params_or_surface && typeof params_or_surface.get_surface === "function") {
-        this.#linked_surface = params_or_surface.get_surface(this.#vola_curve_name);
+        this.#linked_surface = params_or_surface.get_surface(this.#surface);
         return;
       }
 
