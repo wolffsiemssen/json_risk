@@ -843,12 +843,6 @@
                 return floater_internal.present_value(disc_curve, spread_curve, fwd_curve);
         };
 
-        // I am currently not going through this path. I do not know if I should though...
-        // library.pricer_capfloor=function(obj, disc_curve, fwd_curve/* , cap_vola_curve, floor_vola_curve */){
-        //         var capfloor_internal=new library.CapFloor(obj);
-        //         return capfloor_internal.present_value(disc_curve, fwd_curve/* , cap_vola_curve, floor_vola_curve */);
-        // };
-
 }(this.JsonRisk || module.exports));
 ;
 (function(library){

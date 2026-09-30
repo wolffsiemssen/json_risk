@@ -7,6 +7,7 @@
     #currency = "";
     #disc_curve = "";
     #spread_curve = "";
+    #surface = "";
     #residual_spread = 0.0;
     #payments = [];
     #indices = {};
@@ -20,6 +21,7 @@
      * @param {string} [obj.currency=""] currency of the leg. If empty, the first currency found on one of the payments is used. All payments must have the same currency or no currency at all.
      * @param {string} [obj.disc_curve=""] named reference to a discount curve
      * @param {string} [obj.spread_curve=""] named reference to a spread curve
+     * @param {string} [obj.surface=""] named reference to surface (e.g. "volatility") // if we will want collars, we will need a second surface because cap and floors have in general different volatility
      * @param {number} [obj.residual_spread=0.0] residual spread on top of the discount and spread curves
      * @param {array} [obj.payments=[]] the payments. The constructor sorts payments by start date, end date, value date and type.
      * @param {object} [obj.indices={}] an object with index names as keys and indices as values.
@@ -27,6 +29,7 @@
     constructor(obj) {
       this.#disc_curve = library.string_or_empty(obj.disc_curve);
       this.#spread_curve = library.string_or_empty(obj.spread_curve);
+      this.#surface = library.string_or_empty(obj.surface);
       this.#residual_spread =
         library.number_or_null(obj.residual_spread) || 0.0;
       this.#currency = library.string_or_empty(obj.currency);
@@ -90,6 +93,14 @@
      */
     get spread_curve() {
       return this.#spread_curve;
+    }
+
+    /**
+     * Get surface
+     * @type {string}
+     */
+    get surface() {
+      return this.#surface;
     }
 
     /**
@@ -215,6 +226,7 @@
       // optional attributes
       if (this.#currency) res.currency = this.#currency;
       if (this.#disc_curve) res.disc_curve = this.#disc_curve;
+      if (this.#surface) res.surface = this.#surface;
       if (this.#spread_curve) res.spread_curve = this.#spread_curve;
       if (this.#residual_spread) res.residual_spread = this.#residual_spread;
 
@@ -228,6 +240,7 @@
     add_deps(deps) {
       if ("" != this.#disc_curve) deps.add_curve(this.#disc_curve);
       if ("" != this.#spread_curve) deps.add_curve(this.#spread_curve);
+      if ("" != this.#surface) deps.add_surface(this.#surface);
       if ("" != this.#currency) deps.add_currency(this.#currency);
 
       for (const idx of Object.values(this.#indices)) {
@@ -289,6 +302,8 @@
     value(params, acquire_date) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(params);
+        idx.link_surface(params);
+        // idx.link_valuation_date(params);
       }
       for (const p of this.#payments) {
         // make projection for unfixed payments

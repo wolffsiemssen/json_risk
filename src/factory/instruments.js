@@ -15,8 +15,10 @@
         return new library.Bond(obj);
       case "floater":
         return new library.Floater(obj);
-      case "capfloor":
-        return new library.CapFloor(obj);
+      case "cap":
+        return new library.Cap(obj);
+      case "floor":
+        return new library.Floor(obj);
       case "swap":
         return new library.Swap(obj);
       case "swaption":

@@ -110,7 +110,6 @@ if (typeof require === "function") {
     "amortizing_callable_bonds.js",
     "vector_pricing_curve_scenarios.js",
     "params.js",
-    "capfloor.js",
   ];
 
   for (testfile of test_files) {

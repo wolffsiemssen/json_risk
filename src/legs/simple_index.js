@@ -6,6 +6,7 @@
     #yffunc = null;
     #linked_curve = null;
     #linked_surface = null;
+    // #valuation_date = null;
     constructor(obj) {
       // fwd_curve
       this.#fwd_curve = library.string_or_empty(obj.fwd_curve);
@@ -75,23 +76,14 @@
         return;
       }
 
-      // looking into the Params class, I saw the method make_surface, but not the method "get_curve"
-      // which however called in the link_curve function. So, I am worrying whether this class
-      // is everywhere consistently defined and instantiated.
-      // for the sake of safety, I encapsulate the call here in an "if" consition that just checks whether
-      // this is consistent 
-      if (params_or_surface && typeof params_or_surface.make_surface === "function") {
-        this.#linked_surface = params_or_surface.make_surface(this.#surface);
-        return;
-      }
-
-      if (params_or_surface && typeof params_or_surface.get_surface === "function") {
-        this.#linked_surface = params_or_surface.get_surface(this.#surface);
+      if (params_or_surface instanceof library.Params) {
+        if (this.#surface)
+          this.#linked_surface = params_or_surface.get_surface(this.#surface);
         return;
       }
 
       throw new Error(
-        `${this.constructor.name}: Try to link volatility surface with an invalid argument.`
+        `${this.constructor.name}: Try to link volatility surface with an invalid argument.`,
       );
     }
 
@@ -108,6 +100,13 @@
       return this.#linked_surface.get_rate(t_expiry, t_term, fwd, strike);
     }
 
+    // link_valuation_date(params) {
+    //   if (params?.valuation_date) this.#valuation_date = params.valuation_date;
+    // }
+
+    // get valuation_date() {
+    //   return this.#valuation_date || library.valuation_date;
+    // }
 
     // deps
     add_deps(deps) {

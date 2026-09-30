@@ -38,6 +38,17 @@ test.execute = function (TestFramework, JsonRisk) {
         zcs: [0.01],
       },
     },
+    // add vola surface here
+    // type: type || "",
+    surfaces: {
+      volatility: {
+        // check what are the allowed types, and where a "from_json" is implemented
+        type: "",
+        expiries: [1],
+        terms: [1],
+        values: [[0.2]], // a 20% volatility
+      },
+    },
     scalars: {},
   };
 
@@ -60,6 +71,7 @@ test.execute = function (TestFramework, JsonRisk) {
     // new leg for new currency
     const leg = {
       disc_curve: "discount",
+      surface: "volatility",
       payments: [],
     };
     legs.push(leg);
@@ -109,6 +121,26 @@ test.execute = function (TestFramework, JsonRisk) {
     refval += pmtval * rate * 2.0;
     leg.payments.push(float_rate_payment);
 
+    // add caplet payment
+    // Note: I presume that eventually a real cap/floor instrument will have one leg, with
+    // an array of caplet/floorlet payments
+    let cap_rate_payment = {
+      type: "Caplet",
+      currency: currency,
+      notional: pmtval * fxrate,
+      rate: rate,
+      spread: 0.01 * rate,
+      is_fixed: false,
+      strike: 0.8 * rate, // a cap choosen so to be in the money ??
+
+      date_pmt: "2012/01/02",
+      date_start: "2011/01/01",
+      date_end: "2012/01/01",
+      index: "cap_index",
+    };
+    refval += pmtval * rate * 2.0;
+    leg.payments.push(cap_rate_payment);
+
     // add notional payment
     let notional_payment = Object.assign(
       {
@@ -126,6 +158,11 @@ test.execute = function (TestFramework, JsonRisk) {
       index: {
         type: "simple",
         fwd_curve: "forward",
+      },
+      cap_index: {
+        type: "simple",
+        fwd_curve: "forward",
+        surface: "volatility",
       },
     };
   }

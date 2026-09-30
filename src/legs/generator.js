@@ -323,60 +323,6 @@
     return res;
   }
 
-  function capfloor_payment(
-    fixing_index,
-    obj,
-    notional,
-    date_start,
-    date_end,
-    date_next_int,
-    date_last_fixing,
-    date_next_fixing,
-    specs_dcc,
-  ) {
-    const rate_cap = Array.isArray(obj.cap_rate)
-      ? obj.cap_rate[fixing_index]
-      : obj.cap_rate;
-    const rate_floor = Array.isArray(obj.floor_rate)
-      ? obj.floor_rate[fixing_index]
-      : obj.floor_rate;
-    const current_cap_volatility = Array.isArray(obj.cap_vola_curve)
-      ? obj.cap_vola_curve[fixing_index]
-      : obj.cap_vola_curve;
-    const current_floor_volatility = Array.isArray(obj.floor_vola_curve)
-      ? obj.floor_vola_curve[fixing_index]
-      : obj.floor_vola_curve;
-
-    const volatility = {
-      cap: current_cap_volatility,
-      floor: current_floor_volatility,
-    };
-
-    const forward_rate = obj.fwd_curve.get_fwd_rate(date_start, date_end);
-
-    const payment_config = {
-      // Fields obligatory for BasePayment & RatePayment
-      date_pmt: date_next_int, // day of payment is the end of interest period
-      date_start: date_start, // start date of interest period
-      date_end: date_end, // end date of interest period
-      notional: notional, // actual nominal value
-      dcc: obj.dcc || specs_dcc, // Day Count Convention for the Year Fraction (yf)
-      capitalize: obj.capitalize || false,
-
-      forward_rate: forward_rate,
-
-      // Fields specific for CapFloorPayment
-      index: obj.index || "index", // String-Identifier for the assignment of curves
-      rate_cap: rate_cap,
-      rate_floor: rate_floor,
-      volatility: volatility,
-      reset_start: date_last_fixing, // date of fixing of the caplet/floorlet
-      reset_end: date_next_fixing, // end date of caplet/floorlet, also corresponds to start of the next caplet/floorlet
-    };
-
-    return new library.CapFloorPayment(payment_config);
-  }
-
   //
   //
   // main cash flow generation routine
@@ -401,8 +347,6 @@
     if (specs.notional_exchange)
       cashflows.push(pay_notional(date_start, -notional));
 
-    let fixing_index = 0; // index for the fixing schedule
-
     // loop through timeline
     while (timeline.length >= 1) {
       // erase dates as soon as we reach them
@@ -421,36 +365,18 @@
       const date_next_fixing = fixing_schedule[0];
       const current_conditions = conditions[0];
 
-      // make caplet/floorlet/collar payment if needed. This is done by checking if the obj passed to the cashflow_generator has a type property equal to "capfloor". If so, we create a new CapFloorPayment object and push it into the cashflows array. The CapFloorPayment class is defined in src/legs/payment.js and implements the Black model for caplets and floorlets.
-      if (obj.payment_type === "capfloor") {
-        cashflows.push(
-          capfloor_payment(
-            fixing_index,
-            obj,
-            notional,
-            date_start,
-            date_end,
-            date_next_int,
-            date_last_fixing,
-            date_next_fixing,
-            specs.dcc,
-          ),
-        );
-        fixing_index++;
-      } else {
-        // make interest rate payment
-        cashflows.push(
-          pay_interest(
-            notional,
-            date_start,
-            date_end,
-            date_next_int,
-            date_last_fixing,
-            date_next_fixing,
-            current_conditions,
-          ),
-        );
-      }
+      // make interest rate payment
+      cashflows.push(
+        pay_interest(
+          notional,
+          date_start,
+          date_end,
+          date_next_int,
+          date_last_fixing,
+          date_next_fixing,
+          current_conditions,
+        ),
+      );
 
       // make notional payments if needed. Do not worry about overpayments with capitalization. This is handled by the leg class.
       let n = 0;

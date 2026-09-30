@@ -14,8 +14,10 @@
         return new library.FixedRatePayment(obj);
       case "float":
         return new library.FloatRatePayment(obj);
-      case "capfloor":
-        return new library.CapFloorPayment(obj);
+      case "caplet":
+        return new library.CapletPayment(obj);
+      case "floorlet":
+        return new library.FloorletPayment(obj);
       default:
         throw new Error("make_payment: invalid payment type");
     }

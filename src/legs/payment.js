@@ -335,6 +335,12 @@
     get amount_notional() {
       return this.capitalize ? -this.amount_interest : 0.0;
     }
+    get reset_start() {
+      return this.#reset_start;
+    }
+    get reset_end() {
+      return this.#reset_end;
+    }
 
     // serialise
     toJSON() {
@@ -370,51 +376,44 @@
   class CapFloorPayment extends FloatRatePayment {
     #volatility = null; // number
     #strike = null; // number
-    
+
     constructor(obj) {
       super(obj);
-
-      // this.#volatility = null; // library.number_or_null(obj.volatility); // ??? for test case?
-      // I do not need volatility here as property of this class
-      // and I do not need to pass it to the toJSON method: volatility is 
-      // derived from the surface, already known to the index
-      // I only need to complete the SimpleIndex class with a method for computing volatility
-      // out of the surface
       this.#strike = library.number_or_null(obj.strike);
-
     }
 
     // setter functions
-    // set_volatility(vola) { // I will probably not need this eventually
-    //   this.#volatility = library.number_or_null(vola) || 0.0;  // TODO or null?
-    // }
+    set_volatility(vola) {
+      this.#volatility = library.number_or_null(vola) || 0.0;
+    }
 
     // getter functions
-    // get volatility() { // I will probably not need this eventually
-    //   return this.#volatility;
-    // }
+    get volatility() {
+      return this.#volatility;
+    }
     get strike() {
       return this.#strike;
     }
 
     toJSON() {
       const res = super.toJSON();
-      // res.volatility = this.#volatility; // actually I do not need this. Volatility is calculated from the index, that knows the surface, 
-      // the same way as the forward rate is computed from the curve
-      // should not belong to this class, but just be part of the leg instrument, like forward rate
+      res.volatility = this.#volatility;
       res.strike = this.#strike;
       return res;
     }
 
     /**
-     * Workaround to prevent instantiating this class, making it de-facto an abstract class. 
+     * Workaround to prevent instantiating this class, making it de-facto an abstract class.
      * Only Caplet Floorlet children classes can be instantiated
+     *
+     * @param {object} _indices - Parameters container (explicitly ignored in abstract base)
      */
-    project(indices) {
-      throw new Error(`${this.constructor.name}: Method 'project()' must be implemented in child class.`);
+    /* eslint-disable-next-line no-unused-vars */
+    project(_indices) {
+      throw new Error(
+        `${this.constructor.name}: Method 'project()' must be implemented in child class.`,
+      );
     }
-
-
   }
 
   class CapletPayment extends CapFloorPayment {
@@ -438,23 +437,30 @@
         throw new Error(
           `${this.constructor.name}: index ${this.index} was not supplied`,
         );
-
       if (!(idx instanceof library.SimpleIndex))
-        throw new Error(`${this.constructor.name}: invalid index ${this.index}`);
-      const fwd_rate =  idx.fwd_rate(this.reset_start, this.reset_end) + (this.spread || 0.0);
-      const volatility = idx.volatility(this.reset_start, this.reset_end, fwd_rate, this.strike);
-      
+        throw new Error(
+          `${this.constructor.name}: invalid index ${this.index}`,
+        );
+      const raw_fwd_rate = idx.fwd_rate(this.reset_start, this.reset_end);
+      const volatility = idx.volatility(
+        this.reset_start,
+        this.reset_end,
+        raw_fwd_rate,
+        this.strike,
+      ); // we do not consider spread in the computation of volatility
+      this.set_volatility(volatility); // update volatility at each evaluation
+
       let option_rate = 0.0;
-      if (this.strike && volatility > 0) {
-        const value_date = library.valuation_date;
+      const value_date = library.valuation_date; // idx.valuation_date;
+      if (this.strike && volatility > 0 && value_date) {
         const diff_ms = this.reset_start.getTime() - value_date.getTime();
         const t = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
         const t_expiry = t > 0 ? t : 0.0001;
-
-        const black = new library.Black76(t_expiry, volatility);
-        option_rate = black.call_price(fwd_rate, this.strike);
+        const black = new library.BlackModel(t_expiry, volatility);
+        const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
+        option_rate = black.call_price(fwd_rate, this.strike); // the leg.value will eventually multiply this by amount, which contains yf* notional * dcf, reproducing the full caplet payoff
       }
-      
+
       this.set_rate(option_rate);
       return this.rate;
     }
@@ -481,27 +487,33 @@
         throw new Error(
           `${this.constructor.name}: index ${this.index} was not supplied`,
         );
-
       if (!(idx instanceof library.SimpleIndex))
-        throw new Error(`${this.constructor.name}: invalid index ${this.index}`);
-      const fwd_rate =  idx.fwd_rate(this.reset_start, this.reset_end) + (this.spread || 0.0);
-      const volatility = idx.volatility(this.reset_start, this.reset_end, fwd_rate, this.strike);
-      
+        throw new Error(
+          `${this.constructor.name}: invalid index ${this.index}`,
+        );
+      const raw_fwd_rate = idx.fwd_rate(this.reset_start, this.reset_end);
+      const volatility = idx.volatility(
+        this.reset_start,
+        this.reset_end,
+        raw_fwd_rate,
+        this.strike,
+      ); // we do not consider spread in the computation of volatility
+      this.set_volatility(volatility); // update volatility at each evaluation
+
       let option_rate = 0.0;
-      if (this.strike && volatility > 0) {
-        const value_date = library.valuation_date;
+      const value_date = library.valuation_date; // idx.valuation_date;
+      if (this.strike && volatility > 0 && value_date) {
         const diff_ms = this.reset_start.getTime() - value_date.getTime();
         const t = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
         const t_expiry = t > 0 ? t : 0.0001;
-
-        const black = new library.Black76(t_expiry, volatility);
-        option_rate = black.floor_price(fwd_rate, this.strike);
+        const black = new library.BlackModel(t_expiry, volatility);
+        const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
+        option_rate = black.put_price(fwd_rate, this.strike);
       }
-      
+
       this.set_rate(option_rate);
       return this.rate;
     }
-
   }
 
   library.NotionalPayment = NotionalPayment;
