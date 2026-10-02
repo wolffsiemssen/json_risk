@@ -122,8 +122,6 @@ test.execute = function (TestFramework, JsonRisk) {
     leg.payments.push(float_rate_payment);
 
     // add caplet payment
-    // Note: I presume that eventually a real cap/floor instrument will have one leg, with
-    // an array of caplet/floorlet payments
     let cap_rate_payment = {
       type: "Caplet",
       currency: currency,
@@ -131,15 +129,37 @@ test.execute = function (TestFramework, JsonRisk) {
       rate: rate,
       spread: 0.01 * rate,
       is_fixed: false,
-      strike: 0.8 * rate, // a cap choosen so to be in the money ??
+      strike: 0.8 * rate, // a floor choosen so to be in the money
 
       date_pmt: "2012/01/02",
       date_start: "2011/01/01",
       date_end: "2012/01/01",
       index: "cap_index",
     };
-    refval += pmtval * rate * 2.0;
+    const caplet_rate = 0.003539511702920192;
+    const caplet_yf = 1;
+    refval += pmtval * 1 * caplet_rate;
     leg.payments.push(cap_rate_payment);
+
+    // add floorlet payment
+    let floor_rate_payment = {
+      type: "Floorlet",
+      currency: currency,
+      notional: pmtval * fxrate,
+      rate: rate,
+      spread: 0.01 * rate,
+      is_fixed: false,
+      strike: 1.2 * rate, // a cap choosen so to be in the money
+
+      date_pmt: "2013/01/02",
+      date_start: "2012/01/01",
+      date_end: "2013/01/01",
+      index: "floor_index",
+    };
+    const floorlet_rate = 0.004032397680655687;
+    const floorlet_yf = 1.0027397260273974;
+    refval += pmtval * floorlet_yf * floorlet_rate;
+    leg.payments.push(floor_rate_payment);
 
     // add notional payment
     let notional_payment = Object.assign(
@@ -164,6 +184,11 @@ test.execute = function (TestFramework, JsonRisk) {
         fwd_curve: "forward",
         surface: "volatility",
       },
+      floor_index: {
+        type: "simple",
+        fwd_curve: "forward",
+        surface: "volatility",
+      },
     };
   }
 
@@ -172,6 +197,7 @@ test.execute = function (TestFramework, JsonRisk) {
     const legins = new JsonRisk.LegInstrument({ currency, legs });
 
     const val = legins.value(params);
+    console.debug("test_legs_val", val, refval);
     TestFramework.assert(
       val === refval,
       `Test Leg Instrumemts with different payment types and currencies, ${currency}`,

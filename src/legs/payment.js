@@ -459,6 +459,12 @@
         const black = new library.BlackModel(t_expiry, volatility);
         const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
         option_rate = black.call_price(fwd_rate, this.strike); // the leg.value will eventually multiply this by amount, which contains yf* notional * dcf, reproducing the full caplet payoff
+        console.debug("payment_caplet_option_rate, t_expiry", t_expiry);
+        console.debug("payment_caplet_option_rate, volatility", volatility);
+        console.debug("payment_caplet_option_rate, strike", this.strike);
+        console.debug("payment_caplet_option_rate, fwd_rate", fwd_rate);
+        console.debug("payment_caplet_option_rate, option_rate", option_rate);
+        console.debug("payment_caplet_option_rate, year_fraction", this.yf);
       }
 
       this.set_rate(option_rate);
@@ -509,6 +515,12 @@
         const black = new library.BlackModel(t_expiry, volatility);
         const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
         option_rate = black.put_price(fwd_rate, this.strike);
+        console.debug("payment_floorlet_option_rate, t_expiry", t_expiry);
+        console.debug("payment_floorlet_option_rate, volatility", volatility);
+        console.debug("payment_floorlet_option_rate, strike", this.strike);
+        console.debug("payment_floorlet_option_rate, fwd_rate", fwd_rate);
+        console.debug("payment_floorlet_option_rate, option_rate", option_rate);
+        console.debug("payment_floorlet_option_rate, year_fraction", this.yf);
       }
 
       this.set_rate(option_rate);
