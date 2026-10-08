@@ -308,11 +308,6 @@
         throw new Error("RatePayment: reset_start must be before reset_end");
     }
 
-    // setter functions
-    set_rate(r) {
-      this.#rate = library.number_or_null(r) || 0.0;
-    }
-
     // getter functions
     get is_fixed() {
       return this.#is_fixed;
@@ -374,45 +369,78 @@
   }
 
   class CapFloorPayment extends FloatRatePayment {
-    #volatility = null; // number
     #strike = null; // number
+    #rate = 0.0;
+    #volatility = null; // number
 
     constructor(obj) {
       super(obj);
       this.#strike = library.number_or_null(obj.strike);
-    }
-
-    // setter functions
-    set_volatility(vola) {
-      this.#volatility = library.number_or_null(vola) || 0.0;
+      console.debug("capfloorpayment, class name:", this.constructor.name);
     }
 
     // getter functions
-    get volatility() {
-      return this.#volatility;
-    }
     get strike() {
       return this.#strike;
+    }
+    get volatility() {
+      return this.#volatility;
     }
 
     toJSON() {
       const res = super.toJSON();
-      res.volatility = this.#volatility;
       res.strike = this.#strike;
+      res.volatility = this.#volatility;
       return res;
     }
 
-    /**
-     * Workaround to prevent instantiating this class, making it de-facto an abstract class.
-     * Only Caplet Floorlet children classes can be instantiated
-     *
-     * @param {object} _indices - Parameters container (explicitly ignored in abstract base)
-     */
-    /* eslint-disable-next-line no-unused-vars */
-    project(_indices) {
-      throw new Error(
-        `${this.constructor.name}: Method 'project()' must be implemented in child class.`,
-      );
+    // project rate
+    project(indices) {
+      if (this.is_fixed) return this.rate;
+      if ("" === this.index)
+        throw new Error(`${this.constructor.name}: no index defined`);
+      const idx = indices[this.index];
+      if (undefined === idx)
+        throw new Error(
+          `${this.constructor.name}: index ${this.index} was not supplied`,
+        );
+      if (!(idx instanceof library.SimpleIndex))
+        throw new Error(
+          `${this.constructor.name}: invalid index ${this.index}`,
+        );
+      const raw_fwd_rate = idx.fwd_rate(this.reset_start, this.reset_end);
+      this.#volatility = idx.volatility(
+        this.reset_start,
+        this.reset_end,
+        raw_fwd_rate,
+        this.strike,
+      ); // we do not consider spread in the computation of volatility
+
+      if (this.strike && this.#volatility > 0) {
+        const t_expiry = library.time_from_now(this.reset_start);
+
+        console.debug("capfloorpayment, volatility:", this.#volatility);
+        console.debug("capfloorpayment, t_expiry:", t_expiry);
+        console.debug("capfloorpayment, class name:", this.constructor.name);
+
+        const black = new library.BlackModel(t_expiry, this.#volatility);
+        const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
+        switch (this.constructor.name) {
+          case "CapletPayment":
+            this.#rate = black.call_price(fwd_rate, this.strike);
+            console.debug("capletpayment, rate:", this.#rate);
+            break;
+          case "FloorletPayment":
+            this.#rate = black.put_price(fwd_rate, this.strike);
+            console.debug("floorletpayment, rate:", this.#rate);
+            break;
+          default:
+            throw new Error(
+              `${this.constructor.name}: Method 'project()' requires payment class name being either "CapletPayment" or "FloorletPayment".`,
+            );
+        }
+      }
+      return this.#rate;
     }
   }
 
@@ -426,43 +454,6 @@
       res.type = "Caplet";
       return res;
     }
-
-    // project rate
-    project(indices) {
-      if (this.is_fixed) return this.rate;
-      if ("" === this.index)
-        throw new Error(`${this.constructor.name}: no index defined`);
-      const idx = indices[this.index];
-      if (undefined === idx)
-        throw new Error(
-          `${this.constructor.name}: index ${this.index} was not supplied`,
-        );
-      if (!(idx instanceof library.SimpleIndex))
-        throw new Error(
-          `${this.constructor.name}: invalid index ${this.index}`,
-        );
-      const raw_fwd_rate = idx.fwd_rate(this.reset_start, this.reset_end);
-      const volatility = idx.volatility(
-        this.reset_start,
-        this.reset_end,
-        raw_fwd_rate,
-        this.strike,
-      ); // we do not consider spread in the computation of volatility
-      this.set_volatility(volatility); // update volatility at each evaluation
-
-      let option_rate = 0.0;
-      const value_date = library.valuation_date; // idx.valuation_date;
-      if (this.strike && volatility > 0 && value_date) {
-        const diff_ms = this.reset_start.getTime() - value_date.getTime();
-        const t = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
-        const t_expiry = t > 0 ? t : 0.0001;
-        const black = new library.BlackModel(t_expiry, volatility);
-        const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
-        option_rate = black.call_price(fwd_rate, this.strike);
-      }
-      this.set_rate(option_rate);
-      return this.rate;
-    }
   }
 
   class FloorletPayment extends CapFloorPayment {
@@ -474,43 +465,6 @@
       const res = super.toJSON();
       res.type = "Floorlet";
       return res;
-    }
-
-    // project rate
-    project(indices) {
-      if (this.is_fixed) return this.rate;
-      if ("" === this.index)
-        throw new Error(`${this.constructor.name}: no index defined`);
-      const idx = indices[this.index];
-      if (undefined === idx)
-        throw new Error(
-          `${this.constructor.name}: index ${this.index} was not supplied`,
-        );
-      if (!(idx instanceof library.SimpleIndex))
-        throw new Error(
-          `${this.constructor.name}: invalid index ${this.index}`,
-        );
-      const raw_fwd_rate = idx.fwd_rate(this.reset_start, this.reset_end);
-      const volatility = idx.volatility(
-        this.reset_start,
-        this.reset_end,
-        raw_fwd_rate,
-        this.strike,
-      ); // we do not consider spread in the computation of volatility
-      this.set_volatility(volatility); // update volatility at each evaluation
-
-      let option_rate = 0.0;
-      const value_date = library.valuation_date; // idx.valuation_date;
-      if (this.strike && volatility > 0 && value_date) {
-        const diff_ms = this.reset_start.getTime() - value_date.getTime();
-        const t = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
-        const t_expiry = t > 0 ? t : 0.0001;
-        const black = new library.BlackModel(t_expiry, volatility);
-        const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
-        option_rate = black.put_price(fwd_rate, this.strike);
-      }
-      this.set_rate(option_rate);
-      return this.rate;
     }
   }
 

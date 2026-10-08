@@ -38,15 +38,18 @@ test.execute = function (TestFramework, JsonRisk) {
         zcs: [0.01],
       },
     },
-    // add vola surface here
-    // type: type || "",
     surfaces: {
-      volatility: {
-        // check what are the allowed types, and where a "from_json" is implemented
-        type: "",
-        expiries: [1],
-        terms: [1],
-        values: [[0.2]], // a 20% volatility
+      surface_abs_cap: {
+        type: "expiry_abs_strike",
+        expiries: [1.0],
+        moneyness: [0.8 * 0.01],
+        values: [[0.2]],
+      },
+      surface_abs_floor: {
+        type: "expiry_abs_strike",
+        expiries: [1.0],
+        moneyness: [1.2 * 0.01],
+        values: [[0.2]],
       },
     },
     scalars: {},
@@ -129,7 +132,7 @@ test.execute = function (TestFramework, JsonRisk) {
       rate: rate,
       spread: 0.01 * rate,
       is_fixed: false,
-      strike: 0.8 * rate, // a floor choosen so to be in the money
+      strike: 0.8 * rate, // strike choosen to be in the money
 
       date_pmt: "2012/01/02",
       date_start: "2011/01/01",
@@ -149,7 +152,7 @@ test.execute = function (TestFramework, JsonRisk) {
       rate: rate,
       spread: 0.01 * rate,
       is_fixed: false,
-      strike: 1.2 * rate, // a cap choosen so to be in the money
+      strike: 1.2 * rate, // strike choosen to be in the money
 
       date_pmt: "2013/01/02",
       date_start: "2012/01/01",
@@ -182,12 +185,12 @@ test.execute = function (TestFramework, JsonRisk) {
       cap_index: {
         type: "simple",
         fwd_curve: "forward",
-        surface: "volatility",
+        surface: "surface_abs_cap",
       },
       floor_index: {
         type: "simple",
         fwd_curve: "forward",
-        surface: "volatility",
+        surface: "surface_abs_floor",
       },
     };
   }
