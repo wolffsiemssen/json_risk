@@ -76,6 +76,10 @@
     }
 
     value_impl(params, extras_not_used) {
+      library.nonempty_string_or_throw(
+        this.quote,
+        "Equity: no spot quote specified, make sure to populate 'quote' on instrument level",
+      );
       const quote = params.get_scalar(this.#quote);
       if ("" == this.#disc_curve) return quote.get_value();
       const spot_date = this.spot_date();

@@ -92,7 +92,16 @@
     }
 
     value_impl(params, extras_not_used) {
+      library.nonempty_string_or_throw(
+        this.legs[0].disc_curve,
+        "CDS: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
+      );
       const dc = params.get_curve(this.legs[0].disc_curve);
+
+      library.nonempty_string_or_throw(
+        this.#survival_curve,
+        "CDS: no survival curve specified, make sure to populate 'survival_curve' on instrument level",
+      );
       const sc = params.get_curve(this.#survival_curve);
       const isda = new library.IsdaCdsModel(dc, sc);
 

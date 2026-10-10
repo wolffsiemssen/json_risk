@@ -54,7 +54,16 @@
 
     value_impl(params, extras_not_used) {
       if (library.valuation_date >= this.#expiry) return 0.0;
+      library.nonempty_string_or_throw(
+        this.quote,
+        "EquityOption: no spot quote specified, make sure to populate 'quote' on instrument level",
+      );
       const quote = params.get_scalar(this.quote);
+
+      library.nonempty_string_or_throw(
+        this.disc_curve,
+        "EquityOption: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
+      );
       const dc = params.get_curve(this.disc_curve);
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
