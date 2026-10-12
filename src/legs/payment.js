@@ -369,22 +369,30 @@
   }
 
   class CapFloorPayment extends FloatRatePayment {
-    #strike = null; // number
+    #strike = 0.0;
     #rate = 0.0;
-    #volatility = null; // number
+    #volatility = 0.0;
 
     constructor(obj) {
       super(obj);
       this.#strike = library.number_or_null(obj.strike);
-      console.debug("capfloorpayment, class name:", this.constructor.name);
+      // console.debug("capfloorpayment, class name:", this.constructor.name);
     }
 
     // getter functions
+    get rate() {
+      return this.#rate;
+    }
     get strike() {
       return this.#strike;
     }
     get volatility() {
       return this.#volatility;
+    }
+    get amount() {
+      const res = this.#rate * this.notional * this.yf;
+      console.debug("amount is called", res);
+      return res;
     }
 
     toJSON() {
@@ -416,29 +424,27 @@
         this.strike,
       ); // we do not consider spread in the computation of volatility
 
-      if (this.strike && this.#volatility > 0) {
-        const t_expiry = library.time_from_now(this.reset_start);
+      const t_expiry = library.time_from_now(this.reset_start);
 
-        console.debug("capfloorpayment, volatility:", this.#volatility);
-        console.debug("capfloorpayment, t_expiry:", t_expiry);
-        console.debug("capfloorpayment, class name:", this.constructor.name);
+      console.debug("capfloorpayment, volatility:", this.#volatility);
+      console.debug("capfloorpayment, t_expiry:", t_expiry);
+      console.debug("capfloorpayment, class name:", this.constructor.name);
 
-        const black = new library.BlackModel(t_expiry, this.#volatility);
-        const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
-        switch (this.constructor.name) {
-          case "CapletPayment":
-            this.#rate = black.call_price(fwd_rate, this.strike);
-            console.debug("capletpayment, rate:", this.#rate);
-            break;
-          case "FloorletPayment":
-            this.#rate = black.put_price(fwd_rate, this.strike);
-            console.debug("floorletpayment, rate:", this.#rate);
-            break;
-          default:
-            throw new Error(
-              `${this.constructor.name}: Method 'project()' requires payment class name being either "CapletPayment" or "FloorletPayment".`,
-            );
-        }
+      const bachelier = new library.BachelierModel(t_expiry, this.#volatility);
+      const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
+      switch (this.constructor.name) {
+        case "CapletPayment":
+          this.#rate = bachelier.call_price(fwd_rate, this.strike);
+          console.debug("capletpayment, rate:", this.#rate);
+          break;
+        case "FloorletPayment":
+          this.#rate = bachelier.put_price(fwd_rate, this.strike);
+          console.debug("floorletpayment, rate:", this.#rate);
+          break;
+        default:
+          throw new Error(
+            `${this.constructor.name}: Method 'project()' requires payment class name being either "CapletPayment" or "FloorletPayment".`,
+          );
       }
       return this.#rate;
     }

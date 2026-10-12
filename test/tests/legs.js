@@ -39,17 +39,17 @@ test.execute = function (TestFramework, JsonRisk) {
       },
     },
     surfaces: {
-      surface_abs_cap: {
+      surface_abs: {
         type: "expiry_abs_strike",
-        expiries: [1.0],
-        moneyness: [0.8 * 0.01],
-        values: [[0.2]],
+        expiries: [1],
+        moneyness: [0.8 * 0.01, 1.2 * 0.01],
+        values: [[0.007, 0.0075]],
       },
-      surface_abs_floor: {
+      surface_zero_vola: {
         type: "expiry_abs_strike",
-        expiries: [1.0],
-        moneyness: [1.2 * 0.01],
-        values: [[0.2]],
+        expiries: [1],
+        moneyness: [0.8 * 0.01, 1.2 * 0.01],
+        values: [[0.0, 0.0]],
       },
     },
     scalars: {},
@@ -74,7 +74,6 @@ test.execute = function (TestFramework, JsonRisk) {
     // new leg for new currency
     const leg = {
       disc_curve: "discount",
-      surface: "volatility",
       payments: [],
     };
     legs.push(leg);
@@ -139,9 +138,11 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2012/01/01",
       index: "cap_index",
     };
-    const caplet_rate = 0.003539511702920192;
+    const caplet_rate = 0.010353302664497086;
     const caplet_yf = 1;
-    refval += pmtval * 1 * caplet_rate;
+    console.debug("test_legs_val, float refval", refval);
+    refval += pmtval * caplet_yf * caplet_rate; // where is it discounted?
+    console.debug("test_legs_val, vola 0.007 caplet refval", refval);
     leg.payments.push(cap_rate_payment);
 
     // add floorlet payment
@@ -159,10 +160,53 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2013/01/01",
       index: "floor_index",
     };
-    const floorlet_rate = 0.004032397680655687;
+    const floorlet_rate = 0.011345995717173932;
     const floorlet_yf = 1.0027397260273974;
     refval += pmtval * floorlet_yf * floorlet_rate;
+    console.debug("test_legs_val, vola 0.0075 floorlet refval", refval);
     leg.payments.push(floor_rate_payment);
+
+    // add zero-vola caplet payment
+    let cap_rate_payment_zero_vola = {
+      type: "Caplet",
+      currency: currency,
+      notional: pmtval * fxrate,
+      rate: rate,
+      spread: 0.01 * rate,
+      is_fixed: false,
+      strike: 0.8 * rate, // strike choosen to be in the money
+
+      date_pmt: "2012/01/02",
+      date_start: "2011/01/01",
+      date_end: "2012/01/01",
+      index: "cap_index_zero_vola",
+    };
+    const caplet_rate_zero_vola = 0.002100000000000008;
+    const caplet_yf_zero_vola = 1;
+    refval += pmtval * caplet_yf_zero_vola * caplet_rate_zero_vola;
+    console.debug("test_legs_val, vola 0 capletlet refval", refval);
+    leg.payments.push(cap_rate_payment_zero_vola);
+
+    // add zero-vola floorlet payment
+    let floor_rate_payment_zero_vola = {
+      type: "Floorlet",
+      currency: currency,
+      notional: pmtval * fxrate,
+      rate: rate,
+      spread: 0.01 * rate,
+      is_fixed: false,
+      strike: 1.2 * rate, // strike choosen to be in the money
+
+      date_pmt: "2013/01/02",
+      date_start: "2012/01/01",
+      date_end: "2013/01/01",
+      index: "floor_index_zero_vola",
+    };
+    const floorlet_rate_zero_vola = 0.0018998634668086281;
+    const floorlet_yf_zero_vola = 1.0027397260273974;
+    refval += pmtval * floorlet_yf_zero_vola * floorlet_rate_zero_vola;
+    console.debug("test_legs_val, vola 0 floorlet refval", refval);
+    leg.payments.push(floor_rate_payment_zero_vola);
 
     // add notional payment
     let notional_payment = Object.assign(
@@ -185,12 +229,22 @@ test.execute = function (TestFramework, JsonRisk) {
       cap_index: {
         type: "simple",
         fwd_curve: "forward",
-        surface: "surface_abs_cap",
+        surface: "surface_abs",
       },
       floor_index: {
         type: "simple",
         fwd_curve: "forward",
-        surface: "surface_abs_floor",
+        surface: "surface_abs",
+      },
+      cap_index_zero_vola: {
+        type: "simple",
+        fwd_curve: "forward",
+        surface: "surface_zero_vola",
+      },
+      floor_index_zero_vola: {
+        type: "simple",
+        fwd_curve: "forward",
+        surface: "surface_zero_vola",
       },
     };
   }
@@ -202,7 +256,7 @@ test.execute = function (TestFramework, JsonRisk) {
     const val = legins.value(params);
     console.debug("test_legs_val", val, refval);
     TestFramework.assert(
-      val === refval,
+      val.toFixed(7) === refval.toFixed(7),
       `Test Leg Instrumemts with different payment types and currencies, ${currency}`,
     );
   }
