@@ -70,7 +70,7 @@
     }
 
     link_surface(params_or_surface) {
-      if (params_or_surface instanceof library.Surface) {
+      if (params_or_surface && params_or_surface.get_surface_rate) {
         this.#linked_surface = params_or_surface;
         return;
       }

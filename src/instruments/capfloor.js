@@ -1,0 +1,88 @@
+(function (library) {
+  /**
+   * Class representing an interest rate cap or floor
+   * @memberof JsonRisk
+   * @extends LegInstrument
+   */
+  class CapFloor extends library.LegInstrument {
+    /**
+     * Create a floater instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one leg with floating and notional payments.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
+     */
+
+    // TODO it would be good to specify what structure "obj" must have
+
+    constructor(obj) {
+      if (!Array.isArray(obj.legs)) {
+        // create shallow copy and leave original object unchanged
+        const tempobj = Object.assign({}, obj);
+
+        // remove fixed_rate so cash flow generator generates floating leg
+        delete tempobj.fixed_rate;
+
+        // generate leg from terms and conditions
+        const leg = library.cashflow_generator(tempobj);
+
+        // make simple index
+        const index = {
+          fwd_curve: obj.fwd_curve,
+          surface: obj.surface,
+          dcc: obj.dcc,
+        };
+
+        // attach index to leg json
+        leg.indices = { index: index };
+
+        // attach leg to instrument json
+        tempobj.legs = [leg];
+
+        super(tempobj);
+
+        // update notionals
+        this.legs[0].update_notionals();
+      } else {
+        super(obj);
+      }
+
+      // sanity checks
+      if (1 !== this.legs.length)
+        throw new Error("Floater: must have exactly one leg");
+
+      const leg = this.legs[0];
+      if (leg.has_fixed_rate_payments)
+        throw new Error(
+          `${this.constructor.name}: cannot have fixed rate payments`,
+        ); // dynamically calling the class name will work also for child classes, displaying the correct name
+
+      if (false === leg.has_notional_payments)
+        throw new Error(
+          `${this.constructor.name}: must have notional payments`,
+        ); // dynamically calling the class name will work also for child classes, displaying the correct name
+    }
+
+    /**
+     * Calculate the fair spread rate, i.e., the spread rate this bond would have to carry on top of the float rate in order to have a par valuation
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
+    fair_rate_or_spread(params) {
+      return this.legs[0].fair_rate_or_spread(params);
+    }
+
+    /**
+     * Calculate the spread rate annuity, e.g. the value of one hundred percent spread on top of the float rate
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
+    annuity(params) {
+      // returns spread rate annuity
+      return this.legs[0].annuity(params);
+    }
+  }
+
+  library.CapFloor = CapFloor;
+})(this.JsonRisk || module.exports);

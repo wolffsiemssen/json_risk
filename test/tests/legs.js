@@ -41,13 +41,13 @@ test.execute = function (TestFramework, JsonRisk) {
     surfaces: {
       surface_abs: {
         type: "expiry_abs_strike",
-        expiries: [1],
+        expiries: [1.0],
         moneyness: [0.8 * 0.01, 1.2 * 0.01],
         values: [[0.007, 0.0075]],
       },
       surface_zero_vola: {
         type: "expiry_abs_strike",
-        expiries: [1],
+        expiries: [1.0],
         moneyness: [0.8 * 0.01, 1.2 * 0.01],
         values: [[0.0, 0.0]],
       },
@@ -138,6 +138,8 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2012/01/01",
       index: "cap_index",
     };
+    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const caplet_rate = 0.010353302664497086;
     const caplet_yf = 1;
     console.debug("test_legs_val, float refval", refval);
@@ -160,6 +162,8 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2013/01/01",
       index: "floor_index",
     };
+    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const floorlet_rate = 0.011345995717173932;
     const floorlet_yf = 1.0027397260273974;
     refval += pmtval * floorlet_yf * floorlet_rate;
@@ -181,6 +185,8 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2012/01/01",
       index: "cap_index_zero_vola",
     };
+    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const caplet_rate_zero_vola = 0.002100000000000008;
     const caplet_yf_zero_vola = 1;
     refval += pmtval * caplet_yf_zero_vola * caplet_rate_zero_vola;
@@ -202,6 +208,8 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2013/01/01",
       index: "floor_index_zero_vola",
     };
+    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const floorlet_rate_zero_vola = 0.0018998634668086281;
     const floorlet_yf_zero_vola = 1.0027397260273974;
     refval += pmtval * floorlet_yf_zero_vola * floorlet_rate_zero_vola;

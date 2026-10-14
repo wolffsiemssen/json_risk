@@ -390,6 +390,7 @@
       return this.#volatility;
     }
     get amount() {
+      console.debug("amount is called, notional, yf:", this.notional, this.yf);
       const res = this.#rate * this.notional * this.yf;
       console.debug("amount is called", res);
       return res;
@@ -431,7 +432,12 @@
       console.debug("capfloorpayment, class name:", this.constructor.name);
 
       const bachelier = new library.BachelierModel(t_expiry, this.#volatility);
-      const fwd_rate = raw_fwd_rate + (this.spread || 0.0);
+      const fwd_rate = raw_fwd_rate + this.spread;
+      console.debug(
+        "capfloorpayment, fwd_rate, strike:",
+        fwd_rate,
+        this.strike,
+      );
       switch (this.constructor.name) {
         case "CapletPayment":
           this.#rate = bachelier.call_price(fwd_rate, this.strike);

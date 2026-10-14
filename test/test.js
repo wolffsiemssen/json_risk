@@ -110,6 +110,8 @@ if (typeof require === "function") {
     "amortizing_callable_bonds.js",
     "vector_pricing_curve_scenarios.js",
     "params.js",
+    "cap_floor_parity.js",
+    "cap_floor_zero_vola.js",
   ];
 
   for (testfile of test_files) {

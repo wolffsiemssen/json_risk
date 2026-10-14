@@ -52,12 +52,22 @@ test.execute = function (TestFramework, JsonRisk) {
   const bond = new JsonRisk.Bond(ijson);
   const floater = new JsonRisk.Floater(ijson);
   const swap = new JsonRisk.Swap(ijson);
+  const capfloor = new JsonRisk.CapFloor(ijson);
 
   const ref_pv =
-    bond.value(params) + floater.value(params) + swap.value(params);
+    bond.value(params) +
+    floater.value(params) +
+    swap.value(params) +
+    capfloor.value(params);
 
   // check payment pvs are consistent
-  const legs = [bond.legs[0], floater.legs[0], swap.legs[0], swap.legs[1]];
+  const legs = [
+    bond.legs[0],
+    floater.legs[0],
+    swap.legs[0],
+    swap.legs[1],
+    capfloor.legs[0],
+  ];
   let p_pv = 0;
   for (const l of legs) {
     for (const p of l.payments) {
@@ -65,6 +75,7 @@ test.execute = function (TestFramework, JsonRisk) {
     }
   }
 
+  console.debug("leg_round_trip, p_pf,ref_pv:", p_pv, ref_pv);
   TestFramework.assert(
     Math.abs(p_pv - ref_pv) < 1e-10,
     `Instrument PV (${ref_pv}) and payments pv (${p_pv}) are consistent`,
