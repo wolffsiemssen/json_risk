@@ -19,10 +19,6 @@ test.execute = function (TestFramework, JsonRisk) {
 
   console.log("=== STARTING CAP/FLOOR PUT-CALL PARITY UNIT TESTS ===");
 
-  // 2. Marktdaten-Setup (Isoliert von den restlichen Tests)
-  // const value_date = new Date(2026, 9, 12); // Heute: 12. Oktober 2026
-  // library.valuation_date = value_date;
-
   JsonRisk.set_valuation_date("12.09.2026");
 
   // Constant 3.5% forward-curve for the test
@@ -39,11 +35,6 @@ test.execute = function (TestFramework, JsonRisk) {
     moneyness: [0.03, 0.04], // covers different strikes
     values: [[normal_vola, normal_vola]],
   });
-  console.debug(
-    "cap-floor-parity, surface",
-    surface_vola instanceof JsonRisk.Surface,
-    surface_vola,
-  );
 
   const index = new JsonRisk.SimpleIndex({
     fwd_curve: "EUR_3M",
@@ -107,21 +98,9 @@ test.execute = function (TestFramework, JsonRisk) {
     // --- PUT-CALL PARITY EQUATION ---
     const call_minus_put = caplet.amount - floorlet.amount;
 
-    console.debug("cap-floor parity, call_minus_put:", call_minus_put);
-    console.debug(
-      "cap-floor parity, spread, strike",
-      scenario.spread,
-      scenario.strike,
-    );
-
     const effective_fwd = real_fwd_rate + scenario.spread;
-    console.debug("cap-floor parity, effective_fwd:", effective_fwd);
     const forward_minus_strike =
       (effective_fwd - scenario.strike) * real_notional * real_yf;
-    console.debug(
-      "cap-floor parity, forward_minus_strike:",
-      forward_minus_strike,
-    );
 
     TestFramework.assert(
       call_minus_put.toFixed(7) === forward_minus_strike.toFixed(7),

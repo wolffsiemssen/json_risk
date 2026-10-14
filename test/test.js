@@ -111,7 +111,7 @@ if (typeof require === "function") {
     "vector_pricing_curve_scenarios.js",
     "params.js",
     "cap_floor_parity.js",
-    "cap_floor_zero_vola.js",
+    "capfloor_zerovola.js",
   ];
 
   for (testfile of test_files) {

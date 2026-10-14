@@ -29,6 +29,14 @@ test.execute = function (TestFramework, JsonRisk) {
       },
       spread_curve: { times: [1], zcs: [0.05] },
     },
+    surfaces: {
+      vola_surface: {
+        type: "expiry_abs_strike",
+        labels_expiry: ["1Y"],
+        moneyness: [0.025],
+        values: [[0.0]],
+      },
+    },
   });
 
   const ijson = {
@@ -49,10 +57,30 @@ test.execute = function (TestFramework, JsonRisk) {
     float_dcc: "a/360",
   };
 
+  const capfloor_json = {
+    type: "Caplet",
+    effective_date: "2020/11/15",
+    maturity: "2030/11/15",
+    notional: 100,
+    tenor: 12,
+    float_tenor: 6,
+    float_current_rate: 0.0,
+    float_spread: 0.025,
+    strike: 0.03,
+    disc_curve: "curve",
+    fwd_curve: "curve",
+    surface: "vola_surface",
+    spread_curve: "spread_curve",
+    calendar: "TARGET",
+    bdc: "f",
+    dcc: "bond",
+    float_dcc: "a/360",
+  };
+
   const bond = new JsonRisk.Bond(ijson);
   const floater = new JsonRisk.Floater(ijson);
   const swap = new JsonRisk.Swap(ijson);
-  const capfloor = new JsonRisk.CapFloor(ijson);
+  const capfloor = new JsonRisk.CapFloor(capfloor_json);
 
   const ref_pv =
     bond.value(params) +
@@ -75,7 +103,6 @@ test.execute = function (TestFramework, JsonRisk) {
     }
   }
 
-  console.debug("leg_round_trip, p_pf,ref_pv:", p_pv, ref_pv);
   TestFramework.assert(
     Math.abs(p_pv - ref_pv) < 1e-10,
     `Instrument PV (${ref_pv}) and payments pv (${p_pv}) are consistent`,

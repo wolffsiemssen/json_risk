@@ -376,7 +376,6 @@
     constructor(obj) {
       super(obj);
       this.#strike = library.number_or_null(obj.strike);
-      // console.debug("capfloorpayment, class name:", this.constructor.name);
     }
 
     // getter functions
@@ -390,9 +389,7 @@
       return this.#volatility;
     }
     get amount() {
-      console.debug("amount is called, notional, yf:", this.notional, this.yf);
       const res = this.#rate * this.notional * this.yf;
-      console.debug("amount is called", res);
       return res;
     }
 
@@ -426,26 +423,15 @@
       ); // we do not consider spread in the computation of volatility
 
       const t_expiry = library.time_from_now(this.reset_start);
-
-      console.debug("capfloorpayment, volatility:", this.#volatility);
-      console.debug("capfloorpayment, t_expiry:", t_expiry);
-      console.debug("capfloorpayment, class name:", this.constructor.name);
-
       const bachelier = new library.BachelierModel(t_expiry, this.#volatility);
       const fwd_rate = raw_fwd_rate + this.spread;
-      console.debug(
-        "capfloorpayment, fwd_rate, strike:",
-        fwd_rate,
-        this.strike,
-      );
+
       switch (this.constructor.name) {
         case "CapletPayment":
           this.#rate = bachelier.call_price(fwd_rate, this.strike);
-          console.debug("capletpayment, rate:", this.#rate);
           break;
         case "FloorletPayment":
           this.#rate = bachelier.put_price(fwd_rate, this.strike);
-          console.debug("floorletpayment, rate:", this.#rate);
           break;
         default:
           throw new Error(

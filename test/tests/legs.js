@@ -138,13 +138,11 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2012/01/01",
       index: "cap_index",
     };
-    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const caplet_rate = 0.010353302664497086;
     const caplet_yf = 1;
-    console.debug("test_legs_val, float refval", refval);
     refval += pmtval * caplet_yf * caplet_rate; // where is it discounted?
-    console.debug("test_legs_val, vola 0.007 caplet refval", refval);
     leg.payments.push(cap_rate_payment);
 
     // add floorlet payment
@@ -162,12 +160,11 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2013/01/01",
       index: "floor_index",
     };
-    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const floorlet_rate = 0.011345995717173932;
     const floorlet_yf = 1.0027397260273974;
     refval += pmtval * floorlet_yf * floorlet_rate;
-    console.debug("test_legs_val, vola 0.0075 floorlet refval", refval);
     leg.payments.push(floor_rate_payment);
 
     // add zero-vola caplet payment
@@ -185,12 +182,11 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2012/01/01",
       index: "cap_index_zero_vola",
     };
-    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const caplet_rate_zero_vola = 0.002100000000000008;
     const caplet_yf_zero_vola = 1;
     refval += pmtval * caplet_yf_zero_vola * caplet_rate_zero_vola;
-    console.debug("test_legs_val, vola 0 capletlet refval", refval);
     leg.payments.push(cap_rate_payment_zero_vola);
 
     // add zero-vola floorlet payment
@@ -208,12 +204,11 @@ test.execute = function (TestFramework, JsonRisk) {
       date_end: "2013/01/01",
       index: "floor_index_zero_vola",
     };
-    // REGRESSION TARGETS: These high-precision values are frozen from the 
+    // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
     const floorlet_rate_zero_vola = 0.0018998634668086281;
     const floorlet_yf_zero_vola = 1.0027397260273974;
     refval += pmtval * floorlet_yf_zero_vola * floorlet_rate_zero_vola;
-    console.debug("test_legs_val, vola 0 floorlet refval", refval);
     leg.payments.push(floor_rate_payment_zero_vola);
 
     // add notional payment
@@ -262,7 +257,6 @@ test.execute = function (TestFramework, JsonRisk) {
     const legins = new JsonRisk.LegInstrument({ currency, legs });
 
     const val = legins.value(params);
-    console.debug("test_legs_val", val, refval);
     TestFramework.assert(
       val.toFixed(7) === refval.toFixed(7),
       `Test Leg Instrumemts with different payment types and currencies, ${currency}`,
