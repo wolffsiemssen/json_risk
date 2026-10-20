@@ -48,29 +48,12 @@ test.execute = function (TestFramework, JsonRisk) {
     float_tenor: 6,
     float_current_rate: 0.0,
     float_spread: 0.025,
+    cap_rate: 0.05,
+    floor_rate: 0.0,
     disc_curve: "curve",
     fwd_curve: "curve",
     spread_curve: "spread_curve",
-    calendar: "TARGET",
-    bdc: "f",
-    dcc: "bond",
-    float_dcc: "a/360",
-  };
-
-  const capfloor_json = {
-    type: "Caplet",
-    effective_date: "2020/11/15",
-    maturity: "2030/11/15",
-    notional: 100,
-    tenor: 12,
-    float_tenor: 6,
-    float_current_rate: 0.0,
-    float_spread: 0.025,
-    strike: 0.03,
-    disc_curve: "curve",
-    fwd_curve: "curve",
     surface: "vola_surface",
-    spread_curve: "spread_curve",
     calendar: "TARGET",
     bdc: "f",
     dcc: "bond",
@@ -80,7 +63,7 @@ test.execute = function (TestFramework, JsonRisk) {
   const bond = new JsonRisk.Bond(ijson);
   const floater = new JsonRisk.Floater(ijson);
   const swap = new JsonRisk.Swap(ijson);
-  const capfloor = new JsonRisk.CapFloor(capfloor_json);
+  const capfloor = new JsonRisk.CapFloor(ijson);
 
   const ref_pv =
     bond.value(params) +

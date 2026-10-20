@@ -51,14 +51,10 @@
 
       const leg = this.legs[0];
       if (leg.has_fixed_rate_payments)
-        throw new Error(
-          `${this.constructor.name}: cannot have fixed rate payments`,
-        ); // dynamically calling the class name will work also for child classes, displaying the correct name
+        throw new Error("Floater: cannot have fixed rate payments");
 
       if (false === leg.has_notional_payments)
-        throw new Error(
-          `${this.constructor.name}: must have notional payments`,
-        ); // dynamically calling the class name will work also for child classes, displaying the correct name
+        throw new Error("Floater: must have notional payments");
     }
 
     /**

@@ -363,10 +363,12 @@
         return new library.FixedRatePayment(obj);
       case "float":
         return new library.FloatRatePayment(obj);
-      case "capfloor":
-        return new library.CapFloorPayment(obj);
+      case "caplet":
+        return new library.CapletPayment(obj);
+      case "floorlet":
+        return new library.FloorletPayment(obj);
       default:
-        throw new Error("make_payment: invalid payment type");
+        throw new Error(`make_payment: invalid payment type ${obj.type}`);
     }
   };
 })(this.JsonRisk || module.exports);
@@ -895,87 +897,61 @@
 })(this.JsonRisk || module.exports);
 (function (library) {
   /**
-   * Class representing a interest rate cap, floor or collar
+   * Class representing an interest rate cap or floor
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-
   class CapFloor extends library.LegInstrument {
     /**
-     * Create a cap/floor instrument. If legs are not provided, legs are generated from terms and conditions.
-     * Legs must contain one and only one leg with caplet/floorlet and notional payments.
+     * Create a cap/floor instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one leg with floating and notional payments.
+     * @param {obj} obj A plain object representing the instrument
+     * @param {string} [obj.currency=""] the currency in which this instrument's value is represented
+     * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
+     * @param {array} [obj.legs=[]] the legs of this instrument.
+     * @param {date} [obj.acquire_date=01.01.1900] the acquire date
      *
-     * @param {object} obj - A plain JavaScript object representing the instrument terms and conditions.
-     *
-     * @param {string} [obj.id] - Unique identifier for the instrument instance.
-     * @param {string} [obj.currency=""] - The currency in which this instrument's value is represented (e.g., "EUR", "USD").
-     * @param {number} [obj.quantity=1.0] - The multiplier/quantity with which the instrument's total value is multiplied.
-     * @param {Date} [obj.acquire_date] - The acquisition date of the instrument. Used for portfolio inventory accounting.
-     * @param {array} [obj.legs] - Optional array containing pre-generated leg objects. If provided, the generator is bypassed.
-     *
-     * @param {number} [obj.notional] - The principal or nominal amount of the contract upon which payments are calculated.
-     * @param {boolean} [obj.notional_exchange=false] - If true, principal exchange cashflows are generated at start and maturity.
-     * @param {string} [obj.payment_type="capfloor"] - Internal flag to trigger caplet/floorlet generation path inside the cashflow generator.
-     *
-     * @param {number|number[]} [obj.cap_rate] - The strike rate for the Cap components. Can be a scalar (constant) or an array of numbers mapping to each schedule period (variable/amortizing strike). Must be provided if the instrument includes a Cap or Collar.
-     * @param {number|number[]} [obj.floor_rate] - The strike rate for the Floor components. Can be a scalar (constant) or an array of numbers mapping to each schedule period. Must be provided if the instrument includes a Floor or Collar.
-     * @param {number} [obj.float_current_rate] - The already fixed rate for the current period
-     * @param {string} [obj.freq="6M"] - The payment and fixing frequency of the periods (e.g., "1M", "3M", "6M", "1Y").
-     * @param {string} [obj.tenor="6M"] - The tenor (e.g., "1M", "3M", "6M").
-     * @param {string} [obj.dcc="act/365"] - Day Count Convention used to calculate period year fractions (`yf`) and volatility horizons (e.g., "act/365", "act/360", "30/360").
-     * @param {string} [obj.bdc="modfollow"] - Business Day Convention applied to unadjusted period dates (e.g., "following", "modfollow", "preceding").
-     * @param {string} [obj.calendar="TARGET"] - The holiday calendar used for business day adjustments (e.g., "TARGET", "NYSE", "London").
-     *
-     * @param {Date} [obj.effective_date] - The inception or start date from which the schedule periods begin to accrue.
-     * @param {Date} [obj.maturity] - The final termination or legal end date of the instrument.
-     * @param {boolean} [obj.capitalize=false] - If true, option payoffs are capitalized into the subsequent period's notional rather than paid out immediately as cash.
-     *
-     * // @param {string} [obj.fwd_curve] - The string identifier/key mapping to the forward interest rate curve in global `params` (used to project fixing rates).
-     * @param {string} [obj.disc_curve] - The string identifier/key mapping to the discount curve in global `params` (used to compute discount factors for payouts).
-     * @param {obj} [obj.fwd_curve] - A function, its form is here for testing
-     * @param {number|number[]} [obj.cap_vola_curve] - array of cap volatilities, or constant value
-     * @param {number|number[]} [obj.floor_vola_curve] - array of floor volatilities, or constant value
+     * // MANDATORY & OPTIONAL FIELDS FOR GENERATING THE CAP/FLOOR CASH FLOWS:
+     * @param {date|string} obj.effective_date - The start date of the instrument.
+     * @param {date|string} obj.maturity - The maturity / end date of the instrument.
+     * @param {number} obj.notional - The nominal amount for interest calculation.
+     * @param {number} obj.tenor - The payment frequency in months (e.g., 6 for semi-annual).
+     * @param {number} obj.float_current_rate - The fixing rate for the current open interest period.
+     * @param {number} [obj.float_spread=0.0] - The constant margin/spread added to the floating rate.
+     * @param {number} obj.cap_rate - The cap strike rate
+     * @param {number} obj.floor_rate - The floor strike rate
+     * @param {string} obj.disc_curve - The name of the discounting interest rate curve.
+     * @param {string} obj.fwd_curve - The name of the forward interest rate curve for projections.
+     * @param {string} obj.surface - The name of the ExpiryStrike volatility surface.
+     * @param {string} [obj.dcc="act/365"] - Day count convention (e.g., "act/360", "30/360").
+     * @param {string} [obj.calendar="TARGET"] - The holiday calendar used for business day adjustments.
+     * @param {string} [obj.bdc="f"] - Business day convention (e.g., "f" for following, "m" for modified following).
      */
 
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
-        // the obj passed to the constructor must contain information about the cap/floor,
-        // e.g., the notional, the fixed rate, the cap rate, the floor rate, the payment dates,
-        // the forward curve, the volatility curve etc.
-        // If legs are not provided, we generate a leg from the terms and conditions in obj.
-
         // create shallow copy and leave original object unchanged
         const tempobj = Object.assign({}, obj);
 
+        // remove fixed_rate so cash flow generator generates floating leg
         delete tempobj.fixed_rate;
-
-        tempobj.payment_type ??= "capfloor"; // we need this to generate a leg with caplet/floorlet payments, so we set the payment_type to "capfloor" if it is not provided in obj
-
-        // make simple index
-        const index_config = {
-          payment_type: obj.payment_type || "capfloor", // this is the type of payment, e.g., "capfloor", "caplet", "floorlet", etc.
-          fwd_curve: obj.fwd_curve,
-          // surface: obj.surface, // volatility surface, used to price caplets and floorlets
-          // currently not used, but we can use it to get the volatility for the caplet/floorlet pricing
-
-          /* // TODO do I need cap and floor vola curves for the index? Maybe not
-          // we assume that volatilities are by contract already reduced to term structures depending only on time parameter,
-          // so, for either cap or floor, we do not pass a surface but a curve with volatility for each fixing date, which is used to price caplets and floorlets 
-          cap_vola_curve: obj.cap_vola_curve, // volatility surface for caplets, used to price caplets
-          floor_vola_curve: obj.floor_vola_curve, // volatility surface for floorlets, used to price floorlets */
-
-          disc_curve: obj.disc_curve, // discount curve, used to discount caplet/floorlet payments
-          dcc: obj.dcc || "act/365", // day count convention, used to calculate the year fraction for the caplet/floorlet payments
-        };
-
-        tempobj.indices = { index: index_config };
-        tempobj.index = "index";
 
         // generate leg from terms and conditions
         const leg = library.cashflow_generator(tempobj);
 
+        // remove all payments except caplets and floorlets
+        leg.payments = leg.payments.filter(
+          (p) => p.type === "caplet" || p.type === "floorlet",
+        );
+
+        // make simple index
+        const index = {
+          fwd_curve: obj.fwd_curve,
+          surface: obj.surface,
+          dcc: obj.dcc,
+        };
+
         // attach index to leg json
-        leg.indices = { index: index_config };
+        leg.indices = { index: index };
 
         // attach leg to instrument json
         tempobj.legs = [leg];
@@ -990,37 +966,37 @@
 
       // sanity checks
       if (1 !== this.legs.length)
-        throw new Error("CapFloor: must have exactly one leg");
+        throw new Error("Floater: must have exactly one leg");
 
       const leg = this.legs[0];
-      if (leg.has_fixed_rate_payments)
-        throw new Error("CapFloor: cannot have fixed rate payments");
+      if (
+        leg.has_fixed_rate_payments ||
+        leg.has_float_rate_payments ||
+        leg.has_notional_payments
+      )
+        throw new Error("CapFloor: can only have caplet and floorlet payments");
 
-      if (false === leg.has_notional_payments)
-        throw new Error("CapFloor: must have notional payments");
+      if (leg.has_capitalization)
+        throw new Error("CapFloor: cannot have capitalization");
     }
 
-    // present value is declared here to overcome passing through a pricer declared in json_risk_docu.js
-    present_value(disc_curve) {
-      const value_date = library.valuation_date;
-      let total_pv = 0.0;
+    /**
+     * Calculate the fair spread rate, i.e., the spread rate this bond would have to carry on top of the float rate in order to have a par valuation
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
+    fair_rate_or_spread(params) {
+      return this.legs[0].fair_rate_or_spread(params);
+    }
 
-      const leg = this.legs[0];
-      const cashflows = leg.payments;
-
-      for (let i = 0; i < cashflows.length; i++) {
-        const c = cashflows[i];
-
-        if (c.date_pmt <= value_date) continue;
-        if (c.rate_cap === undefined && c.rate_floor === undefined) continue;
-
-        const df = disc_curve.get_df(value_date, c.date_pmt);
-        const nominal_payoff = c.amount;
-
-        total_pv += nominal_payoff * df;
-      }
-
-      return total_pv;
+    /**
+     * Calculate the spread rate annuity, e.g. the value of one hundred percent spread on top of the float rate
+     * @param {Params} params a valid parameters container object
+     * @returns {number}
+     */
+    annuity(params) {
+      // returns spread rate annuity
+      return this.legs[0].annuity(params);
     }
   }
 
@@ -2465,7 +2441,7 @@
     const dcc = specs.dcc;
     const date_roll = specs.roll_date;
     const tenor = specs.tenor;
-    const res = {
+    const pmt = {
       notional,
       date_start,
       date_end,
@@ -2475,92 +2451,46 @@
       date_value,
       dcc,
     };
-    if (current_conditions.interest_capitalization) res.capitalize = true;
+    if (current_conditions.interest_capitalization) pmt.capitalize = true;
     if (!specs.is_float) {
       // fixed payment
-      res.type = "fixed";
-      res.rate = current_conditions.fixed_rate;
-      return res;
+      pmt.type = "fixed";
+      pmt.rate = current_conditions.fixed_rate;
+      return [pmt];
     }
     // float payment
+    pmt.type = "float";
     const { float_spread, cap_rate, floor_rate } = current_conditions;
-    res.reset_start = reset_start;
-    res.reset_end = reset_end;
-    res.spread = float_spread;
-    res.index = "index";
+    pmt.reset_start = reset_start;
+    pmt.reset_end = reset_end;
+    pmt.spread = float_spread;
+    pmt.index = "index";
 
     // fixing
     if (reset_start <= library.valuation_date) {
-      res.is_fixed = true;
-      res.rate = specs.float_current_rate + float_spread;
+      pmt.is_fixed = true;
+      pmt.rate = specs.float_current_rate + float_spread;
     } else {
-      res.is_fixed = false;
+      pmt.is_fixed = false;
     }
 
+    const res = [pmt];
     // cap and floor
-    if (cap_rate === Infinity && floor_rate === -Infinity) {
-      res.type = "float";
-    } else {
-      res.type = "float_cap_floor";
-      res.cap_rate = cap_rate;
-      res.floor_rate = floor_rate;
+    if (cap_rate < Infinity) {
+      // copy payment object and add caplet properties
+      const caplet = Object.assign({}, pmt);
+      caplet.type = "caplet";
+      caplet.strike = cap_rate;
+      res.push(caplet);
     }
-
+    if (floor_rate > -Infinity) {
+      // copy payment object and add floorlet properties
+      const floorlet = Object.assign({}, pmt);
+      floorlet.type = "floorlet";
+      floorlet.strike = floor_rate;
+      res.push(floorlet);
+    }
     return res;
-  }
-
-  function capfloor_payment(
-    fixing_index,
-    obj,
-    notional,
-    date_start,
-    date_end,
-    date_next_int,
-    date_last_fixing,
-    date_next_fixing,
-    specs_dcc,
-  ) {
-    const rate_cap = Array.isArray(obj.cap_rate)
-      ? obj.cap_rate[fixing_index]
-      : obj.cap_rate;
-    const rate_floor = Array.isArray(obj.floor_rate)
-      ? obj.floor_rate[fixing_index]
-      : obj.floor_rate;
-    const current_cap_volatility = Array.isArray(obj.cap_vola_curve)
-      ? obj.cap_vola_curve[fixing_index]
-      : obj.cap_vola_curve;
-    const current_floor_volatility = Array.isArray(obj.floor_vola_curve)
-      ? obj.floor_vola_curve[fixing_index]
-      : obj.floor_vola_curve;
-
-    const volatility = {
-      cap: current_cap_volatility,
-      floor: current_floor_volatility,
-    };
-
-    const forward_rate = obj.fwd_curve.get_fwd_rate(date_start, date_end);
-
-    const payment_config = {
-      // Fields obligatory for BasePayment & RatePayment
-      date_pmt: date_next_int, // day of payment is the end of interest period
-      date_start: date_start, // start date of interest period
-      date_end: date_end, // end date of interest period
-      notional: notional, // actual nominal value
-      dcc: obj.dcc || specs_dcc, // Day Count Convention for the Year Fraction (yf)
-      capitalize: obj.capitalize || false,
-
-      forward_rate: forward_rate,
-
-      // Fields specific for CapFloorPayment
-      index: obj.index || "index", // String-Identifier for the assignment of curves
-      rate_cap: rate_cap,
-      rate_floor: rate_floor,
-      volatility: volatility,
-      reset_start: date_last_fixing, // date of fixing of the caplet/floorlet
-      reset_end: date_next_fixing, // end date of caplet/floorlet, also corresponds to start of the next caplet/floorlet
-    };
-
-    return new library.CapFloorPayment(payment_config);
   }
 
   //
@@ -2587,8 +2517,6 @@
     if (specs.notional_exchange)
       cashflows.push(pay_notional(date_start, -notional));
 
-    let fixing_index = 0; // index for the fixing schedule
-
     // loop through timeline
     while (timeline.length >= 1) {
       // erase dates as soon as we reach them
@@ -2607,36 +2535,18 @@
       const date_next_fixing = fixing_schedule[0];
       const current_conditions = conditions[0];
 
-      // make caplet/floorlet/collar payment if needed. This is done by checking if the obj passed to the cashflow_generator has a type property equal to "capfloor". If so, we create a new CapFloorPayment object and push it into the cashflows array. The CapFloorPayment class is defined in src/legs/payment.js and implements the Black model for caplets and floorlets.
-      if (obj.payment_type === "capfloor") {
-        cashflows.push(
-          capfloor_payment(
-            fixing_index,
-            obj,
-            notional,
-            date_start,
-            date_end,
-            date_next_int,
-            date_last_fixing,
-            date_next_fixing,
-            specs.dcc,
-          ),
-        );
-        fixing_index++;
-      } else {
-        // make interest rate payment
-        cashflows.push(
-          pay_interest(
-            notional,
-            date_start,
-            date_end,
-            date_next_int,
-            date_last_fixing,
-            date_next_fixing,
-            current_conditions,
-          ),
-        );
-      }
+      // make interest rate payment and add optional cap, floor
+      cashflows.push(
+        ...pay_interest(
+          notional,
+          date_start,
+          date_end,
+          date_next_int,
+          date_last_fixing,
+          date_next_fixing,
+          current_conditions,
+        ),
+      );
 
       // make notional payments if needed. Do not worry about overpayments with capitalization. This is handled by the leg class.
       let n = 0;
@@ -2839,7 +2749,7 @@
      */
     get has_float_rate_payments() {
       for (const p of this.#payments) {
-        if (p instanceof library.FloatRatePayment) return true;
+        if (p.constructor === library.FloatRatePayment) return true;
       }
       return false;
     }
@@ -2849,7 +2759,9 @@
      * @type {boolean}
      */
     get has_embedded_options() {
-      // not supported yet
+      for (const p of this.#payments) {
+        if (p instanceof library.CapFloorPayment) return true;
+      }
       return false;
     }
 
@@ -2973,6 +2885,7 @@
     value(params, acquire_date) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(params);
+        idx.link_surface(params);
       }
       for (const p of this.#payments) {
         // make projection for unfixed payments
@@ -3512,7 +3425,7 @@
      * @param {string} [obj.index=""] named reference to an index of the payment.
      * @param {number} [obj.spread=0.0] fixed spread rate of the payment.
      * @param {string} [obj.dcc=""] day count convention of the payment.
-     * @param {boolean} [obj.calitalize=false] flag indicating if this payment capitalizes
+     * @param {boolean} [obj.capitalize=false] flag indicating if this payment capitalizes
      */
     constructor(obj) {
       super(obj);
@@ -3567,6 +3480,12 @@
     get amount_notional() {
       return this.capitalize ? -this.amount_interest : 0.0;
     }
+    get reset_start() {
+      return this.#reset_start;
+    }
+    get reset_end() {
+      return this.#reset_end;
+    }
 
     // serialise
     toJSON() {
@@ -3599,142 +3518,110 @@
     }
   }
 
-  // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
-
-  // CapFloorPayment()
-  class CapFloorPayment extends RatePayment {
-    #index = "";
-    #forward_rate = 0.0;
-    #rate_cap = null;
-    #rate_floor = null;
-    #cap_volatility = null;
-    #floor_volatility = null;
-    #reset_start = null;
-    #reset_end = null;
+  class CapFloorPayment extends FloatRatePayment {
+    #strike = 0.0;
+    #rate = 0.0;
+    #volatility = 0.0;
 
     constructor(obj) {
       super(obj);
-
-      // index
-      this.#index = library.string_or_empty(obj.index);
-
-      // strikes
-      this.#rate_cap = library.number_or_null(obj.rate_cap);
-      this.#rate_floor = library.number_or_null(obj.rate_floor);
-
-      if (obj.volatility) {
-        this.#cap_volatility = library.number_or_null(obj.volatility.cap);
-        this.#floor_volatility = library.number_or_null(obj.volatility.floor);
-      }
-
-      this.#reset_start =
-        library.date_or_null(obj.reset_start) || this.date_start;
-      this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
-
-      /*
-      assigning forward rate directly from a value passed in the object bypasses the
-      code in project(indicxes). I do not know if is the best way of getting this value. 
-      It is a short cut introfuced because the pricing (computation of present value) does not go through a pricer defined and registered in json_risk_doku.js
-      */
-      this.#forward_rate = library.number_or_null(obj.forward_rate) || 0.0;
-
-      // sanity checks
-      if (this.#reset_start >= this.#reset_end)
-        throw new Error(
-          "CapFloorPayment: reset_start must be before reset_end",
-        );
+      this.#strike = library.number_or_null(obj.strike);
     }
 
-    // project rate  // TODO check all what follows here
-    project(indices) {
-      if ("" === this.#index)
-        throw new Error("CapFloorPayment: no index defined");
-      const idx = indices[this.#index];
-      if (undefined === idx)
-        throw new Error(
-          `CapFloorPayment: index ${this.#index} was not supplied`,
-        );
-      if (!(idx instanceof library.SimpleIndex))
-        throw new Error(`CapFloorPayment: invalid index ${this.#index}`);
-
-      this.#forward_rate = idx.fwd_rate(this.#reset_start, this.#reset_end);
-      return this.#forward_rate;
+    // getter functions
+    get rate() {
+      return this.#rate;
     }
-
-    get index() {
-      return this.#index;
+    get strike() {
+      return this.#strike;
     }
-    get forward_rate() {
-      return this.#forward_rate;
-    }
-    get rate_cap() {
-      return this.#rate_cap;
-    }
-    get rate_floor() {
-      return this.#rate_floor;
+    get volatility() {
+      return this.#volatility;
     }
     get amount() {
-      return this.capitalize ? 0.0 : this.amount_interest;
+      const res = this.#rate * this.notional * this.yf;
+      return res;
     }
 
-    get amount_interest() {
-      const value_date = library.valuation_date;
-
-      const diff_ms = this.#reset_start.getTime() - value_date.getTime();
-      const t_expiry = diff_ms / (365.25 * 24 * 60 * 60 * 1000);
-
-      const t = t_expiry > 0 ? t_expiry : 0.0001; // to avoid division by zero, we set a small positive value if t_expiry is not set
-
-      let caplet_rate = 0.0;
-      let floorlet_rate = 0.0;
-
-      if (this.#rate_cap && this.#cap_volatility !== null) {
-        const cap_black = new library.BlackModel(t, this.#cap_volatility);
-        caplet_rate = cap_black.call_price(this.#forward_rate, this.#rate_cap);
-      }
-
-      if (this.#rate_floor && this.#floor_volatility !== null) {
-        const floor_black = new library.BlackModel(t, this.#floor_volatility);
-        floorlet_rate = floor_black.put_price(
-          this.#forward_rate,
-          this.#rate_floor,
-        );
-      }
-
-      const nominal_payoff =
-        this.notional * this.yf * (caplet_rate - floorlet_rate);
-
-      if (nominal_payoff < 0 && !this.#rate_floor) {
-        return 0.0; // maybe this check is redundant
-      }
-
-      return nominal_payoff;
-    }
-
-    get amount_notional() {
-      return this.capitalize ? -this.amount_interest : 0.0;
-    }
-
-    // serialise
     toJSON() {
       const res = super.toJSON();
-      res.type = "CapFloor";
-      res.index = this.#index;
-      res.forward_rate = this.#forward_rate;
-      res.rate_cap = this.#rate_cap;
-      res.rate_floor = this.#rate_floor;
-      res.reset_start = library.date_to_date_str(this.#reset_start);
-      res.reset_end = library.date_to_date_str(this.#reset_end);
+      res.strike = this.#strike;
+      res.volatility = this.#volatility;
+      return res;
+    }
+
+    // project rate
+    project(indices) {
+      if (this.is_fixed) return this.rate;
+      if ("" === this.index)
+        throw new Error(`${this.constructor.name}: no index defined`);
+      const idx = indices[this.index];
+      if (undefined === idx)
+        throw new Error(
+          `${this.constructor.name}: index ${this.index} was not supplied`,
+        );
+      if (!(idx instanceof library.SimpleIndex))
+        throw new Error(
+          `${this.constructor.name}: invalid index ${this.index}`,
+        );
+      const raw_fwd_rate = idx.fwd_rate(this.reset_start, this.reset_end);
+      this.#volatility = idx.volatility(
+        this.reset_start,
+        this.reset_end,
+        raw_fwd_rate,
+        this.strike,
+      ); // we do not consider spread in the computation of volatility
+
+      const t_expiry = library.time_from_now(this.reset_start);
+      const bachelier = new library.BachelierModel(t_expiry, this.#volatility);
+      const fwd_rate = raw_fwd_rate + this.spread;
+
+      switch (this.constructor.name) {
+        case "CapletPayment":
+          this.#rate = bachelier.call_price(fwd_rate, this.strike);
+          break;
+        case "FloorletPayment":
+          this.#rate = bachelier.put_price(fwd_rate, this.strike);
+          break;
+        default:
+          throw new Error(
+            `${this.constructor.name}: Method 'project()' requires payment class name being either "CapletPayment" or "FloorletPayment".`,
+          );
+      }
+      return this.#rate;
+    }
+  }
+
+  class CapletPayment extends CapFloorPayment {
+    constructor(obj) {
+      super(obj);
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Caplet";
       return res;
     }
   }
 
-  // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
+  class FloorletPayment extends CapFloorPayment {
+    constructor(obj) {
+      super(obj);
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Floorlet";
+      return res;
+    }
+  }
 
   library.NotionalPayment = NotionalPayment;
   library.FixedRatePayment = FixedRatePayment;
   library.FloatRatePayment = FloatRatePayment;
   library.CapFloorPayment = CapFloorPayment;
+  library.CapletPayment = CapletPayment;
+  library.FloorletPayment = FloorletPayment;
 
   library.payment_compare = function (a, b) {
     // sort by start date first while notional payments use date_value instead
@@ -3764,6 +3651,7 @@
     #dcc = "";
     #yffunc = null;
     #linked_curve = null;
+    #linked_surface = null;
     constructor(obj) {
       // fwd_curve
       this.#fwd_curve = library.string_or_empty(obj.fwd_curve);
@@ -3825,6 +3713,47 @@
 
       // amount converted to a rate with the index day count method
       return amount / yf;
+    }
+
+    link_surface(params_or_surface) {
+      if (params_or_surface && params_or_surface.get_surface_rate) {
+        this.#linked_surface = params_or_surface;
+        return;
+      }
+
+      if (params_or_surface instanceof library.Params) {
+        if (this.#surface)
+          this.#linked_surface = params_or_surface.get_surface(this.#surface);
+        return;
+      }
+
+      throw new Error(
+        `${this.constructor.name}: Try to link volatility surface with an invalid argument.`,
+      );
+    }
+
+    // volatility
+    /**
+     * @param {Date} start
+     * @param {Date} end
+     * @param {number} fwd
+     * @param {number} strike
+     * @returns {number} the volatility value
+     */
+    volatility(start, end, fwd, strike) {
+      const t_expiry = library.time_from_now(start);
+      const t_term = library.time_from_now(end) - t_expiry;
+
+      if (
+        !this.#linked_surface ||
+        typeof this.#linked_surface.get_rate !== "function"
+      ) {
+        throw new Error(
+          `${this.constructor.name}: No valid volatility surface linked, call link_surface first.`,
+        );
+      }
+
+      return this.#linked_surface.get_rate(t_expiry, t_term, fwd, strike);
     }
 
     // deps
@@ -7337,7 +7266,7 @@
     get_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
-        "get_curve: name must be nonempty string",
+        "get_surface: name must be nonempty string",
       );
       if (!(n in this.#surfaces))
         throw new Error(`Params: no such surface ${n}`);

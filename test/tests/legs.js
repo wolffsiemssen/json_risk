@@ -234,7 +234,7 @@ test.execute = function (TestFramework, JsonRisk) {
         type: "simple",
         fwd_curve: "forward",
         surface: "surface_zero_vola",
-      }
+      },
     };
   }
 
