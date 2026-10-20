@@ -136,7 +136,7 @@ test.execute = function (TestFramework, JsonRisk) {
       date_pmt: "2012/01/02",
       date_start: "2011/01/01",
       date_end: "2012/01/01",
-      index: "cap_index",
+      index: "index",
     };
     // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
@@ -158,7 +158,7 @@ test.execute = function (TestFramework, JsonRisk) {
       date_pmt: "2013/01/02",
       date_start: "2012/01/01",
       date_end: "2013/01/01",
-      index: "floor_index",
+      index: "index",
     };
     // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
@@ -180,7 +180,7 @@ test.execute = function (TestFramework, JsonRisk) {
       date_pmt: "2012/01/02",
       date_start: "2011/01/01",
       date_end: "2012/01/01",
-      index: "cap_index_zero_vola",
+      index: "index_zero_vola",
     };
     // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
@@ -202,7 +202,7 @@ test.execute = function (TestFramework, JsonRisk) {
       date_pmt: "2013/01/02",
       date_start: "2012/01/01",
       date_end: "2013/01/01",
-      index: "floor_index_zero_vola",
+      index: "index_zero_vola",
     };
     // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
@@ -228,27 +228,13 @@ test.execute = function (TestFramework, JsonRisk) {
       index: {
         type: "simple",
         fwd_curve: "forward",
-      },
-      cap_index: {
-        type: "simple",
-        fwd_curve: "forward",
         surface: "surface_abs",
       },
-      floor_index: {
-        type: "simple",
-        fwd_curve: "forward",
-        surface: "surface_abs",
-      },
-      cap_index_zero_vola: {
+      index_zero_vola: {
         type: "simple",
         fwd_curve: "forward",
         surface: "surface_zero_vola",
-      },
-      floor_index_zero_vola: {
-        type: "simple",
-        fwd_curve: "forward",
-        surface: "surface_zero_vola",
-      },
+      }
     };
   }
 
