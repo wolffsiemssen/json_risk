@@ -74,6 +74,8 @@
       for (const leg of this.legs) {
         if (leg.has_capitalization)
           throw new Error("Swap: Cannot have capitalizing rate payments");
+        if (leg.has_embedded_options)
+          throw new Error("Swap: Cannot have caplets or floorlets");
         const is_fix = leg.has_fixed_rate_payments;
         const is_float = leg.has_float_rate_payments;
         if (is_fix === true && is_float === false) this.#fixed_leg = leg;
