@@ -275,7 +275,7 @@
      * @param {string} [obj.index=""] named reference to an index of the payment.
      * @param {number} [obj.spread=0.0] fixed spread rate of the payment.
      * @param {string} [obj.dcc=""] day count convention of the payment.
-     * @param {boolean} [obj.calitalize=false] flag indicating if this payment capitalizes
+     * @param {boolean} [obj.capitalize=false] flag indicating if this payment capitalizes
      */
     constructor(obj) {
       super(obj);
