@@ -819,6 +819,12 @@
 
     value_impl(params) {
       const leg = this.legs[0];
+
+      library.nonempty_string_or_throw(
+        leg.disc_curve,
+        "CallableBond: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
+      );
+
       const disc_curve = params.get_curve(leg.disc_curve);
       const spread_curve =
         leg.spread_curve != "" ? params.get_curve(leg.spread_curve) : null;
@@ -983,7 +989,16 @@
     }
 
     value_impl(params, extras_not_used) {
+      library.nonempty_string_or_throw(
+        this.legs[0].disc_curve,
+        "CDS: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
+      );
       const dc = params.get_curve(this.legs[0].disc_curve);
+
+      library.nonempty_string_or_throw(
+        this.#survival_curve,
+        "CDS: no survival curve specified, make sure to populate 'survival_curve' on instrument level",
+      );
       const sc = params.get_curve(this.#survival_curve);
       const isda = new library.IsdaCdsModel(dc, sc);
 
@@ -1111,6 +1126,10 @@
     }
 
     value_impl(params, extras_not_used) {
+      library.nonempty_string_or_throw(
+        this.quote,
+        "Equity: no spot quote specified, make sure to populate 'quote' on instrument level",
+      );
       const quote = params.get_scalar(this.#quote);
       if ("" == this.#disc_curve) return quote.get_value();
       const spot_date = this.spot_date();
@@ -1200,8 +1219,19 @@
 
     value_impl(params, extras_not_used) {
       if (library.valuation_date >= this.#expiry) return 0.0;
+
+      library.nonempty_string_or_throw(
+        this.quote,
+        "EquityAmericanOption: no spot quote specified, make sure to populate 'quote' on instrument level",
+      );
+
       const quote = params.get_scalar(this.quote);
       const spot = quote.get_value();
+
+      library.nonempty_string_or_throw(
+        this.disc_curve,
+        "EquityAmericanOption: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
+      );
       const dc = params.get_curve(this.disc_curve);
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
@@ -1313,8 +1343,19 @@
 
     value_impl(params, extras_not_used) {
       if (library.valuation_date >= this.#expiry) return 0.0;
+
+      library.nonempty_string_or_throw(
+        this.quote,
+        "EquityForward: no spot quote specified, make sure to populate 'quote' on instrument level",
+      );
       const quote = params.get_scalar(this.quote);
+
+      library.nonempty_string_or_throw(
+        this.disc_curve,
+        "EquityForward: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
+      );
       const dc = params.get_curve(this.disc_curve);
+
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
@@ -1375,7 +1416,17 @@
 
     value_impl(params, extras_not_used) {
       if (library.valuation_date >= this.#expiry) return 0.0;
+
+      library.nonempty_string_or_throw(
+        this.quote,
+        "EquityFuture: no spot quote specified, make sure to populate 'quote' on instrument level",
+      );
       const quote = params.get_scalar(this.quote);
+
+      library.nonempty_string_or_throw(
+        this.disc_curve,
+        "EquityFuture: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
+      );
       const dc = params.get_curve(this.disc_curve);
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
 
@@ -1442,7 +1493,16 @@
 
     value_impl(params, extras_not_used) {
       if (library.valuation_date >= this.#expiry) return 0.0;
+      library.nonempty_string_or_throw(
+        this.quote,
+        "EquityOption: no spot quote specified, make sure to populate 'quote' on instrument level",
+      );
       const quote = params.get_scalar(this.quote);
+
+      library.nonempty_string_or_throw(
+        this.disc_curve,
+        "EquityOption: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
+      );
       const dc = params.get_curve(this.disc_curve);
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
@@ -1869,7 +1929,16 @@
     }
 
     value_impl(params) {
+      library.nonempty_string_or_throw(
+        this.fixed_leg.disc_curve,
+        "Swaption: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
+      );
       const disc_curve = params.get_curve(this.fixed_leg.disc_curve);
+
+      library.nonempty_string_or_throw(
+        this.#surface,
+        "Swaption: no surface specified, make sure to populate 'surface' on instrument level",
+      );
       const surface = params.get_surface(this.#surface);
 
       // fwd curve from first index that can be found
@@ -2731,6 +2800,10 @@
     }
 
     #discounter(params) {
+      library.nonempty_string_or_throw(
+        this.#disc_curve,
+        "LegInstrument: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
+      );
       const disc_curve = params.get_curve(this.#disc_curve);
       const spread_curve =
         this.#spread_curve !== "" ? params.get_curve(this.#spread_curve) : null;
@@ -3231,7 +3304,7 @@
      * @param {string} [obj.currency=""] currency of the payment.
      * @param {number} obj.rate fixed rate of the payment.
      * @param {string} [obj.dcc=""] day count convention of the payment.
-     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     * @param {boolean} [obj.capitalize=false] falg indicating if this payment capitalizes
      */
     constructor(obj) {
       super(obj);
@@ -3301,7 +3374,7 @@
      * @param {string} [obj.index=""] named reference to an index of the payment.
      * @param {number} [obj.spread=0.0] fixed spread rate of the payment.
      * @param {string} [obj.dcc=""] day count convention of the payment.
-     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     * @param {boolean} [obj.capitalize=false] falg indicating if this payment capitalizes
      */
     constructor(obj) {
       super(obj);
@@ -6942,7 +7015,7 @@
     has_curve(name) {
       const n = library.nonempty_string_or_throw(
         name,
-        "get_scalar: name must be nonempty string",
+        "has_curve: name must be nonempty string",
       );
       return n in this.#curves;
     }
@@ -6955,7 +7028,7 @@
     has_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
-        "get_scalar: name must be nonempty string",
+        "has_surface: name must be nonempty string",
       );
       return n in this.#surfaces;
     }
@@ -6996,7 +7069,7 @@
     get_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
-        "get_curve: name must be nonempty string",
+        "get_surface: name must be nonempty string",
       );
       if (!(n in this.#surfaces))
         throw new Error(`Params: no such surface ${n}`);
@@ -7788,46 +7861,15 @@
     if (!(name instanceof String || typeof name === "string"))
       throw new Error("add_calendar: invalid input.");
     if (!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
-    let n = dates.length,
-      i,
-      ht_size;
-    const holidays = [];
+    const holidays = new Set();
     //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
-    for (i = 0; i < n; i++) {
-      const dt = library.date_or_null(dates[i]);
+    for (let dt of dates) {
+      dt = library.date_or_null(dt);
       if (!dt) continue;
       if (is_holiday_default(dt)) continue;
-      holidays.push(dt);
+      holidays.add(dt.getTime());
     }
-    n = holidays.length;
-    /*
-                Determine hash table size, must be prime number greater than number of holidays.
-                According to one of euclid's formulae, i*i - i + 41 is prime when i<41.
-                Max size is 1601 which is way enough for all reasonable calendars.
-                
-        */
-    i = 1;
-    while (i < 41) {
-      ht_size = i * i - i + 41;
-      if (ht_size >= n / 10) break;
-      i++;
-    }
-
-    //populate hash table
-    const hash_table = new Array(ht_size);
-    for (i = 0; i < ht_size; i++) {
-      hash_table[i] = [];
-    }
-
-    for (i = 0; i < n; i++) {
-      const ht_index =
-        Math.floor(holidays[i].getTime() * one_over_dl) % ht_size;
-      hash_table[ht_index].push(holidays[i].getTime());
-    }
-
-    //tie new hash table to calendars list and return size for informational purposes
-    calendars[name.toLowerCase()] = hash_table;
-    return ht_size;
+    calendars[name.toLowerCase()] = holidays;
   };
 
   /**
@@ -7839,23 +7881,24 @@
    */
   library.is_holiday_factory = function (str) {
     const sl = str.toLowerCase();
+
     //builtin target calendar
     if (sl === "target") return is_holiday_target;
-    //generic hash lookup function for stored calendars
-    if (Array.isArray(calendars[sl])) {
-      const cal = calendars[sl];
+
+    //fallback
+    if (sl === "") return is_holiday_default;
+
+    //generic lookup for stored calendars
+    const cal = calendars[sl];
+    if (cal instanceof Set) {
       return function (dt) {
         if (is_holiday_default(dt)) return true;
-        const ms = dt.getTime();
-        const ht_index = Math.floor(ms * one_over_dl) % cal.length;
-        for (let i = 0; i < cal[ht_index].length; i++) {
-          if (ms === cal[ht_index][i]) return true;
-        }
+        if (cal.has(dt.getTime())) return true;
         return false;
       };
     }
-    //fallback
-    if (sl === "") return is_holiday_default;
+
+    // fail otherwise
     throw new Error("is_holiday_factory: calendar not found: " + sl);
   };
 
