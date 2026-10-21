@@ -260,6 +260,10 @@
     }
 
     #discounter(params) {
+      library.nonempty_string_or_throw(
+        this.#disc_curve,
+        "LegInstrument: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
+      );
       const disc_curve = params.get_curve(this.#disc_curve);
       const spread_curve =
         this.#spread_curve !== "" ? params.get_curve(this.#spread_curve) : null;

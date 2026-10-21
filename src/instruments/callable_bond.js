@@ -154,6 +154,12 @@
 
     value_impl(params) {
       const leg = this.legs[0];
+
+      library.nonempty_string_or_throw(
+        leg.disc_curve,
+        "CallableBond: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
+      );
+
       const disc_curve = params.get_curve(leg.disc_curve);
       const spread_curve =
         leg.spread_curve != "" ? params.get_curve(leg.spread_curve) : null;

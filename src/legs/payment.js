@@ -205,7 +205,7 @@
      * @param {string} [obj.currency=""] currency of the payment.
      * @param {number} obj.rate fixed rate of the payment.
      * @param {string} [obj.dcc=""] day count convention of the payment.
-     * @param {boolean} [obj.calitalize=false] falg indicating if this payment capitalizes
+     * @param {boolean} [obj.capitalize=false] falg indicating if this payment capitalizes
      */
     constructor(obj) {
       super(obj);

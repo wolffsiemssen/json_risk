@@ -91,7 +91,16 @@
     }
 
     value_impl(params) {
+      library.nonempty_string_or_throw(
+        this.fixed_leg.disc_curve,
+        "Swaption: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
+      );
       const disc_curve = params.get_curve(this.fixed_leg.disc_curve);
+
+      library.nonempty_string_or_throw(
+        this.#surface,
+        "Swaption: no surface specified, make sure to populate 'surface' on instrument level",
+      );
       const surface = params.get_surface(this.#surface);
 
       // fwd curve from first index that can be found

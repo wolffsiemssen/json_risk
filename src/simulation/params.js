@@ -237,7 +237,7 @@
     has_curve(name) {
       const n = library.nonempty_string_or_throw(
         name,
-        "get_scalar: name must be nonempty string",
+        "has_curve: name must be nonempty string",
       );
       return n in this.#curves;
     }
@@ -250,7 +250,7 @@
     has_surface(name) {
       const n = library.nonempty_string_or_throw(
         name,
-        "get_scalar: name must be nonempty string",
+        "has_surface: name must be nonempty string",
       );
       return n in this.#surfaces;
     }
