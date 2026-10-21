@@ -325,7 +325,8 @@
       return this.capitalize ? 0.0 : this.amount_interest;
     }
     get amount_interest() {
-      return this.#rate * this.notional * this.yf;
+      // allows rate override by CapFloorPayment class
+      return this.rate * this.notional * this.yf;
     }
     get amount_notional() {
       return this.capitalize ? -this.amount_interest : 0.0;
@@ -344,7 +345,7 @@
       res.is_fixed = this.#is_fixed;
       res.index = this.#index;
       res.spread = this.#spread;
-      res.rate = this.#rate;
+      res.rate = this.rate; // allow override by CapFloorPayment class
       res.reset_start = library.date_to_date_str(this.#reset_start);
       res.reset_end = library.date_to_date_str(this.#reset_end);
       return res;
@@ -388,10 +389,6 @@
     get volatility() {
       return this.#volatility;
     }
-    get amount() {
-      const res = this.#rate * this.notional * this.yf;
-      return res;
-    }
 
     toJSON() {
       const res = super.toJSON();
@@ -428,7 +425,7 @@
 
       switch (this.constructor.name) {
         case "CapletPayment":
-          this.#rate = bachelier.call_price(fwd_rate, this.strike);
+          this.#rate = -bachelier.call_price(fwd_rate, this.strike);
           break;
         case "FloorletPayment":
           this.#rate = bachelier.put_price(fwd_rate, this.strike);

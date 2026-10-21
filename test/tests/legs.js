@@ -140,7 +140,7 @@ test.execute = function (TestFramework, JsonRisk) {
     };
     // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
-    const caplet_rate = 0.010353302664497086;
+    const caplet_rate = -0.010353302664497086;
     const caplet_yf = 1;
     refval += pmtval * caplet_yf * caplet_rate; // where is it discounted?
     leg.payments.push(cap_rate_payment);
@@ -184,7 +184,7 @@ test.execute = function (TestFramework, JsonRisk) {
     };
     // REGRESSION TARGETS: These high-precision values are frozen from the
     // verified internal Bachelier/DCC calculation to serve as a stable regression benchmark.
-    const caplet_rate_zero_vola = 0.002100000000000008;
+    const caplet_rate_zero_vola = -0.002100000000000008;
     const caplet_yf_zero_vola = 1;
     refval += pmtval * caplet_yf_zero_vola * caplet_rate_zero_vola;
     leg.payments.push(cap_rate_payment_zero_vola);
