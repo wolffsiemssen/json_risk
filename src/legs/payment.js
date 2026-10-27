@@ -275,7 +275,7 @@
      * @param {string} [obj.index=""] named reference to an index of the payment.
      * @param {number} [obj.spread=0.0] fixed spread rate of the payment.
      * @param {string} [obj.dcc=""] day count convention of the payment.
-     * @param {boolean} [obj.capitalize=false] falg indicating if this payment capitalizes
+     * @param {boolean} [obj.capitalize=false] flag indicating if this payment capitalizes
      */
     constructor(obj) {
       super(obj);
@@ -325,10 +325,17 @@
       return this.capitalize ? 0.0 : this.amount_interest;
     }
     get amount_interest() {
-      return this.#rate * this.notional * this.yf;
+      // allows rate override by CapFloorPayment class
+      return this.rate * this.notional * this.yf;
     }
     get amount_notional() {
       return this.capitalize ? -this.amount_interest : 0.0;
+    }
+    get reset_start() {
+      return this.#reset_start;
+    }
+    get reset_end() {
+      return this.#reset_end;
     }
 
     // serialise
@@ -338,7 +345,7 @@
       res.is_fixed = this.#is_fixed;
       res.index = this.#index;
       res.spread = this.#spread;
-      res.rate = this.#rate;
+      res.rate = this.rate; // allow override by CapFloorPayment class
       res.reset_start = library.date_to_date_str(this.#reset_start);
       res.reset_end = library.date_to_date_str(this.#reset_end);
       return res;
@@ -362,12 +369,106 @@
     }
   }
 
-  // FloatRatePaymentCapFloor(index_name, is_fixed, spread, rate_cap, rate_floor)
+  class CapFloorPayment extends FloatRatePayment {
+    #strike = 0.0;
+    #rate = 0.0;
+    #volatility = 0.0;
 
-  // CapFloorPayment()
+    constructor(obj) {
+      super(obj);
+      this.#strike = library.number_or_null(obj.strike);
+    }
+
+    // getter functions
+    get rate() {
+      return this.#rate;
+    }
+    get strike() {
+      return this.#strike;
+    }
+    get volatility() {
+      return this.#volatility;
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.strike = this.#strike;
+      res.volatility = this.#volatility;
+      return res;
+    }
+
+    // project rate
+    project(indices) {
+      if (this.is_fixed) return this.rate;
+      if ("" === this.index)
+        throw new Error(`${this.constructor.name}: no index defined`);
+      const idx = indices[this.index];
+      if (undefined === idx)
+        throw new Error(
+          `${this.constructor.name}: index ${this.index} was not supplied`,
+        );
+      if (!(idx instanceof library.SimpleIndex))
+        throw new Error(
+          `${this.constructor.name}: invalid index ${this.index}`,
+        );
+      const raw_fwd_rate = idx.fwd_rate(this.reset_start, this.reset_end);
+      this.#volatility = idx.volatility(
+        this.reset_start,
+        this.reset_end,
+        raw_fwd_rate,
+        this.strike,
+      ); // we do not consider spread in the computation of volatility
+
+      const t_expiry = library.time_from_now(this.reset_start);
+      const bachelier = new library.BachelierModel(t_expiry, this.#volatility);
+      const fwd_rate = raw_fwd_rate + this.spread;
+
+      switch (this.constructor.name) {
+        case "CapletPayment":
+          this.#rate = -bachelier.call_price(fwd_rate, this.strike);
+          break;
+        case "FloorletPayment":
+          this.#rate = bachelier.put_price(fwd_rate, this.strike);
+          break;
+        default:
+          throw new Error(
+            `${this.constructor.name}: Method 'project()' requires payment class name being either "CapletPayment" or "FloorletPayment".`,
+          );
+      }
+      return this.#rate;
+    }
+  }
+
+  class CapletPayment extends CapFloorPayment {
+    constructor(obj) {
+      super(obj);
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Caplet";
+      return res;
+    }
+  }
+
+  class FloorletPayment extends CapFloorPayment {
+    constructor(obj) {
+      super(obj);
+    }
+
+    toJSON() {
+      const res = super.toJSON();
+      res.type = "Floorlet";
+      return res;
+    }
+  }
+
   library.NotionalPayment = NotionalPayment;
   library.FixedRatePayment = FixedRatePayment;
   library.FloatRatePayment = FloatRatePayment;
+  library.CapFloorPayment = CapFloorPayment;
+  library.CapletPayment = CapletPayment;
+  library.FloorletPayment = FloorletPayment;
 
   library.payment_compare = function (a, b) {
     // sort by start date first while notional payments use date_value instead
@@ -387,6 +488,8 @@
     // sort the remaining payments by their type
     const na = a.constructor.name;
     const nb = b.constructor.name;
+    if (na === "FloatRatePayment") return -1;
+    if (nb === "FloatRatePayment") return 1;
     return na < nb ? 1 : na > nb ? -1 : 0;
   };
 })(this.JsonRisk || module.exports);

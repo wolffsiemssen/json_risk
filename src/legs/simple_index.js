@@ -5,6 +5,7 @@
     #dcc = "";
     #yffunc = null;
     #linked_curve = null;
+    #linked_surface = null;
     constructor(obj) {
       // fwd_curve
       this.#fwd_curve = library.string_or_empty(obj.fwd_curve);
@@ -66,6 +67,47 @@
 
       // amount converted to a rate with the index day count method
       return amount / yf;
+    }
+
+    link_surface(params_or_surface) {
+      if (params_or_surface && params_or_surface.get_surface_rate) {
+        this.#linked_surface = params_or_surface;
+        return;
+      }
+
+      if (params_or_surface instanceof library.Params) {
+        if (this.#surface)
+          this.#linked_surface = params_or_surface.get_surface(this.#surface);
+        return;
+      }
+
+      throw new Error(
+        `${this.constructor.name}: Try to link volatility surface with an invalid argument.`,
+      );
+    }
+
+    // volatility
+    /**
+     * @param {Date} start
+     * @param {Date} end
+     * @param {number} fwd
+     * @param {number} strike
+     * @returns {number} the volatility value
+     */
+    volatility(start, end, fwd, strike) {
+      const t_expiry = library.time_from_now(start);
+      const t_term = library.time_from_now(end) - t_expiry;
+
+      if (
+        !this.#linked_surface ||
+        typeof this.#linked_surface.get_rate !== "function"
+      ) {
+        throw new Error(
+          `${this.constructor.name}: No valid volatility surface linked, call link_surface first.`,
+        );
+      }
+
+      return this.#linked_surface.get_rate(t_expiry, t_term, fwd, strike);
     }
 
     // deps

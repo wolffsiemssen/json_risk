@@ -1,6 +1,6 @@
-const TEST_NAME = "Equity Option Surface Scenarios";
+TEST_NAME = "Equity Option Surface Scenarios";
 
-const test = {
+test = {
   name: TEST_NAME,
 };
 

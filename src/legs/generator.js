@@ -279,7 +279,7 @@
     const dcc = specs.dcc;
     const date_roll = specs.roll_date;
     const tenor = specs.tenor;
-    const res = {
+    const pmt = {
       notional,
       date_start,
       date_end,
@@ -289,37 +289,45 @@
       date_value,
       dcc,
     };
-    if (current_conditions.interest_capitalization) res.capitalize = true;
+    if (current_conditions.interest_capitalization) pmt.capitalize = true;
     if (!specs.is_float) {
       // fixed payment
-      res.type = "fixed";
-      res.rate = current_conditions.fixed_rate;
-      return res;
+      pmt.type = "fixed";
+      pmt.rate = current_conditions.fixed_rate;
+      return [pmt];
     }
     // float payment
+    pmt.type = "float";
     const { float_spread, cap_rate, floor_rate } = current_conditions;
-    res.reset_start = reset_start;
-    res.reset_end = reset_end;
-    res.spread = float_spread;
-    res.index = "index";
+    pmt.reset_start = reset_start;
+    pmt.reset_end = reset_end;
+    pmt.spread = float_spread;
+    pmt.index = "index";
 
     // fixing
     if (reset_start <= library.valuation_date) {
-      res.is_fixed = true;
-      res.rate = specs.float_current_rate + float_spread;
+      pmt.is_fixed = true;
+      pmt.rate = specs.float_current_rate + float_spread;
     } else {
-      res.is_fixed = false;
+      pmt.is_fixed = false;
     }
 
+    const res = [pmt];
     // cap and floor
-    if (cap_rate === Infinity && floor_rate === -Infinity) {
-      res.type = "float";
-    } else {
-      res.type = "float_cap_floor";
-      res.cap_rate = cap_rate;
-      res.floor_rate = floor_rate;
+    if (cap_rate < Infinity) {
+      // copy payment object and add caplet properties
+      const caplet = Object.assign({}, pmt);
+      caplet.type = "caplet";
+      caplet.strike = cap_rate;
+      res.push(caplet);
     }
-
+    if (floor_rate > -Infinity) {
+      // copy payment object and add floorlet properties
+      const floorlet = Object.assign({}, pmt);
+      floorlet.type = "floorlet";
+      floorlet.strike = floor_rate;
+      res.push(floorlet);
+    }
     return res;
   }
 
@@ -365,9 +373,9 @@
       const date_next_fixing = fixing_schedule[0];
       const current_conditions = conditions[0];
 
-      // make interest rate payment
+      // make interest rate payment and add optional cap, floor
       cashflows.push(
-        pay_interest(
+        ...pay_interest(
           notional,
           date_start,
           date_end,

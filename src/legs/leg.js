@@ -155,7 +155,7 @@
      */
     get has_float_rate_payments() {
       for (const p of this.#payments) {
-        if (p instanceof library.FloatRatePayment) return true;
+        if (p.constructor === library.FloatRatePayment) return true;
       }
       return false;
     }
@@ -165,7 +165,9 @@
      * @type {boolean}
      */
     get has_embedded_options() {
-      // not supported yet
+      for (const p of this.#payments) {
+        if (p instanceof library.CapFloorPayment) return true;
+      }
       return false;
     }
 
@@ -293,6 +295,7 @@
     value(params, acquire_date) {
       for (const idx of Object.values(this.#indices)) {
         idx.link_curve(params);
+        idx.link_surface(params);
       }
       for (const p of this.#payments) {
         // make projection for unfixed payments

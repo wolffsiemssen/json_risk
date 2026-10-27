@@ -37,8 +37,10 @@
         throw new Error("Bond: must have exactly one leg");
 
       const leg = this.legs[0];
-      if (leg.has_float_rate_payments)
-        throw new Error("Bond: cannot have float rate payments");
+      if (leg.has_float_rate_payments || leg.has_embedded_options)
+        throw new Error(
+          "Bond: cannot have float rate payments, caplets or floorlets",
+        );
       if (false === leg.has_notional_payments)
         throw new Error("Bond: must have notional payments");
     }
