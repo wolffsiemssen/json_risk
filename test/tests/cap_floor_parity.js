@@ -96,7 +96,7 @@ test.execute = function (TestFramework, JsonRisk) {
     const real_notional = caplet.notional;
 
     // --- PUT-CALL PARITY EQUATION ---
-    const call_minus_put = caplet.amount - floorlet.amount;
+    const call_minus_put = -caplet.amount - floorlet.amount; // caplet is a SHORT call
 
     const effective_fwd = real_fwd_rate + scenario.spread;
     const forward_minus_strike =

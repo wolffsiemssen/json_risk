@@ -488,6 +488,8 @@
     // sort the remaining payments by their type
     const na = a.constructor.name;
     const nb = b.constructor.name;
+    if (na === "FloatRatePayment") return -1;
+    if (nb === "FloatRatePayment") return 1;
     return na < nb ? 1 : na > nb ? -1 : 0;
   };
 })(this.JsonRisk || module.exports);

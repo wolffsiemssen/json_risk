@@ -84,7 +84,7 @@ test.execute = function (TestFramework, JsonRisk) {
     // the expected rate for vola = 0 (pure intrinsic rate value)
     let expected_rate = 0.0;
     if (scenario.type === "Caplet") {
-      expected_rate = effective_fwd > strike ? effective_fwd - strike : 0.0;
+      expected_rate = effective_fwd > strike ? -(effective_fwd - strike) : 0.0;
     } else {
       expected_rate = strike > effective_fwd ? strike - effective_fwd : 0.0;
     }
