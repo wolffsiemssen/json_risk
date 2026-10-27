@@ -55,6 +55,7 @@ JSON Risk supports the instrument types below:
 - Fixed income instruments
   - Fixed rate bonds
   - Floating rate bonds
+  - Cap and floor rate bonds
   - Interest rate swaps
   - Bespoke leg instruments
 - FX instruments
@@ -89,7 +90,7 @@ Pricing of complex interest rate derivatives is implemented with a Linear Gauss 
 - explicit initial and final stubs
 - completely independent generation of
   - interest rate schedule
-  - fixing schedule for floating rate instruments
+  - fixing schedule for floating and cap/floor rate instruments
   - repayment schedule for amortizing instruments
 
 ### Day count conventions

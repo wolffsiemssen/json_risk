@@ -13,6 +13,7 @@ JSON Risk supports the instrument types below:
 - Fixed income instruments
   - Fixed rate bonds
   - Floating rate bonds
+  - Caps and Floors
   - Interest rate swaps
   - Bespoke leg instruments
 - FX instruments
@@ -41,6 +42,7 @@ Instruments are created from a JSON instrument definition either with their cons
 |LegInstrument|LegInstrument|A generic instrument with legs|
 |Bond|LegInstrument|A bond, i.e. a leg instrument with only fixed payments|
 |Floater|LegInstrument|A floating rate note, i.e. a leg instrument with only notional and floating rate payments|
+|CapFloor|LegInstrument|A cap or floor note, i.e. a leg instrument with only notional and caplet or floorlet payments|
 |Swap|LegInstrument|An interest rate swap, i.e., a leg instrument with two legs with certain limitations and features|
 |Swaption|LegInstrument|A plain vanilla swaption|
 |CallableBond|LegInstrument|A bond with single or multiple exercise rights|
@@ -296,6 +298,7 @@ Coupons and payments are further specified by the terms and conditions below:
  - Day count convention (field `dcc`)
  - Fixed rate for bonds (field `fixed_rate`, supports rates varying over time)
  - Spread for floaters ( field `float_spread`, supports spreads varying over time)
+ - Spread and strike for caps and floors, which are subclasses of floaters ( field `float_spread`, supports spreads varying over time, `cap_rate` and `floor_rate`)
  - Fixed or adjusted accrual periods (field `adjust_accrual_periods`)
  
  ### Parametrisation

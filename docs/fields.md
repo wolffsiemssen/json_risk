@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------
 ## adjust\_accrual\_periods `Boolean`
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 If `true`, interest is calculated on adjusted coupon periods, i.e., from start and end of each accrual period _after_ adjustment according to `bdc` and `calendar` attributes. Refer cash flow generation for details.
 
@@ -13,7 +13,7 @@ If `true`, interest is calculated on adjusted coupon periods, i.e., from start a
 ### Domain
 JSON Risk recognizes `unadjusted`, `following`, `modified following`, `preceding`. For convenience, JSON Risk interprets only the first letter and ignores case. For example, for `m` and `M`, JSON Risk assumes the modified folling business day convention.
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 This field determines how dates generated within schedule generation are adjusted, dependent on the field `calendar`. Refer to cash flow generation for details.
 
@@ -23,7 +23,7 @@ This field determines how dates generated within schedule generation are adjuste
 ### Domain
 Contains the string `target`, case insensitive, or the identifier of any calendar previously registered using the `library.add_calendar` functionality.
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 Reference to the calendar used to adjust dates generated within cash flow generation.
 
@@ -46,7 +46,7 @@ This field has no meaning in the current implementation but is reserved for repr
 ### Domain
 Any array of dates or date strings representing the dates when conditions change.
 ### Instruments
-Relevant for many cash flow generating instruments, i.e., `bond`, `floater`, `callable_bond`.
+Relevant for many cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `callable_bond`.
 ### Meaning
 Specified the dates when conditions, e.g., `fixed_rate`, `float_spread` or `interest_capitalization`, change within a cashflow stream. Refer to cash flow generation for details.
 
@@ -73,7 +73,7 @@ JSON Risk supports the day count conventions
 
 JSON Risk is case insensitive when parsing day count conventions on instrument data. Instead of "act", is is ok to specify "actual" or just "a". Specific sub-conventions above may be specified with or without brackets, e.g., act/act ICMA and act/act (ICMA) refer to the same convention.
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`, `cds`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`, `cds`
 ### Meaning
 Determines how interest amounts are calculated for each accrual period generated within schedule generation.
 
@@ -82,12 +82,12 @@ Determines how interest amounts are calculated for each accrual period generated
 ### Domain
 Any string representing any curve previously registered in the parameters object for vector pricing.
 ### Meaning
-The curve referenced by this field is applied for discounting cash flows. For the instruments `bond`, `floater` and `callable_bond`, discounting is additionally affected by `spread_curve` as well as `residual_spread`.
+The curve referenced by this field is applied for discounting cash flows. For the instruments `bond`, `floater`, `capfloor` and `callable_bond`, discounting is additionally affected by `spread_curve` as well as `residual_spread`.
 
 ------------------------------------------------------------------------------
 ## effective\_date `Date`
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 Start date for schedule generation.
 
@@ -108,7 +108,7 @@ If `true`, the value method returns only the embedded option price. Defaults to 
 ------------------------------------------------------------------------------
 ## first\_date `Date`
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 Used fo specifying an explicit initial stub for the interest schedule. Marks the end date of the initial interest rate period within schedule generation.
 
@@ -124,36 +124,36 @@ For `equity_american_option` instruments, this ist the first date the option can
 ------------------------------------------------------------------------------
 ## fixed\_rate `Number` or `Number vector`
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
-Represents the fixed rate paid on a `bond` instrument, a `callable_bond` instrument or the fixed leg of a `swap` or `swaption` instrument. For a `floater` instrument, this must be left empty, otherwise the floater is treated as a fixed rate bond.
+Represents the fixed rate paid on a `bond` instrument, a `callable_bond` instrument or the fixed leg of a `swap` or `swaption` instrument. For a `floater` or a `capfloor` instrument, this must be left empty, otherwise the floater or capfloor is treated as a fixed rate bond.
 When the field `conditions_valid_until` is populated with a vector of dates, `fixed_rate` may contain a vector of numbers of the same length and each entry in `fixed_rate` is considered the valid interest rate until the corresponding entry in `conditions_valid_until`.
 
 ------------------------------------------------------------------------------
 ## fixing\_first\_date `Date`
 ### Instruments
-Relevant for all instruments of type `floater`.
+Relevant for all instruments of type `floater` (this includes `capfloor`).
 ### Meaning
 Used fo specifying an explicit initial stub for the fixing schedule. Marks the end date of the initial fixing period within schedule generation.
 
 ------------------------------------------------------------------------------
 ## fixing\_next\_to\_last\_date `Date`
 ### Instruments
-Relevant for all instruments of type `floater`.
+Relevant for all instruments of type `floater` (this includes `capfloor`).
 ### Meaning
 Used fo specifying an explicit final stub for the fixing schedule. Marks the start date of the final fixing period within schedule generation.
 
 ------------------------------------------------------------------------------
 ## fixing\_stub\_end `Boolean`
 ### Instruments
-Relevant for all instruments of type `floater`.
+Relevant for all instruments of type `floater` (this includes `capfloor`).
 ### Meaning
 Used fo specifying an implicit final stub for the fixing schedule. A value of `true` causes the fixing schedule to be rolled out forward within schedule generation. Ignored when `fixing_next_to_last_date` is populated.
 
 ------------------------------------------------------------------------------
 ## fixing\_stub\_long `Boolean`
 ### Instruments
-Relevant for all instruments of type `floater`.
+Relevant for all instruments of type `floater` (this includes `capfloor`).
 ### Meaning
 If start and end dates within fixing schedule generation are not aligned with `fixing_tenor`, a value of `true` specifies a long stub to be generated instead of a short stub.
 
@@ -169,7 +169,7 @@ Relevant for the floating rate leg only. This field determines how dates generat
 ------------------------------------------------------------------------------
 ## float\_current\_rate `Number`
 ### Instruments
-Relevant for `floater`, `swap` and `swaption`
+Relevant for `floater`, `capfloor`, `swap` and `swaption`
 ### Meaning
 This field specifies the interest rate to be used on floating rate legs for fixing periods starting in the past.
 
@@ -185,7 +185,7 @@ Relevant for the floating rate leg only. Determines how interest amounts are cal
 ------------------------------------------------------------------------------
 ## float\_spread `Number` or `Number vector`
 ### Instruments
-Relevant for `floater`, `swap` and `swaption`
+Relevant for `floater`, `capfloor`, `swap` and `swaption`
 ### Meaning
 Relevant for the floating rate leg only. Represents a spread over the floating rate. 
 
@@ -214,7 +214,7 @@ Any string representing any curve previously registered in the parameters object
 ------------------------------------------------------------------------------
 ## interest\_capitalization `Boolean` or `Boolean vector`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 If true, a notional payment is generated at each interest payment date within cash flow generation. The amount of the generated notional payment is calculated by changing the sign of the interest payment.
 
@@ -230,7 +230,7 @@ A value of `true` marks a `swap` instrument as a payer swap and marks a `swaptio
 ------------------------------------------------------------------------------
 ## linear\_amortization `Boolean`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 If `true`, the field `repay_amount` is overriden and the repayment amount is calculated by dividing the `notional` by the number of repayments implied by the repayment schedule.
 
@@ -241,7 +241,7 @@ This field has no meaning in the current implementation but is reserved for repr
 ------------------------------------------------------------------------------
 ## maturity `Date`
 ### Instruments
-Relevant for all cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`, `fxterm`
+Relevant for all cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`, `fxterm`
 ### Meaning
 The date when all remaining notionals are paid back. In case of `fxterm` instruments, this is the date when `notional` is paid, as opposed to `notional_2` which is paid at `maturity_2`.
 
@@ -257,14 +257,14 @@ The date when `notional_2` is paid, as opposed to `notional` which is paid at `m
 ------------------------------------------------------------------------------
 ## next\_to\_last\_date `Date`
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 Used fo specifying an explicit final stub for the interest schedule. Marks the start date of the final interest accrual period within schedule generation.
 
 ------------------------------------------------------------------------------
 ## notional `Number`
 ### Instruments
-Relevant for all cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`, `fxterm`
+Relevant for all cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`, `fxterm`
 ### Meaning
 The notional of an instrument. In case of amortizing instruments, this is the initial notional. In case of `fxterm` instruments, this is the near leg notional, i.e., the notional paid at `maturity` as opposed to `maturity_2`
 
@@ -287,7 +287,7 @@ For all instruments, specifies the quantity of the position. Present values calc
 ### Domain
 Zero, positive and negative valued accepted.
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 The amount repaid at each date implied by the repayment schedule. If `notional` is positive, a positive value marks cash inflows. If `notional` is negative, a positive value marks cash outflows. A zero value switches off amortization.
 
@@ -296,28 +296,28 @@ When the field `conditions_valid_until` is populated with a vector of dates, `re
 ------------------------------------------------------------------------------
 ## repay\_first\_date `Date`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 Used fo specifying an explicit initial stub for the repayment schedule. Marks first date when repayments occur within schedule generation.
 
 ------------------------------------------------------------------------------
 ## repay\_next\_to\_last\_date `Date`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 Used fo specifying an explicit final stub for the repayment schedule. Marks the last date before maturity where repayment occors within schedule generation.
 
 ------------------------------------------------------------------------------
 ## repay\_stub\_end `Boolean`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 Used fo specifying an implicit final stub for the repayment schedule. A value of `true` causes the repayment schedule to be rolled out forward within schedule generation. Ignored when `repay_next_to_last_date` is populated.
 
 ------------------------------------------------------------------------------
 ## repay\_stub\_long `Boolean`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 If start and end dates within repayment schedule generation are not aligned with `repay_tenor`, a value of `true` specifies a long stub to be generated instead of a short stub.
 
@@ -326,14 +326,14 @@ If start and end dates within repayment schedule generation are not aligned with
 ### Domain
 Must be zero or positive.
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 A value of zero indicates a bullet instrument, i.e., all notional is paid back at maturity. Any other positive value is used within repayment schedule generation for rolling out monthly dates.
 
 ------------------------------------------------------------------------------
 ## residual\_spread `Number`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Meaning
 Within discounted cash flow valuation, this number is interpreted as an additional spread with day count convention `act/365` and annual compounding that is added on top of the discount curve and the spread curve.
 
@@ -349,7 +349,7 @@ Within discounted cash flow valuation, this specifies a number of business days 
 ------------------------------------------------------------------------------
 ## spread\_curve `String`
 ### Instruments
-Relevant for `bond`, `floater`, `callable_bond`
+Relevant for `bond`, `floater`, `capfloor`, `callable_bond`
 ### Domain
 Any string representing any curve previously registered in the parameters object for vector pricing.
 ### Meaning
@@ -358,14 +358,14 @@ The curve referenced by this field is applied for discounting cash flows, in add
 ------------------------------------------------------------------------------
 ## stub\_end `Boolean`
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 Used fo specifying an implicit final stub for the interest schedule. A value of `true` causes the interest schedule to be rolled out forward within schedule generation. Ignored when `next_to_last_date` is populated.
 
 ------------------------------------------------------------------------------
 ## stub\_long `Boolean`
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 If start and end dates within interest schedule generation are not aligned with `tenor`, a value of `true` specifies a long stub to be generated instead of a short stub.
 
@@ -383,7 +383,7 @@ Bachelier volatility curve object used for valuation.
 ### Domain
 Must be zero or positive.
 ### Instruments
-Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `swap`, `swaption`, `callable_bond`
+Relevant for most cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `swap`, `swaption`, `callable_bond`
 ### Meaning
 A value of zero indicates interest is paid at maturity. Any other positive value is used within schedule generation for rolling out monthly dates.
 
@@ -397,7 +397,8 @@ The `make_instrument` function and the `simulation` and `vector_pricer` function
 |type   |class   |category/superclass|
 |-------|--------|--------------------|
 |`bond` |Bond    |LegInstrument       |
-|`floater`|Floater  |LegInstrument       |
+|`floater`|Floater  |LegInstrument    |
+|`capfloor`|CapFloor  |LegInstrument  |
 |`swap` |Swap    |LegInstrument       |
 |`swaption`|Swaption|LegInstrument    |
 |`fxterm`|FxTerm|LegInstrument        |
