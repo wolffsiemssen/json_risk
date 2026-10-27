@@ -52,9 +52,16 @@ See the [documentation](https://www.jsonrisk.de/01_Documentation.html) for detai
 
 JSON Risk supports the instrument types below:
  
+- Equities
+  - Stock
+  - Stock/Index Future
+  - Stock/Index Forward
+  - European Options
+  - American Options
 - Fixed income instruments
   - Fixed rate bonds
   - Floating rate bonds
+  - Caps and Floors
   - Interest rate swaps
   - Bespoke leg instruments
 - FX instruments
@@ -64,12 +71,6 @@ JSON Risk supports the instrument types below:
 - Callable fixed income instruments
   - Plain vanilla swaptions
   - Single callable and multicallable bond
-- Equities
-  - Stock
-  - Stock/Index Future
-  - Stock/Index Forward
-  - European Options
-  - American Options
 - Credit
   - Credit default swaps
   
@@ -89,7 +90,7 @@ Pricing of complex interest rate derivatives is implemented with a Linear Gauss 
 - explicit initial and final stubs
 - completely independent generation of
   - interest rate schedule
-  - fixing schedule for floating rate instruments
+  - fixing schedule for floating and cap/floor rate instruments
   - repayment schedule for amortizing instruments
 
 ### Day count conventions
