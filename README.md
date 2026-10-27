@@ -52,10 +52,16 @@ See the [documentation](https://www.jsonrisk.de/01_Documentation.html) for detai
 
 JSON Risk supports the instrument types below:
  
+- Equities
+  - Stock
+  - Stock/Index Future
+  - Stock/Index Forward
+  - European Options
+  - American Options
 - Fixed income instruments
   - Fixed rate bonds
   - Floating rate bonds
-  - Cap and floor rate bonds
+  - Caps and Floors
   - Interest rate swaps
   - Bespoke leg instruments
 - FX instruments
@@ -65,12 +71,6 @@ JSON Risk supports the instrument types below:
 - Callable fixed income instruments
   - Plain vanilla swaptions
   - Single callable and multicallable bond
-- Equities
-  - Stock
-  - Stock/Index Future
-  - Stock/Index Forward
-  - European Options
-  - American Options
 - Credit
   - Credit default swaps
   

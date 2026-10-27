@@ -39,7 +39,12 @@ If `call_tenor`is not zero, the bond is callable on the date represented by `fir
 
 ------------------------------------------------------------------------------
 ## cap\_rate
-This field has no meaning in the current implementation but is reserved for representing a cap rate or cap rate schedule on the interest rate of floating rate instruments.
+### Domain
+Number or number vector
+### Instruments
+Relevant for `floater` and `capfloor` instruments
+### Meaning
+Generates caplets on interest rate legs
 
 ------------------------------------------------------------------------------
 ## conditions\_valid\_until `Date vector`
@@ -48,7 +53,7 @@ Any array of dates or date strings representing the dates when conditions change
 ### Instruments
 Relevant for many cash flow generating instruments, i.e., `bond`, `floater`, `capfloor`, `callable_bond`.
 ### Meaning
-Specified the dates when conditions, e.g., `fixed_rate`, `float_spread` or `interest_capitalization`, change within a cashflow stream. Refer to cash flow generation for details.
+Specified the dates when conditions, e.g., `fixed_rate`, `float_spread`, `cap_rate`, `floor_rate` or `interest_capitalization`, change within a cashflow stream. Refer to cash flow generation for details.
 
 ------------------------------------------------------------------------------
 ## currency `String`
@@ -139,21 +144,21 @@ Used fo specifying an explicit initial stub for the fixing schedule. Marks the e
 ------------------------------------------------------------------------------
 ## fixing\_next\_to\_last\_date `Date`
 ### Instruments
-Relevant for all instruments of type `floater` (this includes `capfloor`).
+Relevant for all instruments of type `floater`, `capfloor`.
 ### Meaning
 Used fo specifying an explicit final stub for the fixing schedule. Marks the start date of the final fixing period within schedule generation.
 
 ------------------------------------------------------------------------------
 ## fixing\_stub\_end `Boolean`
 ### Instruments
-Relevant for all instruments of type `floater` (this includes `capfloor`).
+Relevant for all instruments of type `floater`, `capfloor`.
 ### Meaning
 Used fo specifying an implicit final stub for the fixing schedule. A value of `true` causes the fixing schedule to be rolled out forward within schedule generation. Ignored when `fixing_next_to_last_date` is populated.
 
 ------------------------------------------------------------------------------
 ## fixing\_stub\_long `Boolean`
 ### Instruments
-Relevant for all instruments of type `floater` (this includes `capfloor`).
+Relevant for all instruments of type `floater`, `capfloor`.
 ### Meaning
 If start and end dates within fixing schedule generation are not aligned with `fixing_tenor`, a value of `true` specifies a long stub to be generated instead of a short stub.
 
@@ -202,7 +207,12 @@ Only relevant for the floating rate leg. A value of zero indicates interest is p
 
 ------------------------------------------------------------------------------
 ## floor\_rate `Number`
-This field has no meaning in the current implementation but is reserved for representing a cap rate or cap rate schedule on the interest rate of floating rate instruments.
+### Domain
+Number or number vector
+### Instruments
+Relevant for `floater` and `capfloor` instruments
+### Meaning
+Generates floorlets on interest rate legs
 
 ------------------------------------------------------------------------------
 ## fwd\_curve `String`
@@ -372,7 +382,7 @@ If start and end dates within interest schedule generation are not aligned with 
 ------------------------------------------------------------------------------
 ## surface `String`
 ### Instruments
-Relevant for `swaption` and `callable_bond` instruments.
+Relevant for `swaption`, `floater`, `capfloor` and `callable_bond` instruments.
 ### Domain
 Any string representing any surface previously registered in the parameters object for vector pricing.
 ### Meaning
