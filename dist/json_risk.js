@@ -815,6 +815,11 @@ JsonRisk.nonempty_string_or_throw = function (input, message) {
       const disc_curve = params.get_curve(leg.disc_curve);
       const spread_curve =
         leg.spread_curve != "" ? params.get_curve(leg.spread_curve) : null;
+
+      JsonRisk.nonempty_string_or_throw(
+        this.#fwd_curve,
+        "CallableBond: no forward curve specified, make sure to populate 'fwd_curve' on instrument level",
+      );
       const fwd_curve = params.get_curve(this.#fwd_curve);
 
       //get basket swaptions for all future call dates
@@ -831,6 +836,11 @@ JsonRisk.nonempty_string_or_throw = function (input, message) {
 
       if (null == this.#hull_white_volatility) {
         //calibrate lgm model - returns xi for non-expired swaptions only
+        JsonRisk.nonempty_string_or_throw(
+          this.#surface,
+          "CallableBond: no volatility surface specified, make sure to populate 'surface' on instrument level",
+        );
+
         const surface = params.get_surface(this.#surface);
 
         lgm.calibrate(basket, disc_curve, fwd_curve, surface);
@@ -875,8 +885,8 @@ JsonRisk.nonempty_string_or_throw = function (input, message) {
 
     add_deps_impl(deps) {
       this.legs[0].add_deps(deps);
-      deps.add_curve(this.#fwd_curve);
-      deps.add_surface(this.#surface);
+      if ("" != this.#fwd_curve) deps.add_curve(this.#fwd_curve);
+      if ("" != this.#surface) deps.add_surface(this.#surface);
     }
   }
 
