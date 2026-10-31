@@ -1,4 +1,4 @@
-(function (library) {
+{
   class SimpleIndex {
     #fwd_curve = "";
     #surface = "";
@@ -8,14 +8,14 @@
     #linked_surface = null;
     constructor(obj) {
       // fwd_curve
-      this.#fwd_curve = library.string_or_empty(obj.fwd_curve);
+      this.#fwd_curve = JsonRisk.string_or_empty(obj.fwd_curve);
 
       // surface
-      this.#surface = library.string_or_empty(obj.surface);
+      this.#surface = JsonRisk.string_or_empty(obj.surface);
 
       // dcc and year fraction
-      this.#dcc = library.string_or_empty(obj.dcc);
-      this.#yffunc = library.year_fraction_factory(this.#dcc);
+      this.#dcc = JsonRisk.string_or_empty(obj.dcc);
+      this.#yffunc = JsonRisk.year_fraction_factory(this.#dcc);
     }
 
     // getter functions
@@ -33,11 +33,11 @@
 
     // link curve
     link_curve(params_or_curve) {
-      if (params_or_curve instanceof library.Curve) {
+      if (params_or_curve instanceof JsonRisk.Curve) {
         this.#linked_curve = params_or_curve;
         return;
       }
-      if (params_or_curve instanceof library.Params) {
+      if (params_or_curve instanceof JsonRisk.Params) {
         this.#linked_curve = params_or_curve.get_curve(this.#fwd_curve);
         return;
       }
@@ -48,12 +48,12 @@
 
     // forward rate
     fwd_rate(start, end) {
-      if (start <= library.valuation_date)
+      if (start <= JsonRisk.valuation_date)
         throw new Error("SimpleIndex: Cannot project past fixings");
-      const tstart = library.time_from_now(start);
-      const tend = library.time_from_now(end);
+      const tstart = JsonRisk.time_from_now(start);
+      const tend = JsonRisk.time_from_now(end);
 
-      if (!(this.#linked_curve instanceof library.Curve))
+      if (!(this.#linked_curve instanceof JsonRisk.Curve))
         throw new Error(
           "SimpleIndex: No curve linked, call link_curve before calling fwd_rate",
         );
@@ -75,7 +75,7 @@
         return;
       }
 
-      if (params_or_surface instanceof library.Params) {
+      if (params_or_surface instanceof JsonRisk.Params) {
         if (this.#surface)
           this.#linked_surface = params_or_surface.get_surface(this.#surface);
         return;
@@ -95,8 +95,8 @@
      * @returns {number} the volatility value
      */
     volatility(start, end, fwd, strike) {
-      const t_expiry = library.time_from_now(start);
-      const t_term = library.time_from_now(end) - t_expiry;
+      const t_expiry = JsonRisk.time_from_now(start);
+      const t_term = JsonRisk.time_from_now(end) - t_expiry;
 
       if (
         !this.#linked_surface ||
@@ -126,5 +126,5 @@
     }
   }
 
-  library.SimpleIndex = SimpleIndex;
-})(this.JsonRisk || module.exports);
+  JsonRisk.SimpleIndex = SimpleIndex;
+}

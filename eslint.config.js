@@ -6,6 +6,7 @@ module.exports = [
     languageOptions: {
       globals: {
         module: "writable",
+        JsonRisk: "writable",
       },
     },
     rules: {

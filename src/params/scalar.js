@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a scalar
    * @memberof JsonRisk
    * @extends Simulatable
    */
-  class Scalar extends library.Simulatable {
+  class Scalar extends JsonRisk.Simulatable {
     #value = null;
     #scenario_value = null;
     /**
@@ -14,7 +14,7 @@
      */
     constructor(obj) {
       super(obj);
-      this.#value = library.number_or_null(obj.value);
+      this.#value = JsonRisk.number_or_null(obj.value);
       this.#scenario_value = this.#value;
     }
 
@@ -47,5 +47,5 @@
     }
   }
 
-  library.Scalar = Scalar;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Scalar = Scalar;
+}

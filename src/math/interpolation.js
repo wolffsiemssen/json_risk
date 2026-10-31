@@ -1,6 +1,4 @@
-(function (library) {
-  "use strict";
-
+{
   const find_index = function (x, s, guess = 0) {
     let index = guess;
     // find index such that x[index] <= s <= x[index+1]
@@ -13,7 +11,7 @@
     return index;
   };
 
-  library.find_index = find_index;
+  JsonRisk.find_index = find_index;
 
   const copy_and_check_arrays = function (x, y) {
     const n = x.length;
@@ -40,7 +38,7 @@
     return [x_, y_];
   };
 
-  library.linear_interpolation = function (x, y) {
+  JsonRisk.linear_interpolation = function (x, y) {
     // function that makes no more checks and copies
     if (1 === x.length) {
       const y0 = y[0];
@@ -58,7 +56,7 @@
     };
   };
 
-  library.linear_interpolation_equidistant = function (x, y) {
+  JsonRisk.linear_interpolation_equidistant = function (x, y) {
     // function that makes no more checks and copies, optimized for equidistant x
     if (1 === x.length) {
       const y0 = y[0];
@@ -80,12 +78,12 @@
     };
   };
 
-  library.linear_interpolation_factory = function (x, y) {
+  JsonRisk.linear_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
-    return library.linear_interpolation(x_, y_);
+    return JsonRisk.linear_interpolation(x_, y_);
   };
 
-  library.linear_xy_interpolation_factory = function (x, y) {
+  JsonRisk.linear_xy_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
 
     if (x_[0] <= 0)
@@ -97,7 +95,7 @@
     for (let i = 0; i < x_.length; i++) {
       xy_[i] = x_[i] * y_[i];
     }
-    const linear = library.linear_interpolation(x_, xy_);
+    const linear = JsonRisk.linear_interpolation(x_, xy_);
     return function (s) {
       if (s <= 0)
         throw new Error(
@@ -107,12 +105,12 @@
     };
   };
 
-  library.bessel_hermite_interpolation_factory = function (x, y) {
+  JsonRisk.bessel_hermite_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
     const n = x_.length;
     // need at least three support points, otherwise fall back to linear
     if (n < 3) {
-      return library.linear_interpolation(x_, y_);
+      return JsonRisk.linear_interpolation(x_, y_);
     }
 
     const dx = new Float64Array(n);
@@ -160,4 +158,4 @@
       return y_[i] + ds * (b[i] + ds * (c[i] + ds * d[i]));
     };
   };
-})(this.JsonRisk || module.exports);
+}

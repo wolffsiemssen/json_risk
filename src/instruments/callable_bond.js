@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a bond with single or multiple call rights
    * @memberof JsonRisk
    * @extends Bond
    */
-  class CallableBond extends library.Bond {
+  class CallableBond extends JsonRisk.Bond {
     #call_schedule = null;
     #mean_reversion = 0.0;
     #hull_white_volatility = null;
@@ -32,7 +32,7 @@
       super(obj);
 
       // call schedule
-      const fcd = library.date_or_null(obj.first_exercise_date);
+      const fcd = JsonRisk.date_or_null(obj.first_exercise_date);
       if (null === fcd)
         throw new Error("CallableBond: must provide first call date");
       const leg = this.legs[0];
@@ -51,14 +51,14 @@
           "CallableBond: first call date on or after maturity date",
         );
 
-      const call_tenor = library.natural_number_or_null(obj.call_tenor) || 0; //european call by default
+      const call_tenor = JsonRisk.natural_number_or_null(obj.call_tenor) || 0; //european call by default
 
-      const is_holiday_func = library.is_holiday_factory(obj.calendar);
-      const bdc = library.string_or_empty(obj.bdc);
+      const is_holiday_func = JsonRisk.is_holiday_factory(obj.calendar);
+      const bdc = JsonRisk.string_or_empty(obj.bdc);
       const adjust = function (d) {
-        return library.adjust(d, bdc, is_holiday_func);
+        return JsonRisk.adjust(d, bdc, is_holiday_func);
       };
-      let call_schedule = library.schedule(
+      let call_schedule = JsonRisk.schedule(
         fcd,
         date_end,
         call_tenor,
@@ -86,18 +86,18 @@
       this.#call_schedule = call_schedule;
       Object.freeze(call_schedule);
 
-      this.#mean_reversion = library.number_or_null(obj.mean_reversion) || 0.0; // null allowed
-      this.hull_white_volatility = library.number_or_null(
+      this.#mean_reversion = JsonRisk.number_or_null(obj.mean_reversion) || 0.0; // null allowed
+      this.hull_white_volatility = JsonRisk.number_or_null(
         obj.hull_white_volatility,
       ); // null allowed
 
       this.#opportunity_spread =
-        library.number_or_null(obj.opportunity_spread) || 0.0;
-      this.#exclude_base = library.make_bool(obj.exclude_base);
+        JsonRisk.number_or_null(obj.opportunity_spread) || 0.0;
+      this.#exclude_base = JsonRisk.make_bool(obj.exclude_base);
 
       // use simple calibration if configured, or if leg is simple bullet
       const simple_calibration =
-        library.make_bool(obj.simple_calibration) ||
+        JsonRisk.make_bool(obj.simple_calibration) ||
         (leg.has_constant_notional && leg.has_constant_rate);
 
       //basket generation
@@ -105,7 +105,7 @@
       for (let i = 0; i < call_schedule.length; i++) {
         if (simple_calibration) {
           //basket instruments are co-terminal swaptions with standard conditions
-          this.#basket[i] = new library.Swaption({
+          this.#basket[i] = new JsonRisk.Swaption({
             is_payer: false,
             maturity: date_end,
             first_exercise_date: this.#call_schedule[i],
@@ -123,7 +123,7 @@
           });
         } else {
           //basket instruments are equivalent regular swaptions with standard conditions
-          const temp = library.create_equivalent_regular_swaption(
+          const temp = JsonRisk.create_equivalent_regular_swaption(
             leg,
             this.#call_schedule[i],
             {
@@ -135,7 +135,7 @@
             },
           );
           temp.fixed_rate -= this.#opportunity_spread;
-          this.#basket[i] = new library.Swaption(temp);
+          this.#basket[i] = new JsonRisk.Swaption(temp);
         }
       }
 
@@ -155,7 +155,7 @@
     value_impl(params) {
       const leg = this.legs[0];
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         leg.disc_curve,
         "CallableBond: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
       );
@@ -168,14 +168,14 @@
       //get basket swaptions for all future call dates
       const basket = this.#basket.filter(
         (swaption) =>
-          library.time_from_now(swaption.first_exercise_date) > 1 / 512,
+          JsonRisk.time_from_now(swaption.first_exercise_date) > 1 / 512,
       );
       const t_exercise = basket.map((swaption) =>
-        library.time_from_now(swaption.first_exercise_date),
+        JsonRisk.time_from_now(swaption.first_exercise_date),
       );
 
       // get LGM model with desired mean reversion
-      const lgm = new library.LGM(this.#mean_reversion);
+      const lgm = new JsonRisk.LGM(this.#mean_reversion);
 
       if (null == this.#hull_white_volatility) {
         //calibrate lgm model - returns xi for non-expired swaptions only
@@ -228,5 +228,5 @@
     }
   }
 
-  library.CallableBond = CallableBond;
-})(this.JsonRisk || module.exports);
+  JsonRisk.CallableBond = CallableBond;
+}

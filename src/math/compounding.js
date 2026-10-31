@@ -1,5 +1,4 @@
-(function (library) {
-  "use strict";
+{
   const continuous = {
     name: "c",
     df: function (t, zc) {
@@ -28,7 +27,7 @@
    * @returns {object} compounding class object
    * @memberof JsonRisk
    */
-  library.compounding_factory = function (str) {
+  JsonRisk.compounding_factory = function (str) {
     if (undefined === str) return annual;
     if (typeof str === "string") {
       switch (str.toLowerCase()) {
@@ -50,4 +49,4 @@
         " supplied",
     );
   };
-})(this.JsonRisk || module.exports);
+}

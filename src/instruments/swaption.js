@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a plain vanilla swaption
    * @memberof JsonRisk
    * @extends Swap
    */
-  class Swaption extends library.Swap {
+  class Swaption extends JsonRisk.Swap {
     #first_exercise_date = null;
     #maturity = null;
     #surface = "";
@@ -25,7 +25,7 @@
      */
     constructor(obj) {
       //first_exercise_date (a.k.a. expiry) of the swaption
-      let first_exercise_date = library.date_or_null(obj.first_exercise_date);
+      let first_exercise_date = JsonRisk.date_or_null(obj.first_exercise_date);
       if (!first_exercise_date)
         throw new Error(
           "swaption: must provide valid first_exercise_date date.",
@@ -43,7 +43,7 @@
       this.#first_exercise_date = first_exercise_date;
 
       //maturity of the underlying swap
-      this.#maturity = library.date_or_null(obj.maturity);
+      this.#maturity = JsonRisk.date_or_null(obj.maturity);
       if (!this.#maturity)
         throw new Error("swaption: must provide valid maturity date.");
 
@@ -91,13 +91,13 @@
     }
 
     value_impl(params) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.fixed_leg.disc_curve,
         "Swaption: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
       );
       const disc_curve = params.get_curve(this.fixed_leg.disc_curve);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.#surface,
         "Swaption: no surface specified, make sure to populate 'surface' on instrument level",
       );
@@ -116,8 +116,8 @@
 
     value_with_curves(disc_curve, fwd_curve, surface) {
       //obtain times
-      const t_maturity = library.time_from_now(this.#maturity);
-      const t_first_exercise_date = library.time_from_now(
+      const t_maturity = JsonRisk.time_from_now(this.#maturity);
+      const t_first_exercise_date = JsonRisk.time_from_now(
         this.#first_exercise_date,
       );
       const t_term = t_maturity - t_first_exercise_date;
@@ -138,7 +138,10 @@
       this.#std_dev = this.#vol * Math.sqrt(t_first_exercise_date);
 
       // initialize model
-      const model = new library.BachelierModel(t_first_exercise_date, this.vol);
+      const model = new JsonRisk.BachelierModel(
+        t_first_exercise_date,
+        this.vol,
+      );
 
       const annuity = this.annuity(disc_curve);
       let res;
@@ -155,7 +158,7 @@
     }
   }
 
-  library.Swaption = Swaption;
+  JsonRisk.Swaption = Swaption;
 
   /**
    * ...
@@ -166,13 +169,13 @@
    * @memberof JsonRisk
    * @public
    */
-  library.create_equivalent_regular_swaption = function (
+  JsonRisk.create_equivalent_regular_swaption = function (
     original_leg,
     exercise_date,
     conventions,
   ) {
     //sanity checks
-    if (!(original_leg instanceof library.Leg))
+    if (!(original_leg instanceof JsonRisk.Leg))
       throw new Error("create_equivalent_regular_swaption: invalid leg");
 
     if (!conventions) conventions = {};
@@ -181,7 +184,7 @@
     const calendar = conventions.calendar || "";
 
     // rebuild leg with just a discount curve
-    const leg = new library.Leg({
+    const leg = new JsonRisk.Leg({
       disc_curve: "discount",
       payments: original_leg.payments,
     });
@@ -208,7 +211,7 @@
       let npv_up = 0.0;
       let npv_down = 0.0;
       for (const p of leg.payments) {
-        const t = library.days_between(exercise_date, p.date_pmt) / 365;
+        const t = JsonRisk.days_between(exercise_date, p.date_pmt) / 365;
         if (t <= 0) continue;
         npv_up += p.amount * (1 + irr + 0.0001) ** -t;
         npv_down += p.amount * (1 + irr - 0.0001) ** -t;
@@ -225,15 +228,15 @@
     //start with simple estimate
     const ttm_guess = effective_duration_target;
     let ttm = ttm_guess;
-    let maturity = library.add_days(exercise_date, Math.round(ttm * 365));
+    let maturity = JsonRisk.add_days(exercise_date, Math.round(ttm * 365));
 
     const bond = {
       maturity: maturity,
       effective_date: exercise_date,
-      acquire_date_: library.adjust(
+      acquire_date_: JsonRisk.adjust(
         exercise_date,
         bdc,
-        library.is_holiday_factory(calendar),
+        JsonRisk.is_holiday_factory(calendar),
       ), //exclude initial disboursement cashflow from valuation
       notional: balance,
       fixed_rate: irr,
@@ -242,7 +245,7 @@
       bdc: bdc,
       disc_curve: "discount",
     };
-    effective_duration = ed(new library.Bond(bond).legs[0]);
+    effective_duration = ed(new JsonRisk.Bond(bond).legs[0]);
     let iter = 10;
 
     //alter maturity until we obtain effective duration target value
@@ -253,9 +256,9 @@
       ttm = (ttm * effective_duration_target) / effective_duration;
       // revert to best estimate when value is implausible
       if (isNaN(ttm) || ttm > 100 || ttm < 1 / 365) ttm = ttm_guess;
-      maturity = library.add_days(exercise_date, Math.round(ttm * 365));
+      maturity = JsonRisk.add_days(exercise_date, Math.round(ttm * 365));
       bond.maturity = maturity;
-      const leg = new library.Bond(bond).legs[0];
+      const leg = new JsonRisk.Bond(bond).legs[0];
       effective_duration = ed(leg);
       iter--;
     }
@@ -277,4 +280,4 @@
       float_bdc: bdc,
     };
   };
-})(this.JsonRisk || module.exports);
+}

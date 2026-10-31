@@ -1,10 +1,10 @@
-(function (library) {
+{
   // helper function for constructor
   const get_times = function (labels) {
     //construct times from labels
     let res = null;
     if (Array.isArray(labels)) {
-      res = labels.map((label) => library.period_str_to_time(label));
+      res = labels.map((label) => JsonRisk.period_str_to_time(label));
     }
     if (!res)
       throw new Error(
@@ -17,7 +17,7 @@
    * Class representing a surface parametrised by expiries and absolute or relative strikes.
    * @memberof JsonRisk
    */
-  class ExpiryStrikeSurface extends library.Simulatable {
+  class ExpiryStrikeSurface extends JsonRisk.Simulatable {
     #expiries = null;
     #moneyness = [];
     get_surface_rate_scenario = null;
@@ -35,7 +35,7 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.number_vector_or_null(obj.expiries);
+        this.#expiries = JsonRisk.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
@@ -43,12 +43,12 @@
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.number_vector_or_null(obj.moneyness);
+        this.#moneyness = JsonRisk.number_vector_or_null(obj.moneyness);
         Object.freeze(this.#moneyness);
       }
 
       // interpolation
-      this.get_surface_rate = library.interpolation2d_factory(
+      this.get_surface_rate = JsonRisk.interpolation2d_factory(
         this.#expiries,
         this.#moneyness,
         obj.values,
@@ -188,6 +188,6 @@
     }
   }
 
-  library.ExpiryAbsStrikeSurface = ExpiryAbsStrikeSurface;
-  library.ExpiryRelStrikeSurface = ExpiryRelStrikeSurface;
-})(this.JsonRisk || module.exports);
+  JsonRisk.ExpiryAbsStrikeSurface = ExpiryAbsStrikeSurface;
+  JsonRisk.ExpiryRelStrikeSurface = ExpiryRelStrikeSurface;
+}

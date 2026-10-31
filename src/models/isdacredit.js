@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Class representing an ISDA credit model
    * @memberof JsonRisk
@@ -51,10 +51,10 @@
      */
     accrual_on_default_pv(pmt) {
       const { date_start, date_end, date_pmt, amount } = pmt;
-      const t_pmt = library.time_from_now(date_pmt);
+      const t_pmt = JsonRisk.time_from_now(date_pmt);
       if (t_pmt <= 0) return 0.0;
-      const t_start = library.time_from_now(date_start);
-      const t_end = library.time_from_now(date_end);
+      const t_start = JsonRisk.time_from_now(date_start);
+      const t_end = JsonRisk.time_from_now(date_end);
 
       // accrual amount
       const annualized_amount = amount / (t_end - t_start);
@@ -121,8 +121,8 @@
      */
     protection_pv(period) {
       const { date_start, date_end, notional, recovery_rate } = period;
-      const t_start = library.time_from_now(date_start);
-      const t_end = library.time_from_now(date_end);
+      const t_start = JsonRisk.time_from_now(date_start);
+      const t_end = JsonRisk.time_from_now(date_end);
       if (t_end <= 0) return 0.0;
 
       // sub-timeline
@@ -173,5 +173,5 @@
       return res * notional * (1 - recovery_rate);
     }
   }
-  library.IsdaCdsModel = IsdaCdsModel;
-})(this.JsonRisk || module.exports);
+  JsonRisk.IsdaCdsModel = IsdaCdsModel;
+}

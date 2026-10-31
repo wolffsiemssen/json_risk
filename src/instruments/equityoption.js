@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing an option on a stock or on an equity index
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityOption extends library.Equity {
+  class EquityOption extends JsonRisk.Equity {
     #expiry = null;
     #repo_curve = "";
     #surface = "";
@@ -30,12 +30,12 @@
      */
     constructor(obj) {
       super(obj);
-      this.#expiry = library.date_or_null(obj.expiry);
-      this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#surface = library.string_or_empty(obj.surface);
-      this.#strike = library.number_or_null(obj.strike) || 0.0;
-      this.#is_call = library.make_bool(obj.is_call);
-      this.#q = library.number_or_null(obj.q) || 0.0;
+      this.#expiry = JsonRisk.date_or_null(obj.expiry);
+      this.#repo_curve = JsonRisk.string_or_empty(obj.repo_curve);
+      this.#surface = JsonRisk.string_or_empty(obj.surface);
+      this.#strike = JsonRisk.number_or_null(obj.strike) || 0.0;
+      this.#is_call = JsonRisk.make_bool(obj.is_call);
+      this.#q = JsonRisk.number_or_null(obj.q) || 0.0;
     }
 
     /**
@@ -53,14 +53,14 @@
     }
 
     value_impl(params, extras_not_used) {
-      if (library.valuation_date >= this.#expiry) return 0.0;
-      library.nonempty_string_or_throw(
+      if (JsonRisk.valuation_date >= this.#expiry) return 0.0;
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "EquityOption: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
       const quote = params.get_scalar(this.quote);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.disc_curve,
         "EquityOption: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
       );
@@ -68,13 +68,13 @@
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
 
-      const t = library.time_from_now(this.#expiry);
+      const t = JsonRisk.time_from_now(this.#expiry);
       const forward =
         this.forward(quote.get_value(), this.#expiry, dc, rc) *
         Math.exp(-t * this.#q);
       const vol = surface.get_rate(t, null, forward, this.#strike);
 
-      const model = new library.BlackModel(t, vol);
+      const model = new JsonRisk.BlackModel(t, vol);
       const val = this.#is_call
         ? model.call_price(forward, this.#strike)
         : model.put_price(forward, this.#strike);
@@ -82,5 +82,5 @@
     }
   }
 
-  library.EquityOption = EquityOption;
-})(this.JsonRisk || module.exports);
+  JsonRisk.EquityOption = EquityOption;
+}

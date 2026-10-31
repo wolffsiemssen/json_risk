@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * ...
    * @param {number} value
@@ -7,10 +7,10 @@
    * @memberof JsonRisk
    * @public
    */
-  library.get_const_surface = function (value, type) {
+  JsonRisk.get_const_surface = function (value, type) {
     if (typeof value !== "number")
       throw new Error("get_const_surface: input must be number.");
-    return new library.Surface({
+    return new JsonRisk.Surface({
       type: type || "",
       expiries: [1],
       terms: [1],
@@ -23,7 +23,7 @@
     //construct times from labels
     let res = null;
     if (Array.isArray(labels)) {
-      res = labels.map((label) => library.period_str_to_time(label));
+      res = labels.map((label) => JsonRisk.period_str_to_time(label));
     }
     if (!res)
       throw new Error(
@@ -37,7 +37,7 @@
    * @memberof JsonRisk
    * @extends Simulatable
    */
-  class Surface extends library.Simulatable {
+  class Surface extends JsonRisk.Simulatable {
     #expiries = null;
     #terms = null;
     #moneyness = [];
@@ -58,7 +58,7 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.number_vector_or_null(obj.expiries);
+        this.#expiries = JsonRisk.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
@@ -66,14 +66,14 @@
 
       // terms
       if ("terms" in obj) {
-        this.#terms = library.number_vector_or_null(obj.terms);
+        this.#terms = JsonRisk.number_vector_or_null(obj.terms);
       } else {
         this.#terms = get_times(obj.labels_term);
       }
       Object.freeze(this.#terms);
 
       // interpolation
-      this.get_surface_rate = library.interpolation2d_factory(
+      this.get_surface_rate = JsonRisk.interpolation2d_factory(
         this.#expiries,
         this.#terms,
         obj.values,
@@ -81,7 +81,7 @@
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.number_vector_or_null(obj.moneyness);
+        this.#moneyness = JsonRisk.number_vector_or_null(obj.moneyness);
       }
 
       // smile
@@ -89,14 +89,14 @@
         if (!Array.isArray(obj.smile))
           throw new Error("Surface: smile must be an array");
         this.#smile = obj.smile.map((s) => {
-          if (!(s instanceof library.Surface)) {
+          if (!(s instanceof JsonRisk.Surface)) {
             // no recursions, smile surfaces must not have smiles themselves
             let temp = Object.assign({}, s);
             delete temp.moneyness;
             delete temp.smile;
 
             // make surface
-            return new library.Surface(temp);
+            return new JsonRisk.Surface(temp);
           } else {
             return s;
           }
@@ -134,7 +134,7 @@
     // attach scenario ruls
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scen = new library.Surface({
+        const scen = new JsonRisk.Surface({
           expiries: rule.axis_x,
           terms: rule.axis_y,
           values: rule.values,
@@ -233,5 +233,5 @@
     }
   }
 
-  library.Surface = Surface;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Surface = Surface;
+}

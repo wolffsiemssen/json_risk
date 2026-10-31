@@ -1,4 +1,4 @@
-(function (library) {
+{
   const validate_model = function (str) {
     if (typeof str !== "string")
       throw new Error("ScenarioRule: model must be a string");
@@ -9,6 +9,7 @@
       );
     return ret;
   };
+
   const validate_and_convert_to_set = function (arr) {
     if (!Array.isArray(arr)) {
       throw new Error("ScenarioRule: risk_factors and tags must be arrays");
@@ -173,7 +174,7 @@
 
     matches(item) {
       // check if a simulatable item is matched this rule
-      if (!(item instanceof library.Simulatable))
+      if (!(item instanceof JsonRisk.Simulatable))
         throw new Error(
           "ScenarioRule: can only match object of type Simulatable",
         );
@@ -208,5 +209,5 @@
     }
   }
 
-  library.ScenarioRule = ScenarioRule;
-})(this.JsonRisk || module.exports);
+  JsonRisk.ScenarioRule = ScenarioRule;
+}

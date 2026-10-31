@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * returns a constant zero-rate curve
    * @function get_const_curve
@@ -8,11 +8,11 @@
    * @memberof JsonRisk
    * @public
    */
-  library.get_const_curve = function (value, type) {
+  JsonRisk.get_const_curve = function (value, type) {
     if (typeof value !== "number")
       throw new Error("get_const_curve: input must be number.");
     if (value <= -1) throw new Error("get_const_curve: invalid input.");
-    return new library.Curve({
+    return new JsonRisk.Curve({
       type: type || "yield",
       times: [1],
       zcs: [value], //zero rates are act/365 annual compounding
@@ -27,13 +27,13 @@
       //curve times are always act/365
       if (curve.days) return curve.days[i] / 365;
       if (curve.dates) {
-        default_yf = default_yf || library.year_fraction_factory("a/365");
+        default_yf = default_yf || JsonRisk.year_fraction_factory("a/365");
         return default_yf(
-          library.date_or_null(curve.dates[0]),
-          library.date_or_null(curve.dates[i]),
+          JsonRisk.date_or_null(curve.dates[0]),
+          JsonRisk.date_or_null(curve.dates[i]),
         );
       }
-      if (curve.labels) return library.period_str_to_time(curve.labels[i]);
+      if (curve.labels) return JsonRisk.period_str_to_time(curve.labels[i]);
       throw new Error("Curve: invalid curve, cannot derive times");
     }
     return curve.times[i];
@@ -60,8 +60,8 @@
     // extract times, rates and discount factors from curve and store in hidden function scope
     let times = get_times(curve);
     let size = times.length;
-    let zcs = library.number_vector_or_null(curve.zcs);
-    let dfs = library.number_vector_or_null(curve.dfs);
+    let zcs = JsonRisk.number_vector_or_null(curve.zcs);
+    let dfs = JsonRisk.number_vector_or_null(curve.dfs);
 
     if (null === zcs) {
       if (null === dfs)
@@ -81,7 +81,7 @@
    * @memberof JsonRisk
    * @extends Simulatable
    */
-  class Curve extends library.Simulatable {
+  class Curve extends JsonRisk.Simulatable {
     #times = null;
     #zcs = null;
     #intp = null;
@@ -109,7 +109,7 @@
       super(obj);
 
       // compounding
-      this.#compounding = library.compounding_factory(obj.compounding);
+      this.#compounding = JsonRisk.compounding_factory(obj.compounding);
 
       // delete invalid members
       for (const member of ["dfs", "zcs", "times", "days", "dates", "labels"]) {
@@ -127,14 +127,14 @@
       switch (this.#intp) {
         case "linear_zc":
           // interpolation on zcs
-          _get_interpolated_rate = library.linear_interpolation_factory(
+          _get_interpolated_rate = JsonRisk.linear_interpolation_factory(
             this.#times,
             this.#zcs,
           );
           break;
         case "linear_rt":
           // interpolation on zcs
-          _get_interpolated_rate = library.linear_xy_interpolation_factory(
+          _get_interpolated_rate = JsonRisk.linear_xy_interpolation_factory(
             this.#times,
             this.#zcs,
           );
@@ -143,10 +143,11 @@
         case "bessel":
         case "hermite":
           // bessel-hermite spline interpolation
-          _get_interpolated_rate = library.bessel_hermite_interpolation_factory(
-            this.#times,
-            this.#zcs,
-          );
+          _get_interpolated_rate =
+            JsonRisk.bessel_hermite_interpolation_factory(
+              this.#times,
+              this.#zcs,
+            );
           break;
         default: {
           // interpolation on dfs
@@ -156,7 +157,7 @@
             _dfs[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
           }
 
-          const _interpolation = library.linear_interpolation_factory(
+          const _interpolation = JsonRisk.linear_interpolation_factory(
             this.#times,
             _dfs,
           );
@@ -190,7 +191,7 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scenario = new library.Curve({
+        const scenario = new JsonRisk.Curve({
           times: rule.axis_x,
           zcs: rule.values_for_curve,
           intp: rule.model === "absolute" ? this.#intp : "linear_zc",
@@ -329,5 +330,5 @@
     }
   }
 
-  library.Curve = Curve;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Curve = Curve;
+}

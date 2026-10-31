@@ -1,4 +1,4 @@
-(function (library) {
+{
   // helper function
   const times_for_gaussian = function (t_start, t_end) {
     const res = [];
@@ -20,7 +20,7 @@
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityAmericanOption extends library.Equity {
+  class EquityAmericanOption extends JsonRisk.Equity {
     #first_exercise_date = null;
     #expiry = null;
     #repo_curve = "";
@@ -51,15 +51,17 @@
      */
     constructor(obj) {
       super(obj);
-      this.#first_exercise_date = library.date_or_null(obj.first_exercise_date);
-      this.#expiry = library.date_or_null(obj.expiry);
-      this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#surface = library.string_or_empty(obj.surface);
-      this.#strike = library.number_or_null(obj.strike) || 0.0;
-      this.#is_call = library.make_bool(obj.is_call);
-      this.#q = library.number_or_null(obj.q) || 0.0;
-      this.#n = library.number_or_null(obj.n) || 10;
-      this.#model = library.string_or_empty(obj.model).toLowerCase() || "crr";
+      this.#first_exercise_date = JsonRisk.date_or_null(
+        obj.first_exercise_date,
+      );
+      this.#expiry = JsonRisk.date_or_null(obj.expiry);
+      this.#repo_curve = JsonRisk.string_or_empty(obj.repo_curve);
+      this.#surface = JsonRisk.string_or_empty(obj.surface);
+      this.#strike = JsonRisk.number_or_null(obj.strike) || 0.0;
+      this.#is_call = JsonRisk.make_bool(obj.is_call);
+      this.#q = JsonRisk.number_or_null(obj.q) || 0.0;
+      this.#n = JsonRisk.number_or_null(obj.n) || 10;
+      this.#model = JsonRisk.string_or_empty(obj.model).toLowerCase() || "crr";
     }
 
     get repo_curve() {
@@ -73,9 +75,9 @@
     }
 
     value_impl(params, extras_not_used) {
-      if (library.valuation_date >= this.#expiry) return 0.0;
+      if (JsonRisk.valuation_date >= this.#expiry) return 0.0;
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "EquityAmericanOption: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
@@ -83,7 +85,7 @@
       const quote = params.get_scalar(this.quote);
       const spot = quote.get_value();
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.disc_curve,
         "EquityAmericanOption: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
       );
@@ -93,13 +95,13 @@
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       const t_start = this.#first_exercise_date
-        ? library.time_from_now(this.#first_exercise_date)
+        ? JsonRisk.time_from_now(this.#first_exercise_date)
         : 0.0;
-      const t_end = library.time_from_now(this.#expiry);
+      const t_end = JsonRisk.time_from_now(this.#expiry);
       const vol = surface.get_rate(t_end, null, forward, this.#strike);
 
       if (this.#model == "crr") {
-        const model = new library.CRRBinomialModel(
+        const model = new JsonRisk.CRRBinomialModel(
           t_start,
           t_end,
           vol,
@@ -134,7 +136,7 @@
 
         const num_std_devs = 4;
         const resolution = 16;
-        const model = new library.GaussianModel({
+        const model = new JsonRisk.GaussianModel({
           times,
           xi,
           underlying,
@@ -148,5 +150,5 @@
     }
   }
 
-  library.EquityAmericanOption = EquityAmericanOption;
-})(this.JsonRisk || module.exports);
+  JsonRisk.EquityAmericanOption = EquityAmericanOption;
+}

@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a stock, also serving as super class for equity derivatives
    * @memberof JsonRisk
    * @extends Instrument
    */
-  class Equity extends library.Instrument {
+  class Equity extends JsonRisk.Instrument {
     #quote = "";
     #disc_curve = "";
     #spot_days = 0;
@@ -23,11 +23,11 @@
      */
     constructor(obj) {
       super(obj);
-      this.#quote = library.string_or_empty(obj.quote);
-      this.#disc_curve = library.string_or_empty(obj.disc_curve);
-      this.#spot_days = library.natural_number_or_null(obj.spot_days) || 0;
-      this.#calendar = library.string_or_empty(obj.calendar);
-      this.#is_holiday_func = library.is_holiday_factory(this.#calendar);
+      this.#quote = JsonRisk.string_or_empty(obj.quote);
+      this.#disc_curve = JsonRisk.string_or_empty(obj.disc_curve);
+      this.#spot_days = JsonRisk.natural_number_or_null(obj.spot_days) || 0;
+      this.#calendar = JsonRisk.string_or_empty(obj.calendar);
+      this.#is_holiday_func = JsonRisk.is_holiday_factory(this.#calendar);
     }
 
     /**
@@ -55,16 +55,16 @@
     }
 
     spot_date() {
-      return library.add_business_days(
-        library.valuation_date,
+      return JsonRisk.add_business_days(
+        JsonRisk.valuation_date,
         this.#spot_days,
         this.#is_holiday_func,
       );
     }
 
     forward(spot, fwd_date, disc_curve, repo_curve) {
-      const tspot = library.time_from_now(this.spot_date());
-      const tfwd = library.time_from_now(fwd_date);
+      const tspot = JsonRisk.time_from_now(this.spot_date());
+      const tfwd = JsonRisk.time_from_now(fwd_date);
       const discounted_spot = spot * disc_curve.get_df(tspot);
       const res = discounted_spot / repo_curve.get_df(tfwd);
       return res;
@@ -76,7 +76,7 @@
     }
 
     value_impl(params, extras_not_used) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "Equity: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
@@ -86,10 +86,10 @@
 
       const dc = params.get_curve(this.#disc_curve);
       const discounted_quote =
-        quote.get_value() * dc.get_df(library.time_from_now(spot_date));
+        quote.get_value() * dc.get_df(JsonRisk.time_from_now(spot_date));
       return discounted_quote;
     }
   }
 
-  library.Equity = Equity;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Equity = Equity;
+}

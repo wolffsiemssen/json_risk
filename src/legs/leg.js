@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Class representing a leg, i.e., a stream of payments
    * @memberof JsonRisk
@@ -25,14 +25,16 @@
      * @param {object} [obj.indices={}] an object with index names as keys and indices as values.
      */
     constructor(obj) {
-      this.#disc_curve = library.string_or_empty(obj.disc_curve);
-      this.#spread_curve = library.string_or_empty(obj.spread_curve);
+      this.#disc_curve = JsonRisk.string_or_empty(obj.disc_curve);
+      this.#spread_curve = JsonRisk.string_or_empty(obj.spread_curve);
       this.#residual_spread =
-        library.number_or_null(obj.residual_spread) || 0.0;
-      this.#currency = library.string_or_empty(obj.currency);
+        JsonRisk.number_or_null(obj.residual_spread) || 0.0;
+      this.#currency = JsonRisk.string_or_empty(obj.currency);
 
       if ("payments" in obj && Array.isArray(obj.payments)) {
-        this.#payments = obj.payments.map((pobj) => library.make_payment(pobj));
+        this.#payments = obj.payments.map((pobj) =>
+          JsonRisk.make_payment(pobj),
+        );
       }
 
       // all payments must have the same or no currency
@@ -58,12 +60,12 @@
       }
 
       // sort payments
-      this.#payments.sort(library.payment_compare);
+      this.#payments.sort(JsonRisk.payment_compare);
       Object.freeze(this.#payments);
 
       if ("indices" in obj) {
         for (const [key, value] of Object.entries(obj.indices)) {
-          this.#indices[key] = new library.SimpleIndex(value);
+          this.#indices[key] = new JsonRisk.SimpleIndex(value);
         }
       }
       Object.freeze(this.#indices);
@@ -122,7 +124,7 @@
      */
     get has_notional_payments() {
       for (const p of this.#payments) {
-        if (p.constructor === library.NotionalPayment) return true;
+        if (p.constructor === JsonRisk.NotionalPayment) return true;
       }
       return false;
     }
@@ -144,7 +146,7 @@
      */
     get has_fixed_rate_payments() {
       for (const p of this.#payments) {
-        if (p instanceof library.FixedRatePayment) return true;
+        if (p instanceof JsonRisk.FixedRatePayment) return true;
       }
       return false;
     }
@@ -155,7 +157,7 @@
      */
     get has_float_rate_payments() {
       for (const p of this.#payments) {
-        if (p.constructor === library.FloatRatePayment) return true;
+        if (p.constructor === JsonRisk.FloatRatePayment) return true;
       }
       return false;
     }
@@ -166,7 +168,7 @@
      */
     get has_embedded_options() {
       for (const p of this.#payments) {
-        if (p instanceof library.CapFloorPayment) return true;
+        if (p instanceof JsonRisk.CapFloorPayment) return true;
       }
       return false;
     }
@@ -191,7 +193,7 @@
     get has_constant_rate() {
       let rate = null;
       for (const p of this.#payments) {
-        if (p.constructor != library.FixedRatePayment) continue;
+        if (p.constructor != JsonRisk.FixedRatePayment) continue;
         if (rate === null) {
           rate = p.rate;
           continue;
@@ -239,10 +241,10 @@
 
     #dcf(disc_curve, acquire_date = new Date(0.0)) {
       let res = 0;
-      const cutoff = Math.max(library.time_from_now(acquire_date), 0.0);
+      const cutoff = Math.max(JsonRisk.time_from_now(acquire_date), 0.0);
       for (const p of this.#payments) {
         const d = p.date_pmt;
-        const t = library.time_from_now(d);
+        const t = JsonRisk.time_from_now(d);
 
         // exclude payments in the past and that occur on or before the date of acquisition
         if (t <= cutoff) {
@@ -260,7 +262,7 @@
     }
 
     #discounter(params) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.#disc_curve,
         "LegInstrument: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
       );
@@ -272,7 +274,7 @@
         return disc_curve;
       } else {
         // valuation with spreads, return an object with a get_df method, simulating a yield curve
-        const compounding = library.compounding_factory("annual");
+        const compounding = JsonRisk.compounding_factory("annual");
         const residual_spread = this.#residual_spread;
         return {
           get_df: function (t) {
@@ -335,18 +337,18 @@
      */
     annuity(params_or_curve) {
       const discounter =
-        params_or_curve instanceof library.Params
+        params_or_curve instanceof JsonRisk.Params
           ? this.#discounter(params_or_curve)
           : params_or_curve;
       let res = 0;
       for (const p of this.#payments) {
         if (
-          p.constructor !== library.FixedRatePayment &&
-          p.constructor !== library.FloatRatePayment
+          p.constructor !== JsonRisk.FixedRatePayment &&
+          p.constructor !== JsonRisk.FloatRatePayment
         )
           continue;
 
-        let t = library.time_from_now(p.date_pmt);
+        let t = JsonRisk.time_from_now(p.date_pmt);
         if (t < 0) continue;
 
         // get amount based on 100 percent interest and discount
@@ -359,10 +361,10 @@
 
     /**
      * Calculates outstanding balance  - all floating capitalizing payments must have been projected before by e.g. calling the value method
-     * @param {date} [d=library.valuation_date] as-of date for the balance.
+     * @param {date} [d=JsonRisk.valuation_date] as-of date for the balance.
      * @return {number}
      */
-    balance(d = library.valuation_date) {
+    balance(d = JsonRisk.valuation_date) {
       let res = 0;
       for (const p of this.#payments) {
         if (p.date_value <= d) continue;
@@ -378,19 +380,19 @@
      */
     irr(d) {
       const balance = this.balance(d);
-      const tset = library.time_from_now(d);
+      const tset = JsonRisk.time_from_now(d);
       const payments = this.#payments;
       const func = function (x) {
         let res = -balance * Math.pow(1 + x, -tset);
         for (const p of payments) {
           if (p.date_value <= d) continue;
-          const t = library.time_from_now(p.date_pmt);
+          const t = JsonRisk.time_from_now(p.date_pmt);
           res += p.amount * Math.pow(1 + x, -t);
         }
         return res;
       };
 
-      const res = library.find_root_secant(func, 0, 0.0001);
+      const res = JsonRisk.find_root_secant(func, 0, 0.0001);
       return res;
     }
 
@@ -412,15 +414,15 @@
       for (const p of this.#payments) {
         // exclude past payments
         const d = p.date_pmt;
-        const t = library.time_from_now(d);
+        const t = JsonRisk.time_from_now(d);
         if (t <= 0) continue;
 
         const df = discounter.get_df(t);
 
         // include only notional and float rate payments
-        if (p.constructor === library.NotionalPayment) {
+        if (p.constructor === JsonRisk.NotionalPayment) {
           res += df * p.amount;
-        } else if (p.constructor === library.FloatRatePayment) {
+        } else if (p.constructor === JsonRisk.FloatRatePayment) {
           // exclude spread for float rate payments
           const spread = p.notional * p.yf * p.spread;
           res += df * (p.amount - spread);
@@ -452,8 +454,8 @@
       const p0 = this.#payments[0];
       const pn1 = this.#payments[n - 1];
       if (
-        p0.constructor !== library.NotionalPayment ||
-        pn1.constructor !== library.NotionalPayment
+        p0.constructor !== JsonRisk.NotionalPayment ||
+        pn1.constructor !== JsonRisk.NotionalPayment
       )
         return;
 
@@ -473,7 +475,7 @@
           open_payments.delete(pp);
         }
 
-        if (p.constructor === library.NotionalPayment) {
+        if (p.constructor === JsonRisk.NotionalPayment) {
           // notional payments cannot change initial sign of balance, and final notional payment must clear balance
           if (
             (sign >= 0 && p.notional > balance) ||
@@ -506,7 +508,7 @@
     get_cash_flows() {
       const pmap = new Map();
       for (const p of this.#payments) {
-        const tpay = library.time_from_now(p.date_pmt);
+        const tpay = JsonRisk.time_from_now(p.date_pmt);
         const total = p.amount;
         const notional = p.amount_notional;
         let entry = pmap.get(tpay);
@@ -556,5 +558,5 @@
     }
   }
 
-  library.Leg = Leg;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Leg = Leg;
+}

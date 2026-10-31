@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Super-Class representing a position in a financial instrument
    * @memberof JsonRisk
@@ -15,10 +15,10 @@
      * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
      */
     constructor(obj) {
-      this.#currency = library.string_or_empty(obj.currency);
+      this.#currency = JsonRisk.string_or_empty(obj.currency);
 
       if ("quantity" in obj) {
-        let q = library.number_or_null(obj.quantity);
+        let q = JsonRisk.number_or_null(obj.quantity);
         if (null != q) this.#quantity = q;
       }
     }
@@ -50,7 +50,7 @@
      * @param {Deps} deps dependency tracking object
      */
     add_deps(deps) {
-      if (!(deps instanceof library.Deps))
+      if (!(deps instanceof JsonRisk.Deps))
         throw new Error("add_deps: deps must be of type Deps");
       if (this.#currency != "") deps.add_currency(this.#currency);
       this.add_deps_impl(deps);
@@ -70,7 +70,9 @@
      */
     value(params, extras) {
       const p =
-        params instanceof library.Params ? params : new library.Params(params);
+        params instanceof JsonRisk.Params
+          ? params
+          : new JsonRisk.Params(params);
 
       // call sub-class valuation function
       let val = this.value_impl(p, extras);
@@ -88,5 +90,5 @@
     }
   }
 
-  library.Instrument = Instrument;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Instrument = Instrument;
+}

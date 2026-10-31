@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Class representing a bachelier model used to value e.g. swaptions, caps and floors
    * @memberof JsonRisk
@@ -37,8 +37,8 @@
     #bachelier_formula(phi, forward, strike) {
       const d1 = (forward - strike) / this.#std_dev;
       return (
-        phi * (forward - strike) * library.cndf(phi * d1) +
-        this.#std_dev * library.ndf(d1)
+        phi * (forward - strike) * JsonRisk.cndf(phi * d1) +
+        this.#std_dev * JsonRisk.ndf(d1)
       );
     }
 
@@ -62,5 +62,5 @@
       return this.#impl(1, forward, strike);
     }
   }
-  library.BachelierModel = BachelierModel;
-})(this.JsonRisk || module.exports);
+  JsonRisk.BachelierModel = BachelierModel;
+}
