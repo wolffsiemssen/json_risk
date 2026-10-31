@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Class representing a parameters object, e.g., a scalar, curve, or surface, that allows name and tags for attachment of scenarios
    * @memberof JsonRisk
@@ -52,5 +52,5 @@
     }
   }
 
-  library.Simulatable = Simulatable;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Simulatable = Simulatable;
+}

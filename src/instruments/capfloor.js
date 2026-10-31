@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing an interest rate cap or floor
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class CapFloor extends library.LegInstrument {
+  class CapFloor extends JsonRisk.LegInstrument {
     /**
      * Create a cap/floor instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one leg with floating and notional payments.
      * @param {obj} obj A plain object representing the instrument
@@ -39,7 +39,7 @@
         delete tempobj.fixed_rate;
 
         // generate leg from terms and conditions
-        const leg = library.cashflow_generator(tempobj);
+        const leg = JsonRisk.cashflow_generator(tempobj);
 
         // remove all payments except caplets and floorlets
         leg.payments = leg.payments.filter(
@@ -103,5 +103,5 @@
     }
   }
 
-  library.CapFloor = CapFloor;
-})(this.JsonRisk || module.exports);
+  JsonRisk.CapFloor = CapFloor;
+}

@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Gaussian model for option pricing.
    * @memberof JsonRisk
@@ -31,8 +31,8 @@
 
       // numerics
       const num_std_devs =
-        library.natural_number_or_null(obj.num_std_devs) || 4;
-      const resolution = library.natural_number_or_null(obj.resolution) || 16;
+        JsonRisk.natural_number_or_null(obj.num_std_devs) || 4;
+      const resolution = JsonRisk.natural_number_or_null(obj.resolution) || 16;
       const dr = 0.5 / resolution;
 
       this.#N = 2 * num_std_devs * resolution + 1;
@@ -42,18 +42,18 @@
       for (let i = 0; i < this.#N; ++i) {
         const temp = num_std_devs * ((2 * i) / (this.#N - 1) - 1);
         this.#grid[i] = temp;
-        ndf[i] = library.ndf(temp);
+        ndf[i] = JsonRisk.ndf(temp);
       }
 
       this.#integrate = function (f) {
         // compute the integral over f(x) phi(x) dx where phi is the standard normal density
         const f_weighted = (x) => {
           let res = f(x);
-          res *= library.fast_cndf(x + dr) - library.fast_cndf(x - dr);
+          res *= JsonRisk.fast_cndf(x + dr) - JsonRisk.fast_cndf(x - dr);
           res *= resolution;
           return res;
         };
-        const ret = library.adaptive_simpson(
+        const ret = JsonRisk.adaptive_simpson(
           f_weighted,
           -num_std_devs,
           num_std_devs,
@@ -83,12 +83,12 @@
       }
 
       for (let n = this.#n - 1; n > 0; n--) {
-        const interp_hold = library.linear_interpolation_equidistant(
+        const interp_hold = JsonRisk.linear_interpolation_equidistant(
           this.#grid,
           new Float64Array(values_hold), // copy array since it is overwritten in the loop
         );
 
-        const interp_ex = library.linear_interpolation_equidistant(
+        const interp_ex = JsonRisk.linear_interpolation_equidistant(
           this.#grid,
           new Float64Array(values_ex), // copy array since it is overwritten in the loop
         );
@@ -124,12 +124,12 @@
       }
 
       // final integration
-      const interp_hold = library.linear_interpolation_equidistant(
+      const interp_hold = JsonRisk.linear_interpolation_equidistant(
         this.#grid,
         values_hold, // no more copying needed
       );
 
-      const interp_ex = library.linear_interpolation_equidistant(
+      const interp_ex = JsonRisk.linear_interpolation_equidistant(
         this.#grid,
         values_ex, // no more copying needed
       );
@@ -144,5 +144,5 @@
     }
   }
 
-  library.GaussianModel = GaussianModel;
-})(this.JsonRisk || module.exports);
+  JsonRisk.GaussianModel = GaussianModel;
+}

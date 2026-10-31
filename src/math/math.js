@@ -1,6 +1,4 @@
-(function (library) {
-  "use strict";
-
+{
   const RT2PI = Math.sqrt(4.0 * Math.acos(0.0));
   const SPLIT = 7.07106781186547;
   const N0 = 220.206867912376;
@@ -26,7 +24,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.ndf = function (x) {
+  JsonRisk.ndf = function (x) {
     return Math.exp((-x * x) / 2.0) / RT2PI;
   };
 
@@ -37,7 +35,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.cndf = function (x) {
+  JsonRisk.cndf = function (x) {
     const z = Math.abs(x);
     let c;
 
@@ -78,7 +76,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.fast_cndf = function (x) {
+  JsonRisk.fast_cndf = function (x) {
     const z = x > 0 ? x : -x;
     let f = 1 + z * (D1 + z * (D2 + z * (D3 + z * (D4 + z * (D5 + z * D6)))));
     f *= f;
@@ -100,7 +98,13 @@
    * @memberof JsonRisk
    * @public
    */
-  library.find_root_secant = function (func, start, next, max_iter, threshold) {
+  JsonRisk.find_root_secant = function (
+    func,
+    start,
+    next,
+    max_iter,
+    threshold,
+  ) {
     let x = start,
       xnext = next,
       temp = 0,
@@ -157,7 +161,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.find_root_ridders = function (
+  JsonRisk.find_root_ridders = function (
     func,
     start,
     next,
@@ -214,4 +218,4 @@
     if (iter <= 0)
       throw new Error("find_root_ridders: failed, too many iterations");
   };
-})(this.JsonRisk || module.exports);
+}

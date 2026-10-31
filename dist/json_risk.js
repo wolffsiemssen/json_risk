@@ -8,17 +8,9 @@
 /**
  * @namespace JsonRisk
  */
-(function (root, factory) {
-  if (typeof module === "object" && typeof exports !== "undefined") {
-    // Node
-    module.exports = factory();
-  } else {
-    // Browser
-    root.JsonRisk = factory();
-  }
-})(this, function () {
+const JsonRisk = (function () {
   let valuation_date = null;
-  const JsonRisk = {
+  const j = {
     /**
      * @type {Date}
      * @description Gets the library's current valution date if set.
@@ -29,401 +21,386 @@
         throw new Error("JsonRisk: valuation_date must be set");
       return valuation_date;
     },
+
+    /**
+     * @function
+     * @description Sets the library's valuation date.
+     * @param {Date|string} d - The Date to set, if a string is supplied, it is converted to a date if possible.
+     * @memberof JsonRisk
+     */
+    set_valuation_date: function (d) {
+      valuation_date = JsonRisk.date_or_null(d);
+      if (null === valuation_date)
+        throw new Error("JsonRisk: trying to set invalid valuation_date");
+    },
   };
 
-  /**
-   * @function
-   * @description Sets the library's valuation date.
-   * @param {Date|string} d - The Date to set, if a string is supplied, it is converted to a date if possible.
-   * @memberof JsonRisk
-   */
-  JsonRisk.set_valuation_date = function (d) {
-    valuation_date = JsonRisk.date_or_null(d);
-    if (null === valuation_date)
-      throw new Error("JsonRisk: trying to set invalid valuation_date");
-  };
+  return j;
+})();
 
-  return JsonRisk;
-});
-(function (library) {
-  /**
-   * Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
-   * @param {boolean} b
-   * @returns {boolean} boolean vector
-   * @memberof JsonRisk
-   */
-  library.make_bool = function (b) {
-    if (typeof b === "boolean") return b;
-    if (typeof b === "number") return b !== 0;
-    if (typeof b === "string") {
-      const n = Number(b.trim()).valueOf();
-      if (0 === n) return false;
-      if (!isNaN(n)) return true;
-      const s = b.trim().toLowerCase();
-      if (s === "true" || s === "yes" || s === "t" || s === "y") return true;
-      return false;
-    }
+if (typeof module === "object" && typeof exports !== "undefined") {
+  // CommonJS module framework
+  module.exports = JsonRisk;
+}
+/**
+ * Takes any value and turns it into a boolean. When a string is entered, returns true if it can be converted into a number other than zero or if it contains "true", "yes", "t" or "y", each case insensitive. Returns false otherwise. Does not throw.
+ * @param {boolean} b
+ * @returns {boolean} boolean vector
+ * @memberof JsonRisk
+ */
+JsonRisk.make_bool = function (b) {
+  if (typeof b === "boolean") return b;
+  if (typeof b === "number") return b !== 0;
+  if (typeof b === "string") {
+    const n = Number(b.trim()).valueOf();
+    if (0 === n) return false;
+    if (!isNaN(n)) return true;
+    const s = b.trim().toLowerCase();
+    if (s === "true" || s === "yes" || s === "t" || s === "y") return true;
     return false;
-  };
+  }
+  return false;
+};
 
-  /**
-   * Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
-   * @param {boolean} b
-   * @returns {boolean} boolean vector
-   * @memberof JsonRisk
-   */
-  library.make_bool_vector = function (b) {
-    if (typeof b === "boolean") return [b];
-    if (typeof b === "number") return [b !== 0];
-    let res;
-    if (typeof b === "string") {
-      res = b.split(/\s+/);
-    } else if (Array.isArray(b)) {
-      res = b.slice();
-    } else {
-      return [false];
-    }
-    for (let i = 0; i < res.length; i++) {
-      res[i] = library.make_bool(res[i]);
-    }
-    return res;
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * Calculates the time in years from a given period string
-   * @param {string} str time string (xY, xM, xW, xD)
-   * @returns {number} time in years
-   * @memberof JsonRisk
-   */
-  library.period_str_to_time = function (str) {
-    const num = parseFloat(str, 10);
-    if (isNaN(num))
-      throw new Error(
-        "period_str_to_time - Invalid time period string: " + str,
-      );
-    const unit = str.charAt(str.length - 1);
-    if (unit === "Y" || unit === "y") return num;
-    if (unit === "M" || unit === "m") return num / 12;
-    if (unit === "W" || unit === "w") return num / 52;
-    if (unit === "D" || unit === "d") return num / 365;
+/**
+ * Takes any value and converts it into a vector of booleans without throwing. Strings like "true true false" are split by spaces. If the value cannot be converted, returns single-entry array [false].
+ * @param {boolean} b
+ * @returns {boolean} boolean vector
+ * @memberof JsonRisk
+ */
+JsonRisk.make_bool_vector = function (b) {
+  if (typeof b === "boolean") return [b];
+  if (typeof b === "number") return [b !== 0];
+  let res;
+  if (typeof b === "string") {
+    res = b.split(/\s+/);
+  } else if (Array.isArray(b)) {
+    res = b.slice();
+  } else {
+    return [false];
+  }
+  for (let i = 0; i < res.length; i++) {
+    res[i] = JsonRisk.make_bool(res[i]);
+  }
+  return res;
+};
+/**
+ * Calculates the time in years from a given period string
+ * @param {string} str time string (xY, xM, xW, xD)
+ * @returns {number} time in years
+ * @memberof JsonRisk
+ */
+JsonRisk.period_str_to_time = function (str) {
+  const num = parseFloat(str, 10);
+  if (isNaN(num))
     throw new Error("period_str_to_time - Invalid time period string: " + str);
-  };
+  const unit = str.charAt(str.length - 1);
+  if (unit === "Y" || unit === "y") return num;
+  if (unit === "M" || unit === "m") return num / 12;
+  if (unit === "W" || unit === "w") return num / 52;
+  if (unit === "D" || unit === "d") return num / 365;
+  throw new Error("period_str_to_time - Invalid time period string: " + str);
+};
 
-  /**
-   * Constructs a javascript date object from a JSON risk conformant date string
-   * @param {string} str date string
-   * @returns {date} javascript date object
-   * @memberof JsonRisk
-   */
-  library.date_str_to_date = function (str) {
-    let rr = null,
-      d,
-      m,
-      y;
-    if (
-      (rr = /^([1-2][0-9]{3})[/-]([0-9]{1,2})[/-]([0-9]{1,2})/.exec(str)) !==
-      null
-    ) {
-      // YYYY/MM/DD or YYYY-MM-DD
-      y = parseInt(rr[1], 10);
-      m = parseInt(rr[2], 10) - 1;
-      d = parseInt(rr[3], 10);
-    } else if (
-      (rr = /^([0-9]{1,2})\.([0-9]{1,2})\.([1-2][0-9]{3})/.exec(str)) !== null
-    ) {
-      // DD.MM.YYYY
-      y = parseInt(rr[3], 10);
-      m = parseInt(rr[2], 10) - 1;
-      d = parseInt(rr[1], 10);
-    }
-    if (null === rr)
-      throw new Error("date_str_to_time - Invalid date string: " + str);
-    if (m < 0 || m > 11)
-      throw new Error(
-        "date_str_to_time - Invalid month in date string: " + str,
-      );
-    const days_in_month = new Date(y, m + 1, 0).getDate();
-    if (d < 0 || d > days_in_month)
-      throw new Error("date_str_to_time - Invalid day in date string: " + str);
-    return new Date(Date.UTC(y, m, d));
-  };
+/**
+ * Constructs a javascript date object from a JSON risk conformant date string
+ * @param {string} str date string
+ * @returns {date} javascript date object
+ * @memberof JsonRisk
+ */
+JsonRisk.date_str_to_date = function (str) {
+  let rr = null,
+    d,
+    m,
+    y;
+  if (
+    (rr = /^([1-2][0-9]{3})[/-]([0-9]{1,2})[/-]([0-9]{1,2})/.exec(str)) !== null
+  ) {
+    // YYYY/MM/DD or YYYY-MM-DD
+    y = parseInt(rr[1], 10);
+    m = parseInt(rr[2], 10) - 1;
+    d = parseInt(rr[3], 10);
+  } else if (
+    (rr = /^([0-9]{1,2})\.([0-9]{1,2})\.([1-2][0-9]{3})/.exec(str)) !== null
+  ) {
+    // DD.MM.YYYY
+    y = parseInt(rr[3], 10);
+    m = parseInt(rr[2], 10) - 1;
+    d = parseInt(rr[1], 10);
+  }
+  if (null === rr)
+    throw new Error("date_str_to_time - Invalid date string: " + str);
+  if (m < 0 || m > 11)
+    throw new Error("date_str_to_time - Invalid month in date string: " + str);
+  const days_in_month = new Date(y, m + 1, 0).getDate();
+  if (d < 0 || d > days_in_month)
+    throw new Error("date_str_to_time - Invalid day in date string: " + str);
+  return new Date(Date.UTC(y, m, d));
+};
 
-  /**
-   * Constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
-   * @param {date} date object
-   * @returns {string} date string
-   * @memberof JsonRisk
-   */
-  library.date_to_date_str = function (d) {
-    const dobj = library.date_or_null(d);
-    if (null === dobj) throw new Error("date_to_date_str: invalid input.");
-    return dobj.toISOString().slice(0, 10);
-  };
+/**
+ * Constructs a JSON risk conformant date string YYYY-MM-DD from a javascript date object or another JSON risk conformant date string
+ * @param {date} date object
+ * @returns {string} date string
+ * @memberof JsonRisk
+ */
+JsonRisk.date_to_date_str = function (d) {
+  const dobj = JsonRisk.date_or_null(d);
+  if (null === dobj) throw new Error("date_to_date_str: invalid input.");
+  return dobj.toISOString().slice(0, 10);
+};
 
-  /**
-   * Takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
-   * @param {date} d
-   * @returns {date} javascript date object
-   * @memberof JsonRisk
-   */
-  library.date_or_null = function (d) {
-    if (!d) return null;
-    if (d instanceof Date) {
-      const h = d.getUTCHours();
-      if (h === 0) return d;
-      const y = d.getUTCFullYear();
-      const m = d.getUTCMonth();
-      let t = d.getUTCDate();
-      if (h > 11) t++; // advance to next day UTC 0:00 date
-      return new Date(Date.UTC(y, m, t));
-    }
-    if (d instanceof String || typeof d === "string")
-      return library.date_str_to_date(d);
-    throw new Error("date_or_null: invalid input.");
-  };
+/**
+ * Takes a valid date string, a javascript date object, or a falsy value and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid types (if not falsy) and nonempty date strings
+ * @param {date} d
+ * @returns {date} javascript date object
+ * @memberof JsonRisk
+ */
+JsonRisk.date_or_null = function (d) {
+  if (!d) return null;
+  if (d instanceof Date) {
+    const h = d.getUTCHours();
+    if (h === 0) return d;
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    let t = d.getUTCDate();
+    if (h > 11) t++; // advance to next day UTC 0:00 date
+    return new Date(Date.UTC(y, m, t));
+  }
+  if (d instanceof String || typeof d === "string")
+    return JsonRisk.date_str_to_date(d);
+  throw new Error("date_or_null: invalid input.");
+};
 
-  /**
-   * Takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
-   * @param {date} d
-   * @returns {date} javascript date object
-   * @memberof JsonRisk
-   */
-  library.date_or_throw = function (d) {
-    const date_or_null = library.date_or_null(d);
-    if (null === date_or_null) throw new Error("date_or_throw: invalid input");
-    return date_or_null;
-  };
+/**
+ * Takes a valid date string, or a javascript date object and returns a javascript date object or null. Normalises non-utc dates. Throws on invalid input
+ * @param {date} d
+ * @returns {date} javascript date object
+ * @memberof JsonRisk
+ */
+JsonRisk.date_or_throw = function (d) {
+  const date_or_null = JsonRisk.date_or_null(d);
+  if (null === date_or_null) throw new Error("date_or_throw: invalid input");
+  return date_or_null;
+};
 
-  /**
-   * Get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
-   * @param {date} d
-   * @returns {number} array of javascript date objects
-   * @memberof JsonRisk
-   */
-  library.date_vector_or_null = function (d) {
-    if (d instanceof Date) return [library.date_or_throw(d)];
-    let res;
-    if (typeof d === "string") {
-      res = d.split(/\s+/);
-    } else if (Array.isArray(d) && d.length > 0) {
-      res = d.slice();
-    } else {
-      return null;
-    }
-    for (let i = 0; i < res.length; i++) {
-      res[i] = library.date_or_null(res[i]);
-      if (null === res[i])
-        throw new Error("date_vector_or_null: invalid input");
-    }
-    return res;
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * @desc read instrument type for given instrument and create instrument object
-   * @param {object} obj any instrument JSON
-   * @returns {object} instrument class object
-   * @memberof JsonRisk
-   */
-  library.make_instrument = function (obj) {
-    const type = library.string_or_throw(
-      obj.type,
-      "make_instrument: no type supplied",
-    );
-    switch (type.toLowerCase().replaceAll("_", "")) {
-      case "bond":
-        return new library.Bond(obj);
-      case "floater":
-        return new library.Floater(obj);
-      case "capfloor":
-        return new library.CapFloor(obj);
-      case "swap":
-        return new library.Swap(obj);
-      case "swaption":
-        return new library.Swaption(obj);
-      case "fxterm":
-        return new library.FxTerm(obj);
-      case "callablebond":
-        return new library.CallableBond(obj);
-      case "leginstrument":
-        return new library.LegInstrument(obj);
-      case "equity":
-        return new library.Equity(obj);
-      case "equityfuture":
-        return new library.EquityFuture(obj);
-      case "equityforward":
-        return new library.EquityForward(obj);
-      case "equityoption":
-        return new library.EquityOption(obj);
-      case "equityamericanoption":
-        return new library.EquityAmericanOption(obj);
-      case "cds":
-        return new library.CreditDefaultSwap(obj);
-      default:
-        throw new Error("make_instrument: invalid instrument type");
-    }
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * @desc Returns a number if a valid number or numeric string is entered and null otherwise, does not throw
-   * @param {number} n
-   * @returns {number} number
-   * @memberof JsonRisk
-   */
-  library.number_or_null = function (n) {
-    if (typeof n === "number") return n;
-    if (typeof n === "string") {
-      n = n.trim();
-      let res = parseFloat(n);
-      if (isNaN(res)) return null;
-      if (n.charAt(n.length - 1) === "%") res *= 0.01;
-      return res;
-    }
+/**
+ * Get a vector of dates when vector of dates, vector of date strings or space sepatated list of date strings is entered. Returns null otherwise but throws on invalid or empty date strings
+ * @param {date} d
+ * @returns {number} array of javascript date objects
+ * @memberof JsonRisk
+ */
+JsonRisk.date_vector_or_null = function (d) {
+  if (d instanceof Date) return [JsonRisk.date_or_throw(d)];
+  let res;
+  if (typeof d === "string") {
+    res = d.split(/\s+/);
+  } else if (Array.isArray(d) && d.length > 0) {
+    res = d.slice();
+  } else {
     return null;
-  };
-  /**
-   * @desc Returns positive number if a valid positive number or numeric string is entered and null otherwise, does not throw
-   * @param {number} n
-   * @returns {number} number
-   * @memberof JsonRisk
-   */
-  library.positive_number_or_null = function (n) {
-    const res = library.number_or_null(n);
-    if (res <= 0) return null;
+  }
+  for (let i = 0; i < res.length; i++) {
+    res[i] = JsonRisk.date_or_null(res[i]);
+    if (null === res[i]) throw new Error("date_vector_or_null: invalid input");
+  }
+  return res;
+};
+/**
+ * @desc read instrument type for given instrument and create instrument object
+ * @param {object} obj any instrument JSON
+ * @returns {object} instrument class object
+ * @memberof JsonRisk
+ */
+JsonRisk.make_instrument = function (obj) {
+  const type = JsonRisk.string_or_throw(
+    obj.type,
+    "make_instrument: no type supplied",
+  );
+  switch (type.toLowerCase().replaceAll("_", "")) {
+    case "bond":
+      return new JsonRisk.Bond(obj);
+    case "floater":
+      return new JsonRisk.Floater(obj);
+    case "capfloor":
+      return new JsonRisk.CapFloor(obj);
+    case "swap":
+      return new JsonRisk.Swap(obj);
+    case "swaption":
+      return new JsonRisk.Swaption(obj);
+    case "fxterm":
+      return new JsonRisk.FxTerm(obj);
+    case "callablebond":
+      return new JsonRisk.CallableBond(obj);
+    case "leginstrument":
+      return new JsonRisk.LegInstrument(obj);
+    case "equity":
+      return new JsonRisk.Equity(obj);
+    case "equityfuture":
+      return new JsonRisk.EquityFuture(obj);
+    case "equityforward":
+      return new JsonRisk.EquityForward(obj);
+    case "equityoption":
+      return new JsonRisk.EquityOption(obj);
+    case "equityamericanoption":
+      return new JsonRisk.EquityAmericanOption(obj);
+    case "cds":
+      return new JsonRisk.CreditDefaultSwap(obj);
+    default:
+      throw new Error("make_instrument: invalid instrument type");
+  }
+};
+/**
+ * @desc Returns a number if a valid number or numeric string is entered and null otherwise, does not throw
+ * @param {number} n
+ * @returns {number} number
+ * @memberof JsonRisk
+ */
+JsonRisk.number_or_null = function (n) {
+  if (typeof n === "number") return n;
+  if (typeof n === "string") {
+    n = n.trim();
+    let res = parseFloat(n);
+    if (isNaN(res)) return null;
+    if (n.charAt(n.length - 1) === "%") res *= 0.01;
     return res;
-  };
-  /**
-   * @desc Returns natural number, zero allowed, if a valid natural number or numeric string is entered and null otherwise, does not throw
-   * @param {natural} n
-   * @returns {natural} natural vector
-   * @memberof JsonRisk
-   */
-  library.natural_number_or_null = function (n) {
-    const res = library.number_or_null(n);
-    if (res < 0 || res !== Math.floor(res)) return null;
-    return res;
-  };
-  /**
-   * @desc Returns vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
-   * @param {number} n
-   * @returns {number} number vector
-   * @memberof JsonRisk
-   */
-  library.number_vector_or_null = function (n) {
-    if (typeof n === "number") return [n];
-    let res;
-    if (typeof n === "string") {
-      res = n.split(/\s+/);
-    } else if (Array.isArray(n)) {
-      res = n.slice();
-    } else {
-      return null;
-    }
-    for (let i = 0; i < res.length; i++) {
-      res[i] = library.number_or_null(res[i]);
-      if (null === res[i])
-        throw new Error("number_vector_or_null: invalid input");
-    }
-    return res;
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * Read surface type for given surface and create surface object
-   * @param {object} obj any surface JSON
-   * @returns {object} surface class object
-   * @memberof JsonRisk
-   */
-  library.make_surface = function (obj) {
-    switch (obj.type.toLowerCase()) {
-      case "expiry_rel_strike":
-        return new library.ExpiryRelStrikeSurface(obj);
-      case "expiry_abs_strike":
-        return new library.ExpiryAbsStrikeSurface(obj);
-      default:
-        return new library.Surface(obj);
-    }
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * Read payment type for given payment and create payment object
-   * @param {object} obj any payment JSON
-   * @returns {object} payment class object
-   * @memberof JsonRisk
-   */
-  library.make_payment = function (obj) {
-    if (obj instanceof library.NotionalPayment) return obj; // all leg payment types inherit from NotionalPayment
-    switch (obj.type.toLowerCase()) {
-      case "notional":
-        return new library.NotionalPayment(obj);
-      case "fixed":
-        return new library.FixedRatePayment(obj);
-      case "float":
-        return new library.FloatRatePayment(obj);
-      case "caplet":
-        return new library.CapletPayment(obj);
-      case "floorlet":
-        return new library.FloorletPayment(obj);
-      default:
-        throw new Error(`make_payment: invalid payment type ${obj.type}`);
-    }
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * Returns a reference to the argument if the argument is a string, and an empty string otherwise
-   * @param {any} input argument that is typically expected to be a string
-   * @returns {string} the argument itself, or an empty string
-   * @memberof JsonRisk
-   */
-  library.string_or_empty = function (input) {
-    if (typeof input === "string") return input;
-    return "";
-  };
+  }
+  return null;
+};
+/**
+ * @desc Returns positive number if a valid positive number or numeric string is entered and null otherwise, does not throw
+ * @param {number} n
+ * @returns {number} number
+ * @memberof JsonRisk
+ */
+JsonRisk.positive_number_or_null = function (n) {
+  const res = JsonRisk.number_or_null(n);
+  if (res <= 0) return null;
+  return res;
+};
+/**
+ * @desc Returns natural number, zero allowed, if a valid natural number or numeric string is entered and null otherwise, does not throw
+ * @param {natural} n
+ * @returns {natural} natural vector
+ * @memberof JsonRisk
+ */
+JsonRisk.natural_number_or_null = function (n) {
+  const res = JsonRisk.number_or_null(n);
+  if (res < 0 || res !== Math.floor(res)) return null;
+  return res;
+};
+/**
+ * @desc Returns vector of numbers when vector of numbers, vector of numeric strings or space sepatated string is entered. Returns null otherwise
+ * @param {number} n
+ * @returns {number} number vector
+ * @memberof JsonRisk
+ */
+JsonRisk.number_vector_or_null = function (n) {
+  if (typeof n === "number") return [n];
+  let res;
+  if (typeof n === "string") {
+    res = n.split(/\s+/);
+  } else if (Array.isArray(n)) {
+    res = n.slice();
+  } else {
+    return null;
+  }
+  for (let i = 0; i < res.length; i++) {
+    res[i] = JsonRisk.number_or_null(res[i]);
+    if (null === res[i])
+      throw new Error("number_vector_or_null: invalid input");
+  }
+  return res;
+};
+/**
+ * Read surface type for given surface and create surface object
+ * @param {object} obj any surface JSON
+ * @returns {object} surface class object
+ * @memberof JsonRisk
+ */
+JsonRisk.make_surface = function (obj) {
+  switch (obj.type.toLowerCase()) {
+    case "expiry_rel_strike":
+      return new JsonRisk.ExpiryRelStrikeSurface(obj);
+    case "expiry_abs_strike":
+      return new JsonRisk.ExpiryAbsStrikeSurface(obj);
+    default:
+      return new JsonRisk.Surface(obj);
+  }
+};
+/**
+ * Read payment type for given payment and create payment object
+ * @param {object} obj any payment JSON
+ * @returns {object} payment class object
+ * @memberof JsonRisk
+ */
+JsonRisk.make_payment = function (obj) {
+  if (obj instanceof JsonRisk.NotionalPayment) return obj; // all leg payment types inherit from NotionalPayment
+  switch (obj.type.toLowerCase()) {
+    case "notional":
+      return new JsonRisk.NotionalPayment(obj);
+    case "fixed":
+      return new JsonRisk.FixedRatePayment(obj);
+    case "float":
+      return new JsonRisk.FloatRatePayment(obj);
+    case "caplet":
+      return new JsonRisk.CapletPayment(obj);
+    case "floorlet":
+      return new JsonRisk.FloorletPayment(obj);
+    default:
+      throw new Error(`make_payment: invalid payment type ${obj.type}`);
+  }
+};
+/**
+ * Returns a reference to the argument if the argument is a string, and an empty string otherwise
+ * @param {any} input argument that is typically expected to be a string
+ * @returns {string} the argument itself, or an empty string
+ * @memberof JsonRisk
+ */
+JsonRisk.string_or_empty = function (input) {
+  if (typeof input === "string") return input;
+  return "";
+};
 
-  /**
-   * Returns a reference to the argument if the argument is a string, and fallback string otherwise
-   * @param {any} input argument that is typically expected to be a string
-   * @param {string} fallback the fallback to return
-   * @returns {string} the argument itself, or the fallback
-   * @memberof JsonRisk
-   */
-  library.string_or_fallback = function (input, fallback) {
-    if (typeof input === "string") return input;
-    if (typeof fallback !== "string")
-      throw new Error("string_or_fallback: fallback must be a string");
-    return fallback;
-  };
+/**
+ * Returns a reference to the argument if the argument is a string, and fallback string otherwise
+ * @param {any} input argument that is typically expected to be a string
+ * @param {string} fallback the fallback to return
+ * @returns {string} the argument itself, or the fallback
+ * @memberof JsonRisk
+ */
+JsonRisk.string_or_fallback = function (input, fallback) {
+  if (typeof input === "string") return input;
+  if (typeof fallback !== "string")
+    throw new Error("string_or_fallback: fallback must be a string");
+  return fallback;
+};
 
-  /**
-   * Returns a reference to the argument if the argument is a string, and throws the supplied error message otherwise
-   * @param {any} input argument that is typically expected to be a string
-   * @param {string} message the message to throw
-   * @returns {string} the argument supplied if it is a string
-   * @memberof JsonRisk
-   */
-  library.string_or_throw = function (input, message) {
-    if (typeof input !== "string") throw new Error(message);
-    return input;
-  };
+/**
+ * Returns a reference to the argument if the argument is a string, and throws the supplied error message otherwise
+ * @param {any} input argument that is typically expected to be a string
+ * @param {string} message the message to throw
+ * @returns {string} the argument supplied if it is a string
+ * @memberof JsonRisk
+ */
+JsonRisk.string_or_throw = function (input, message) {
+  if (typeof input !== "string") throw new Error(message);
+  return input;
+};
 
-  /**
-   * Returns a reference to the argument if the argument is a nonempty string, and throws the supplied error message otherwise
-   * @param {any} input argument that is typically expected to be a string
-   * @param {string} message the message to throw
-   * @returns {string} the argument supplied if it is a nonempty string
-   * @memberof JsonRisk
-   */
-  library.nonempty_string_or_throw = function (input, message) {
-    if (typeof input !== "string") throw new Error(message);
-    if ("" === input) throw new Error(message);
-    return input;
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
+/**
+ * Returns a reference to the argument if the argument is a nonempty string, and throws the supplied error message otherwise
+ * @param {any} input argument that is typically expected to be a string
+ * @param {string} message the message to throw
+ * @returns {string} the argument supplied if it is a nonempty string
+ * @memberof JsonRisk
+ */
+JsonRisk.nonempty_string_or_throw = function (input, message) {
+  if (typeof input !== "string") throw new Error(message);
+  if ("" === input) throw new Error(message);
+  return input;
+};
+{
   /**
    * Super-Class representing a position in a financial instrument
    * @memberof JsonRisk
@@ -440,10 +417,10 @@
      * @param {number} [obj.quantity=1.0] the quantity with which the instrument's value is multiplied
      */
     constructor(obj) {
-      this.#currency = library.string_or_empty(obj.currency);
+      this.#currency = JsonRisk.string_or_empty(obj.currency);
 
       if ("quantity" in obj) {
-        let q = library.number_or_null(obj.quantity);
+        let q = JsonRisk.number_or_null(obj.quantity);
         if (null != q) this.#quantity = q;
       }
     }
@@ -475,7 +452,7 @@
      * @param {Deps} deps dependency tracking object
      */
     add_deps(deps) {
-      if (!(deps instanceof library.Deps))
+      if (!(deps instanceof JsonRisk.Deps))
         throw new Error("add_deps: deps must be of type Deps");
       if (this.#currency != "") deps.add_currency(this.#currency);
       this.add_deps_impl(deps);
@@ -495,7 +472,9 @@
      */
     value(params, extras) {
       const p =
-        params instanceof library.Params ? params : new library.Params(params);
+        params instanceof JsonRisk.Params
+          ? params
+          : new JsonRisk.Params(params);
 
       // call sub-class valuation function
       let val = this.value_impl(p, extras);
@@ -513,15 +492,15 @@
     }
   }
 
-  library.Instrument = Instrument;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Instrument = Instrument;
+}
+{
   /**
    * Class representing a financial instrument with legs, basis class for most rate and credit instruments
    * @memberof JsonRisk
    * @extends Instrument
    */
-  class LegInstrument extends library.Instrument {
+  class LegInstrument extends JsonRisk.Instrument {
     #legs = [];
     #acquire_date = new Date(Date.UTC(0, 0, 1));
 
@@ -538,12 +517,12 @@
 
       if ("legs" in obj && Array.isArray(obj.legs)) {
         this.#legs = obj.legs.map((legobj) => {
-          return new library.Leg(legobj);
+          return new JsonRisk.Leg(legobj);
         });
         Object.freeze(this.#legs);
       }
 
-      const ad = library.date_or_null(obj.acquire_date);
+      const ad = JsonRisk.date_or_null(obj.acquire_date);
       if (null !== ad) this.#acquire_date = ad;
     }
 
@@ -583,15 +562,15 @@
     }
   }
 
-  library.LegInstrument = LegInstrument;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.LegInstrument = LegInstrument;
+}
+{
   /**
    * Class representing a fixed rate bond
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class Bond extends library.LegInstrument {
+  class Bond extends JsonRisk.LegInstrument {
     /**
      * Create a bond instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one lag with fixed and notional payments.
      * @param {obj} obj A plain object representing the instrument
@@ -603,11 +582,11 @@
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // fixed rate must be set either as a number or as a vector
-        const f = library.number_vector_or_null(obj.fixed_rate);
+        const f = JsonRisk.number_vector_or_null(obj.fixed_rate);
         if (null === f) throw new Error("Bond: must have fixed rate set");
 
         // generate leg from terms and conditions
-        const leg = library.cashflow_generator(obj);
+        const leg = JsonRisk.cashflow_generator(obj);
 
         // create shallow copy and leave original object unchanged
         const tempobj = Object.assign({ legs: [leg] }, obj);
@@ -639,7 +618,7 @@
     get fixed_rate() {
       //returns first rate on the leg
       for (const p of this.legs[0].payments) {
-        if (p instanceof library.FixedRatePayment) {
+        if (p instanceof JsonRisk.FixedRatePayment) {
           return p.rate;
         }
       }
@@ -669,15 +648,15 @@
     }
   }
 
-  library.Bond = Bond;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Bond = Bond;
+}
+{
   /**
    * Class representing a bond with single or multiple call rights
    * @memberof JsonRisk
    * @extends Bond
    */
-  class CallableBond extends library.Bond {
+  class CallableBond extends JsonRisk.Bond {
     #call_schedule = null;
     #mean_reversion = 0.0;
     #hull_white_volatility = null;
@@ -705,7 +684,7 @@
       super(obj);
 
       // call schedule
-      const fcd = library.date_or_null(obj.first_exercise_date);
+      const fcd = JsonRisk.date_or_null(obj.first_exercise_date);
       if (null === fcd)
         throw new Error("CallableBond: must provide first call date");
       const leg = this.legs[0];
@@ -724,14 +703,14 @@
           "CallableBond: first call date on or after maturity date",
         );
 
-      const call_tenor = library.natural_number_or_null(obj.call_tenor) || 0; //european call by default
+      const call_tenor = JsonRisk.natural_number_or_null(obj.call_tenor) || 0; //european call by default
 
-      const is_holiday_func = library.is_holiday_factory(obj.calendar);
-      const bdc = library.string_or_empty(obj.bdc);
+      const is_holiday_func = JsonRisk.is_holiday_factory(obj.calendar);
+      const bdc = JsonRisk.string_or_empty(obj.bdc);
       const adjust = function (d) {
-        return library.adjust(d, bdc, is_holiday_func);
+        return JsonRisk.adjust(d, bdc, is_holiday_func);
       };
-      let call_schedule = library.schedule(
+      let call_schedule = JsonRisk.schedule(
         fcd,
         date_end,
         call_tenor,
@@ -759,18 +738,18 @@
       this.#call_schedule = call_schedule;
       Object.freeze(call_schedule);
 
-      this.#mean_reversion = library.number_or_null(obj.mean_reversion) || 0.0; // null allowed
-      this.hull_white_volatility = library.number_or_null(
+      this.#mean_reversion = JsonRisk.number_or_null(obj.mean_reversion) || 0.0; // null allowed
+      this.hull_white_volatility = JsonRisk.number_or_null(
         obj.hull_white_volatility,
       ); // null allowed
 
       this.#opportunity_spread =
-        library.number_or_null(obj.opportunity_spread) || 0.0;
-      this.#exclude_base = library.make_bool(obj.exclude_base);
+        JsonRisk.number_or_null(obj.opportunity_spread) || 0.0;
+      this.#exclude_base = JsonRisk.make_bool(obj.exclude_base);
 
       // use simple calibration if configured, or if leg is simple bullet
       const simple_calibration =
-        library.make_bool(obj.simple_calibration) ||
+        JsonRisk.make_bool(obj.simple_calibration) ||
         (leg.has_constant_notional && leg.has_constant_rate);
 
       //basket generation
@@ -778,7 +757,7 @@
       for (let i = 0; i < call_schedule.length; i++) {
         if (simple_calibration) {
           //basket instruments are co-terminal swaptions with standard conditions
-          this.#basket[i] = new library.Swaption({
+          this.#basket[i] = new JsonRisk.Swaption({
             is_payer: false,
             maturity: date_end,
             first_exercise_date: this.#call_schedule[i],
@@ -796,7 +775,7 @@
           });
         } else {
           //basket instruments are equivalent regular swaptions with standard conditions
-          const temp = library.create_equivalent_regular_swaption(
+          const temp = JsonRisk.create_equivalent_regular_swaption(
             leg,
             this.#call_schedule[i],
             {
@@ -808,7 +787,7 @@
             },
           );
           temp.fixed_rate -= this.#opportunity_spread;
-          this.#basket[i] = new library.Swaption(temp);
+          this.#basket[i] = new JsonRisk.Swaption(temp);
         }
       }
 
@@ -828,7 +807,7 @@
     value_impl(params) {
       const leg = this.legs[0];
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         leg.disc_curve,
         "CallableBond: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
       );
@@ -841,14 +820,14 @@
       //get basket swaptions for all future call dates
       const basket = this.#basket.filter(
         (swaption) =>
-          library.time_from_now(swaption.first_exercise_date) > 1 / 512,
+          JsonRisk.time_from_now(swaption.first_exercise_date) > 1 / 512,
       );
       const t_exercise = basket.map((swaption) =>
-        library.time_from_now(swaption.first_exercise_date),
+        JsonRisk.time_from_now(swaption.first_exercise_date),
       );
 
       // get LGM model with desired mean reversion
-      const lgm = new library.LGM(this.#mean_reversion);
+      const lgm = new JsonRisk.LGM(this.#mean_reversion);
 
       if (null == this.#hull_white_volatility) {
         //calibrate lgm model - returns xi for non-expired swaptions only
@@ -901,15 +880,15 @@
     }
   }
 
-  library.CallableBond = CallableBond;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.CallableBond = CallableBond;
+}
+{
   /**
    * Class representing an interest rate cap or floor
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class CapFloor extends library.LegInstrument {
+  class CapFloor extends JsonRisk.LegInstrument {
     /**
      * Create a cap/floor instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one leg with floating and notional payments.
      * @param {obj} obj A plain object representing the instrument
@@ -944,7 +923,7 @@
         delete tempobj.fixed_rate;
 
         // generate leg from terms and conditions
-        const leg = library.cashflow_generator(tempobj);
+        const leg = JsonRisk.cashflow_generator(tempobj);
 
         // remove all payments except caplets and floorlets
         leg.payments = leg.payments.filter(
@@ -1008,15 +987,15 @@
     }
   }
 
-  library.CapFloor = CapFloor;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.CapFloor = CapFloor;
+}
+{
   /**
    * Class representing a credit default swap
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class CreditDefaultSwap extends library.LegInstrument {
+  class CreditDefaultSwap extends JsonRisk.LegInstrument {
     #survival_curve = "";
     #accrual_on_default = false;
     #recovery_rate = 0.0;
@@ -1035,10 +1014,10 @@
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate leg from terms and conditions
-        const fixed_rate = library.number_or_null(obj.fixed_rate);
+        const fixed_rate = JsonRisk.number_or_null(obj.fixed_rate);
         if (null === fixed_rate)
           throw new Error("CreditDefaultSwap: must provide fixed rate");
-        const leg = library.cashflow_generator({
+        const leg = JsonRisk.cashflow_generator({
           notional: obj.notional,
           notional_exchange: false, // no notional exchange
           maturity: obj.maturity,
@@ -1048,8 +1027,8 @@
           fixed_rate: fixed_rate,
           tenor: obj.tenor,
           calendar: obj.calendar,
-          bdc: library.string_or_empty(obj.bdc) || "f",
-          dcc: library.string_or_empty(obj.dcc) || "act/360",
+          bdc: JsonRisk.string_or_empty(obj.bdc) || "f",
+          dcc: JsonRisk.string_or_empty(obj.dcc) || "act/360",
           adjust_accrual_periods: obj.adjust_accrual_periods,
           disc_curve: obj.disc_curve,
         });
@@ -1057,7 +1036,7 @@
         // for standard CDS, the last accrual period extends one day longer
         const last_payment = leg.payments[leg.payments.length - 1];
         if (last_payment.date_end) {
-          last_payment.date_end = library.add_days(last_payment.date_end, 1);
+          last_payment.date_end = JsonRisk.add_days(last_payment.date_end, 1);
         }
 
         // create shallow copy and leave original object unchanged
@@ -1089,9 +1068,9 @@
           "CreditDefaultSwap: Cannot contain embedded coupon options",
         );
 
-      this.#survival_curve = library.string_or_empty(obj.survival_curve);
-      this.#accrual_on_default = library.make_bool(obj.accrual_on_default);
-      this.#recovery_rate = library.number_or_null(obj.recovery_rate);
+      this.#survival_curve = JsonRisk.string_or_empty(obj.survival_curve);
+      this.#accrual_on_default = JsonRisk.make_bool(obj.accrual_on_default);
+      this.#recovery_rate = JsonRisk.number_or_null(obj.recovery_rate);
       if (this.#recovery_rate === null)
         throw new Error("CreditDefaultSwap: must specify recovery rate");
       if (this.#recovery_rate < 0 || this.#recovery_rate > 1)
@@ -1104,32 +1083,32 @@
     }
 
     value_impl(params, extras_not_used) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.legs[0].disc_curve,
         "CDS: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
       );
       const dc = params.get_curve(this.legs[0].disc_curve);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.#survival_curve,
         "CDS: no survival curve specified, make sure to populate 'survival_curve' on instrument level",
       );
       const sc = params.get_curve(this.#survival_curve);
-      const isda = new library.IsdaCdsModel(dc, sc);
+      const isda = new JsonRisk.IsdaCdsModel(dc, sc);
 
       let pv_premium = 0;
       let n = this.legs[0].payments.length;
       for (let i = 0; i < n; i++) {
         const p = this.legs[0].payments[i];
-        if (!(p instanceof library.FixedRatePayment)) continue;
+        if (!(p instanceof JsonRisk.FixedRatePayment)) continue;
         const { date_pmt, date_end, date_value } = p;
-        if (date_pmt <= library.valuation_date) continue;
+        if (date_pmt <= JsonRisk.valuation_date) continue;
 
-        const t_pmt = library.time_from_now(date_pmt);
+        const t_pmt = JsonRisk.time_from_now(date_pmt);
         const t_end =
           (i === n
-            ? library.time_from_now(date_end)
-            : library.time_from_now(date_value)) -
+            ? JsonRisk.time_from_now(date_end)
+            : JsonRisk.time_from_now(date_value)) -
           1.0 / 365.0;
 
         const disc_factor = dc.get_df(t_pmt);
@@ -1146,8 +1125,8 @@
       const notional = this.legs[0].payments[0].notional;
       const recovery_rate = this.#recovery_rate;
       let date_start = this.legs[0].payments[0].date_start;
-      if (date_start < library.valuation_date)
-        date_start = library.valuation_date;
+      if (date_start < JsonRisk.valuation_date)
+        date_start = JsonRisk.valuation_date;
       const date_end =
         this.legs[0].payments[this.legs[0].payments.length - 1].date_end;
       const pv_protection = isda.protection_pv({
@@ -1161,15 +1140,15 @@
     }
   }
 
-  library.CreditDefaultSwap = CreditDefaultSwap;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.CreditDefaultSwap = CreditDefaultSwap;
+}
+{
   /**
    * Class representing a stock, also serving as super class for equity derivatives
    * @memberof JsonRisk
    * @extends Instrument
    */
-  class Equity extends library.Instrument {
+  class Equity extends JsonRisk.Instrument {
     #quote = "";
     #disc_curve = "";
     #spot_days = 0;
@@ -1188,11 +1167,11 @@
      */
     constructor(obj) {
       super(obj);
-      this.#quote = library.string_or_empty(obj.quote);
-      this.#disc_curve = library.string_or_empty(obj.disc_curve);
-      this.#spot_days = library.natural_number_or_null(obj.spot_days) || 0;
-      this.#calendar = library.string_or_empty(obj.calendar);
-      this.#is_holiday_func = library.is_holiday_factory(this.#calendar);
+      this.#quote = JsonRisk.string_or_empty(obj.quote);
+      this.#disc_curve = JsonRisk.string_or_empty(obj.disc_curve);
+      this.#spot_days = JsonRisk.natural_number_or_null(obj.spot_days) || 0;
+      this.#calendar = JsonRisk.string_or_empty(obj.calendar);
+      this.#is_holiday_func = JsonRisk.is_holiday_factory(this.#calendar);
     }
 
     /**
@@ -1220,16 +1199,16 @@
     }
 
     spot_date() {
-      return library.add_business_days(
-        library.valuation_date,
+      return JsonRisk.add_business_days(
+        JsonRisk.valuation_date,
         this.#spot_days,
         this.#is_holiday_func,
       );
     }
 
     forward(spot, fwd_date, disc_curve, repo_curve) {
-      const tspot = library.time_from_now(this.spot_date());
-      const tfwd = library.time_from_now(fwd_date);
+      const tspot = JsonRisk.time_from_now(this.spot_date());
+      const tfwd = JsonRisk.time_from_now(fwd_date);
       const discounted_spot = spot * disc_curve.get_df(tspot);
       const res = discounted_spot / repo_curve.get_df(tfwd);
       return res;
@@ -1241,7 +1220,7 @@
     }
 
     value_impl(params, extras_not_used) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "Equity: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
@@ -1251,14 +1230,14 @@
 
       const dc = params.get_curve(this.#disc_curve);
       const discounted_quote =
-        quote.get_value() * dc.get_df(library.time_from_now(spot_date));
+        quote.get_value() * dc.get_df(JsonRisk.time_from_now(spot_date));
       return discounted_quote;
     }
   }
 
-  library.Equity = Equity;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Equity = Equity;
+}
+{
   // helper function
   const times_for_gaussian = function (t_start, t_end) {
     const res = [];
@@ -1280,7 +1259,7 @@
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityAmericanOption extends library.Equity {
+  class EquityAmericanOption extends JsonRisk.Equity {
     #first_exercise_date = null;
     #expiry = null;
     #repo_curve = "";
@@ -1311,15 +1290,17 @@
      */
     constructor(obj) {
       super(obj);
-      this.#first_exercise_date = library.date_or_null(obj.first_exercise_date);
-      this.#expiry = library.date_or_null(obj.expiry);
-      this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#surface = library.string_or_empty(obj.surface);
-      this.#strike = library.number_or_null(obj.strike) || 0.0;
-      this.#is_call = library.make_bool(obj.is_call);
-      this.#q = library.number_or_null(obj.q) || 0.0;
-      this.#n = library.number_or_null(obj.n) || 10;
-      this.#model = library.string_or_empty(obj.model).toLowerCase() || "crr";
+      this.#first_exercise_date = JsonRisk.date_or_null(
+        obj.first_exercise_date,
+      );
+      this.#expiry = JsonRisk.date_or_null(obj.expiry);
+      this.#repo_curve = JsonRisk.string_or_empty(obj.repo_curve);
+      this.#surface = JsonRisk.string_or_empty(obj.surface);
+      this.#strike = JsonRisk.number_or_null(obj.strike) || 0.0;
+      this.#is_call = JsonRisk.make_bool(obj.is_call);
+      this.#q = JsonRisk.number_or_null(obj.q) || 0.0;
+      this.#n = JsonRisk.number_or_null(obj.n) || 10;
+      this.#model = JsonRisk.string_or_empty(obj.model).toLowerCase() || "crr";
     }
 
     get repo_curve() {
@@ -1333,9 +1314,9 @@
     }
 
     value_impl(params, extras_not_used) {
-      if (library.valuation_date >= this.#expiry) return 0.0;
+      if (JsonRisk.valuation_date >= this.#expiry) return 0.0;
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "EquityAmericanOption: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
@@ -1343,7 +1324,7 @@
       const quote = params.get_scalar(this.quote);
       const spot = quote.get_value();
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.disc_curve,
         "EquityAmericanOption: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
       );
@@ -1353,13 +1334,13 @@
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       const t_start = this.#first_exercise_date
-        ? library.time_from_now(this.#first_exercise_date)
+        ? JsonRisk.time_from_now(this.#first_exercise_date)
         : 0.0;
-      const t_end = library.time_from_now(this.#expiry);
+      const t_end = JsonRisk.time_from_now(this.#expiry);
       const vol = surface.get_rate(t_end, null, forward, this.#strike);
 
       if (this.#model == "crr") {
-        const model = new library.CRRBinomialModel(
+        const model = new JsonRisk.CRRBinomialModel(
           t_start,
           t_end,
           vol,
@@ -1394,7 +1375,7 @@
 
         const num_std_devs = 4;
         const resolution = 16;
-        const model = new library.GaussianModel({
+        const model = new JsonRisk.GaussianModel({
           times,
           xi,
           underlying,
@@ -1408,15 +1389,15 @@
     }
   }
 
-  library.EquityAmericanOption = EquityAmericanOption;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.EquityAmericanOption = EquityAmericanOption;
+}
+{
   /**
    * Class representing a forward contract on a stock or on an equity index
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityForward extends library.Equity {
+  class EquityForward extends JsonRisk.Equity {
     #expiry = null;
     #repo_curve = "";
     #price = 0.0;
@@ -1436,11 +1417,11 @@
      */
     constructor(obj) {
       super(obj);
-      this.#expiry = library.date_or_null(obj.expiry);
+      this.#expiry = JsonRisk.date_or_null(obj.expiry);
       if (null === this.#expiry)
         throw new Error("EquityForward: must provide a valid expiry date");
-      this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#price = library.number_or_null(obj.price) || 0.0;
+      this.#repo_curve = JsonRisk.string_or_empty(obj.repo_curve);
+      this.#price = JsonRisk.number_or_null(obj.price) || 0.0;
     }
 
     /**
@@ -1457,15 +1438,15 @@
     }
 
     value_impl(params, extras_not_used) {
-      if (library.valuation_date >= this.#expiry) return 0.0;
+      if (JsonRisk.valuation_date >= this.#expiry) return 0.0;
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "EquityForward: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
       const quote = params.get_scalar(this.quote);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.disc_curve,
         "EquityForward: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
       );
@@ -1475,20 +1456,21 @@
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       return (
-        (forward - this.#price) * dc.get_df(library.time_from_now(this.#expiry))
+        (forward - this.#price) *
+        dc.get_df(JsonRisk.time_from_now(this.#expiry))
       );
     }
   }
 
-  library.EquityForward = EquityForward;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.EquityForward = EquityForward;
+}
+{
   /**
    * Class representing a futures contract on a stock or on an equity index
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityFuture extends library.Equity {
+  class EquityFuture extends JsonRisk.Equity {
     #expiry = null;
     #repo_curve = "";
     #price = 0.0;
@@ -1509,11 +1491,11 @@
 
     constructor(obj) {
       super(obj);
-      this.#expiry = library.date_or_null(obj.expiry);
+      this.#expiry = JsonRisk.date_or_null(obj.expiry);
       if (null === this.#expiry)
         throw new Error("EquityFuture: must provide a valid expiry date");
-      this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#price = library.number_or_null(obj.price) || 0.0;
+      this.#repo_curve = JsonRisk.string_or_empty(obj.repo_curve);
+      this.#price = JsonRisk.number_or_null(obj.price) || 0.0;
     }
 
     /**
@@ -1530,15 +1512,15 @@
     }
 
     value_impl(params, extras_not_used) {
-      if (library.valuation_date >= this.#expiry) return 0.0;
+      if (JsonRisk.valuation_date >= this.#expiry) return 0.0;
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "EquityFuture: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
       const quote = params.get_scalar(this.quote);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.disc_curve,
         "EquityFuture: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
       );
@@ -1550,15 +1532,15 @@
     }
   }
 
-  library.EquityFuture = EquityFuture;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.EquityFuture = EquityFuture;
+}
+{
   /**
    * Class representing an option on a stock or on an equity index
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityOption extends library.Equity {
+  class EquityOption extends JsonRisk.Equity {
     #expiry = null;
     #repo_curve = "";
     #surface = "";
@@ -1584,12 +1566,12 @@
      */
     constructor(obj) {
       super(obj);
-      this.#expiry = library.date_or_null(obj.expiry);
-      this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#surface = library.string_or_empty(obj.surface);
-      this.#strike = library.number_or_null(obj.strike) || 0.0;
-      this.#is_call = library.make_bool(obj.is_call);
-      this.#q = library.number_or_null(obj.q) || 0.0;
+      this.#expiry = JsonRisk.date_or_null(obj.expiry);
+      this.#repo_curve = JsonRisk.string_or_empty(obj.repo_curve);
+      this.#surface = JsonRisk.string_or_empty(obj.surface);
+      this.#strike = JsonRisk.number_or_null(obj.strike) || 0.0;
+      this.#is_call = JsonRisk.make_bool(obj.is_call);
+      this.#q = JsonRisk.number_or_null(obj.q) || 0.0;
     }
 
     /**
@@ -1607,14 +1589,14 @@
     }
 
     value_impl(params, extras_not_used) {
-      if (library.valuation_date >= this.#expiry) return 0.0;
-      library.nonempty_string_or_throw(
+      if (JsonRisk.valuation_date >= this.#expiry) return 0.0;
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "EquityOption: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
       const quote = params.get_scalar(this.quote);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.disc_curve,
         "EquityOption: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
       );
@@ -1622,13 +1604,13 @@
       const rc = this.#repo_curve ? params.get_curve(this.#repo_curve) : dc;
       const surface = params.get_surface(this.#surface);
 
-      const t = library.time_from_now(this.#expiry);
+      const t = JsonRisk.time_from_now(this.#expiry);
       const forward =
         this.forward(quote.get_value(), this.#expiry, dc, rc) *
         Math.exp(-t * this.#q);
       const vol = surface.get_rate(t, null, forward, this.#strike);
 
-      const model = new library.BlackModel(t, vol);
+      const model = new JsonRisk.BlackModel(t, vol);
       const val = this.#is_call
         ? model.call_price(forward, this.#strike)
         : model.put_price(forward, this.#strike);
@@ -1636,15 +1618,15 @@
     }
   }
 
-  library.EquityOption = EquityOption;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.EquityOption = EquityOption;
+}
+{
   /**
    * Class representing a floating rate bond
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class Floater extends library.LegInstrument {
+  class Floater extends JsonRisk.LegInstrument {
     /**
      * Create a floater instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one leg with floating and notional payments.
      * @param {obj} obj A plain object representing the instrument
@@ -1662,7 +1644,7 @@
         delete tempobj.fixed_rate;
 
         // generate leg from terms and conditions
-        const leg = library.cashflow_generator(tempobj);
+        const leg = JsonRisk.cashflow_generator(tempobj);
 
         // make simple index
         const index = {
@@ -1717,15 +1699,15 @@
     }
   }
 
-  library.Floater = Floater;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Floater = Floater;
+}
+{
   /**
    * Class representing a FX Swap, FX Spot or FX Forward instrument
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class FxTerm extends library.LegInstrument {
+  class FxTerm extends JsonRisk.LegInstrument {
     /**
      * Create a fx term instrument.
      * @param {obj} obj A plain object representing the instrument
@@ -1753,7 +1735,7 @@
         // far payment
         if (
           typeof obj.notional_2 === "number" &&
-          library.date_or_null(obj.maturity_2)
+          JsonRisk.date_or_null(obj.maturity_2)
         ) {
           leg.payments.push({
             type: "notional",
@@ -1790,22 +1772,22 @@
             "FXTerm: both legs must contain the same number of payments",
           );
         for (const p of leg.payments) {
-          if (p.constructor !== library.NotionalPayment)
+          if (p.constructor !== JsonRisk.NotionalPayment)
             throw new Error("FxTerm: legs can only contain notional payments");
         }
       }
     }
   }
 
-  library.FxTerm = FxTerm;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.FxTerm = FxTerm;
+}
+{
   /**
    * Class representing a fix-float swap
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class Swap extends library.LegInstrument {
+  class Swap extends JsonRisk.LegInstrument {
     #fixed_leg = null;
     #float_leg = null;
     #is_payer = null;
@@ -1822,8 +1804,8 @@
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate legs from terms and conditions
-        const phi = library.make_bool(obj.is_payer) ? -1 : 1;
-        const fixed_leg = library.cashflow_generator({
+        const phi = JsonRisk.make_bool(obj.is_payer) ? -1 : 1;
+        const fixed_leg = JsonRisk.cashflow_generator({
           notional: obj.notional * phi,
           notional_exchange: false,
           maturity: obj.maturity,
@@ -1837,7 +1819,7 @@
           disc_curve: obj.disc_curve || "",
         });
 
-        const float_leg = library.cashflow_generator({
+        const float_leg = JsonRisk.cashflow_generator({
           notional: -obj.notional * phi,
           notional_exchange: false,
           maturity: obj.maturity,
@@ -1936,7 +1918,7 @@
     get fixed_rate() {
       //returns first rate on the fixed leg
       for (const p of this.#fixed_leg.payments) {
-        if (p instanceof library.FixedRatePayment) {
+        if (p instanceof JsonRisk.FixedRatePayment) {
           return p.rate;
         }
       }
@@ -1951,15 +1933,15 @@
     }
   }
 
-  library.Swap = Swap;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Swap = Swap;
+}
+{
   /**
    * Class representing a plain vanilla swaption
    * @memberof JsonRisk
    * @extends Swap
    */
-  class Swaption extends library.Swap {
+  class Swaption extends JsonRisk.Swap {
     #first_exercise_date = null;
     #maturity = null;
     #surface = "";
@@ -1980,7 +1962,7 @@
      */
     constructor(obj) {
       //first_exercise_date (a.k.a. expiry) of the swaption
-      let first_exercise_date = library.date_or_null(obj.first_exercise_date);
+      let first_exercise_date = JsonRisk.date_or_null(obj.first_exercise_date);
       if (!first_exercise_date)
         throw new Error(
           "swaption: must provide valid first_exercise_date date.",
@@ -1998,7 +1980,7 @@
       this.#first_exercise_date = first_exercise_date;
 
       //maturity of the underlying swap
-      this.#maturity = library.date_or_null(obj.maturity);
+      this.#maturity = JsonRisk.date_or_null(obj.maturity);
       if (!this.#maturity)
         throw new Error("swaption: must provide valid maturity date.");
 
@@ -2046,13 +2028,13 @@
     }
 
     value_impl(params) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.fixed_leg.disc_curve,
         "Swaption: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
       );
       const disc_curve = params.get_curve(this.fixed_leg.disc_curve);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.#surface,
         "Swaption: no surface specified, make sure to populate 'surface' on instrument level",
       );
@@ -2071,8 +2053,8 @@
 
     value_with_curves(disc_curve, fwd_curve, surface) {
       //obtain times
-      const t_maturity = library.time_from_now(this.#maturity);
-      const t_first_exercise_date = library.time_from_now(
+      const t_maturity = JsonRisk.time_from_now(this.#maturity);
+      const t_first_exercise_date = JsonRisk.time_from_now(
         this.#first_exercise_date,
       );
       const t_term = t_maturity - t_first_exercise_date;
@@ -2093,7 +2075,10 @@
       this.#std_dev = this.#vol * Math.sqrt(t_first_exercise_date);
 
       // initialize model
-      const model = new library.BachelierModel(t_first_exercise_date, this.vol);
+      const model = new JsonRisk.BachelierModel(
+        t_first_exercise_date,
+        this.vol,
+      );
 
       const annuity = this.annuity(disc_curve);
       let res;
@@ -2110,7 +2095,7 @@
     }
   }
 
-  library.Swaption = Swaption;
+  JsonRisk.Swaption = Swaption;
 
   /**
    * ...
@@ -2121,13 +2106,13 @@
    * @memberof JsonRisk
    * @public
    */
-  library.create_equivalent_regular_swaption = function (
+  JsonRisk.create_equivalent_regular_swaption = function (
     original_leg,
     exercise_date,
     conventions,
   ) {
     //sanity checks
-    if (!(original_leg instanceof library.Leg))
+    if (!(original_leg instanceof JsonRisk.Leg))
       throw new Error("create_equivalent_regular_swaption: invalid leg");
 
     if (!conventions) conventions = {};
@@ -2136,7 +2121,7 @@
     const calendar = conventions.calendar || "";
 
     // rebuild leg with just a discount curve
-    const leg = new library.Leg({
+    const leg = new JsonRisk.Leg({
       disc_curve: "discount",
       payments: original_leg.payments,
     });
@@ -2163,7 +2148,7 @@
       let npv_up = 0.0;
       let npv_down = 0.0;
       for (const p of leg.payments) {
-        const t = library.days_between(exercise_date, p.date_pmt) / 365;
+        const t = JsonRisk.days_between(exercise_date, p.date_pmt) / 365;
         if (t <= 0) continue;
         npv_up += p.amount * (1 + irr + 0.0001) ** -t;
         npv_down += p.amount * (1 + irr - 0.0001) ** -t;
@@ -2180,15 +2165,15 @@
     //start with simple estimate
     const ttm_guess = effective_duration_target;
     let ttm = ttm_guess;
-    let maturity = library.add_days(exercise_date, Math.round(ttm * 365));
+    let maturity = JsonRisk.add_days(exercise_date, Math.round(ttm * 365));
 
     const bond = {
       maturity: maturity,
       effective_date: exercise_date,
-      acquire_date_: library.adjust(
+      acquire_date_: JsonRisk.adjust(
         exercise_date,
         bdc,
-        library.is_holiday_factory(calendar),
+        JsonRisk.is_holiday_factory(calendar),
       ), //exclude initial disboursement cashflow from valuation
       notional: balance,
       fixed_rate: irr,
@@ -2197,7 +2182,7 @@
       bdc: bdc,
       disc_curve: "discount",
     };
-    effective_duration = ed(new library.Bond(bond).legs[0]);
+    effective_duration = ed(new JsonRisk.Bond(bond).legs[0]);
     let iter = 10;
 
     //alter maturity until we obtain effective duration target value
@@ -2208,9 +2193,9 @@
       ttm = (ttm * effective_duration_target) / effective_duration;
       // revert to best estimate when value is implausible
       if (isNaN(ttm) || ttm > 100 || ttm < 1 / 365) ttm = ttm_guess;
-      maturity = library.add_days(exercise_date, Math.round(ttm * 365));
+      maturity = JsonRisk.add_days(exercise_date, Math.round(ttm * 365));
       bond.maturity = maturity;
-      const leg = new library.Bond(bond).legs[0];
+      const leg = new JsonRisk.Bond(bond).legs[0];
       effective_duration = ed(leg);
       iter--;
     }
@@ -2232,8 +2217,8 @@
       float_bdc: bdc,
     };
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
+}
+{
   let specs = null;
   let conditions = null;
   let schedule = null;
@@ -2249,18 +2234,18 @@
   function make_specs(obj) {
     specs = {};
 
-    specs.maturity = library.date_or_null(obj.maturity);
+    specs.maturity = JsonRisk.date_or_null(obj.maturity);
     if (!specs.maturity)
       throw new Error("fixed_income: must provide maturity date.");
 
-    specs.effective_date = library.date_or_null(obj.effective_date); //null allowed
+    specs.effective_date = JsonRisk.date_or_null(obj.effective_date); //null allowed
 
-    specs.notional = library.number_or_null(obj.notional);
+    specs.notional = JsonRisk.number_or_null(obj.notional);
     if (null === specs.notional)
       throw new Error("cashflow_generator: must provide valid notional.");
 
     //include notional exchange unless explicitly set to false (e.g., for swaps)
-    specs.notional_exchange = library.make_bool(obj.notional_exchange);
+    specs.notional_exchange = JsonRisk.make_bool(obj.notional_exchange);
     if (
       null === obj.notional_exchange ||
       "" === obj.notional_exchange ||
@@ -2268,14 +2253,14 @@
     )
       specs.notional_exchange = true;
 
-    specs.tenor = library.natural_number_or_null(obj.tenor);
+    specs.tenor = JsonRisk.natural_number_or_null(obj.tenor);
     if (null === specs.tenor)
       throw new Error("cashflow_generator: must provide valid tenor.");
 
-    specs.first_date = library.date_or_null(obj.first_date); //null allowed
-    specs.next_to_last_date = library.date_or_null(obj.next_to_last_date); //null allowed
-    specs.stub_end = library.make_bool(obj.stub_end); // defaults to false
-    specs.stub_long = library.make_bool(obj.stub_long); // defaults to false
+    specs.first_date = JsonRisk.date_or_null(obj.first_date); //null allowed
+    specs.next_to_last_date = JsonRisk.date_or_null(obj.next_to_last_date); //null allowed
+    specs.stub_end = JsonRisk.make_bool(obj.stub_end); // defaults to false
+    specs.stub_long = JsonRisk.make_bool(obj.stub_long); // defaults to false
 
     // determine roll date for act/actICMA convention
     specs.roll_date = specs.maturity;
@@ -2290,22 +2275,22 @@
     )
       specs.roll_date = specs.effective_date;
 
-    specs.dcc = library.string_or_empty(obj.dcc);
-    const is_holiday_func = library.is_holiday_factory(obj.calendar || "");
-    const bdc = library.string_or_empty(obj.bdc);
+    specs.dcc = JsonRisk.string_or_empty(obj.dcc);
+    const is_holiday_func = JsonRisk.is_holiday_factory(obj.calendar || "");
+    const bdc = JsonRisk.string_or_empty(obj.bdc);
 
     specs.adj = function (d) {
-      return library.adjust(d, bdc, is_holiday_func);
+      return JsonRisk.adjust(d, bdc, is_holiday_func);
     };
 
-    specs.adjust_accrual_periods = library.make_bool(
+    specs.adjust_accrual_periods = JsonRisk.make_bool(
       obj.adjust_accrual_periods,
     );
 
     // fixed or floating
     specs.is_float = !(obj.fixed_rate || obj.fixed_rate === 0.0);
 
-    specs.float_current_rate = library.number_or_null(obj.float_current_rate);
+    specs.float_current_rate = JsonRisk.number_or_null(obj.float_current_rate);
 
     if (specs.is_float && specs.float_current_rate === null)
       throw new Error(
@@ -2313,10 +2298,10 @@
       );
 
     // linear amortization flag
-    specs.linear_amortization = library.make_bool(obj.linear_amortization);
+    specs.linear_amortization = JsonRisk.make_bool(obj.linear_amortization);
 
     // use forward curve as index name
-    specs.index_name = library.string_or_empty(obj.fwd_curve);
+    specs.index_name = JsonRisk.string_or_empty(obj.fwd_curve);
   }
 
   //
@@ -2326,7 +2311,7 @@
   //
   function make_conditions(obj) {
     //condition dates
-    let conditions_valid_until = library.date_vector_or_null(
+    let conditions_valid_until = JsonRisk.date_vector_or_null(
       obj.conditions_valid_until,
     );
     if (
@@ -2342,16 +2327,20 @@
     if (!conditions_valid_until) {
       conditions_valid_until = [specs.maturity];
     }
-    const fixed_rate = library.number_vector_or_null(obj.fixed_rate) || [0.0]; //array valued
-    const float_spread = library.number_vector_or_null(obj.float_spread) || [0];
-    const cap_rate = library.number_vector_or_null(obj.cap_rate) || [Infinity];
-    const floor_rate = library.number_vector_or_null(obj.floor_rate) || [
+    const fixed_rate = JsonRisk.number_vector_or_null(obj.fixed_rate) || [0.0]; //array valued
+    const float_spread = JsonRisk.number_vector_or_null(obj.float_spread) || [
+      0,
+    ];
+    const cap_rate = JsonRisk.number_vector_or_null(obj.cap_rate) || [Infinity];
+    const floor_rate = JsonRisk.number_vector_or_null(obj.floor_rate) || [
       -Infinity,
     ];
 
-    const repay_amount = library.number_vector_or_null(obj.repay_amount) || [0]; //array valued
+    const repay_amount = JsonRisk.number_vector_or_null(obj.repay_amount) || [
+      0,
+    ]; //array valued
 
-    const interest_capitalization = library.make_bool_vector(
+    const interest_capitalization = JsonRisk.make_bool_vector(
       obj.interest_capitalization,
     );
 
@@ -2378,7 +2367,7 @@
   //
   //
   function make_schedule() {
-    schedule = library.schedule(
+    schedule = JsonRisk.schedule(
       specs.effective_date,
       specs.maturity,
       specs.tenor,
@@ -2412,18 +2401,18 @@
     }
 
     // construct repay schedule
-    let repay_tenor = library.natural_number_or_null(obj.repay_tenor);
+    let repay_tenor = JsonRisk.natural_number_or_null(obj.repay_tenor);
     if (null === repay_tenor) repay_tenor = specs.tenor;
 
     const repay_first_date =
-      library.date_or_null(obj.repay_first_date) || specs.first_date;
+      JsonRisk.date_or_null(obj.repay_first_date) || specs.first_date;
     const repay_next_to_last_date =
-      library.date_or_null(obj.repay_next_to_last_date) ||
+      JsonRisk.date_or_null(obj.repay_next_to_last_date) ||
       specs.next_to_last_date;
     const repay_stub_end = specs.stub_end || false;
     const repay_stub_long = specs.stub_long || false;
 
-    repay_schedule = library.schedule(
+    repay_schedule = JsonRisk.schedule(
       schedule[0],
       specs.maturity,
       repay_tenor,
@@ -2451,18 +2440,18 @@
     if (!specs.is_float) {
       fixing_schedule = [schedule[0], specs.maturity];
     }
-    let fixing_tenor = library.natural_number_or_null(obj.fixing_tenor);
+    let fixing_tenor = JsonRisk.natural_number_or_null(obj.fixing_tenor);
     if (null === fixing_tenor) fixing_tenor = specs.tenor;
 
     const fixing_first_date =
-      library.date_or_null(obj.fixing_first_date) || specs.first_date;
+      JsonRisk.date_or_null(obj.fixing_first_date) || specs.first_date;
     const fixing_next_to_last_date =
-      library.date_or_null(obj.fixing_next_to_last_date) ||
+      JsonRisk.date_or_null(obj.fixing_next_to_last_date) ||
       specs.next_to_last_date;
     const fixing_stub_end = obj.fixing_stub_end || false;
     const fixing_stub_long = obj.fixing_stub_long || false;
 
-    fixing_schedule = library.schedule(
+    fixing_schedule = JsonRisk.schedule(
       schedule[0],
       specs.maturity,
       fixing_tenor,
@@ -2540,7 +2529,7 @@
     pmt.index = "index";
 
     // fixing
-    if (reset_start <= library.valuation_date) {
+    if (reset_start <= JsonRisk.valuation_date) {
       pmt.is_fixed = true;
       pmt.rate = specs.float_current_rate + float_spread;
     } else {
@@ -2571,7 +2560,7 @@
   // main cash flow generation routine
   //
   //
-  library.cashflow_generator = function (obj) {
+  JsonRisk.cashflow_generator = function (obj) {
     // initialise
     make_specs(obj);
     make_conditions(obj);
@@ -2659,13 +2648,13 @@
 
     return {
       payments: cashflows,
-      disc_curve: library.string_or_empty(obj.disc_curve),
-      spread_curve: library.string_or_empty(obj.spread_curve),
-      residual_spread: library.number_or_null(obj.residual_spread) || 0.0,
+      disc_curve: JsonRisk.string_or_empty(obj.disc_curve),
+      spread_curve: JsonRisk.string_or_empty(obj.spread_curve),
+      residual_spread: JsonRisk.number_or_null(obj.residual_spread) || 0.0,
     };
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
+}
+{
   /**
    * Class representing a leg, i.e., a stream of payments
    * @memberof JsonRisk
@@ -2692,14 +2681,16 @@
      * @param {object} [obj.indices={}] an object with index names as keys and indices as values.
      */
     constructor(obj) {
-      this.#disc_curve = library.string_or_empty(obj.disc_curve);
-      this.#spread_curve = library.string_or_empty(obj.spread_curve);
+      this.#disc_curve = JsonRisk.string_or_empty(obj.disc_curve);
+      this.#spread_curve = JsonRisk.string_or_empty(obj.spread_curve);
       this.#residual_spread =
-        library.number_or_null(obj.residual_spread) || 0.0;
-      this.#currency = library.string_or_empty(obj.currency);
+        JsonRisk.number_or_null(obj.residual_spread) || 0.0;
+      this.#currency = JsonRisk.string_or_empty(obj.currency);
 
       if ("payments" in obj && Array.isArray(obj.payments)) {
-        this.#payments = obj.payments.map((pobj) => library.make_payment(pobj));
+        this.#payments = obj.payments.map((pobj) =>
+          JsonRisk.make_payment(pobj),
+        );
       }
 
       // all payments must have the same or no currency
@@ -2725,12 +2716,12 @@
       }
 
       // sort payments
-      this.#payments.sort(library.payment_compare);
+      this.#payments.sort(JsonRisk.payment_compare);
       Object.freeze(this.#payments);
 
       if ("indices" in obj) {
         for (const [key, value] of Object.entries(obj.indices)) {
-          this.#indices[key] = new library.SimpleIndex(value);
+          this.#indices[key] = new JsonRisk.SimpleIndex(value);
         }
       }
       Object.freeze(this.#indices);
@@ -2789,7 +2780,7 @@
      */
     get has_notional_payments() {
       for (const p of this.#payments) {
-        if (p.constructor === library.NotionalPayment) return true;
+        if (p.constructor === JsonRisk.NotionalPayment) return true;
       }
       return false;
     }
@@ -2811,7 +2802,7 @@
      */
     get has_fixed_rate_payments() {
       for (const p of this.#payments) {
-        if (p instanceof library.FixedRatePayment) return true;
+        if (p instanceof JsonRisk.FixedRatePayment) return true;
       }
       return false;
     }
@@ -2822,7 +2813,7 @@
      */
     get has_float_rate_payments() {
       for (const p of this.#payments) {
-        if (p.constructor === library.FloatRatePayment) return true;
+        if (p.constructor === JsonRisk.FloatRatePayment) return true;
       }
       return false;
     }
@@ -2833,7 +2824,7 @@
      */
     get has_embedded_options() {
       for (const p of this.#payments) {
-        if (p instanceof library.CapFloorPayment) return true;
+        if (p instanceof JsonRisk.CapFloorPayment) return true;
       }
       return false;
     }
@@ -2858,7 +2849,7 @@
     get has_constant_rate() {
       let rate = null;
       for (const p of this.#payments) {
-        if (p.constructor != library.FixedRatePayment) continue;
+        if (p.constructor != JsonRisk.FixedRatePayment) continue;
         if (rate === null) {
           rate = p.rate;
           continue;
@@ -2906,10 +2897,10 @@
 
     #dcf(disc_curve, acquire_date = new Date(0.0)) {
       let res = 0;
-      const cutoff = Math.max(library.time_from_now(acquire_date), 0.0);
+      const cutoff = Math.max(JsonRisk.time_from_now(acquire_date), 0.0);
       for (const p of this.#payments) {
         const d = p.date_pmt;
-        const t = library.time_from_now(d);
+        const t = JsonRisk.time_from_now(d);
 
         // exclude payments in the past and that occur on or before the date of acquisition
         if (t <= cutoff) {
@@ -2927,7 +2918,7 @@
     }
 
     #discounter(params) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.#disc_curve,
         "LegInstrument: no discount curve specified, make sure to populate 'disc_curve' on leg level or, when legs are generated from terms, on instrument level",
       );
@@ -2939,7 +2930,7 @@
         return disc_curve;
       } else {
         // valuation with spreads, return an object with a get_df method, simulating a yield curve
-        const compounding = library.compounding_factory("annual");
+        const compounding = JsonRisk.compounding_factory("annual");
         const residual_spread = this.#residual_spread;
         return {
           get_df: function (t) {
@@ -3002,18 +2993,18 @@
      */
     annuity(params_or_curve) {
       const discounter =
-        params_or_curve instanceof library.Params
+        params_or_curve instanceof JsonRisk.Params
           ? this.#discounter(params_or_curve)
           : params_or_curve;
       let res = 0;
       for (const p of this.#payments) {
         if (
-          p.constructor !== library.FixedRatePayment &&
-          p.constructor !== library.FloatRatePayment
+          p.constructor !== JsonRisk.FixedRatePayment &&
+          p.constructor !== JsonRisk.FloatRatePayment
         )
           continue;
 
-        let t = library.time_from_now(p.date_pmt);
+        let t = JsonRisk.time_from_now(p.date_pmt);
         if (t < 0) continue;
 
         // get amount based on 100 percent interest and discount
@@ -3026,10 +3017,10 @@
 
     /**
      * Calculates outstanding balance  - all floating capitalizing payments must have been projected before by e.g. calling the value method
-     * @param {date} [d=library.valuation_date] as-of date for the balance.
+     * @param {date} [d=JsonRisk.valuation_date] as-of date for the balance.
      * @return {number}
      */
-    balance(d = library.valuation_date) {
+    balance(d = JsonRisk.valuation_date) {
       let res = 0;
       for (const p of this.#payments) {
         if (p.date_value <= d) continue;
@@ -3045,19 +3036,19 @@
      */
     irr(d) {
       const balance = this.balance(d);
-      const tset = library.time_from_now(d);
+      const tset = JsonRisk.time_from_now(d);
       const payments = this.#payments;
       const func = function (x) {
         let res = -balance * Math.pow(1 + x, -tset);
         for (const p of payments) {
           if (p.date_value <= d) continue;
-          const t = library.time_from_now(p.date_pmt);
+          const t = JsonRisk.time_from_now(p.date_pmt);
           res += p.amount * Math.pow(1 + x, -t);
         }
         return res;
       };
 
-      const res = library.find_root_secant(func, 0, 0.0001);
+      const res = JsonRisk.find_root_secant(func, 0, 0.0001);
       return res;
     }
 
@@ -3079,15 +3070,15 @@
       for (const p of this.#payments) {
         // exclude past payments
         const d = p.date_pmt;
-        const t = library.time_from_now(d);
+        const t = JsonRisk.time_from_now(d);
         if (t <= 0) continue;
 
         const df = discounter.get_df(t);
 
         // include only notional and float rate payments
-        if (p.constructor === library.NotionalPayment) {
+        if (p.constructor === JsonRisk.NotionalPayment) {
           res += df * p.amount;
-        } else if (p.constructor === library.FloatRatePayment) {
+        } else if (p.constructor === JsonRisk.FloatRatePayment) {
           // exclude spread for float rate payments
           const spread = p.notional * p.yf * p.spread;
           res += df * (p.amount - spread);
@@ -3119,8 +3110,8 @@
       const p0 = this.#payments[0];
       const pn1 = this.#payments[n - 1];
       if (
-        p0.constructor !== library.NotionalPayment ||
-        pn1.constructor !== library.NotionalPayment
+        p0.constructor !== JsonRisk.NotionalPayment ||
+        pn1.constructor !== JsonRisk.NotionalPayment
       )
         return;
 
@@ -3140,7 +3131,7 @@
           open_payments.delete(pp);
         }
 
-        if (p.constructor === library.NotionalPayment) {
+        if (p.constructor === JsonRisk.NotionalPayment) {
           // notional payments cannot change initial sign of balance, and final notional payment must clear balance
           if (
             (sign >= 0 && p.notional > balance) ||
@@ -3173,7 +3164,7 @@
     get_cash_flows() {
       const pmap = new Map();
       for (const p of this.#payments) {
-        const tpay = library.time_from_now(p.date_pmt);
+        const tpay = JsonRisk.time_from_now(p.date_pmt);
         const total = p.amount;
         const notional = p.amount_notional;
         let entry = pmap.get(tpay);
@@ -3223,12 +3214,12 @@
     }
   }
 
-  library.Leg = Leg;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Leg = Leg;
+}
+{
   // function that checks for valid notional
   function check_notional(unsafe_notional) {
-    const res = library.number_or_null(unsafe_notional);
+    const res = JsonRisk.number_or_null(unsafe_notional);
     if (res === null)
       throw new Error("Payment: notional must be a valid number");
     return res;
@@ -3258,15 +3249,16 @@
       this.#notional = check_notional(obj.notional);
 
       //payment date
-      this.#date_pmt = library.date_or_null(obj.date_pmt);
+      this.#date_pmt = JsonRisk.date_or_null(obj.date_pmt);
       if (this.#date_pmt === null)
         throw new Error("Payment: date_pmt must be a valid date");
 
       // value date
-      this.#date_value = library.date_or_null(obj.date_value) || this.#date_pmt;
+      this.#date_value =
+        JsonRisk.date_or_null(obj.date_value) || this.#date_pmt;
 
       //currency
-      this.#currency = library.string_or_empty(obj.currency);
+      this.#currency = JsonRisk.string_or_empty(obj.currency);
     }
 
     set_notional(n) {
@@ -3320,8 +3312,8 @@
       return {
         type: "Notional",
         notional: this.#notional,
-        date_pmt: library.date_to_date_str(this.#date_pmt),
-        date_value: library.date_to_date_str(this.#date_value),
+        date_pmt: JsonRisk.date_to_date_str(this.#date_pmt),
+        date_value: JsonRisk.date_to_date_str(this.#date_value),
         currency: this.#currency,
         amount_interest: this.amount_interest, // uses derived class getter
         amount_notional: this.amount_notional, // uses derived class getter
@@ -3342,17 +3334,18 @@
     constructor(obj) {
       super(obj);
       // start and end dates
-      this.#date_start = library.date_or_null(obj.date_start);
+      this.#date_start = JsonRisk.date_or_null(obj.date_start);
       if (this.#date_start === null)
         throw new Error("RatePayment: date_start must be a valid date");
 
-      this.#date_end = library.date_or_null(obj.date_end);
+      this.#date_end = JsonRisk.date_or_null(obj.date_end);
       if (this.#date_end === null)
         throw new Error("RatePayment: date_end must be a valid date");
 
       // reference period calculations
-      this.#date_roll = library.date_or_null(obj.date_roll) || this.#date_start;
-      this.#tenor = library.natural_number_or_null(obj.tenor);
+      this.#date_roll =
+        JsonRisk.date_or_null(obj.date_roll) || this.#date_start;
+      this.#tenor = JsonRisk.natural_number_or_null(obj.tenor);
 
       // sanity checks
       if (this.#date_start.getTime() >= this.#date_end.getTime())
@@ -3361,8 +3354,8 @@
         throw new Error("RatePayment: date_start must be before date_value");
 
       // dcc and year fraction
-      const dcc = library.string_or_empty(obj.dcc);
-      this.#yffunc = library.year_fraction_factory(dcc);
+      const dcc = JsonRisk.string_or_empty(obj.dcc);
+      this.#yffunc = JsonRisk.year_fraction_factory(dcc);
       this.#yf = this.#yffunc(
         this.#date_start,
         this.#date_end,
@@ -3371,7 +3364,7 @@
       );
 
       // capitalization
-      this.#capitalize = library.make_bool(obj.capitalize);
+      this.#capitalize = JsonRisk.make_bool(obj.capitalize);
     }
 
     //getter functions
@@ -3398,14 +3391,14 @@
     toJSON() {
       const res = super.toJSON();
       delete res.type;
-      res.date_start = library.date_to_date_str(this.#date_start);
-      res.date_end = library.date_to_date_str(this.#date_end);
+      res.date_start = JsonRisk.date_to_date_str(this.#date_start);
+      res.date_end = JsonRisk.date_to_date_str(this.#date_end);
       res.yf = this.#yf;
       res.dcc = this.#yffunc.canonical_name;
       // optional members
       if (this.#capitalize) res.capitalize = true;
       if (this.#date_roll)
-        res.date_roll = library.date_to_date_str(this.#date_roll);
+        res.date_roll = JsonRisk.date_to_date_str(this.#date_roll);
       if (this.#tenor) res.tenor = this.#tenor;
       return res;
     }
@@ -3437,7 +3430,7 @@
     constructor(obj) {
       super(obj);
       // rate
-      this.#rate = library.number_or_null(obj.rate);
+      this.#rate = JsonRisk.number_or_null(obj.rate);
       if (this.#rate === null)
         throw new Error("FixedRatePayment: rate must be a valid number");
 
@@ -3508,14 +3501,14 @@
       super(obj);
 
       // index
-      this.#index = library.string_or_empty(obj.index);
+      this.#index = JsonRisk.string_or_empty(obj.index);
 
       // is fixed
-      this.#is_fixed = library.make_bool(obj.is_fixed);
+      this.#is_fixed = JsonRisk.make_bool(obj.is_fixed);
 
       // fixing
       if (this.#is_fixed) {
-        this.#rate = library.number_or_null(obj.rate);
+        this.#rate = JsonRisk.number_or_null(obj.rate);
         if (null === this.#rate)
           throw new Error(
             "FloatRatePayment: rate missing on payment that is already fixed",
@@ -3523,12 +3516,12 @@
       }
 
       // spread
-      this.#spread = library.number_or_null(obj.spread) || 0.0;
+      this.#spread = JsonRisk.number_or_null(obj.spread) || 0.0;
 
       // optional dates
       this.#reset_start =
-        library.date_or_null(obj.reset_start) || this.date_start;
-      this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
+        JsonRisk.date_or_null(obj.reset_start) || this.date_start;
+      this.#reset_end = JsonRisk.date_or_null(obj.reset_end) || this.date_end;
 
       // sanity checks
       if (this.#reset_start >= this.#reset_end)
@@ -3573,8 +3566,8 @@
       res.index = this.#index;
       res.spread = this.#spread;
       res.rate = this.rate; // allow override by CapFloorPayment class
-      res.reset_start = library.date_to_date_str(this.#reset_start);
-      res.reset_end = library.date_to_date_str(this.#reset_end);
+      res.reset_start = JsonRisk.date_to_date_str(this.#reset_start);
+      res.reset_end = JsonRisk.date_to_date_str(this.#reset_end);
       return res;
     }
 
@@ -3588,7 +3581,7 @@
         throw new Error(
           `FloatRatePayment: index ${this.#index} was not supplied`,
         );
-      if (!(idx instanceof library.SimpleIndex))
+      if (!(idx instanceof JsonRisk.SimpleIndex))
         throw new Error(`FloatRatePayment: invalid index ${this.#index}`);
       this.#rate = idx.fwd_rate(this.#reset_start, this.#reset_end);
       this.#rate += this.#spread;
@@ -3603,7 +3596,7 @@
 
     constructor(obj) {
       super(obj);
-      this.#strike = library.number_or_null(obj.strike);
+      this.#strike = JsonRisk.number_or_null(obj.strike);
     }
 
     // getter functions
@@ -3634,7 +3627,7 @@
         throw new Error(
           `${this.constructor.name}: index ${this.index} was not supplied`,
         );
-      if (!(idx instanceof library.SimpleIndex))
+      if (!(idx instanceof JsonRisk.SimpleIndex))
         throw new Error(
           `${this.constructor.name}: invalid index ${this.index}`,
         );
@@ -3646,8 +3639,8 @@
         this.strike,
       ); // we do not consider spread in the computation of volatility
 
-      const t_expiry = library.time_from_now(this.reset_start);
-      const bachelier = new library.BachelierModel(t_expiry, this.#volatility);
+      const t_expiry = JsonRisk.time_from_now(this.reset_start);
+      const bachelier = new JsonRisk.BachelierModel(t_expiry, this.#volatility);
       const fwd_rate = raw_fwd_rate + this.spread;
 
       switch (this.constructor.name) {
@@ -3690,14 +3683,14 @@
     }
   }
 
-  library.NotionalPayment = NotionalPayment;
-  library.FixedRatePayment = FixedRatePayment;
-  library.FloatRatePayment = FloatRatePayment;
-  library.CapFloorPayment = CapFloorPayment;
-  library.CapletPayment = CapletPayment;
-  library.FloorletPayment = FloorletPayment;
+  JsonRisk.NotionalPayment = NotionalPayment;
+  JsonRisk.FixedRatePayment = FixedRatePayment;
+  JsonRisk.FloatRatePayment = FloatRatePayment;
+  JsonRisk.CapFloorPayment = CapFloorPayment;
+  JsonRisk.CapletPayment = CapletPayment;
+  JsonRisk.FloorletPayment = FloorletPayment;
 
-  library.payment_compare = function (a, b) {
+  JsonRisk.payment_compare = function (a, b) {
     // sort by start date first while notional payments use date_value instead
     const astart = a.date_start.getTime();
     const bstart = b.date_start.getTime();
@@ -3719,8 +3712,8 @@
     if (nb === "FloatRatePayment") return 1;
     return na < nb ? 1 : na > nb ? -1 : 0;
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
+}
+{
   class SimpleIndex {
     #fwd_curve = "";
     #surface = "";
@@ -3730,14 +3723,14 @@
     #linked_surface = null;
     constructor(obj) {
       // fwd_curve
-      this.#fwd_curve = library.string_or_empty(obj.fwd_curve);
+      this.#fwd_curve = JsonRisk.string_or_empty(obj.fwd_curve);
 
       // surface
-      this.#surface = library.string_or_empty(obj.surface);
+      this.#surface = JsonRisk.string_or_empty(obj.surface);
 
       // dcc and year fraction
-      this.#dcc = library.string_or_empty(obj.dcc);
-      this.#yffunc = library.year_fraction_factory(this.#dcc);
+      this.#dcc = JsonRisk.string_or_empty(obj.dcc);
+      this.#yffunc = JsonRisk.year_fraction_factory(this.#dcc);
     }
 
     // getter functions
@@ -3755,11 +3748,11 @@
 
     // link curve
     link_curve(params_or_curve) {
-      if (params_or_curve instanceof library.Curve) {
+      if (params_or_curve instanceof JsonRisk.Curve) {
         this.#linked_curve = params_or_curve;
         return;
       }
-      if (params_or_curve instanceof library.Params) {
+      if (params_or_curve instanceof JsonRisk.Params) {
         this.#linked_curve = params_or_curve.get_curve(this.#fwd_curve);
         return;
       }
@@ -3770,12 +3763,12 @@
 
     // forward rate
     fwd_rate(start, end) {
-      if (start <= library.valuation_date)
+      if (start <= JsonRisk.valuation_date)
         throw new Error("SimpleIndex: Cannot project past fixings");
-      const tstart = library.time_from_now(start);
-      const tend = library.time_from_now(end);
+      const tstart = JsonRisk.time_from_now(start);
+      const tend = JsonRisk.time_from_now(end);
 
-      if (!(this.#linked_curve instanceof library.Curve))
+      if (!(this.#linked_curve instanceof JsonRisk.Curve))
         throw new Error(
           "SimpleIndex: No curve linked, call link_curve before calling fwd_rate",
         );
@@ -3797,7 +3790,7 @@
         return;
       }
 
-      if (params_or_surface instanceof library.Params) {
+      if (params_or_surface instanceof JsonRisk.Params) {
         if (this.#surface)
           this.#linked_surface = params_or_surface.get_surface(this.#surface);
         return;
@@ -3817,8 +3810,8 @@
      * @returns {number} the volatility value
      */
     volatility(start, end, fwd, strike) {
-      const t_expiry = library.time_from_now(start);
-      const t_term = library.time_from_now(end) - t_expiry;
+      const t_expiry = JsonRisk.time_from_now(start);
+      const t_term = JsonRisk.time_from_now(end) - t_expiry;
 
       if (
         !this.#linked_surface ||
@@ -3848,10 +3841,9 @@
     }
   }
 
-  library.SimpleIndex = SimpleIndex;
-})(this.JsonRisk || module.exports);
-(function (library) {
-  "use strict";
+  JsonRisk.SimpleIndex = SimpleIndex;
+}
+{
   const continuous = {
     name: "c",
     df: function (t, zc) {
@@ -3880,7 +3872,7 @@
    * @returns {object} compounding class object
    * @memberof JsonRisk
    */
-  library.compounding_factory = function (str) {
+  JsonRisk.compounding_factory = function (str) {
     if (undefined === str) return annual;
     if (typeof str === "string") {
       switch (str.toLowerCase()) {
@@ -3902,227 +3894,223 @@
         " supplied",
     );
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * Adaptive Simpson Integration
-   * @param {function} f - function to integrate f(x)
-   * @param {number} a - start
-   * @param {number} b - ende
-   * @param {number} eps - accuracy
-   * @param {number} max_depth - max depth
-   * @param {number} max_depth - min depth
-   * @memberof JsonRisk
-   */
-  library.adaptive_simpson = function (
-    f,
+}
+/**
+ * Adaptive Simpson Integration
+ * @param {function} f - function to integrate f(x)
+ * @param {number} a - start
+ * @param {number} b - ende
+ * @param {number} eps - accuracy
+ * @param {number} max_depth - max depth
+ * @param {number} max_depth - min depth
+ * @memberof JsonRisk
+ */
+JsonRisk.adaptive_simpson = function (
+  f,
+  a,
+  b,
+  eps = 1e-8,
+  max_depth = 20,
+  min_depth = 5,
+) {
+  function simpson(a, b, fa, fb, fm) {
+    return ((b - a) / 6) * (fa + 4 * fm + fb);
+  }
+
+  const stack = [];
+
+  const m = (a + b) / 2;
+  const fa = f(a);
+  const fb = f(b);
+  const fm = f(m);
+
+  stack.push({
     a,
     b,
-    eps = 1e-8,
-    max_depth = 20,
-    min_depth = 5,
-  ) {
-    function simpson(a, b, fa, fb, fm) {
-      return ((b - a) / 6) * (fa + 4 * fm + fb);
-    }
+    fa,
+    fb,
+    fm,
+    whole: simpson(a, b, fa, fb, fm),
+    eps,
+    depth: 1,
+  });
 
-    const stack = [];
+  let result = 0;
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+
+    const { a, b, fa, fb, fm, whole, eps, depth } = node;
 
     const m = (a + b) / 2;
-    const fa = f(a);
-    const fb = f(b);
-    const fm = f(m);
+    const lm = (a + m) / 2;
+    const rm = (m + b) / 2;
 
-    stack.push({
-      a,
-      b,
-      fa,
-      fb,
-      fm,
-      whole: simpson(a, b, fa, fb, fm),
-      eps,
-      depth: 1,
-    });
+    const flm = f(lm);
+    const frm = f(rm);
 
-    let result = 0;
+    const left = simpson(a, m, fa, fm, flm);
+    const right = simpson(m, b, fm, fb, frm);
 
-    while (stack.length > 0) {
-      const node = stack.pop();
+    const delta = left + right - whole;
 
-      const { a, b, fa, fb, fm, whole, eps, depth } = node;
-
-      const m = (a + b) / 2;
-      const lm = (a + m) / 2;
-      const rm = (m + b) / 2;
-
-      const flm = f(lm);
-      const frm = f(rm);
-
-      const left = simpson(a, m, fa, fm, flm);
-      const right = simpson(m, b, fm, fb, frm);
-
-      const delta = left + right - whole;
-
-      if (
-        depth >= min_depth &&
-        (depth >= max_depth || Math.abs(delta) <= 15 * eps)
-      ) {
-        // accept partial result
-        result += left + right + delta / 15;
-      } else {
-        // refine partial integral
-        stack.push({
-          a: m,
-          b: b,
-          fa: fm,
-          fb: fb,
-          fm: frm,
-          whole: right,
-          eps: eps / 2,
-          depth: depth + 1,
-        });
-
-        stack.push({
-          a: a,
-          b: m,
-          fa: fa,
-          fb: fm,
-          fm: flm,
-          whole: left,
-          eps: eps / 2,
-          depth: depth + 1,
-        });
-      }
-    }
-
-    return result;
-  };
-
-  /**
-   * Adaptive Gauss Kronrod Integration
-   * @param {function} f - function to integrate f(x)
-   * @param {number} a - start
-   * @param {number} b - ende
-   * @param {number} eps - accuracy
-   * @param {number} max_depth - max depth
-   * @param {number} max_depth - min depth
-   * @memberof JsonRisk
-   */
-  library.adaptive_gauss_kronrod = function (
-    f,
-    a,
-    b,
-    eps = 1e-8,
-    max_depth = 20,
-    min_depth = 3,
-  ) {
-    // Kronrod nodes (positive, symmetric)
-    const xgk = [
-      0.9914553711208126, 0.9491079123427585, 0.8648644233597691,
-      0.7415311855993945, 0.5860872354676911, 0.4058451513773972,
-      0.2077849550078985, 0.0,
-    ];
-
-    // Kronrod weights
-    const wgk = [
-      0.02293532201052922, 0.0630920926299785, 0.1047900103222502,
-      0.1406532597155259, 0.1690047266392679, 0.1903505780647854,
-      0.2044329400752989, 0.2094821410847278,
-    ];
-
-    // Gauss weights (subset)
-    const wg = [
-      0.1294849661688697, 0.2797053914892766, 0.3818300505051189,
-      0.4179591836734694,
-    ];
-
-    function evaluate_interval(a, b) {
-      const center = 0.5 * (a + b);
-      const half_length = 0.5 * (b - a);
-
-      let kronrod_sum = 0;
-      let gauss_sum = 0;
-
-      for (let i = 0; i < xgk.length; i++) {
-        const abscissa = half_length * xgk[i];
-
-        const x1 = center - abscissa;
-        const x2 = center + abscissa;
-
-        const f1 = f(x1);
-        const f2 = f(x2);
-
-        const wk = wgk[i];
-
-        if (i === xgk.length - 1) {
-          // center point
-          const fc = f(center);
-          kronrod_sum += wk * fc;
-          gauss_sum += wg[3] * fc;
-        } else {
-          kronrod_sum += wk * (f1 + f2);
-
-          // Map Kronrod nodes → Gauss subset
-          if (i === 1) gauss_sum += wg[0] * (f1 + f2);
-          if (i === 3) gauss_sum += wg[1] * (f1 + f2);
-          if (i === 5) gauss_sum += wg[2] * (f1 + f2);
-        }
-      }
-
-      const i_k = kronrod_sum * half_length;
-      const i_g = gauss_sum * half_length;
-
-      return {
-        integral: i_k,
-        error: Math.abs(i_k - i_g),
-      };
-    }
-
-    // Stack of intervals
-    const stack = [
-      {
-        a: a,
+    if (
+      depth >= min_depth &&
+      (depth >= max_depth || Math.abs(delta) <= 15 * eps)
+    ) {
+      // accept partial result
+      result += left + right + delta / 15;
+    } else {
+      // refine partial integral
+      stack.push({
+        a: m,
         b: b,
-        eps: eps,
-        depth: 1,
-      },
-    ];
+        fa: fm,
+        fb: fb,
+        fm: frm,
+        whole: right,
+        eps: eps / 2,
+        depth: depth + 1,
+      });
 
-    let result = 0;
+      stack.push({
+        a: a,
+        b: m,
+        fa: fa,
+        fb: fm,
+        fm: flm,
+        whole: left,
+        eps: eps / 2,
+        depth: depth + 1,
+      });
+    }
+  }
 
-    while (stack.length > 0) {
-      const { a, b, eps, depth } = stack.pop();
+  return result;
+};
 
-      const { integral, error } = evaluate_interval(a, b);
+/**
+ * Adaptive Gauss Kronrod Integration
+ * @param {function} f - function to integrate f(x)
+ * @param {number} a - start
+ * @param {number} b - ende
+ * @param {number} eps - accuracy
+ * @param {number} max_depth - max depth
+ * @param {number} max_depth - min depth
+ * @memberof JsonRisk
+ */
+JsonRisk.adaptive_gauss_kronrod = function (
+  f,
+  a,
+  b,
+  eps = 1e-8,
+  max_depth = 20,
+  min_depth = 3,
+) {
+  // Kronrod nodes (positive, symmetric)
+  const xgk = [
+    0.9914553711208126, 0.9491079123427585, 0.8648644233597691,
+    0.7415311855993945, 0.5860872354676911, 0.4058451513773972,
+    0.2077849550078985, 0.0,
+  ];
 
-      if (depth >= min_depth && (error < eps || depth >= max_depth)) {
-        result += integral;
+  // Kronrod weights
+  const wgk = [
+    0.02293532201052922, 0.0630920926299785, 0.1047900103222502,
+    0.1406532597155259, 0.1690047266392679, 0.1903505780647854,
+    0.2044329400752989, 0.2094821410847278,
+  ];
+
+  // Gauss weights (subset)
+  const wg = [
+    0.1294849661688697, 0.2797053914892766, 0.3818300505051189,
+    0.4179591836734694,
+  ];
+
+  function evaluate_interval(a, b) {
+    const center = 0.5 * (a + b);
+    const half_length = 0.5 * (b - a);
+
+    let kronrod_sum = 0;
+    let gauss_sum = 0;
+
+    for (let i = 0; i < xgk.length; i++) {
+      const abscissa = half_length * xgk[i];
+
+      const x1 = center - abscissa;
+      const x2 = center + abscissa;
+
+      const f1 = f(x1);
+      const f2 = f(x2);
+
+      const wk = wgk[i];
+
+      if (i === xgk.length - 1) {
+        // center point
+        const fc = f(center);
+        kronrod_sum += wk * fc;
+        gauss_sum += wg[3] * fc;
       } else {
-        const mid = 0.5 * (a + b);
+        kronrod_sum += wk * (f1 + f2);
 
-        // Push children (note: push right first for left-first processing)
-        stack.push({
-          a: mid,
-          b: b,
-          eps: eps / 2,
-          depth: depth + 1,
-        });
-
-        stack.push({
-          a: a,
-          b: mid,
-          eps: eps / 2,
-          depth: depth + 1,
-        });
+        // Map Kronrod nodes → Gauss subset
+        if (i === 1) gauss_sum += wg[0] * (f1 + f2);
+        if (i === 3) gauss_sum += wg[1] * (f1 + f2);
+        if (i === 5) gauss_sum += wg[2] * (f1 + f2);
       }
     }
 
-    return result;
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  "use strict";
+    const i_k = kronrod_sum * half_length;
+    const i_g = gauss_sum * half_length;
 
+    return {
+      integral: i_k,
+      error: Math.abs(i_k - i_g),
+    };
+  }
+
+  // Stack of intervals
+  const stack = [
+    {
+      a: a,
+      b: b,
+      eps: eps,
+      depth: 1,
+    },
+  ];
+
+  let result = 0;
+
+  while (stack.length > 0) {
+    const { a, b, eps, depth } = stack.pop();
+
+    const { integral, error } = evaluate_interval(a, b);
+
+    if (depth >= min_depth && (error < eps || depth >= max_depth)) {
+      result += integral;
+    } else {
+      const mid = 0.5 * (a + b);
+
+      // Push children (note: push right first for left-first processing)
+      stack.push({
+        a: mid,
+        b: b,
+        eps: eps / 2,
+        depth: depth + 1,
+      });
+
+      stack.push({
+        a: a,
+        b: mid,
+        eps: eps / 2,
+        depth: depth + 1,
+      });
+    }
+  }
+
+  return result;
+};
+{
   const find_index = function (x, s, guess = 0) {
     let index = guess;
     // find index such that x[index] <= s <= x[index+1]
@@ -4135,7 +4123,7 @@
     return index;
   };
 
-  library.find_index = find_index;
+  JsonRisk.find_index = find_index;
 
   const copy_and_check_arrays = function (x, y) {
     const n = x.length;
@@ -4162,7 +4150,7 @@
     return [x_, y_];
   };
 
-  library.linear_interpolation = function (x, y) {
+  JsonRisk.linear_interpolation = function (x, y) {
     // function that makes no more checks and copies
     if (1 === x.length) {
       const y0 = y[0];
@@ -4180,7 +4168,7 @@
     };
   };
 
-  library.linear_interpolation_equidistant = function (x, y) {
+  JsonRisk.linear_interpolation_equidistant = function (x, y) {
     // function that makes no more checks and copies, optimized for equidistant x
     if (1 === x.length) {
       const y0 = y[0];
@@ -4202,12 +4190,12 @@
     };
   };
 
-  library.linear_interpolation_factory = function (x, y) {
+  JsonRisk.linear_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
-    return library.linear_interpolation(x_, y_);
+    return JsonRisk.linear_interpolation(x_, y_);
   };
 
-  library.linear_xy_interpolation_factory = function (x, y) {
+  JsonRisk.linear_xy_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
 
     if (x_[0] <= 0)
@@ -4219,7 +4207,7 @@
     for (let i = 0; i < x_.length; i++) {
       xy_[i] = x_[i] * y_[i];
     }
-    const linear = library.linear_interpolation(x_, xy_);
+    const linear = JsonRisk.linear_interpolation(x_, xy_);
     return function (s) {
       if (s <= 0)
         throw new Error(
@@ -4229,12 +4217,12 @@
     };
   };
 
-  library.bessel_hermite_interpolation_factory = function (x, y) {
+  JsonRisk.bessel_hermite_interpolation_factory = function (x, y) {
     const [x_, y_] = copy_and_check_arrays(x, y);
     const n = x_.length;
     // need at least three support points, otherwise fall back to linear
     if (n < 3) {
-      return library.linear_interpolation(x_, y_);
+      return JsonRisk.linear_interpolation(x_, y_);
     }
 
     const dx = new Float64Array(n);
@@ -4282,10 +4270,8 @@
       return y_[i] + ds * (b[i] + ds * (c[i] + ds * d[i]));
     };
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  "use strict";
-
+}
+{
   const copy_and_check_arrays = function (x1, x2, y) {
     if (!Array.isArray(x1) || !Array.isArray(x2) || !Array.isArray(y))
       throw new Error(
@@ -4334,12 +4320,12 @@
     return [x1_, x2_, y_, n1, n2];
   };
 
-  library.interpolation2d_factory = function (x1, x2, y) {
+  JsonRisk.interpolation2d_factory = function (x1, x2, y) {
     const [x1_, x2_, y_, n1, n2] = copy_and_check_arrays(x1, x2, y);
 
     // 1xN, covers 1x1 as well
     if (n1 === 1) {
-      const interpolation = library.linear_interpolation(x2_, y_);
+      const interpolation = JsonRisk.linear_interpolation(x2_, y_);
       return function (s1_not_used, s2) {
         if (s2 <= x2_[0]) return y_[0];
         if (s2 >= x2_[n2 - 1]) return y_[n2 - 1];
@@ -4348,7 +4334,7 @@
     }
     // Nx1
     if (n2 === 1) {
-      const interpolation = library.linear_interpolation(x1_, y_);
+      const interpolation = JsonRisk.linear_interpolation(x1_, y_);
       return function (s1, s2_not_used) {
         if (s1 <= x1_[0]) return y_[0];
         if (s1 >= x1_[n1 - 1]) return y_[n1 - 1];
@@ -4363,8 +4349,8 @@
       if (s2 < x2_[0]) s2 = x2_[0];
       else if (s2 > x2_[n2 - 1]) s2 = x2_[n2 - 1];
 
-      const i1 = library.find_index(x1_, s1);
-      const i2 = library.find_index(x2_, s2);
+      const i1 = JsonRisk.find_index(x1_, s1);
+      const i2 = JsonRisk.find_index(x2_, s2);
       const v11 = y_[i1 * n2 + i2];
       const v12 = y_[i1 * n2 + n2 + i2];
       const v21 = y_[i1 * n2 + i2 + 1];
@@ -4381,10 +4367,8 @@
       );
     };
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
-  "use strict";
-
+}
+{
   const RT2PI = Math.sqrt(4.0 * Math.acos(0.0));
   const SPLIT = 7.07106781186547;
   const N0 = 220.206867912376;
@@ -4410,7 +4394,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.ndf = function (x) {
+  JsonRisk.ndf = function (x) {
     return Math.exp((-x * x) / 2.0) / RT2PI;
   };
 
@@ -4421,7 +4405,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.cndf = function (x) {
+  JsonRisk.cndf = function (x) {
     const z = Math.abs(x);
     let c;
 
@@ -4462,7 +4446,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.fast_cndf = function (x) {
+  JsonRisk.fast_cndf = function (x) {
     const z = x > 0 ? x : -x;
     let f = 1 + z * (D1 + z * (D2 + z * (D3 + z * (D4 + z * (D5 + z * D6)))));
     f *= f;
@@ -4484,7 +4468,13 @@
    * @memberof JsonRisk
    * @public
    */
-  library.find_root_secant = function (func, start, next, max_iter, threshold) {
+  JsonRisk.find_root_secant = function (
+    func,
+    start,
+    next,
+    max_iter,
+    threshold,
+  ) {
     let x = start,
       xnext = next,
       temp = 0,
@@ -4541,7 +4531,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.find_root_ridders = function (
+  JsonRisk.find_root_ridders = function (
     func,
     start,
     next,
@@ -4598,8 +4588,8 @@
     if (iter <= 0)
       throw new Error("find_root_ridders: failed, too many iterations");
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
+}
+{
   /**
    * Class representing a bachelier model used to value e.g. swaptions, caps and floors
    * @memberof JsonRisk
@@ -4638,8 +4628,8 @@
     #bachelier_formula(phi, forward, strike) {
       const d1 = (forward - strike) / this.#std_dev;
       return (
-        phi * (forward - strike) * library.cndf(phi * d1) +
-        this.#std_dev * library.ndf(d1)
+        phi * (forward - strike) * JsonRisk.cndf(phi * d1) +
+        this.#std_dev * JsonRisk.ndf(d1)
       );
     }
 
@@ -4663,9 +4653,9 @@
       return this.#impl(1, forward, strike);
     }
   }
-  library.BachelierModel = BachelierModel;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.BachelierModel = BachelierModel;
+}
+{
   /**
    * Class representing a black76 model user to value e.g. equity options
    * @memberof JsonRisk
@@ -4710,8 +4700,8 @@
       const d1 = temp + 0.5 * this.#std_dev;
       const d2 = temp - 0.5 * this.#std_dev;
       return (
-        phi * forward * library.cndf(phi * d1) -
-        phi * strike * library.cndf(phi * d2)
+        phi * forward * JsonRisk.cndf(phi * d1) -
+        phi * strike * JsonRisk.cndf(phi * d2)
       );
     }
 
@@ -4735,9 +4725,9 @@
       return this.#impl(1, forward, strike);
     }
   }
-  library.BlackModel = BlackModel;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.BlackModel = BlackModel;
+}
+{
   /**
    * Cox-Ross-Rubinstein binomial tree model for option pricing.
    * @memberof JsonRisk
@@ -4913,9 +4903,9 @@
       return this.#impl(1);
     }
   }
-  library.CRRBinomialModel = CRRBinomialModel;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.CRRBinomialModel = CRRBinomialModel;
+}
+{
   /**
    * Gaussian model for option pricing.
    * @memberof JsonRisk
@@ -4948,8 +4938,8 @@
 
       // numerics
       const num_std_devs =
-        library.natural_number_or_null(obj.num_std_devs) || 4;
-      const resolution = library.natural_number_or_null(obj.resolution) || 16;
+        JsonRisk.natural_number_or_null(obj.num_std_devs) || 4;
+      const resolution = JsonRisk.natural_number_or_null(obj.resolution) || 16;
       const dr = 0.5 / resolution;
 
       this.#N = 2 * num_std_devs * resolution + 1;
@@ -4959,18 +4949,18 @@
       for (let i = 0; i < this.#N; ++i) {
         const temp = num_std_devs * ((2 * i) / (this.#N - 1) - 1);
         this.#grid[i] = temp;
-        ndf[i] = library.ndf(temp);
+        ndf[i] = JsonRisk.ndf(temp);
       }
 
       this.#integrate = function (f) {
         // compute the integral over f(x) phi(x) dx where phi is the standard normal density
         const f_weighted = (x) => {
           let res = f(x);
-          res *= library.fast_cndf(x + dr) - library.fast_cndf(x - dr);
+          res *= JsonRisk.fast_cndf(x + dr) - JsonRisk.fast_cndf(x - dr);
           res *= resolution;
           return res;
         };
-        const ret = library.adaptive_simpson(
+        const ret = JsonRisk.adaptive_simpson(
           f_weighted,
           -num_std_devs,
           num_std_devs,
@@ -5000,12 +4990,12 @@
       }
 
       for (let n = this.#n - 1; n > 0; n--) {
-        const interp_hold = library.linear_interpolation_equidistant(
+        const interp_hold = JsonRisk.linear_interpolation_equidistant(
           this.#grid,
           new Float64Array(values_hold), // copy array since it is overwritten in the loop
         );
 
-        const interp_ex = library.linear_interpolation_equidistant(
+        const interp_ex = JsonRisk.linear_interpolation_equidistant(
           this.#grid,
           new Float64Array(values_ex), // copy array since it is overwritten in the loop
         );
@@ -5041,12 +5031,12 @@
       }
 
       // final integration
-      const interp_hold = library.linear_interpolation_equidistant(
+      const interp_hold = JsonRisk.linear_interpolation_equidistant(
         this.#grid,
         values_hold, // no more copying needed
       );
 
-      const interp_ex = library.linear_interpolation_equidistant(
+      const interp_ex = JsonRisk.linear_interpolation_equidistant(
         this.#grid,
         values_ex, // no more copying needed
       );
@@ -5061,9 +5051,9 @@
     }
   }
 
-  library.GaussianModel = GaussianModel;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.GaussianModel = GaussianModel;
+}
+{
   /**
    * Class representing an ISDA credit model
    * @memberof JsonRisk
@@ -5116,10 +5106,10 @@
      */
     accrual_on_default_pv(pmt) {
       const { date_start, date_end, date_pmt, amount } = pmt;
-      const t_pmt = library.time_from_now(date_pmt);
+      const t_pmt = JsonRisk.time_from_now(date_pmt);
       if (t_pmt <= 0) return 0.0;
-      const t_start = library.time_from_now(date_start);
-      const t_end = library.time_from_now(date_end);
+      const t_start = JsonRisk.time_from_now(date_start);
+      const t_end = JsonRisk.time_from_now(date_end);
 
       // accrual amount
       const annualized_amount = amount / (t_end - t_start);
@@ -5186,8 +5176,8 @@
      */
     protection_pv(period) {
       const { date_start, date_end, notional, recovery_rate } = period;
-      const t_start = library.time_from_now(date_start);
-      const t_end = library.time_from_now(date_end);
+      const t_start = JsonRisk.time_from_now(date_start);
+      const t_end = JsonRisk.time_from_now(date_end);
       if (t_end <= 0) return 0.0;
 
       // sub-timeline
@@ -5238,9 +5228,9 @@
       return res * notional * (1 - recovery_rate);
     }
   }
-  library.IsdaCdsModel = IsdaCdsModel;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.IsdaCdsModel = IsdaCdsModel;
+}
+{
   const identity = function (t) {
     return t;
   };
@@ -5446,12 +5436,12 @@
       }.bind(this);
 
       for (let i = 0; i < basket.length; i++) {
-        if (library.time_from_now(basket[i].first_exercise_date) <= 1 / 512) {
+        if (JsonRisk.time_from_now(basket[i].first_exercise_date) <= 1 / 512) {
           throw new Error(
             "LGM: basket instruments must have time to exercise of at least one day",
           );
         }
-        tte = library.time_from_now(basket[i].first_exercise_date);
+        tte = JsonRisk.time_from_now(basket[i].first_exercise_date);
         this.#t_ex[i] = tte;
 
         //first step: derive initial guess based on Hagan formula 5.16c
@@ -5518,7 +5508,7 @@
             approx = func(xi);
           }
           try {
-            xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
+            xi = JsonRisk.find_root_ridders(func, 0, xi, 20, accuracy);
           } catch (e_not_used) {
             //use initial guess or zero as fallback, whichever is better
             if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
@@ -5636,7 +5626,7 @@
         }
 
         try {
-          break_even = library.find_root_ridders(func, upper, lower, 20);
+          break_even = JsonRisk.find_root_ridders(func, upper, lower, 20);
         } catch (e_not_used) {
           //fall back to numeric price
           return this.bermudan_call(
@@ -5678,7 +5668,7 @@
       let res =
         -(cf_obj.current_principal[i] + accrued_interest + sadj) *
         discount_factors[discount_factors.length - 1] *
-        library.cndf(break_even * one_std_dev + dh * std_dev);
+        JsonRisk.cndf(break_even * one_std_dev + dh * std_dev);
 
       // include all payments after exercise date
       while (i < cf_obj.t_pmt.length) {
@@ -5686,7 +5676,7 @@
         res +=
           cf_obj.pmt_total[i] *
           discount_factors[i] *
-          library.cndf(break_even * one_std_dev + dh * std_dev);
+          JsonRisk.cndf(break_even * one_std_dev + dh * std_dev);
         i++;
       }
       return res;
@@ -5797,7 +5787,7 @@
           dp_hi;
         while (x < STD_DEV_RANGE) {
           if (i >= n) break;
-          dp_hi = library.fast_cndf(x);
+          dp_hi = JsonRisk.fast_cndf(x);
           temp += value[i] * (dp_hi - dp_lo);
           dp_lo = dp_hi; // for next iteration
           x += increment;
@@ -5877,7 +5867,7 @@
     }
   }
 
-  library.LGM = LGM;
+  JsonRisk.LGM = LGM;
 
   /**
    * precalculates discount factors for each cash flow and for t_exercise
@@ -6008,14 +5998,14 @@
     const p1 = fixed_leg.payments[0];
     const cf = {
       current_principal: [0.0],
-      t_pmt: [library.time_from_now(p1.date_start)],
+      t_pmt: [JsonRisk.time_from_now(p1.date_start)],
       pmt_total: [-p1.notional],
       pmt_interest: [0.0],
     };
 
     for (const p of swaption.fixed_leg.payments) {
       cf.current_principal.push(p.notional);
-      cf.t_pmt.push(library.time_from_now(p.date_pmt));
+      cf.t_pmt.push(JsonRisk.time_from_now(p.date_pmt));
       const amount = p.yf ? p.notional * p.yf * fixed_rate : 0.0;
       cf.pmt_total.push(amount);
       cf.pmt_interest.push(amount);
@@ -6027,8 +6017,8 @@
 
     return cf;
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
+}
+{
   /**
    * Class representing a parameters object, e.g., a scalar, curve, or surface, that allows name and tags for attachment of scenarios
    * @memberof JsonRisk
@@ -6082,9 +6072,9 @@
     }
   }
 
-  library.Simulatable = Simulatable;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Simulatable = Simulatable;
+}
+{
   /**
    * returns a constant zero-rate curve
    * @function get_const_curve
@@ -6094,11 +6084,11 @@
    * @memberof JsonRisk
    * @public
    */
-  library.get_const_curve = function (value, type) {
+  JsonRisk.get_const_curve = function (value, type) {
     if (typeof value !== "number")
       throw new Error("get_const_curve: input must be number.");
     if (value <= -1) throw new Error("get_const_curve: invalid input.");
-    return new library.Curve({
+    return new JsonRisk.Curve({
       type: type || "yield",
       times: [1],
       zcs: [value], //zero rates are act/365 annual compounding
@@ -6113,13 +6103,13 @@
       //curve times are always act/365
       if (curve.days) return curve.days[i] / 365;
       if (curve.dates) {
-        default_yf = default_yf || library.year_fraction_factory("a/365");
+        default_yf = default_yf || JsonRisk.year_fraction_factory("a/365");
         return default_yf(
-          library.date_or_null(curve.dates[0]),
-          library.date_or_null(curve.dates[i]),
+          JsonRisk.date_or_null(curve.dates[0]),
+          JsonRisk.date_or_null(curve.dates[i]),
         );
       }
-      if (curve.labels) return library.period_str_to_time(curve.labels[i]);
+      if (curve.labels) return JsonRisk.period_str_to_time(curve.labels[i]);
       throw new Error("Curve: invalid curve, cannot derive times");
     }
     return curve.times[i];
@@ -6146,8 +6136,8 @@
     // extract times, rates and discount factors from curve and store in hidden function scope
     let times = get_times(curve);
     let size = times.length;
-    let zcs = library.number_vector_or_null(curve.zcs);
-    let dfs = library.number_vector_or_null(curve.dfs);
+    let zcs = JsonRisk.number_vector_or_null(curve.zcs);
+    let dfs = JsonRisk.number_vector_or_null(curve.dfs);
 
     if (null === zcs) {
       if (null === dfs)
@@ -6167,7 +6157,7 @@
    * @memberof JsonRisk
    * @extends Simulatable
    */
-  class Curve extends library.Simulatable {
+  class Curve extends JsonRisk.Simulatable {
     #times = null;
     #zcs = null;
     #intp = null;
@@ -6195,7 +6185,7 @@
       super(obj);
 
       // compounding
-      this.#compounding = library.compounding_factory(obj.compounding);
+      this.#compounding = JsonRisk.compounding_factory(obj.compounding);
 
       // delete invalid members
       for (const member of ["dfs", "zcs", "times", "days", "dates", "labels"]) {
@@ -6213,14 +6203,14 @@
       switch (this.#intp) {
         case "linear_zc":
           // interpolation on zcs
-          _get_interpolated_rate = library.linear_interpolation_factory(
+          _get_interpolated_rate = JsonRisk.linear_interpolation_factory(
             this.#times,
             this.#zcs,
           );
           break;
         case "linear_rt":
           // interpolation on zcs
-          _get_interpolated_rate = library.linear_xy_interpolation_factory(
+          _get_interpolated_rate = JsonRisk.linear_xy_interpolation_factory(
             this.#times,
             this.#zcs,
           );
@@ -6229,10 +6219,11 @@
         case "bessel":
         case "hermite":
           // bessel-hermite spline interpolation
-          _get_interpolated_rate = library.bessel_hermite_interpolation_factory(
-            this.#times,
-            this.#zcs,
-          );
+          _get_interpolated_rate =
+            JsonRisk.bessel_hermite_interpolation_factory(
+              this.#times,
+              this.#zcs,
+            );
           break;
         default: {
           // interpolation on dfs
@@ -6242,7 +6233,7 @@
             _dfs[i] = this.#compounding.df(this.#times[i], this.#zcs[i]);
           }
 
-          const _interpolation = library.linear_interpolation_factory(
+          const _interpolation = JsonRisk.linear_interpolation_factory(
             this.#times,
             _dfs,
           );
@@ -6276,7 +6267,7 @@
     // attach scenario rule
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scenario = new library.Curve({
+        const scenario = new JsonRisk.Curve({
           times: rule.axis_x,
           zcs: rule.values_for_curve,
           intp: rule.model === "absolute" ? this.#intp : "linear_zc",
@@ -6415,15 +6406,15 @@
     }
   }
 
-  library.Curve = Curve;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Curve = Curve;
+}
+{
   // helper function for constructor
   const get_times = function (labels) {
     //construct times from labels
     let res = null;
     if (Array.isArray(labels)) {
-      res = labels.map((label) => library.period_str_to_time(label));
+      res = labels.map((label) => JsonRisk.period_str_to_time(label));
     }
     if (!res)
       throw new Error(
@@ -6436,7 +6427,7 @@
    * Class representing a surface parametrised by expiries and absolute or relative strikes.
    * @memberof JsonRisk
    */
-  class ExpiryStrikeSurface extends library.Simulatable {
+  class ExpiryStrikeSurface extends JsonRisk.Simulatable {
     #expiries = null;
     #moneyness = [];
     get_surface_rate_scenario = null;
@@ -6454,7 +6445,7 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.number_vector_or_null(obj.expiries);
+        this.#expiries = JsonRisk.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
@@ -6462,12 +6453,12 @@
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.number_vector_or_null(obj.moneyness);
+        this.#moneyness = JsonRisk.number_vector_or_null(obj.moneyness);
         Object.freeze(this.#moneyness);
       }
 
       // interpolation
-      this.get_surface_rate = library.interpolation2d_factory(
+      this.get_surface_rate = JsonRisk.interpolation2d_factory(
         this.#expiries,
         this.#moneyness,
         obj.values,
@@ -6607,16 +6598,16 @@
     }
   }
 
-  library.ExpiryAbsStrikeSurface = ExpiryAbsStrikeSurface;
-  library.ExpiryRelStrikeSurface = ExpiryRelStrikeSurface;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.ExpiryAbsStrikeSurface = ExpiryAbsStrikeSurface;
+  JsonRisk.ExpiryRelStrikeSurface = ExpiryRelStrikeSurface;
+}
+{
   /**
    * Class representing a scalar
    * @memberof JsonRisk
    * @extends Simulatable
    */
-  class Scalar extends library.Simulatable {
+  class Scalar extends JsonRisk.Simulatable {
     #value = null;
     #scenario_value = null;
     /**
@@ -6626,7 +6617,7 @@
      */
     constructor(obj) {
       super(obj);
-      this.#value = library.number_or_null(obj.value);
+      this.#value = JsonRisk.number_or_null(obj.value);
       this.#scenario_value = this.#value;
     }
 
@@ -6659,9 +6650,9 @@
     }
   }
 
-  library.Scalar = Scalar;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Scalar = Scalar;
+}
+{
   /**
    * ...
    * @param {number} value
@@ -6670,10 +6661,10 @@
    * @memberof JsonRisk
    * @public
    */
-  library.get_const_surface = function (value, type) {
+  JsonRisk.get_const_surface = function (value, type) {
     if (typeof value !== "number")
       throw new Error("get_const_surface: input must be number.");
-    return new library.Surface({
+    return new JsonRisk.Surface({
       type: type || "",
       expiries: [1],
       terms: [1],
@@ -6686,7 +6677,7 @@
     //construct times from labels
     let res = null;
     if (Array.isArray(labels)) {
-      res = labels.map((label) => library.period_str_to_time(label));
+      res = labels.map((label) => JsonRisk.period_str_to_time(label));
     }
     if (!res)
       throw new Error(
@@ -6700,7 +6691,7 @@
    * @memberof JsonRisk
    * @extends Simulatable
    */
-  class Surface extends library.Simulatable {
+  class Surface extends JsonRisk.Simulatable {
     #expiries = null;
     #terms = null;
     #moneyness = [];
@@ -6721,7 +6712,7 @@
 
       // expiries
       if ("expiries" in obj) {
-        this.#expiries = library.number_vector_or_null(obj.expiries);
+        this.#expiries = JsonRisk.number_vector_or_null(obj.expiries);
       } else {
         this.#expiries = get_times(obj.labels_expiry);
       }
@@ -6729,14 +6720,14 @@
 
       // terms
       if ("terms" in obj) {
-        this.#terms = library.number_vector_or_null(obj.terms);
+        this.#terms = JsonRisk.number_vector_or_null(obj.terms);
       } else {
         this.#terms = get_times(obj.labels_term);
       }
       Object.freeze(this.#terms);
 
       // interpolation
-      this.get_surface_rate = library.interpolation2d_factory(
+      this.get_surface_rate = JsonRisk.interpolation2d_factory(
         this.#expiries,
         this.#terms,
         obj.values,
@@ -6744,7 +6735,7 @@
 
       // moneyness
       if ("moneyness" in obj) {
-        this.#moneyness = library.number_vector_or_null(obj.moneyness);
+        this.#moneyness = JsonRisk.number_vector_or_null(obj.moneyness);
       }
 
       // smile
@@ -6752,14 +6743,14 @@
         if (!Array.isArray(obj.smile))
           throw new Error("Surface: smile must be an array");
         this.#smile = obj.smile.map((s) => {
-          if (!(s instanceof library.Surface)) {
+          if (!(s instanceof JsonRisk.Surface)) {
             // no recursions, smile surfaces must not have smiles themselves
             let temp = Object.assign({}, s);
             delete temp.moneyness;
             delete temp.smile;
 
             // make surface
-            return new library.Surface(temp);
+            return new JsonRisk.Surface(temp);
           } else {
             return s;
           }
@@ -6797,7 +6788,7 @@
     // attach scenario ruls
     attach_rule(rule) {
       if (typeof rule === "object") {
-        const scen = new library.Surface({
+        const scen = new JsonRisk.Surface({
           expiries: rule.axis_x,
           terms: rule.axis_y,
           values: rule.values,
@@ -6896,11 +6887,11 @@
     }
   }
 
-  library.Surface = Surface;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Surface = Surface;
+}
+{
   const check_name = function (s) {
-    return library.nonempty_string_or_throw(
+    return JsonRisk.nonempty_string_or_throw(
       s,
       "Deps: name must be a string and cannot be empty",
     );
@@ -7005,7 +6996,7 @@
         obj.main_currency = params_json.main_currency;
       }
 
-      const main_currency = new library.Params(obj).main_currency;
+      const main_currency = new JsonRisk.Params(obj).main_currency;
 
       if ("scalars" in params_json) {
         for (const s of this.#scalars) {
@@ -7043,13 +7034,13 @@
         obj.scenario_groups = params_json.scenario_groups;
       }
 
-      return new library.Params(obj);
+      return new JsonRisk.Params(obj);
     }
   }
 
-  library.Deps = Deps;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Deps = Deps;
+}
+{
   const name_to_moneyness = function (str) {
     const s = str.toLowerCase();
     if (s.endsWith("atm")) return 0; //ATM surface
@@ -7096,13 +7087,13 @@
      * @param {object} [obj.curves={}] Curves to import into the parameters object. Keys are the names of the curves as referenced by instruments, values are objects as understood by the curve class constructors.
      * @param {object} [obj.surfaces={}] Surfaces to import into the parameters object. Keys are the names of the surfaces as referenced by instruments, values are objects as understood by the surface class constructors.
      * @param {object} [obj.scenarios={}] Scenarios conforming to the JsonRisk scenario definition format.
-     * @param {object} [obj.calendars={}] Calendars to import into the library instance. Keys are the names of the calendars, values must be arrays of holidays to include into the calendar.
+     * @param {object} [obj.calendars={}] Calendars to import into the JsonRisk instance. Keys are the names of the calendars, values must be arrays of holidays to include into the calendar.
      */
     constructor(obj) {
       // valuation date
       if (!("valuation_date" in obj))
         throw new Error("Params: must contain a valuation_date property");
-      this.#valuation_date = library.date_or_null(obj.valuation_date);
+      this.#valuation_date = JsonRisk.date_or_null(obj.valuation_date);
 
       // main currency
       if (typeof obj.main_currency === "string") {
@@ -7120,7 +7111,7 @@
           const temp = Object.assign({}, value);
           temp.name = key;
           try {
-            this.#scalars[key] = new library.Scalar(temp);
+            this.#scalars[key] = new JsonRisk.Scalar(temp);
           } catch (e) {
             throw new Error(
               `Params: could not instantiate scalar '${key}': ${e.message}`,
@@ -7136,7 +7127,7 @@
           const temp = Object.assign({}, value);
           temp.name = key;
           try {
-            this.#curves[key] = new library.Curve(temp);
+            this.#curves[key] = new JsonRisk.Curve(temp);
           } catch (e) {
             throw new Error(
               `Params: could not instantiate curve '${key}': ${e.message}`,
@@ -7164,7 +7155,7 @@
             }
           }
           try {
-            this.#surfaces[key] = library.make_surface(temp);
+            this.#surfaces[key] = JsonRisk.make_surface(temp);
           } catch (e) {
             throw new Error(
               `Params: could not instantiate surface '${key}': ${e.message}`,
@@ -7195,7 +7186,7 @@
               scenarios.push({
                 name: scenario.name,
                 rules: scenario.rules.map(
-                  (rule) => new library.ScenarioRule(rule),
+                  (rule) => new JsonRisk.ScenarioRule(rule),
                 ),
               });
             } catch (e) {
@@ -7209,12 +7200,12 @@
         }
       }
 
-      // calendars are actually stored within the library and not in this object
+      // calendars are actually stored within the JsonRisk and not in this object
       if ("calendars" in obj) {
         if (typeof obj.calendars !== "object")
           throw new Error("Params: Calendars object is invalid");
         for (const [calname, cal] of Object.entries(obj.calendars)) {
-          library.add_calendar(calname, cal.dates);
+          JsonRisk.add_calendar(calname, cal.dates);
         }
       }
     }
@@ -7273,7 +7264,7 @@
      * @return {boolean}
      */
     has_scalar(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_scalar: name must be nonempty string",
       );
@@ -7286,7 +7277,7 @@
      * @return {boolean}
      */
     has_curve(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "has_curve: name must be nonempty string",
       );
@@ -7299,7 +7290,7 @@
      * @return {boolean}
      */
     has_surface(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "has_surface: name must be nonempty string",
       );
@@ -7312,7 +7303,7 @@
      * @return {Scalar}
      */
     get_scalar(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_scalar: name must be nonempty string",
       );
@@ -7326,7 +7317,7 @@
      * @return {Curve}
      */
     get_curve(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_curve: name must be nonempty string",
       );
@@ -7340,7 +7331,7 @@
      * @return {Surface}
      */
     get_surface(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_surface: name must be nonempty string",
       );
@@ -7436,7 +7427,7 @@
     toJSON() {
       const mapper = ([key, value]) => [key, value.toJSON()];
       const res = {
-        valuation_date: library.date_to_date_str(this.#valuation_date),
+        valuation_date: JsonRisk.date_to_date_str(this.#valuation_date),
         main_currency: this.#main_currency,
         scalars: Object.fromEntries(Object.entries(this.#scalars).map(mapper)),
         curves: Object.fromEntries(Object.entries(this.#curves).map(mapper)),
@@ -7448,9 +7439,9 @@
     }
   }
 
-  library.Params = Params;
-})(this.JsonRisk || module.exports);
-(function (library) {
+  JsonRisk.Params = Params;
+}
+{
   const validate_model = function (str) {
     if (typeof str !== "string")
       throw new Error("ScenarioRule: model must be a string");
@@ -7461,6 +7452,7 @@
       );
     return ret;
   };
+
   const validate_and_convert_to_set = function (arr) {
     if (!Array.isArray(arr)) {
       throw new Error("ScenarioRule: risk_factors and tags must be arrays");
@@ -7625,7 +7617,7 @@
 
     matches(item) {
       // check if a simulatable item is matched this rule
-      if (!(item instanceof library.Simulatable))
+      if (!(item instanceof JsonRisk.Simulatable))
         throw new Error(
           "ScenarioRule: can only match object of type Simulatable",
         );
@@ -7660,91 +7652,89 @@
     }
   }
 
-  library.ScenarioRule = ScenarioRule;
-})(this.JsonRisk || module.exports);
-(function (library) {
-  /**
-   * Calculates the present value for any given supported instrument
-   * @param {object} instrument_json an instrument object as required by make_instrument
-   * @param {object} params_json an object containing parameters as required by the Params constructor
-   * @returns {number} present value
-   * @memberof JsonRisk
-   * @public
-   */
-  library.vector_pricer = function (instrument_json, params_json) {
-    const simulation_once = function () {
-      this.results.present_value = new Array(this.num_scenarios);
-    };
-
-    const simulation_scenario = function () {
-      const i = this.idx_scen;
-      this.results.present_value[i] = this.instrument.value(this.params);
-    };
-
-    const module = {
-      simulation_once: simulation_once,
-      simulation_scenario: simulation_scenario,
-    };
-
-    return library.simulation(instrument_json, params_json, [module])
-      .present_value;
+  JsonRisk.ScenarioRule = ScenarioRule;
+}
+/**
+ * Calculates the present value for any given supported instrument
+ * @param {object} instrument_json an instrument object as required by make_instrument
+ * @param {object} params_json an object containing parameters as required by the Params constructor
+ * @returns {number} present value
+ * @memberof JsonRisk
+ * @public
+ */
+JsonRisk.vector_pricer = function (instrument_json, params_json) {
+  const simulation_once = function () {
+    this.results.present_value = new Array(this.num_scenarios);
   };
 
-  /**
-   * Runs a generic simulation on an instrument
-   * @param {object} instrument_json an instrument object as required by make_instrument
-   * @param {object} params_json an object containing parameters as required by the Params constructor
-   * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
-   * @returns {object} results object
-   * @memberof JsonRisk
-   * @public
-   */
-  library.simulation = function (instrument_json, params_json, modules) {
-    if (typeof instrument_json.type !== "string")
-      throw new Error("simulation: instrument object must contain valid type");
-    library.set_valuation_date(params_json.valuation_date);
+  const simulation_scenario = function () {
+    const i = this.idx_scen;
+    this.results.present_value[i] = this.instrument.value(this.params);
+  };
 
-    // create context for module execution
-    const context = {
-      instrument_json: instrument_json,
-      instrument: library.make_instrument(instrument_json),
-      params_json: params_json,
-      params: null,
-      idx_scen: 0,
-      results: {},
-    };
+  const module = {
+    simulation_once: simulation_once,
+    simulation_scenario: simulation_scenario,
+  };
 
-    // obtain dependencies on parameters
-    const deps = new library.Deps();
-    context.instrument.add_deps(deps);
+  return JsonRisk.simulation(instrument_json, params_json, [module])
+    .present_value;
+};
 
-    // obtain required set of params
-    context.params = deps.minimal_params(params_json);
-    context.num_scenarios = context.params.num_scenarios;
+/**
+ * Runs a generic simulation on an instrument
+ * @param {object} instrument_json an instrument object as required by make_instrument
+ * @param {object} params_json an object containing parameters as required by the Params constructor
+ * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
+ * @returns {object} results object
+ * @memberof JsonRisk
+ * @public
+ */
+JsonRisk.simulation = function (instrument_json, params_json, modules) {
+  if (typeof instrument_json.type !== "string")
+    throw new Error("simulation: instrument object must contain valid type");
+  JsonRisk.set_valuation_date(params_json.valuation_date);
 
-    for (let i = 0; i < context.num_scenarios; i++) {
-      // update context for scenario
-      context.idx_scen = i;
+  // create context for module execution
+  const context = {
+    instrument_json: instrument_json,
+    instrument: JsonRisk.make_instrument(instrument_json),
+    params_json: params_json,
+    params: null,
+    idx_scen: 0,
+    results: {},
+  };
 
-      // attach scenarios to params
-      context.params.attach_scenario(i);
+  // obtain dependencies on parameters
+  const deps = new JsonRisk.Deps();
+  context.instrument.add_deps(deps);
 
-      // call simulation_once for all modules for i=0
-      for (let j = 0; j < modules.length; j++) {
-        if (0 === i && "function" === typeof modules[j].simulation_once)
-          modules[j].simulation_once.call(context);
-      }
+  // obtain required set of params
+  context.params = deps.minimal_params(params_json);
+  context.num_scenarios = context.params.num_scenarios;
 
-      // call simulation_scenario for all modules for i=0
-      for (let j = 0; j < modules.length; j++) {
-        if ("function" === typeof modules[j].simulation_scenario)
-          modules[j].simulation_scenario.call(context);
-      }
+  for (let i = 0; i < context.num_scenarios; i++) {
+    // update context for scenario
+    context.idx_scen = i;
+
+    // attach scenarios to params
+    context.params.attach_scenario(i);
+
+    // call simulation_once for all modules for i=0
+    for (let j = 0; j < modules.length; j++) {
+      if (0 === i && "function" === typeof modules[j].simulation_once)
+        modules[j].simulation_once.call(context);
     }
-    return context.results;
-  };
-})(this.JsonRisk || module.exports);
-(function (library) {
+
+    // call simulation_scenario for all modules for i=0
+    for (let j = 0; j < modules.length; j++) {
+      if ("function" === typeof modules[j].simulation_scenario)
+        modules[j].simulation_scenario.call(context);
+    }
+  }
+  return context.results;
+};
+{
   /**
    * creates a forward schedule from start up to but excluding end, using tenor as frequency
    * @param {date} start start date
@@ -7758,11 +7748,11 @@
   const forward_rollout = function (start, end, tenor, adjust_func) {
     const res = [start];
     let i = 1,
-      dt = library.add_months(start, tenor);
+      dt = JsonRisk.add_months(start, tenor);
     while (dt.getTime() < end.getTime()) {
       res.push(dt);
       i++;
-      dt = library.add_months(start, i * tenor);
+      dt = JsonRisk.add_months(start, i * tenor);
     }
     if (
       adjust_func(end).getTime() <= adjust_func(res[res.length - 1]).getTime()
@@ -7783,11 +7773,11 @@
   const backward_rollout = function (start, end, tenor, adjust_func) {
     const res = [end];
     let i = 1,
-      dt = library.add_months(end, -tenor);
+      dt = JsonRisk.add_months(end, -tenor);
     while (dt.getTime() > start.getTime()) {
       res.unshift(dt);
       i++;
-      dt = library.add_months(end, -i * tenor);
+      dt = JsonRisk.add_months(end, -i * tenor);
     }
     if (adjust_func(start).getTime() >= adjust_func(res[0]).getTime())
       res.shift(); //make sure start is excluded after adjustments
@@ -7808,7 +7798,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.schedule = function (
+  JsonRisk.schedule = function (
     eff_dt,
     maturity,
     tenor,
@@ -7825,7 +7815,7 @@
 
     if (!(eff_dt instanceof Date)) {
       //effective date is strictly needed if valuation date is not set
-      if (null === library.valuation_date)
+      if (null === JsonRisk.valuation_date)
         throw new Error(
           "schedule: if valuation_date is unset, effective date must be provided",
         );
@@ -7842,7 +7832,7 @@
     }
     if (eff_dt instanceof Date && isNaN(eff_dt))
       throw new Error("schedule: invalid date provided for effective date");
-    if (maturity <= (eff_dt instanceof Date ? eff_dt : library.valuation_date))
+    if (maturity <= (eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date))
       throw new Error(
         "schedule: maturity is before valuation date or effective date.",
       );
@@ -7856,7 +7846,7 @@
       );
     if (0 === tenor)
       return [
-        eff_dt instanceof Date ? eff_dt : library.valuation_date,
+        eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date,
         maturity,
       ];
 
@@ -7871,7 +7861,7 @@
     } else if (next_to_last_dt instanceof Date && !(first_dt instanceof Date)) {
       // backward generation with explicit stub at end
       res = backward_rollout(
-        eff_dt instanceof Date ? eff_dt : library.valuation_date,
+        eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date,
         next_to_last_dt,
         tenor,
         adjust_func,
@@ -7882,7 +7872,7 @@
       if (eff_dt instanceof Date) res.unshift(eff_dt);
       //if effective date is not given, add another period
       if (!(eff_dt instanceof Date))
-        res.unshift(library.add_months(res[0], -tenor));
+        res.unshift(JsonRisk.add_months(res[0], -tenor));
     } else if (first_dt instanceof Date && next_to_last_dt instanceof Date) {
       // backward generation with both explicit stubs
       res = backward_rollout(first_dt, next_to_last_dt, tenor, adjust_func);
@@ -7902,7 +7892,7 @@
     } else {
       // backward generation with implicit stub
       res = backward_rollout(
-        eff_dt instanceof Date ? eff_dt : library.valuation_date,
+        eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date,
         maturity,
         tenor,
         adjust_func,
@@ -7913,12 +7903,12 @@
       if (eff_dt instanceof Date) res.unshift(eff_dt);
       //if effective date is not given and beginning of schedule is still after valuation date, add another period
       if (!(eff_dt instanceof Date))
-        res.unshift(library.add_months(res[0], -tenor));
+        res.unshift(JsonRisk.add_months(res[0], -tenor));
     }
     return res;
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
+}
+{
   const dl = 1000 * 60 * 60 * 24; // length of one day in milliseconds
   const one_over_dl = 1.0 / dl;
 
@@ -7929,7 +7919,7 @@
    * @memberof JsonRisk
    * @private
    */
-  library.is_leap_year = function (y) {
+  JsonRisk.is_leap_year = function (y) {
     if (y % 4 !== 0) return false;
     if (y === 2000) return true;
     return y % 100 !== 0;
@@ -7943,10 +7933,10 @@
    * @memberof JsonRisk
    * @private
    */
-  library.days_in_month = function (y, m) {
+  JsonRisk.days_in_month = function (y, m) {
     switch (m) {
       case 1:
-        return library.is_leap_year(y) ? 29 : 28;
+        return JsonRisk.is_leap_year(y) ? 29 : 28;
       case 3:
       case 5:
       case 8:
@@ -7965,19 +7955,19 @@
    * @memberof JsonRisk
    * @private
    */
-  library.days_between = function (from, to) {
+  JsonRisk.days_between = function (from, to) {
     return Math.round((to.getTime() - from.getTime()) * one_over_dl);
   };
 
   /**
-   * Returns the time in years from library.valuation_date until the given date
+   * Returns the time in years from JsonRisk.valuation_date until the given date
    * @param {date} d
-   * @returns {number} time in years from library.valuation_date until d
+   * @returns {number} time in years from JsonRisk.valuation_date until d
    * @memberof JsonRisk
    * @public
    */
-  library.time_from_now = function (d) {
-    return library.days_between(library.valuation_date, d) / 365;
+  JsonRisk.time_from_now = function (d) {
+    return JsonRisk.days_between(JsonRisk.valuation_date, d) / 365;
   };
 
   /*!
@@ -7993,7 +7983,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_days = function (from, ndays) {
+  JsonRisk.add_days = function (from, ndays) {
     return new Date(from.getTime() + ndays * dl);
   };
 
@@ -8006,7 +7996,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_months = function (from, nmonths, roll_day) {
+  JsonRisk.add_months = function (from, nmonths, roll_day) {
     let y = from.getUTCFullYear(),
       m = from.getUTCMonth() + nmonths,
       d;
@@ -8023,7 +8013,7 @@
     } else {
       d = roll_day;
     }
-    return new Date(Date.UTC(y, m, Math.min(d, library.days_in_month(y, m))));
+    return new Date(Date.UTC(y, m, Math.min(d, JsonRisk.days_in_month(y, m))));
   };
 
   /**
@@ -8034,17 +8024,18 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_period = function (from, str) {
+  JsonRisk.add_period = function (from, str) {
     const num = parseInt(str, 10);
     if (isNaN(num))
       throw new Error(
         "period_str_to_time(str) - Invalid time period string: " + str,
       );
     const unit = str.charAt(str.length - 1);
-    if (unit === "Y" || unit === "y") return library.add_months(from, 12 * num);
-    if (unit === "M" || unit === "m") return library.add_months(from, num);
-    if (unit === "W" || unit === "w") return library.add_days(from, 7 * num);
-    if (unit === "D" || unit === "d") return library.add_days(from, num);
+    if (unit === "Y" || unit === "y")
+      return JsonRisk.add_months(from, 12 * num);
+    if (unit === "M" || unit === "m") return JsonRisk.add_months(from, num);
+    if (unit === "W" || unit === "w") return JsonRisk.add_days(from, 7 * num);
+    if (unit === "D" || unit === "d") return JsonRisk.add_days(from, num);
     throw new Error(
       "period_str_to_time(str) - Invalid time period string: " + str,
     );
@@ -8114,8 +8105,8 @@
     if (y > 2000) {
       if ((1 === d && 4 === m) || (26 === d && 11 === m)) return true; //labour and goodwill
       const es = easter_sunday(y);
-      if (dt.getTime() === library.add_days(es, -2).getTime()) return true; //Good Friday
-      if (dt.getTime() === library.add_days(es, 1).getTime()) return true; //Easter Monday
+      if (dt.getTime() === JsonRisk.add_days(es, -2).getTime()) return true; //Good Friday
+      if (dt.getTime() === JsonRisk.add_days(es, 1).getTime()) return true; //Easter Monday
     }
     return false;
   }
@@ -8130,14 +8121,14 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_calendar = function (name, dates) {
+  JsonRisk.add_calendar = function (name, dates) {
     if (!(name instanceof String || typeof name === "string"))
       throw new Error("add_calendar: invalid input.");
     if (!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
     const holidays = new Set();
     //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
     for (let dt of dates) {
-      dt = library.date_or_null(dt);
+      dt = JsonRisk.date_or_null(dt);
       if (!dt) continue;
       if (is_holiday_default(dt)) continue;
       holidays.add(dt.getTime());
@@ -8152,7 +8143,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.is_holiday_factory = function (str) {
+  JsonRisk.is_holiday_factory = function (str) {
     const sl = str.toLowerCase();
 
     //builtin target calendar
@@ -8190,7 +8181,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.adjust = function (dt, bdc, is_holiday_function) {
+  JsonRisk.adjust = function (dt, bdc, is_holiday_function) {
     if (!(bdc instanceof String) && typeof bdc !== "string") return dt; // no business day convention specified
     const s = (bdc || "u").charAt(0).toLowerCase();
     let adj = new Date(dt);
@@ -8199,12 +8190,12 @@
     let m;
     if (s === "m") m = adj.getUTCMonth(); //save month for modified following
     if (s === "m" || s === "f") {
-      while (is_holiday_function(adj)) adj = library.add_days(adj, 1);
+      while (is_holiday_function(adj)) adj = JsonRisk.add_days(adj, 1);
     }
     if (s === "f") return adj; //following
     if (s === "m" && m === adj.getUTCMonth()) return adj; //modified following, still in same month
-    if (s === "m") adj = library.add_days(adj, -1); //modified following, in next month
-    while (is_holiday_function(adj)) adj = library.add_days(adj, -1); //modified following or preceding
+    if (s === "m") adj = JsonRisk.add_days(adj, -1); //modified following, in next month
+    while (is_holiday_function(adj)) adj = JsonRisk.add_days(adj, -1); //modified following or preceding
     return adj;
   };
 
@@ -8217,17 +8208,21 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_business_days = function (from, n, is_holiday_function) {
+  JsonRisk.add_business_days = function (from, n, is_holiday_function) {
     let res = from,
       i = n;
     while (i > 0) {
-      res = library.adjust(library.add_days(res, 1), "f", is_holiday_function);
+      res = JsonRisk.adjust(
+        JsonRisk.add_days(res, 1),
+        "f",
+        is_holiday_function,
+      );
       i--;
     }
     return res;
   };
-})(this.JsonRisk || module.exports);
-(function (library) {
+}
+{
   /**
    * year fraction act365 according to the ISDA 2006 rules, section 4.16 (d)
    * @param {date} from from date
@@ -8237,7 +8232,7 @@
    * @private
    */
   function yf_act365(from, to) {
-    return library.days_between(from, to) / 365;
+    return JsonRisk.days_between(from, to) / 365;
   }
 
   /**
@@ -8249,7 +8244,7 @@
    * @private
    */
   function yf_act360(from, to) {
-    return library.days_between(from, to) / 360;
+    return JsonRisk.days_between(from, to) / 360;
   }
 
   /**
@@ -8304,8 +8299,8 @@
     const m2 = to.getUTCMonth();
     let d1 = Math.min(from.getUTCDate(), 30);
     let d2 = Math.min(to.getUTCDate(), 30);
-    if (1 == m1 && d1 == library.days_in_month(y1, m1)) d1 = 30;
-    if (1 == m2 && d2 == library.days_in_month(y2, m2)) d2 = 30;
+    if (1 == m1 && d1 == JsonRisk.days_in_month(y1, m1)) d1 = 30;
+    if (1 == m2 && d2 == JsonRisk.days_in_month(y2, m2)) d2 = 30;
     return ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
   }
 
@@ -8324,22 +8319,22 @@
     const yto = to.getUTCFullYear();
     if (yfrom === yto)
       return (
-        library.days_between(from, to) /
-        (library.is_leap_year(yfrom) ? 366 : 365)
+        JsonRisk.days_between(from, to) /
+        (JsonRisk.is_leap_year(yfrom) ? 366 : 365)
       );
     let res = yto - yfrom - 1;
     res +=
-      library.days_between(from, new Date(Date.UTC(yfrom + 1, 0, 1))) /
-      (library.is_leap_year(yfrom) ? 366 : 365);
+      JsonRisk.days_between(from, new Date(Date.UTC(yfrom + 1, 0, 1))) /
+      (JsonRisk.is_leap_year(yfrom) ? 366 : 365);
     res +=
-      library.days_between(new Date(Date.UTC(yto, 0, 1)), to) /
-      (library.is_leap_year(yto) ? 366 : 365);
+      JsonRisk.days_between(new Date(Date.UTC(yto, 0, 1)), to) /
+      (JsonRisk.is_leap_year(yto) ? 366 : 365);
     return res;
   }
 
   // fallback helper for act act ICMA - tenor is either 1,3,6, or 12
   function guess_tenor(from, to) {
-    const d = library.days_between(from, to);
+    const d = JsonRisk.days_between(from, to);
 
     if (d < 61) return 1;
     if (d < 137) return 3;
@@ -8350,11 +8345,11 @@
   // fallback helper for act act ICMA - roll date is either start or end date
   function guess_roll_date(from, to, tenor) {
     // check if start is a valid roll date rolling forward onto end
-    let d = library.add_months(from, tenor, from.getDate());
+    let d = JsonRisk.add_months(from, tenor, from.getDate());
     if (d.getTime() === to.getTime()) return from;
 
     // check if end is a valid roll date rolling backward onto start
-    d = library.add_months(to, -tenor, to.getDate());
+    d = JsonRisk.add_months(to, -tenor, to.getDate());
     if (d.getTime() === from.getTime()) return to;
     // fallback for stubs
     return from;
@@ -8378,21 +8373,21 @@
     if (!roll_date) roll_date = guess_roll_date(from, to, p); // fallback
 
     // implementation with roll date and tenor
-    let n = Math.floor((library.days_between(roll_date, from) / 365.25) * p);
+    let n = Math.floor((JsonRisk.days_between(roll_date, from) / 365.25) * p);
 
     // find largest date before from date
     const roll_day = roll_date.getDate();
-    let ref_start = library.add_months(roll_date, n * p, roll_day);
+    let ref_start = JsonRisk.add_months(roll_date, n * p, roll_day);
 
     // make sure ref_start is greater than or equal to from date
     while (ref_start < from) {
       n++;
-      ref_start = library.add_months(roll_date, n * p, roll_day);
+      ref_start = JsonRisk.add_months(roll_date, n * p, roll_day);
     }
     // make sure r is smaller than or equal to from date
     while (ref_start > from) {
       n--;
-      ref_start = library.add_months(roll_date, n * p, roll_day);
+      ref_start = JsonRisk.add_months(roll_date, n * p, roll_day);
     }
 
     // now ref_start is smaller than or equal to the from date, and less than one period befort the from date
@@ -8401,14 +8396,14 @@
     while (ref_end < to) {
       // add year fraction correponding to one period overlapping from and to date
       n++;
-      ref_end = library.add_months(roll_date, n * p, roll_day);
+      ref_end = JsonRisk.add_months(roll_date, n * p, roll_day);
       // actual days
       const actual_start = from > ref_start ? from : ref_start;
       const actual_end = to < ref_end ? to : ref_end;
-      const actual_days = library.days_between(actual_start, actual_end);
+      const actual_days = JsonRisk.days_between(actual_start, actual_end);
 
       // reference days
-      const ref_days = library.days_between(ref_start, ref_end);
+      const ref_days = JsonRisk.days_between(ref_start, ref_end);
       res += (p * actual_days) / (12 * ref_days);
       // prepare next period
       ref_start = ref_end;
@@ -8422,9 +8417,9 @@
     const yfrom = from.getUTCFullYear();
     const yto = to.getUTCFullYear();
 
-    if (library.is_leap_year(yfrom)) {
+    if (JsonRisk.is_leap_year(yfrom)) {
       leapday = new Date(Date.UTC(yfrom, 1, 29));
-    } else if (library.is_leap_year(yto)) {
+    } else if (JsonRisk.is_leap_year(yto)) {
       leapday = new Date(Date.UTC(yto, 1, 29));
     }
     if (from < leapday && to >= leapday) return true;
@@ -8447,7 +8442,7 @@
     const y = to.getUTCFullYear();
 
     // roll over day 29 if end of feb
-    if (28 === rollday && 1 === m && false === library.is_leap_year(y))
+    if (28 === rollday && 1 === m && false === JsonRisk.is_leap_year(y))
       rollday++;
 
     let res = 0.0;
@@ -8455,7 +8450,7 @@
       temp2 = null;
     while (temp1 > from) {
       temp2 = temp1;
-      temp1 = library.add_months(temp1, -12, rollday);
+      temp1 = JsonRisk.add_months(temp1, -12, rollday);
 
       // add a full year for each full yearly period within from and to
       if (temp1 >= from) res += 1.0;
@@ -8466,7 +8461,7 @@
 
     // add remaining year fraction
     const deno = period_contains_leapday(from, temp2) ? 366 : 365;
-    const num = library.days_between(from, temp2);
+    const num = JsonRisk.days_between(from, temp2);
     res += num / deno;
     return res;
   }
@@ -8484,11 +8479,11 @@
   /**
    * returns day count convention of param (multiple possibilities to deliver day count conventions)
    * @param {string} str
-   * @returns {number} day count convention in library format
+   * @returns {number} day count convention in JsonRisk format
    * @memberof JsonRisk
    * @public
    */
-  library.year_fraction_factory = function (str) {
+  JsonRisk.year_fraction_factory = function (str) {
     if (!(str instanceof String) && typeof str !== "string") return yf_act365; //default dcc
     if ("" === str) return yf_act365; // default dcc
 
@@ -8541,4 +8536,4 @@
         throw new Error("year fraction factory: invalid input " + str);
     }
   };
-})(this.JsonRisk || module.exports);
+}

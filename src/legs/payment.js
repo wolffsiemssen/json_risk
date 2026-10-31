@@ -1,7 +1,7 @@
-(function (library) {
+{
   // function that checks for valid notional
   function check_notional(unsafe_notional) {
-    const res = library.number_or_null(unsafe_notional);
+    const res = JsonRisk.number_or_null(unsafe_notional);
     if (res === null)
       throw new Error("Payment: notional must be a valid number");
     return res;
@@ -31,15 +31,16 @@
       this.#notional = check_notional(obj.notional);
 
       //payment date
-      this.#date_pmt = library.date_or_null(obj.date_pmt);
+      this.#date_pmt = JsonRisk.date_or_null(obj.date_pmt);
       if (this.#date_pmt === null)
         throw new Error("Payment: date_pmt must be a valid date");
 
       // value date
-      this.#date_value = library.date_or_null(obj.date_value) || this.#date_pmt;
+      this.#date_value =
+        JsonRisk.date_or_null(obj.date_value) || this.#date_pmt;
 
       //currency
-      this.#currency = library.string_or_empty(obj.currency);
+      this.#currency = JsonRisk.string_or_empty(obj.currency);
     }
 
     set_notional(n) {
@@ -93,8 +94,8 @@
       return {
         type: "Notional",
         notional: this.#notional,
-        date_pmt: library.date_to_date_str(this.#date_pmt),
-        date_value: library.date_to_date_str(this.#date_value),
+        date_pmt: JsonRisk.date_to_date_str(this.#date_pmt),
+        date_value: JsonRisk.date_to_date_str(this.#date_value),
         currency: this.#currency,
         amount_interest: this.amount_interest, // uses derived class getter
         amount_notional: this.amount_notional, // uses derived class getter
@@ -115,17 +116,18 @@
     constructor(obj) {
       super(obj);
       // start and end dates
-      this.#date_start = library.date_or_null(obj.date_start);
+      this.#date_start = JsonRisk.date_or_null(obj.date_start);
       if (this.#date_start === null)
         throw new Error("RatePayment: date_start must be a valid date");
 
-      this.#date_end = library.date_or_null(obj.date_end);
+      this.#date_end = JsonRisk.date_or_null(obj.date_end);
       if (this.#date_end === null)
         throw new Error("RatePayment: date_end must be a valid date");
 
       // reference period calculations
-      this.#date_roll = library.date_or_null(obj.date_roll) || this.#date_start;
-      this.#tenor = library.natural_number_or_null(obj.tenor);
+      this.#date_roll =
+        JsonRisk.date_or_null(obj.date_roll) || this.#date_start;
+      this.#tenor = JsonRisk.natural_number_or_null(obj.tenor);
 
       // sanity checks
       if (this.#date_start.getTime() >= this.#date_end.getTime())
@@ -134,8 +136,8 @@
         throw new Error("RatePayment: date_start must be before date_value");
 
       // dcc and year fraction
-      const dcc = library.string_or_empty(obj.dcc);
-      this.#yffunc = library.year_fraction_factory(dcc);
+      const dcc = JsonRisk.string_or_empty(obj.dcc);
+      this.#yffunc = JsonRisk.year_fraction_factory(dcc);
       this.#yf = this.#yffunc(
         this.#date_start,
         this.#date_end,
@@ -144,7 +146,7 @@
       );
 
       // capitalization
-      this.#capitalize = library.make_bool(obj.capitalize);
+      this.#capitalize = JsonRisk.make_bool(obj.capitalize);
     }
 
     //getter functions
@@ -171,14 +173,14 @@
     toJSON() {
       const res = super.toJSON();
       delete res.type;
-      res.date_start = library.date_to_date_str(this.#date_start);
-      res.date_end = library.date_to_date_str(this.#date_end);
+      res.date_start = JsonRisk.date_to_date_str(this.#date_start);
+      res.date_end = JsonRisk.date_to_date_str(this.#date_end);
       res.yf = this.#yf;
       res.dcc = this.#yffunc.canonical_name;
       // optional members
       if (this.#capitalize) res.capitalize = true;
       if (this.#date_roll)
-        res.date_roll = library.date_to_date_str(this.#date_roll);
+        res.date_roll = JsonRisk.date_to_date_str(this.#date_roll);
       if (this.#tenor) res.tenor = this.#tenor;
       return res;
     }
@@ -210,7 +212,7 @@
     constructor(obj) {
       super(obj);
       // rate
-      this.#rate = library.number_or_null(obj.rate);
+      this.#rate = JsonRisk.number_or_null(obj.rate);
       if (this.#rate === null)
         throw new Error("FixedRatePayment: rate must be a valid number");
 
@@ -281,14 +283,14 @@
       super(obj);
 
       // index
-      this.#index = library.string_or_empty(obj.index);
+      this.#index = JsonRisk.string_or_empty(obj.index);
 
       // is fixed
-      this.#is_fixed = library.make_bool(obj.is_fixed);
+      this.#is_fixed = JsonRisk.make_bool(obj.is_fixed);
 
       // fixing
       if (this.#is_fixed) {
-        this.#rate = library.number_or_null(obj.rate);
+        this.#rate = JsonRisk.number_or_null(obj.rate);
         if (null === this.#rate)
           throw new Error(
             "FloatRatePayment: rate missing on payment that is already fixed",
@@ -296,12 +298,12 @@
       }
 
       // spread
-      this.#spread = library.number_or_null(obj.spread) || 0.0;
+      this.#spread = JsonRisk.number_or_null(obj.spread) || 0.0;
 
       // optional dates
       this.#reset_start =
-        library.date_or_null(obj.reset_start) || this.date_start;
-      this.#reset_end = library.date_or_null(obj.reset_end) || this.date_end;
+        JsonRisk.date_or_null(obj.reset_start) || this.date_start;
+      this.#reset_end = JsonRisk.date_or_null(obj.reset_end) || this.date_end;
 
       // sanity checks
       if (this.#reset_start >= this.#reset_end)
@@ -346,8 +348,8 @@
       res.index = this.#index;
       res.spread = this.#spread;
       res.rate = this.rate; // allow override by CapFloorPayment class
-      res.reset_start = library.date_to_date_str(this.#reset_start);
-      res.reset_end = library.date_to_date_str(this.#reset_end);
+      res.reset_start = JsonRisk.date_to_date_str(this.#reset_start);
+      res.reset_end = JsonRisk.date_to_date_str(this.#reset_end);
       return res;
     }
 
@@ -361,7 +363,7 @@
         throw new Error(
           `FloatRatePayment: index ${this.#index} was not supplied`,
         );
-      if (!(idx instanceof library.SimpleIndex))
+      if (!(idx instanceof JsonRisk.SimpleIndex))
         throw new Error(`FloatRatePayment: invalid index ${this.#index}`);
       this.#rate = idx.fwd_rate(this.#reset_start, this.#reset_end);
       this.#rate += this.#spread;
@@ -376,7 +378,7 @@
 
     constructor(obj) {
       super(obj);
-      this.#strike = library.number_or_null(obj.strike);
+      this.#strike = JsonRisk.number_or_null(obj.strike);
     }
 
     // getter functions
@@ -407,7 +409,7 @@
         throw new Error(
           `${this.constructor.name}: index ${this.index} was not supplied`,
         );
-      if (!(idx instanceof library.SimpleIndex))
+      if (!(idx instanceof JsonRisk.SimpleIndex))
         throw new Error(
           `${this.constructor.name}: invalid index ${this.index}`,
         );
@@ -419,8 +421,8 @@
         this.strike,
       ); // we do not consider spread in the computation of volatility
 
-      const t_expiry = library.time_from_now(this.reset_start);
-      const bachelier = new library.BachelierModel(t_expiry, this.#volatility);
+      const t_expiry = JsonRisk.time_from_now(this.reset_start);
+      const bachelier = new JsonRisk.BachelierModel(t_expiry, this.#volatility);
       const fwd_rate = raw_fwd_rate + this.spread;
 
       switch (this.constructor.name) {
@@ -463,14 +465,14 @@
     }
   }
 
-  library.NotionalPayment = NotionalPayment;
-  library.FixedRatePayment = FixedRatePayment;
-  library.FloatRatePayment = FloatRatePayment;
-  library.CapFloorPayment = CapFloorPayment;
-  library.CapletPayment = CapletPayment;
-  library.FloorletPayment = FloorletPayment;
+  JsonRisk.NotionalPayment = NotionalPayment;
+  JsonRisk.FixedRatePayment = FixedRatePayment;
+  JsonRisk.FloatRatePayment = FloatRatePayment;
+  JsonRisk.CapFloorPayment = CapFloorPayment;
+  JsonRisk.CapletPayment = CapletPayment;
+  JsonRisk.FloorletPayment = FloorletPayment;
 
-  library.payment_compare = function (a, b) {
+  JsonRisk.payment_compare = function (a, b) {
     // sort by start date first while notional payments use date_value instead
     const astart = a.date_start.getTime();
     const bstart = b.date_start.getTime();
@@ -492,4 +494,4 @@
     if (nb === "FloatRatePayment") return 1;
     return na < nb ? 1 : na > nb ? -1 : 0;
   };
-})(this.JsonRisk || module.exports);
+}

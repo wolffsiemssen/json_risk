@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a fixed rate bond
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class Bond extends library.LegInstrument {
+  class Bond extends JsonRisk.LegInstrument {
     /**
      * Create a bond instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one lag with fixed and notional payments.
      * @param {obj} obj A plain object representing the instrument
@@ -16,11 +16,11 @@
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // fixed rate must be set either as a number or as a vector
-        const f = library.number_vector_or_null(obj.fixed_rate);
+        const f = JsonRisk.number_vector_or_null(obj.fixed_rate);
         if (null === f) throw new Error("Bond: must have fixed rate set");
 
         // generate leg from terms and conditions
-        const leg = library.cashflow_generator(obj);
+        const leg = JsonRisk.cashflow_generator(obj);
 
         // create shallow copy and leave original object unchanged
         const tempobj = Object.assign({ legs: [leg] }, obj);
@@ -52,7 +52,7 @@
     get fixed_rate() {
       //returns first rate on the leg
       for (const p of this.legs[0].payments) {
-        if (p instanceof library.FixedRatePayment) {
+        if (p instanceof JsonRisk.FixedRatePayment) {
           return p.rate;
         }
       }
@@ -82,5 +82,5 @@
     }
   }
 
-  library.Bond = Bond;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Bond = Bond;
+}

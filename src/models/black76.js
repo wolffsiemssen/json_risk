@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Class representing a black76 model user to value e.g. equity options
    * @memberof JsonRisk
@@ -43,8 +43,8 @@
       const d1 = temp + 0.5 * this.#std_dev;
       const d2 = temp - 0.5 * this.#std_dev;
       return (
-        phi * forward * library.cndf(phi * d1) -
-        phi * strike * library.cndf(phi * d2)
+        phi * forward * JsonRisk.cndf(phi * d1) -
+        phi * strike * JsonRisk.cndf(phi * d2)
       );
     }
 
@@ -68,5 +68,5 @@
       return this.#impl(1, forward, strike);
     }
   }
-  library.BlackModel = BlackModel;
-})(this.JsonRisk || module.exports);
+  JsonRisk.BlackModel = BlackModel;
+}

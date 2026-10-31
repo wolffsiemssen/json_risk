@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a FX Swap, FX Spot or FX Forward instrument
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class FxTerm extends library.LegInstrument {
+  class FxTerm extends JsonRisk.LegInstrument {
     /**
      * Create a fx term instrument.
      * @param {obj} obj A plain object representing the instrument
@@ -32,7 +32,7 @@
         // far payment
         if (
           typeof obj.notional_2 === "number" &&
-          library.date_or_null(obj.maturity_2)
+          JsonRisk.date_or_null(obj.maturity_2)
         ) {
           leg.payments.push({
             type: "notional",
@@ -69,12 +69,12 @@
             "FXTerm: both legs must contain the same number of payments",
           );
         for (const p of leg.payments) {
-          if (p.constructor !== library.NotionalPayment)
+          if (p.constructor !== JsonRisk.NotionalPayment)
             throw new Error("FxTerm: legs can only contain notional payments");
         }
       }
     }
   }
 
-  library.FxTerm = FxTerm;
-})(this.JsonRisk || module.exports);
+  JsonRisk.FxTerm = FxTerm;
+}

@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a credit default swap
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class CreditDefaultSwap extends library.LegInstrument {
+  class CreditDefaultSwap extends JsonRisk.LegInstrument {
     #survival_curve = "";
     #accrual_on_default = false;
     #recovery_rate = 0.0;
@@ -23,10 +23,10 @@
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate leg from terms and conditions
-        const fixed_rate = library.number_or_null(obj.fixed_rate);
+        const fixed_rate = JsonRisk.number_or_null(obj.fixed_rate);
         if (null === fixed_rate)
           throw new Error("CreditDefaultSwap: must provide fixed rate");
-        const leg = library.cashflow_generator({
+        const leg = JsonRisk.cashflow_generator({
           notional: obj.notional,
           notional_exchange: false, // no notional exchange
           maturity: obj.maturity,
@@ -36,8 +36,8 @@
           fixed_rate: fixed_rate,
           tenor: obj.tenor,
           calendar: obj.calendar,
-          bdc: library.string_or_empty(obj.bdc) || "f",
-          dcc: library.string_or_empty(obj.dcc) || "act/360",
+          bdc: JsonRisk.string_or_empty(obj.bdc) || "f",
+          dcc: JsonRisk.string_or_empty(obj.dcc) || "act/360",
           adjust_accrual_periods: obj.adjust_accrual_periods,
           disc_curve: obj.disc_curve,
         });
@@ -45,7 +45,7 @@
         // for standard CDS, the last accrual period extends one day longer
         const last_payment = leg.payments[leg.payments.length - 1];
         if (last_payment.date_end) {
-          last_payment.date_end = library.add_days(last_payment.date_end, 1);
+          last_payment.date_end = JsonRisk.add_days(last_payment.date_end, 1);
         }
 
         // create shallow copy and leave original object unchanged
@@ -77,9 +77,9 @@
           "CreditDefaultSwap: Cannot contain embedded coupon options",
         );
 
-      this.#survival_curve = library.string_or_empty(obj.survival_curve);
-      this.#accrual_on_default = library.make_bool(obj.accrual_on_default);
-      this.#recovery_rate = library.number_or_null(obj.recovery_rate);
+      this.#survival_curve = JsonRisk.string_or_empty(obj.survival_curve);
+      this.#accrual_on_default = JsonRisk.make_bool(obj.accrual_on_default);
+      this.#recovery_rate = JsonRisk.number_or_null(obj.recovery_rate);
       if (this.#recovery_rate === null)
         throw new Error("CreditDefaultSwap: must specify recovery rate");
       if (this.#recovery_rate < 0 || this.#recovery_rate > 1)
@@ -92,32 +92,32 @@
     }
 
     value_impl(params, extras_not_used) {
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.legs[0].disc_curve,
         "CDS: no discount curve specified, make sure to populate 'disc_curve' on leg level or , when legs are generated from terms, on instrument level",
       );
       const dc = params.get_curve(this.legs[0].disc_curve);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.#survival_curve,
         "CDS: no survival curve specified, make sure to populate 'survival_curve' on instrument level",
       );
       const sc = params.get_curve(this.#survival_curve);
-      const isda = new library.IsdaCdsModel(dc, sc);
+      const isda = new JsonRisk.IsdaCdsModel(dc, sc);
 
       let pv_premium = 0;
       let n = this.legs[0].payments.length;
       for (let i = 0; i < n; i++) {
         const p = this.legs[0].payments[i];
-        if (!(p instanceof library.FixedRatePayment)) continue;
+        if (!(p instanceof JsonRisk.FixedRatePayment)) continue;
         const { date_pmt, date_end, date_value } = p;
-        if (date_pmt <= library.valuation_date) continue;
+        if (date_pmt <= JsonRisk.valuation_date) continue;
 
-        const t_pmt = library.time_from_now(date_pmt);
+        const t_pmt = JsonRisk.time_from_now(date_pmt);
         const t_end =
           (i === n
-            ? library.time_from_now(date_end)
-            : library.time_from_now(date_value)) -
+            ? JsonRisk.time_from_now(date_end)
+            : JsonRisk.time_from_now(date_value)) -
           1.0 / 365.0;
 
         const disc_factor = dc.get_df(t_pmt);
@@ -134,8 +134,8 @@
       const notional = this.legs[0].payments[0].notional;
       const recovery_rate = this.#recovery_rate;
       let date_start = this.legs[0].payments[0].date_start;
-      if (date_start < library.valuation_date)
-        date_start = library.valuation_date;
+      if (date_start < JsonRisk.valuation_date)
+        date_start = JsonRisk.valuation_date;
       const date_end =
         this.legs[0].payments[this.legs[0].payments.length - 1].date_end;
       const pv_protection = isda.protection_pv({
@@ -149,5 +149,5 @@
     }
   }
 
-  library.CreditDefaultSwap = CreditDefaultSwap;
-})(this.JsonRisk || module.exports);
+  JsonRisk.CreditDefaultSwap = CreditDefaultSwap;
+}

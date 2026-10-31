@@ -1,4 +1,4 @@
-(function (library) {
+{
   let specs = null;
   let conditions = null;
   let schedule = null;
@@ -14,18 +14,18 @@
   function make_specs(obj) {
     specs = {};
 
-    specs.maturity = library.date_or_null(obj.maturity);
+    specs.maturity = JsonRisk.date_or_null(obj.maturity);
     if (!specs.maturity)
       throw new Error("fixed_income: must provide maturity date.");
 
-    specs.effective_date = library.date_or_null(obj.effective_date); //null allowed
+    specs.effective_date = JsonRisk.date_or_null(obj.effective_date); //null allowed
 
-    specs.notional = library.number_or_null(obj.notional);
+    specs.notional = JsonRisk.number_or_null(obj.notional);
     if (null === specs.notional)
       throw new Error("cashflow_generator: must provide valid notional.");
 
     //include notional exchange unless explicitly set to false (e.g., for swaps)
-    specs.notional_exchange = library.make_bool(obj.notional_exchange);
+    specs.notional_exchange = JsonRisk.make_bool(obj.notional_exchange);
     if (
       null === obj.notional_exchange ||
       "" === obj.notional_exchange ||
@@ -33,14 +33,14 @@
     )
       specs.notional_exchange = true;
 
-    specs.tenor = library.natural_number_or_null(obj.tenor);
+    specs.tenor = JsonRisk.natural_number_or_null(obj.tenor);
     if (null === specs.tenor)
       throw new Error("cashflow_generator: must provide valid tenor.");
 
-    specs.first_date = library.date_or_null(obj.first_date); //null allowed
-    specs.next_to_last_date = library.date_or_null(obj.next_to_last_date); //null allowed
-    specs.stub_end = library.make_bool(obj.stub_end); // defaults to false
-    specs.stub_long = library.make_bool(obj.stub_long); // defaults to false
+    specs.first_date = JsonRisk.date_or_null(obj.first_date); //null allowed
+    specs.next_to_last_date = JsonRisk.date_or_null(obj.next_to_last_date); //null allowed
+    specs.stub_end = JsonRisk.make_bool(obj.stub_end); // defaults to false
+    specs.stub_long = JsonRisk.make_bool(obj.stub_long); // defaults to false
 
     // determine roll date for act/actICMA convention
     specs.roll_date = specs.maturity;
@@ -55,22 +55,22 @@
     )
       specs.roll_date = specs.effective_date;
 
-    specs.dcc = library.string_or_empty(obj.dcc);
-    const is_holiday_func = library.is_holiday_factory(obj.calendar || "");
-    const bdc = library.string_or_empty(obj.bdc);
+    specs.dcc = JsonRisk.string_or_empty(obj.dcc);
+    const is_holiday_func = JsonRisk.is_holiday_factory(obj.calendar || "");
+    const bdc = JsonRisk.string_or_empty(obj.bdc);
 
     specs.adj = function (d) {
-      return library.adjust(d, bdc, is_holiday_func);
+      return JsonRisk.adjust(d, bdc, is_holiday_func);
     };
 
-    specs.adjust_accrual_periods = library.make_bool(
+    specs.adjust_accrual_periods = JsonRisk.make_bool(
       obj.adjust_accrual_periods,
     );
 
     // fixed or floating
     specs.is_float = !(obj.fixed_rate || obj.fixed_rate === 0.0);
 
-    specs.float_current_rate = library.number_or_null(obj.float_current_rate);
+    specs.float_current_rate = JsonRisk.number_or_null(obj.float_current_rate);
 
     if (specs.is_float && specs.float_current_rate === null)
       throw new Error(
@@ -78,10 +78,10 @@
       );
 
     // linear amortization flag
-    specs.linear_amortization = library.make_bool(obj.linear_amortization);
+    specs.linear_amortization = JsonRisk.make_bool(obj.linear_amortization);
 
     // use forward curve as index name
-    specs.index_name = library.string_or_empty(obj.fwd_curve);
+    specs.index_name = JsonRisk.string_or_empty(obj.fwd_curve);
   }
 
   //
@@ -91,7 +91,7 @@
   //
   function make_conditions(obj) {
     //condition dates
-    let conditions_valid_until = library.date_vector_or_null(
+    let conditions_valid_until = JsonRisk.date_vector_or_null(
       obj.conditions_valid_until,
     );
     if (
@@ -107,16 +107,20 @@
     if (!conditions_valid_until) {
       conditions_valid_until = [specs.maturity];
     }
-    const fixed_rate = library.number_vector_or_null(obj.fixed_rate) || [0.0]; //array valued
-    const float_spread = library.number_vector_or_null(obj.float_spread) || [0];
-    const cap_rate = library.number_vector_or_null(obj.cap_rate) || [Infinity];
-    const floor_rate = library.number_vector_or_null(obj.floor_rate) || [
+    const fixed_rate = JsonRisk.number_vector_or_null(obj.fixed_rate) || [0.0]; //array valued
+    const float_spread = JsonRisk.number_vector_or_null(obj.float_spread) || [
+      0,
+    ];
+    const cap_rate = JsonRisk.number_vector_or_null(obj.cap_rate) || [Infinity];
+    const floor_rate = JsonRisk.number_vector_or_null(obj.floor_rate) || [
       -Infinity,
     ];
 
-    const repay_amount = library.number_vector_or_null(obj.repay_amount) || [0]; //array valued
+    const repay_amount = JsonRisk.number_vector_or_null(obj.repay_amount) || [
+      0,
+    ]; //array valued
 
-    const interest_capitalization = library.make_bool_vector(
+    const interest_capitalization = JsonRisk.make_bool_vector(
       obj.interest_capitalization,
     );
 
@@ -143,7 +147,7 @@
   //
   //
   function make_schedule() {
-    schedule = library.schedule(
+    schedule = JsonRisk.schedule(
       specs.effective_date,
       specs.maturity,
       specs.tenor,
@@ -177,18 +181,18 @@
     }
 
     // construct repay schedule
-    let repay_tenor = library.natural_number_or_null(obj.repay_tenor);
+    let repay_tenor = JsonRisk.natural_number_or_null(obj.repay_tenor);
     if (null === repay_tenor) repay_tenor = specs.tenor;
 
     const repay_first_date =
-      library.date_or_null(obj.repay_first_date) || specs.first_date;
+      JsonRisk.date_or_null(obj.repay_first_date) || specs.first_date;
     const repay_next_to_last_date =
-      library.date_or_null(obj.repay_next_to_last_date) ||
+      JsonRisk.date_or_null(obj.repay_next_to_last_date) ||
       specs.next_to_last_date;
     const repay_stub_end = specs.stub_end || false;
     const repay_stub_long = specs.stub_long || false;
 
-    repay_schedule = library.schedule(
+    repay_schedule = JsonRisk.schedule(
       schedule[0],
       specs.maturity,
       repay_tenor,
@@ -216,18 +220,18 @@
     if (!specs.is_float) {
       fixing_schedule = [schedule[0], specs.maturity];
     }
-    let fixing_tenor = library.natural_number_or_null(obj.fixing_tenor);
+    let fixing_tenor = JsonRisk.natural_number_or_null(obj.fixing_tenor);
     if (null === fixing_tenor) fixing_tenor = specs.tenor;
 
     const fixing_first_date =
-      library.date_or_null(obj.fixing_first_date) || specs.first_date;
+      JsonRisk.date_or_null(obj.fixing_first_date) || specs.first_date;
     const fixing_next_to_last_date =
-      library.date_or_null(obj.fixing_next_to_last_date) ||
+      JsonRisk.date_or_null(obj.fixing_next_to_last_date) ||
       specs.next_to_last_date;
     const fixing_stub_end = obj.fixing_stub_end || false;
     const fixing_stub_long = obj.fixing_stub_long || false;
 
-    fixing_schedule = library.schedule(
+    fixing_schedule = JsonRisk.schedule(
       schedule[0],
       specs.maturity,
       fixing_tenor,
@@ -305,7 +309,7 @@
     pmt.index = "index";
 
     // fixing
-    if (reset_start <= library.valuation_date) {
+    if (reset_start <= JsonRisk.valuation_date) {
       pmt.is_fixed = true;
       pmt.rate = specs.float_current_rate + float_spread;
     } else {
@@ -336,7 +340,7 @@
   // main cash flow generation routine
   //
   //
-  library.cashflow_generator = function (obj) {
+  JsonRisk.cashflow_generator = function (obj) {
     // initialise
     make_specs(obj);
     make_conditions(obj);
@@ -424,9 +428,9 @@
 
     return {
       payments: cashflows,
-      disc_curve: library.string_or_empty(obj.disc_curve),
-      spread_curve: library.string_or_empty(obj.spread_curve),
-      residual_spread: library.number_or_null(obj.residual_spread) || 0.0,
+      disc_curve: JsonRisk.string_or_empty(obj.disc_curve),
+      spread_curve: JsonRisk.string_or_empty(obj.spread_curve),
+      residual_spread: JsonRisk.number_or_null(obj.residual_spread) || 0.0,
     };
   };
-})(this.JsonRisk || module.exports);
+}

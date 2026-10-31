@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a floating rate bond
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class Floater extends library.LegInstrument {
+  class Floater extends JsonRisk.LegInstrument {
     /**
      * Create a floater instrument. If legs are not provided, legs are generated from terms and conditions. Legs must contain one and only one leg with floating and notional payments.
      * @param {obj} obj A plain object representing the instrument
@@ -22,7 +22,7 @@
         delete tempobj.fixed_rate;
 
         // generate leg from terms and conditions
-        const leg = library.cashflow_generator(tempobj);
+        const leg = JsonRisk.cashflow_generator(tempobj);
 
         // make simple index
         const index = {
@@ -77,5 +77,5 @@
     }
   }
 
-  library.Floater = Floater;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Floater = Floater;
+}

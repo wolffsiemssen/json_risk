@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a financial instrument with legs, basis class for most rate and credit instruments
    * @memberof JsonRisk
    * @extends Instrument
    */
-  class LegInstrument extends library.Instrument {
+  class LegInstrument extends JsonRisk.Instrument {
     #legs = [];
     #acquire_date = new Date(Date.UTC(0, 0, 1));
 
@@ -21,12 +21,12 @@
 
       if ("legs" in obj && Array.isArray(obj.legs)) {
         this.#legs = obj.legs.map((legobj) => {
-          return new library.Leg(legobj);
+          return new JsonRisk.Leg(legobj);
         });
         Object.freeze(this.#legs);
       }
 
-      const ad = library.date_or_null(obj.acquire_date);
+      const ad = JsonRisk.date_or_null(obj.acquire_date);
       if (null !== ad) this.#acquire_date = ad;
     }
 
@@ -66,5 +66,5 @@
     }
   }
 
-  library.LegInstrument = LegInstrument;
-})(this.JsonRisk || module.exports);
+  JsonRisk.LegInstrument = LegInstrument;
+}

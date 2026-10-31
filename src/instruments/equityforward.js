@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a forward contract on a stock or on an equity index
    * @memberof JsonRisk
    * @extends Equity
    */
-  class EquityForward extends library.Equity {
+  class EquityForward extends JsonRisk.Equity {
     #expiry = null;
     #repo_curve = "";
     #price = 0.0;
@@ -24,11 +24,11 @@
      */
     constructor(obj) {
       super(obj);
-      this.#expiry = library.date_or_null(obj.expiry);
+      this.#expiry = JsonRisk.date_or_null(obj.expiry);
       if (null === this.#expiry)
         throw new Error("EquityForward: must provide a valid expiry date");
-      this.#repo_curve = library.string_or_empty(obj.repo_curve);
-      this.#price = library.number_or_null(obj.price) || 0.0;
+      this.#repo_curve = JsonRisk.string_or_empty(obj.repo_curve);
+      this.#price = JsonRisk.number_or_null(obj.price) || 0.0;
     }
 
     /**
@@ -45,15 +45,15 @@
     }
 
     value_impl(params, extras_not_used) {
-      if (library.valuation_date >= this.#expiry) return 0.0;
+      if (JsonRisk.valuation_date >= this.#expiry) return 0.0;
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.quote,
         "EquityForward: no spot quote specified, make sure to populate 'quote' on instrument level",
       );
       const quote = params.get_scalar(this.quote);
 
-      library.nonempty_string_or_throw(
+      JsonRisk.nonempty_string_or_throw(
         this.disc_curve,
         "EquityForward: no discount curve specified, make sure to populate 'disc_curve' on instrument level",
       );
@@ -63,10 +63,11 @@
 
       const forward = this.forward(quote.get_value(), this.#expiry, dc, rc);
       return (
-        (forward - this.#price) * dc.get_df(library.time_from_now(this.#expiry))
+        (forward - this.#price) *
+        dc.get_df(JsonRisk.time_from_now(this.#expiry))
       );
     }
   }
 
-  library.EquityForward = EquityForward;
-})(this.JsonRisk || module.exports);
+  JsonRisk.EquityForward = EquityForward;
+}

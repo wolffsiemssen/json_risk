@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * Cox-Ross-Rubinstein binomial tree model for option pricing.
    * @memberof JsonRisk
@@ -174,5 +174,5 @@
       return this.#impl(1);
     }
   }
-  library.CRRBinomialModel = CRRBinomialModel;
-})(this.JsonRisk || module.exports);
+  JsonRisk.CRRBinomialModel = CRRBinomialModel;
+}

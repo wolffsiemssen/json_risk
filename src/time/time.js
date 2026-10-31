@@ -1,4 +1,4 @@
-(function (library) {
+{
   const dl = 1000 * 60 * 60 * 24; // length of one day in milliseconds
   const one_over_dl = 1.0 / dl;
 
@@ -9,7 +9,7 @@
    * @memberof JsonRisk
    * @private
    */
-  library.is_leap_year = function (y) {
+  JsonRisk.is_leap_year = function (y) {
     if (y % 4 !== 0) return false;
     if (y === 2000) return true;
     return y % 100 !== 0;
@@ -23,10 +23,10 @@
    * @memberof JsonRisk
    * @private
    */
-  library.days_in_month = function (y, m) {
+  JsonRisk.days_in_month = function (y, m) {
     switch (m) {
       case 1:
-        return library.is_leap_year(y) ? 29 : 28;
+        return JsonRisk.is_leap_year(y) ? 29 : 28;
       case 3:
       case 5:
       case 8:
@@ -45,19 +45,19 @@
    * @memberof JsonRisk
    * @private
    */
-  library.days_between = function (from, to) {
+  JsonRisk.days_between = function (from, to) {
     return Math.round((to.getTime() - from.getTime()) * one_over_dl);
   };
 
   /**
-   * Returns the time in years from library.valuation_date until the given date
+   * Returns the time in years from JsonRisk.valuation_date until the given date
    * @param {date} d
-   * @returns {number} time in years from library.valuation_date until d
+   * @returns {number} time in years from JsonRisk.valuation_date until d
    * @memberof JsonRisk
    * @public
    */
-  library.time_from_now = function (d) {
-    return library.days_between(library.valuation_date, d) / 365;
+  JsonRisk.time_from_now = function (d) {
+    return JsonRisk.days_between(JsonRisk.valuation_date, d) / 365;
   };
 
   /*!
@@ -73,7 +73,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_days = function (from, ndays) {
+  JsonRisk.add_days = function (from, ndays) {
     return new Date(from.getTime() + ndays * dl);
   };
 
@@ -86,7 +86,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_months = function (from, nmonths, roll_day) {
+  JsonRisk.add_months = function (from, nmonths, roll_day) {
     let y = from.getUTCFullYear(),
       m = from.getUTCMonth() + nmonths,
       d;
@@ -103,7 +103,7 @@
     } else {
       d = roll_day;
     }
-    return new Date(Date.UTC(y, m, Math.min(d, library.days_in_month(y, m))));
+    return new Date(Date.UTC(y, m, Math.min(d, JsonRisk.days_in_month(y, m))));
   };
 
   /**
@@ -114,17 +114,18 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_period = function (from, str) {
+  JsonRisk.add_period = function (from, str) {
     const num = parseInt(str, 10);
     if (isNaN(num))
       throw new Error(
         "period_str_to_time(str) - Invalid time period string: " + str,
       );
     const unit = str.charAt(str.length - 1);
-    if (unit === "Y" || unit === "y") return library.add_months(from, 12 * num);
-    if (unit === "M" || unit === "m") return library.add_months(from, num);
-    if (unit === "W" || unit === "w") return library.add_days(from, 7 * num);
-    if (unit === "D" || unit === "d") return library.add_days(from, num);
+    if (unit === "Y" || unit === "y")
+      return JsonRisk.add_months(from, 12 * num);
+    if (unit === "M" || unit === "m") return JsonRisk.add_months(from, num);
+    if (unit === "W" || unit === "w") return JsonRisk.add_days(from, 7 * num);
+    if (unit === "D" || unit === "d") return JsonRisk.add_days(from, num);
     throw new Error(
       "period_str_to_time(str) - Invalid time period string: " + str,
     );
@@ -194,8 +195,8 @@
     if (y > 2000) {
       if ((1 === d && 4 === m) || (26 === d && 11 === m)) return true; //labour and goodwill
       const es = easter_sunday(y);
-      if (dt.getTime() === library.add_days(es, -2).getTime()) return true; //Good Friday
-      if (dt.getTime() === library.add_days(es, 1).getTime()) return true; //Easter Monday
+      if (dt.getTime() === JsonRisk.add_days(es, -2).getTime()) return true; //Good Friday
+      if (dt.getTime() === JsonRisk.add_days(es, 1).getTime()) return true; //Easter Monday
     }
     return false;
   }
@@ -210,14 +211,14 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_calendar = function (name, dates) {
+  JsonRisk.add_calendar = function (name, dates) {
     if (!(name instanceof String || typeof name === "string"))
       throw new Error("add_calendar: invalid input.");
     if (!Array.isArray(dates)) throw new Error("add_calendar: invalid input.");
     const holidays = new Set();
     //only consider array items that are valid dates or date strings and that are no default holidays, i.e., weekend days
     for (let dt of dates) {
-      dt = library.date_or_null(dt);
+      dt = JsonRisk.date_or_null(dt);
       if (!dt) continue;
       if (is_holiday_default(dt)) continue;
       holidays.add(dt.getTime());
@@ -232,7 +233,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.is_holiday_factory = function (str) {
+  JsonRisk.is_holiday_factory = function (str) {
     const sl = str.toLowerCase();
 
     //builtin target calendar
@@ -270,7 +271,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.adjust = function (dt, bdc, is_holiday_function) {
+  JsonRisk.adjust = function (dt, bdc, is_holiday_function) {
     if (!(bdc instanceof String) && typeof bdc !== "string") return dt; // no business day convention specified
     const s = (bdc || "u").charAt(0).toLowerCase();
     let adj = new Date(dt);
@@ -279,12 +280,12 @@
     let m;
     if (s === "m") m = adj.getUTCMonth(); //save month for modified following
     if (s === "m" || s === "f") {
-      while (is_holiday_function(adj)) adj = library.add_days(adj, 1);
+      while (is_holiday_function(adj)) adj = JsonRisk.add_days(adj, 1);
     }
     if (s === "f") return adj; //following
     if (s === "m" && m === adj.getUTCMonth()) return adj; //modified following, still in same month
-    if (s === "m") adj = library.add_days(adj, -1); //modified following, in next month
-    while (is_holiday_function(adj)) adj = library.add_days(adj, -1); //modified following or preceding
+    if (s === "m") adj = JsonRisk.add_days(adj, -1); //modified following, in next month
+    while (is_holiday_function(adj)) adj = JsonRisk.add_days(adj, -1); //modified following or preceding
     return adj;
   };
 
@@ -297,13 +298,17 @@
    * @memberof JsonRisk
    * @public
    */
-  library.add_business_days = function (from, n, is_holiday_function) {
+  JsonRisk.add_business_days = function (from, n, is_holiday_function) {
     let res = from,
       i = n;
     while (i > 0) {
-      res = library.adjust(library.add_days(res, 1), "f", is_holiday_function);
+      res = JsonRisk.adjust(
+        JsonRisk.add_days(res, 1),
+        "f",
+        is_holiday_function,
+      );
       i--;
     }
     return res;
   };
-})(this.JsonRisk || module.exports);
+}

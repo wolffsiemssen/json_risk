@@ -1,10 +1,10 @@
-(function (library) {
+{
   /**
    * Class representing a fix-float swap
    * @memberof JsonRisk
    * @extends LegInstrument
    */
-  class Swap extends library.LegInstrument {
+  class Swap extends JsonRisk.LegInstrument {
     #fixed_leg = null;
     #float_leg = null;
     #is_payer = null;
@@ -21,8 +21,8 @@
     constructor(obj) {
       if (!Array.isArray(obj.legs)) {
         // generate legs from terms and conditions
-        const phi = library.make_bool(obj.is_payer) ? -1 : 1;
-        const fixed_leg = library.cashflow_generator({
+        const phi = JsonRisk.make_bool(obj.is_payer) ? -1 : 1;
+        const fixed_leg = JsonRisk.cashflow_generator({
           notional: obj.notional * phi,
           notional_exchange: false,
           maturity: obj.maturity,
@@ -36,7 +36,7 @@
           disc_curve: obj.disc_curve || "",
         });
 
-        const float_leg = library.cashflow_generator({
+        const float_leg = JsonRisk.cashflow_generator({
           notional: -obj.notional * phi,
           notional_exchange: false,
           maturity: obj.maturity,
@@ -135,7 +135,7 @@
     get fixed_rate() {
       //returns first rate on the fixed leg
       for (const p of this.#fixed_leg.payments) {
-        if (p instanceof library.FixedRatePayment) {
+        if (p instanceof JsonRisk.FixedRatePayment) {
           return p.rate;
         }
       }
@@ -150,5 +150,5 @@
     }
   }
 
-  library.Swap = Swap;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Swap = Swap;
+}

@@ -1,82 +1,80 @@
-(function (library) {
-  /**
-   * Calculates the present value for any given supported instrument
-   * @param {object} instrument_json an instrument object as required by make_instrument
-   * @param {object} params_json an object containing parameters as required by the Params constructor
-   * @returns {number} present value
-   * @memberof JsonRisk
-   * @public
-   */
-  library.vector_pricer = function (instrument_json, params_json) {
-    const simulation_once = function () {
-      this.results.present_value = new Array(this.num_scenarios);
-    };
-
-    const simulation_scenario = function () {
-      const i = this.idx_scen;
-      this.results.present_value[i] = this.instrument.value(this.params);
-    };
-
-    const module = {
-      simulation_once: simulation_once,
-      simulation_scenario: simulation_scenario,
-    };
-
-    return library.simulation(instrument_json, params_json, [module])
-      .present_value;
+/**
+ * Calculates the present value for any given supported instrument
+ * @param {object} instrument_json an instrument object as required by make_instrument
+ * @param {object} params_json an object containing parameters as required by the Params constructor
+ * @returns {number} present value
+ * @memberof JsonRisk
+ * @public
+ */
+JsonRisk.vector_pricer = function (instrument_json, params_json) {
+  const simulation_once = function () {
+    this.results.present_value = new Array(this.num_scenarios);
   };
 
-  /**
-   * Runs a generic simulation on an instrument
-   * @param {object} instrument_json an instrument object as required by make_instrument
-   * @param {object} params_json an object containing parameters as required by the Params constructor
-   * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
-   * @returns {object} results object
-   * @memberof JsonRisk
-   * @public
-   */
-  library.simulation = function (instrument_json, params_json, modules) {
-    if (typeof instrument_json.type !== "string")
-      throw new Error("simulation: instrument object must contain valid type");
-    library.set_valuation_date(params_json.valuation_date);
+  const simulation_scenario = function () {
+    const i = this.idx_scen;
+    this.results.present_value[i] = this.instrument.value(this.params);
+  };
 
-    // create context for module execution
-    const context = {
-      instrument_json: instrument_json,
-      instrument: library.make_instrument(instrument_json),
-      params_json: params_json,
-      params: null,
-      idx_scen: 0,
-      results: {},
-    };
+  const module = {
+    simulation_once: simulation_once,
+    simulation_scenario: simulation_scenario,
+  };
 
-    // obtain dependencies on parameters
-    const deps = new library.Deps();
-    context.instrument.add_deps(deps);
+  return JsonRisk.simulation(instrument_json, params_json, [module])
+    .present_value;
+};
 
-    // obtain required set of params
-    context.params = deps.minimal_params(params_json);
-    context.num_scenarios = context.params.num_scenarios;
+/**
+ * Runs a generic simulation on an instrument
+ * @param {object} instrument_json an instrument object as required by make_instrument
+ * @param {object} params_json an object containing parameters as required by the Params constructor
+ * @param {array} modules an array of modules, i.e. objects that define either the simulation_once or simulation_scenario function, or both
+ * @returns {object} results object
+ * @memberof JsonRisk
+ * @public
+ */
+JsonRisk.simulation = function (instrument_json, params_json, modules) {
+  if (typeof instrument_json.type !== "string")
+    throw new Error("simulation: instrument object must contain valid type");
+  JsonRisk.set_valuation_date(params_json.valuation_date);
 
-    for (let i = 0; i < context.num_scenarios; i++) {
-      // update context for scenario
-      context.idx_scen = i;
+  // create context for module execution
+  const context = {
+    instrument_json: instrument_json,
+    instrument: JsonRisk.make_instrument(instrument_json),
+    params_json: params_json,
+    params: null,
+    idx_scen: 0,
+    results: {},
+  };
 
-      // attach scenarios to params
-      context.params.attach_scenario(i);
+  // obtain dependencies on parameters
+  const deps = new JsonRisk.Deps();
+  context.instrument.add_deps(deps);
 
-      // call simulation_once for all modules for i=0
-      for (let j = 0; j < modules.length; j++) {
-        if (0 === i && "function" === typeof modules[j].simulation_once)
-          modules[j].simulation_once.call(context);
-      }
+  // obtain required set of params
+  context.params = deps.minimal_params(params_json);
+  context.num_scenarios = context.params.num_scenarios;
 
-      // call simulation_scenario for all modules for i=0
-      for (let j = 0; j < modules.length; j++) {
-        if ("function" === typeof modules[j].simulation_scenario)
-          modules[j].simulation_scenario.call(context);
-      }
+  for (let i = 0; i < context.num_scenarios; i++) {
+    // update context for scenario
+    context.idx_scen = i;
+
+    // attach scenarios to params
+    context.params.attach_scenario(i);
+
+    // call simulation_once for all modules for i=0
+    for (let j = 0; j < modules.length; j++) {
+      if (0 === i && "function" === typeof modules[j].simulation_once)
+        modules[j].simulation_once.call(context);
     }
-    return context.results;
-  };
-})(this.JsonRisk || module.exports);
+
+    // call simulation_scenario for all modules for i=0
+    for (let j = 0; j < modules.length; j++) {
+      if ("function" === typeof modules[j].simulation_scenario)
+        modules[j].simulation_scenario.call(context);
+    }
+  }
+  return context.results;
+};

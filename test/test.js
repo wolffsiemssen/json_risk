@@ -73,7 +73,7 @@ Checks if expr is true and prints a message to the console or the html window. O
 };
 
 if (typeof require === "function") {
-  var JsonRisk = require("../dist/json_risk.js");
+  const JsonRisk = require("../dist/json_risk.js");
 
   test_files = [
     "date_conversion.js",

@@ -1,4 +1,4 @@
-(function (library) {
+{
   const identity = function (t) {
     return t;
   };
@@ -204,12 +204,12 @@
       }.bind(this);
 
       for (let i = 0; i < basket.length; i++) {
-        if (library.time_from_now(basket[i].first_exercise_date) <= 1 / 512) {
+        if (JsonRisk.time_from_now(basket[i].first_exercise_date) <= 1 / 512) {
           throw new Error(
             "LGM: basket instruments must have time to exercise of at least one day",
           );
         }
-        tte = library.time_from_now(basket[i].first_exercise_date);
+        tte = JsonRisk.time_from_now(basket[i].first_exercise_date);
         this.#t_ex[i] = tte;
 
         //first step: derive initial guess based on Hagan formula 5.16c
@@ -276,7 +276,7 @@
             approx = func(xi);
           }
           try {
-            xi = library.find_root_ridders(func, 0, xi, 20, accuracy);
+            xi = JsonRisk.find_root_ridders(func, 0, xi, 20, accuracy);
           } catch (e_not_used) {
             //use initial guess or zero as fallback, whichever is better
             if (Math.abs(target - min_value) < Math.abs(approx)) xi = 0;
@@ -394,7 +394,7 @@
         }
 
         try {
-          break_even = library.find_root_ridders(func, upper, lower, 20);
+          break_even = JsonRisk.find_root_ridders(func, upper, lower, 20);
         } catch (e_not_used) {
           //fall back to numeric price
           return this.bermudan_call(
@@ -436,7 +436,7 @@
       let res =
         -(cf_obj.current_principal[i] + accrued_interest + sadj) *
         discount_factors[discount_factors.length - 1] *
-        library.cndf(break_even * one_std_dev + dh * std_dev);
+        JsonRisk.cndf(break_even * one_std_dev + dh * std_dev);
 
       // include all payments after exercise date
       while (i < cf_obj.t_pmt.length) {
@@ -444,7 +444,7 @@
         res +=
           cf_obj.pmt_total[i] *
           discount_factors[i] *
-          library.cndf(break_even * one_std_dev + dh * std_dev);
+          JsonRisk.cndf(break_even * one_std_dev + dh * std_dev);
         i++;
       }
       return res;
@@ -555,7 +555,7 @@
           dp_hi;
         while (x < STD_DEV_RANGE) {
           if (i >= n) break;
-          dp_hi = library.fast_cndf(x);
+          dp_hi = JsonRisk.fast_cndf(x);
           temp += value[i] * (dp_hi - dp_lo);
           dp_lo = dp_hi; // for next iteration
           x += increment;
@@ -635,7 +635,7 @@
     }
   }
 
-  library.LGM = LGM;
+  JsonRisk.LGM = LGM;
 
   /**
    * precalculates discount factors for each cash flow and for t_exercise
@@ -766,14 +766,14 @@
     const p1 = fixed_leg.payments[0];
     const cf = {
       current_principal: [0.0],
-      t_pmt: [library.time_from_now(p1.date_start)],
+      t_pmt: [JsonRisk.time_from_now(p1.date_start)],
       pmt_total: [-p1.notional],
       pmt_interest: [0.0],
     };
 
     for (const p of swaption.fixed_leg.payments) {
       cf.current_principal.push(p.notional);
-      cf.t_pmt.push(library.time_from_now(p.date_pmt));
+      cf.t_pmt.push(JsonRisk.time_from_now(p.date_pmt));
       const amount = p.yf ? p.notional * p.yf * fixed_rate : 0.0;
       cf.pmt_total.push(amount);
       cf.pmt_interest.push(amount);
@@ -785,4 +785,4 @@
 
     return cf;
   };
-})(this.JsonRisk || module.exports);
+}

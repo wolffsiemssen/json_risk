@@ -1,4 +1,4 @@
-(function (library) {
+{
   /**
    * creates a forward schedule from start up to but excluding end, using tenor as frequency
    * @param {date} start start date
@@ -12,11 +12,11 @@
   const forward_rollout = function (start, end, tenor, adjust_func) {
     const res = [start];
     let i = 1,
-      dt = library.add_months(start, tenor);
+      dt = JsonRisk.add_months(start, tenor);
     while (dt.getTime() < end.getTime()) {
       res.push(dt);
       i++;
-      dt = library.add_months(start, i * tenor);
+      dt = JsonRisk.add_months(start, i * tenor);
     }
     if (
       adjust_func(end).getTime() <= adjust_func(res[res.length - 1]).getTime()
@@ -37,11 +37,11 @@
   const backward_rollout = function (start, end, tenor, adjust_func) {
     const res = [end];
     let i = 1,
-      dt = library.add_months(end, -tenor);
+      dt = JsonRisk.add_months(end, -tenor);
     while (dt.getTime() > start.getTime()) {
       res.unshift(dt);
       i++;
-      dt = library.add_months(end, -i * tenor);
+      dt = JsonRisk.add_months(end, -i * tenor);
     }
     if (adjust_func(start).getTime() >= adjust_func(res[0]).getTime())
       res.shift(); //make sure start is excluded after adjustments
@@ -62,7 +62,7 @@
    * @memberof JsonRisk
    * @public
    */
-  library.schedule = function (
+  JsonRisk.schedule = function (
     eff_dt,
     maturity,
     tenor,
@@ -79,7 +79,7 @@
 
     if (!(eff_dt instanceof Date)) {
       //effective date is strictly needed if valuation date is not set
-      if (null === library.valuation_date)
+      if (null === JsonRisk.valuation_date)
         throw new Error(
           "schedule: if valuation_date is unset, effective date must be provided",
         );
@@ -96,7 +96,7 @@
     }
     if (eff_dt instanceof Date && isNaN(eff_dt))
       throw new Error("schedule: invalid date provided for effective date");
-    if (maturity <= (eff_dt instanceof Date ? eff_dt : library.valuation_date))
+    if (maturity <= (eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date))
       throw new Error(
         "schedule: maturity is before valuation date or effective date.",
       );
@@ -110,7 +110,7 @@
       );
     if (0 === tenor)
       return [
-        eff_dt instanceof Date ? eff_dt : library.valuation_date,
+        eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date,
         maturity,
       ];
 
@@ -125,7 +125,7 @@
     } else if (next_to_last_dt instanceof Date && !(first_dt instanceof Date)) {
       // backward generation with explicit stub at end
       res = backward_rollout(
-        eff_dt instanceof Date ? eff_dt : library.valuation_date,
+        eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date,
         next_to_last_dt,
         tenor,
         adjust_func,
@@ -136,7 +136,7 @@
       if (eff_dt instanceof Date) res.unshift(eff_dt);
       //if effective date is not given, add another period
       if (!(eff_dt instanceof Date))
-        res.unshift(library.add_months(res[0], -tenor));
+        res.unshift(JsonRisk.add_months(res[0], -tenor));
     } else if (first_dt instanceof Date && next_to_last_dt instanceof Date) {
       // backward generation with both explicit stubs
       res = backward_rollout(first_dt, next_to_last_dt, tenor, adjust_func);
@@ -156,7 +156,7 @@
     } else {
       // backward generation with implicit stub
       res = backward_rollout(
-        eff_dt instanceof Date ? eff_dt : library.valuation_date,
+        eff_dt instanceof Date ? eff_dt : JsonRisk.valuation_date,
         maturity,
         tenor,
         adjust_func,
@@ -167,8 +167,8 @@
       if (eff_dt instanceof Date) res.unshift(eff_dt);
       //if effective date is not given and beginning of schedule is still after valuation date, add another period
       if (!(eff_dt instanceof Date))
-        res.unshift(library.add_months(res[0], -tenor));
+        res.unshift(JsonRisk.add_months(res[0], -tenor));
     }
     return res;
   };
-})(this.JsonRisk || module.exports);
+}

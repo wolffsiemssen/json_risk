@@ -1,4 +1,4 @@
-(function (library) {
+{
   const name_to_moneyness = function (str) {
     const s = str.toLowerCase();
     if (s.endsWith("atm")) return 0; //ATM surface
@@ -45,13 +45,13 @@
      * @param {object} [obj.curves={}] Curves to import into the parameters object. Keys are the names of the curves as referenced by instruments, values are objects as understood by the curve class constructors.
      * @param {object} [obj.surfaces={}] Surfaces to import into the parameters object. Keys are the names of the surfaces as referenced by instruments, values are objects as understood by the surface class constructors.
      * @param {object} [obj.scenarios={}] Scenarios conforming to the JsonRisk scenario definition format.
-     * @param {object} [obj.calendars={}] Calendars to import into the library instance. Keys are the names of the calendars, values must be arrays of holidays to include into the calendar.
+     * @param {object} [obj.calendars={}] Calendars to import into the JsonRisk instance. Keys are the names of the calendars, values must be arrays of holidays to include into the calendar.
      */
     constructor(obj) {
       // valuation date
       if (!("valuation_date" in obj))
         throw new Error("Params: must contain a valuation_date property");
-      this.#valuation_date = library.date_or_null(obj.valuation_date);
+      this.#valuation_date = JsonRisk.date_or_null(obj.valuation_date);
 
       // main currency
       if (typeof obj.main_currency === "string") {
@@ -69,7 +69,7 @@
           const temp = Object.assign({}, value);
           temp.name = key;
           try {
-            this.#scalars[key] = new library.Scalar(temp);
+            this.#scalars[key] = new JsonRisk.Scalar(temp);
           } catch (e) {
             throw new Error(
               `Params: could not instantiate scalar '${key}': ${e.message}`,
@@ -85,7 +85,7 @@
           const temp = Object.assign({}, value);
           temp.name = key;
           try {
-            this.#curves[key] = new library.Curve(temp);
+            this.#curves[key] = new JsonRisk.Curve(temp);
           } catch (e) {
             throw new Error(
               `Params: could not instantiate curve '${key}': ${e.message}`,
@@ -113,7 +113,7 @@
             }
           }
           try {
-            this.#surfaces[key] = library.make_surface(temp);
+            this.#surfaces[key] = JsonRisk.make_surface(temp);
           } catch (e) {
             throw new Error(
               `Params: could not instantiate surface '${key}': ${e.message}`,
@@ -144,7 +144,7 @@
               scenarios.push({
                 name: scenario.name,
                 rules: scenario.rules.map(
-                  (rule) => new library.ScenarioRule(rule),
+                  (rule) => new JsonRisk.ScenarioRule(rule),
                 ),
               });
             } catch (e) {
@@ -158,12 +158,12 @@
         }
       }
 
-      // calendars are actually stored within the library and not in this object
+      // calendars are actually stored within the JsonRisk and not in this object
       if ("calendars" in obj) {
         if (typeof obj.calendars !== "object")
           throw new Error("Params: Calendars object is invalid");
         for (const [calname, cal] of Object.entries(obj.calendars)) {
-          library.add_calendar(calname, cal.dates);
+          JsonRisk.add_calendar(calname, cal.dates);
         }
       }
     }
@@ -222,7 +222,7 @@
      * @return {boolean}
      */
     has_scalar(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_scalar: name must be nonempty string",
       );
@@ -235,7 +235,7 @@
      * @return {boolean}
      */
     has_curve(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "has_curve: name must be nonempty string",
       );
@@ -248,7 +248,7 @@
      * @return {boolean}
      */
     has_surface(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "has_surface: name must be nonempty string",
       );
@@ -261,7 +261,7 @@
      * @return {Scalar}
      */
     get_scalar(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_scalar: name must be nonempty string",
       );
@@ -275,7 +275,7 @@
      * @return {Curve}
      */
     get_curve(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_curve: name must be nonempty string",
       );
@@ -289,7 +289,7 @@
      * @return {Surface}
      */
     get_surface(name) {
-      const n = library.nonempty_string_or_throw(
+      const n = JsonRisk.nonempty_string_or_throw(
         name,
         "get_surface: name must be nonempty string",
       );
@@ -385,7 +385,7 @@
     toJSON() {
       const mapper = ([key, value]) => [key, value.toJSON()];
       const res = {
-        valuation_date: library.date_to_date_str(this.#valuation_date),
+        valuation_date: JsonRisk.date_to_date_str(this.#valuation_date),
         main_currency: this.#main_currency,
         scalars: Object.fromEntries(Object.entries(this.#scalars).map(mapper)),
         curves: Object.fromEntries(Object.entries(this.#curves).map(mapper)),
@@ -397,5 +397,5 @@
     }
   }
 
-  library.Params = Params;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Params = Params;
+}

@@ -1,6 +1,6 @@
-(function (library) {
+{
   const check_name = function (s) {
-    return library.nonempty_string_or_throw(
+    return JsonRisk.nonempty_string_or_throw(
       s,
       "Deps: name must be a string and cannot be empty",
     );
@@ -105,7 +105,7 @@
         obj.main_currency = params_json.main_currency;
       }
 
-      const main_currency = new library.Params(obj).main_currency;
+      const main_currency = new JsonRisk.Params(obj).main_currency;
 
       if ("scalars" in params_json) {
         for (const s of this.#scalars) {
@@ -143,9 +143,9 @@
         obj.scenario_groups = params_json.scenario_groups;
       }
 
-      return new library.Params(obj);
+      return new JsonRisk.Params(obj);
     }
   }
 
-  library.Deps = Deps;
-})(this.JsonRisk || module.exports);
+  JsonRisk.Deps = Deps;
+}
