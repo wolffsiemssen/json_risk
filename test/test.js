@@ -113,6 +113,7 @@ if (typeof require === "function") {
     "cap_floor_parity.js",
     "capfloor_zerovola.js",
     "sort_leg_payments.js",
+    "overnight_index.js",
   ];
 
   for (testfile of test_files) {
